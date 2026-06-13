@@ -1,0 +1,406 @@
+﻿const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const sqlite3 = require('sqlite3').verbose();
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+const db = new sqlite3.Database('./database/barbearia.db');
+
+// Middleware de autenticação
+function auth(req, res, next) {
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Token não fornecido' });
+    }
+    try {
+        const decoded = jwt.verify(token, 'secret_key');
+        req.usuario = decoded;
+        next();
+    } catch (err) {
+        res.status(401).json({ success: false, message: 'Token inválido' });
+    }
+}
+
+// Verificar Super Admin
+function verificarSuperAdmin(req, res, next) {
+    if (req.usuario.role !== 'superadmin') {
+        return res.status(403).json({ success: false, message: 'Acesso negado. Apenas Super Admin.' });
+    }
+    next();
+}
+
+// ========== ROTAS PÚBLICAS ==========
+
+// Login
+app.post('/api/login', (req, res) => {
+    const { email, senha } = req.body;
+    
+    db.get(`SELECT u.*, e.trial_expira, e.nome as empresa_nome 
+            FROM usuarios u 
+            LEFT JOIN empresas e ON u.empresa_id = e.id 
+            WHERE u.email = ?`, [email], (err, user) => {
+        if (err || !user) {
+            return res.json({ success: false, message: 'Email ou senha incorretos' });
+        }
+        
+        if (!bcrypt.compareSync(senha, user.senha)) {
+            return res.json({ success: false, message: 'Email ou senha incorretos' });
+        }
+        
+        if (user.role === 'dono' && user.trial_expira) {
+            const hoje = new Date().toISOString().split('T')[0];
+            if (user.trial_expira < hoje) {
+                return res.json({ success: false, message: 'Seu período de teste expirou.' });
+            }
+            user.dias_restantes = Math.ceil((new Date(user.trial_expira) - new Date()) / (1000 * 60 * 60 * 24));
+        }
+        
+        const token = jwt.sign(
+            { id: user.id, email: user.email, role: user.role, empresa_id: user.empresa_id, nome: user.nome },
+            'secret_key',
+            { expiresIn: '7d' }
+        );
+        
+        res.json({
+            success: true,
+            data: {
+                token,
+                usuario: {
+                    id: user.id,
+                    nome: user.nome,
+                    email: user.email,
+                    role: user.role,
+                    empresa_id: user.empresa_id,
+                    empresa_nome: user.empresa_nome,
+                    dias_restantes: user.dias_restantes
+                }
+            }
+        });
+    });
+});
+
+// Cadastro
+app.post('/api/cadastro', (req, res) => {
+    const { nome, email, senha, empresa_nome } = req.body;
+    
+    if (!nome || !email || !senha || !empresa_nome) {
+        return res.json({ success: false, message: 'Todos os campos são obrigatórios' });
+    }
+    
+    db.get(`SELECT id FROM usuarios WHERE email = ?`, [email], (err, user) => {
+        if (user) {
+            return res.json({ success: false, message: 'Email já cadastrado' });
+        }
+        
+        const trialExpira = new Date();
+        trialExpira.setDate(trialExpira.getDate() + 45);
+        const trialData = trialExpira.toISOString().split('T')[0];
+        
+        db.run(`INSERT INTO empresas (nome, plano, trial_expira) VALUES (?, 'trial', ?)`, 
+            [empresa_nome, trialData], function(err) {
+            if (err) {
+                return res.json({ success: false, message: 'Erro ao criar empresa' });
+            }
+            
+            const empresa_id = this.lastID;
+            const senhaHash = bcrypt.hashSync(senha, 10);
+            
+            db.run(`INSERT INTO usuarios (nome, email, senha, role, empresa_id) VALUES (?, ?, ?, 'dono', ?)`,
+                [nome, email, senhaHash, empresa_id], (err) => {
+                if (err) {
+                    return res.json({ success: false, message: 'Erro ao criar usuário' });
+                }
+                res.json({ success: true, message: 'Cadastro realizado! Você tem 45 dias de teste.' });
+            });
+        });
+    });
+});
+
+// ========== ROTAS SUPER ADMIN ==========
+
+app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
+    db.get("SELECT COUNT(*) as total FROM empresas", (err, empresas) => {
+        db.get("SELECT COUNT(*) as total FROM usuarios WHERE role = 'dono'", (err2, donos) => {
+            db.get("SELECT COUNT(*) as total FROM clientes", (err3, clientes) => {
+                db.get("SELECT COUNT(*) as total FROM agendamentos", (err4, agendamentos) => {
+                    res.json({
+                        success: true,
+                        data: {
+                            empresas: empresas?.total || 0,
+                            donos: donos?.total || 0,
+                            clientes: clientes?.total || 0,
+                            agendamentos: agendamentos?.total || 0
+                        }
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
+    db.all(`
+        SELECT e.*, 
+               COUNT(DISTINCT u.id) as total_usuarios,
+               COUNT(DISTINCT c.id) as total_clientes,
+               COUNT(DISTINCT a.id) as total_agendamentos
+        FROM empresas e
+        LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+        LEFT JOIN clientes c ON c.empresa_id = e.id
+        LEFT JOIN agendamentos a ON a.empresa_id = e.id
+        GROUP BY e.id
+        ORDER BY e.created_at DESC
+    `, (err, empresas) => {
+        if (err) return res.json({ success: false, message: err.message });
+        res.json({ success: true, data: empresas });
+    });
+});
+
+app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    
+    db.get(`SELECT * FROM empresas WHERE id = ?`, [id], (err, empresa) => {
+        if (err) return res.json({ success: false, message: err.message });
+        
+        db.all(`SELECT id, nome, email, created_at FROM usuarios WHERE empresa_id = ? AND role = 'dono'`, [id], (err, donos) => {
+            db.get(`SELECT COUNT(*) as total FROM clientes WHERE empresa_id = ?`, [id], (err, clientes) => {
+                db.get(`SELECT COUNT(*) as total, SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) as concluidos FROM agendamentos WHERE empresa_id = ?`, [id], (err, agendamentos) => {
+                    res.json({
+                        success: true,
+                        data: {
+                            empresa,
+                            donos,
+                            total_clientes: clientes?.total || 0,
+                            total_agendamentos: agendamentos?.total || 0,
+                            agendamentos_concluidos: agendamentos?.concluidos || 0
+                        }
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { nome, plano } = req.body;
+    
+    db.run(`UPDATE empresas SET nome = COALESCE(?, nome), plano = COALESCE(?, plano) WHERE id = ?`,
+        [nome, plano, id], function(err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, message: 'Empresa atualizada' });
+        });
+});
+
+app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { dias } = req.body;
+    
+    db.get(`SELECT trial_expira FROM empresas WHERE id = ?`, [id], (err, empresa) => {
+        let novaData = new Date();
+        if (empresa?.trial_expira) {
+            novaData = new Date(empresa.trial_expira);
+        }
+        novaData.setDate(novaData.getDate() + (dias || 30));
+        const dataStr = novaData.toISOString().split('T')[0];
+        
+        db.run(`UPDATE empresas SET trial_expira = ? WHERE id = ?`, [dataStr, id], (err) => {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, message: `Trial estendido até ${dataStr}` });
+        });
+    });
+});
+
+// ========== ROTAS DONO ==========
+
+// Clientes
+app.get('/api/clientes', auth, (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    if (!empresa_id) return res.json({ success: true, data: [] });
+    
+    db.all(`SELECT * FROM clientes WHERE empresa_id = ? ORDER BY nome`, [empresa_id], (err, clientes) => {
+        res.json({ success: true, data: clientes });
+    });
+});
+
+app.post('/api/clientes', auth, (req, res) => {
+    const { nome, telefone, email } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+    
+    if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
+    
+    db.run(`INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`,
+        [nome, telefone, email, empresa_id], function(err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, data: { id: this.lastID }, message: 'Cliente cadastrado' });
+        });
+});
+
+app.delete('/api/clientes/:id', auth, (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    
+    db.run(`DELETE FROM clientes WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function(err) {
+        res.json({ success: true, message: 'Cliente removido' });
+    });
+});
+
+// Agendamentos
+app.get('/api/agendamentos', auth, (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    if (!empresa_id) return res.json({ success: true, data: [] });
+    
+    db.all(`
+        SELECT a.*, c.nome as cliente_nome 
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        WHERE a.empresa_id = ?
+        ORDER BY a.data DESC
+    `, [empresa_id], (err, agendamentos) => {
+        res.json({ success: true, data: agendamentos });
+    });
+});
+
+app.post('/api/agendamentos', auth, (req, res) => {
+    const { cliente_id, data, hora, servico, valor } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+    
+    if (!cliente_id || !data) {
+        return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
+    }
+    
+    db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id) 
+            VALUES (?, ?, ?, ?, ?, 'pendente', ?)`,
+        [cliente_id, data, hora, servico, valor, empresa_id], function(err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
+        });
+});
+
+// Concluir agendamento e gerar comissão (30%)
+app.put('/api/agendamentos/:id/concluir', auth, (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    
+    db.get(`SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err, agendamento) => {
+        if (err || !agendamento) {
+            return res.json({ success: false, message: 'Agendamento não encontrado' });
+        }
+        
+        if (agendamento.status === 'concluido') {
+            return res.json({ success: false, message: 'Agendamento já foi concluído' });
+        }
+        
+        // Calcular comissão (30% do valor)
+        const comissao = (agendamento.valor || 0) * 0.30;
+        
+        db.run(`UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ? AND empresa_id = ?`, 
+            [comissao, id, empresa_id], (err) => {
+            if (err) {
+                return res.json({ success: false, message: err.message });
+            }
+            
+            res.json({ 
+                success: true, 
+                message: 'Agendamento concluído! Comissão: R$ ' + comissao.toFixed(2),
+                data: { comissao: comissao }
+            });
+        });
+    });
+});
+
+app.delete('/api/agendamentos/:id', auth, (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    
+    db.run(`DELETE FROM agendamentos WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function(err) {
+        res.json({ success: true, message: 'Agendamento removido' });
+    });
+});
+
+// ========== ROTAS DE FINANCEIRO ==========
+
+// Listar comissões (financeiro)
+app.get('/api/financeiro', auth, (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    const role = req.usuario.role;
+    
+    if (role === 'superadmin') {
+        db.all(`
+            SELECT a.*, c.nome as cliente_nome, e.nome as empresa_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN empresas e ON a.empresa_id = e.id
+            WHERE a.status = 'concluido' AND a.comissao > 0
+            ORDER BY a.data DESC
+        `, (err, comissoes) => {
+            if (err) return res.json({ success: false, message: err.message });
+            
+            const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
+            
+            res.json({ 
+                success: true, 
+                data: { 
+                    comissoes: comissoes,
+                    totais: {
+                        total_comissoes: totalComissoes,
+                        total_servicos: comissoes.length
+                    }
+                }
+            });
+        });
+    } else {
+        db.all(`
+            SELECT a.*, c.nome as cliente_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            WHERE a.empresa_id = ? AND a.status = 'concluido' AND a.comissao > 0
+            ORDER BY a.data DESC
+        `, [empresa_id], (err, comissoes) => {
+            if (err) return res.json({ success: false, message: err.message });
+            
+            const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
+            
+            res.json({ 
+                success: true, 
+                data: { 
+                    comissoes: comissoes,
+                    totais: {
+                        total_comissoes: totalComissoes,
+                        total_servicos: comissoes.length
+                    }
+                }
+            });
+        });
+    }
+});
+
+// Estatísticas do financeiro
+app.get('/api/financeiro/stats', auth, (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    const role = req.usuario.role;
+    
+    if (role === 'superadmin') {
+        db.get(`SELECT COUNT(*) as total, SUM(comissao) as total_comissoes FROM agendamentos WHERE status = 'concluido' AND comissao > 0`, (err, stats) => {
+            res.json({ success: true, data: stats });
+        });
+    } else {
+        db.get(`SELECT COUNT(*) as total, SUM(comissao) as total_comissoes FROM agendamentos WHERE empresa_id = ? AND status = 'concluido' AND comissao > 0`, [empresa_id], (err, stats) => {
+            res.json({ success: true, data: stats });
+        });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+    console.log(`📧 Super Admin: super@admin.com / super123`);
+    console.log(`📧 Dono: admin@teste.com / 123456`);
+});

@@ -1,0 +1,72 @@
+const express = require('express');
+const router = express.Router();
+const db = require('../database/db');
+const auth = require('../middleware/auth');
+
+// Listar agendamentos
+router.get('/', auth, (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+    
+    db.all(`
+        SELECT a.*, 
+               c.nome as cliente_nome,
+               u.nome as barbeiro_nome,
+               s.nome as servico_nome,
+               s.preco
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN usuarios u ON a.barbeiro_id = u.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.empresa_id = ?
+        ORDER BY a.data DESC, a.hora DESC
+    `, [empresa_id], (err, agendamentos) => {
+        if (err) {
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, data: agendamentos });
+    });
+});
+
+// Concluir agendamento e gerar comissão
+router.put('/:id/concluir', auth, (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+    
+    // Buscar dados do agendamento
+    db.get(`
+        SELECT a.*, u.comissao_percentual
+        FROM agendamentos a
+        LEFT JOIN usuarios u ON a.barbeiro_id = u.id
+        WHERE a.id = ? AND a.empresa_id = ?
+    `, [id, empresa_id], (err, agendamento) => {
+        if (err || !agendamento) {
+            return res.json({ success: false, message: 'Agendamento não encontrado' });
+        }
+        
+        // Atualizar status
+        db.run(`UPDATE agendamentos SET status = 'concluido' WHERE id = ?`, [id], (err) => {
+            if (err) {
+                return res.json({ success: false, message: err.message });
+            }
+            
+            // Gerar comissão se tiver barbeiro
+            if (agendamento.barbeiro_id && agendamento.preco) {
+                const percentual = agendamento.comissao_percentual || 30;
+                const valorComissao = (agendamento.preco * percentual) / 100;
+                
+                db.run(`
+                    INSERT INTO comissoes (agendamento_id, barbeiro_id, valor, data, status, empresa_id)
+                    VALUES (?, ?, ?, date('now'), 'pendente', ?)
+                `, [id, agendamento.barbeiro_id, valorComissao, empresa_id], (err) => {
+                    if (err) {
+                        console.error('Erro ao gerar comissão:', err);
+                    }
+                });
+            }
+            
+            res.json({ success: true, message: 'Agendamento concluído com sucesso' });
+        });
+    });
+});
+
+module.exports = router;

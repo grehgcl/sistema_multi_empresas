@@ -1,0 +1,40 @@
+Olá! Meu projeto é a Barbearia Pro.
+
+Por favor, leia os arquivos de documentação nesta ordem:
+
+1. docs/PARA_NOVA_IA.txt (resumo rápido)
+2. docs/IA_CONTEXT.md (contexto completo)
+3. docs/ESTRUTURA.md (organização do código)
+4. docs/DEV_GUIDE.md (como desenvolver)
+
+📌 Comando para iniciar: npm start
+
+👥 Usuários para teste:
+- Super Admin: super@admin.com / super123
+- Dono: admin@teste.com / 123456
+
+✅ Funcionalidades prontas:
+- Cadastro de dono com trial de 45 dias
+- Login (Super Admin e Dono)
+- Super Admin: ver todas empresas, editar, estender trial
+- Dono: CRUD clientes e agendamentos
+- Concluir agendamento gera comissão de 30%
+- Financeiro com todas comissões
+
+Após ler os arquivos, me avise que eu digo qual melhoria quero fazer.
+
+Obrigado!
+
+FUNCIONALIDADES IMPLEMENTADAS:
+
+=== Ultimas 10 linhas (adicional) ===
+=========================================
+ATUALIZACAO - 12/06/2026
+=========================================
+
+PROBLEMAS CONHECIDOS:
+1. Botoes do profissional nao estao clicando
+2. Verificar se profissional_id esta sendo salvo nos agendamentos
+
+PROXIMO PASSO:
+Corrigir o arquivo public/js/pages/agendamentos-profissional.js

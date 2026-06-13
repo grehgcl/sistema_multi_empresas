@@ -1,0 +1,270 @@
+﻿// Página de Agendamentos do DONO
+let profissionaisList = [];
+let clientesList = [];
+let servicosList = [];
+
+async function carregarAgendamentos() {
+    ativarBotao('agendamentos');
+    const token = localStorage.getItem('token');
+
+    // Carregar profissionais
+    const resProf = await fetch('/api/profissionais', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const profResult = await resProf.json();
+    if (profResult.success) {
+        profissionaisList = profResult.data;
+    }
+
+    // Carregar clientes
+    const resClientes = await fetch('/api/clientes', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const clientesResult = await resClientes.json();
+    if (clientesResult.success) {
+        clientesList = clientesResult.data;
+    }
+
+    // Carregar serviços
+    const resServicos = await fetch('/api/servicos', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const servicosResult = await resServicos.json();
+    if (servicosResult.success) {
+        servicosList = servicosResult.data;
+    }
+
+    let html = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>📅 Agendamentos</h2>
+            <button class="btn-green" onclick="abrirModalAgendamentoDono()" style="background:#48bb78; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer;">+ Novo Agendamento</button>
+        </div>
+        <div class="card">
+            <div style="overflow-x: auto;">
+                <table style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Cliente</th>
+                            <th>Profissional</th>
+                            <th>Serviço</th>
+                            <th>Valor</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaAgendamentos"></tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('content').innerHTML = html;
+
+    // Carregar agendamentos
+    const res = await fetch('/api/agendamentos', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const result = await res.json();
+
+    if (result.success) {
+        const tbody = document.getElementById('listaAgendamentos');
+        if (result.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">Nenhum agendamento</td></tr>';
+        } else {
+            tbody.innerHTML = result.data.map(a => `
+                <tr>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">${new Date(a.data).toLocaleDateString()} ${a.hora || ''}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">${a.cliente_nome || 'N/A'}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">${a.profissional_nome || 'Não atribuído'}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">${a.servico_nome || a.servico || 'N/A'}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">R$ ${(a.valor || 0).toFixed(2)}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">${a.status === 'concluido' ? '<span style="background:#48bb78; color:white; padding:4px 8px; border-radius:4px;">Concluído</span>' : '<span style="background:#ed8936; color:white; padding:4px 8px; border-radius:4px;">Pendente</span>'}</td>
+                    <td style="padding: 12px; border-bottom: 1px solid #ddd;">
+                        ${a.status !== 'concluido' ? `<button onclick="concluirAgendamento(${a.id})" style="background:#48bb78; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">✅ Concluir</button>` : ''}
+                        <button onclick="excluirAgendamento(${a.id})" style="background:#e53e3e; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">🗑️ Excluir</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+    }
+}
+
+function atualizarValorPorServicoDono() {
+    const select = document.getElementById('servicoIdDono');
+    const selectedOption = select.options[select.selectedIndex];
+    const valor = selectedOption.getAttribute('data-valor');
+    const nome = selectedOption.getAttribute('data-nome');
+
+    if (valor) {
+        document.getElementById('valorAgendamentoDono').value = parseFloat(valor).toFixed(2);
+        document.getElementById('servicoDescricaoDono').value = nome;
+    }
+}
+
+function abrirModalAgendamentoDono() {
+    const modalDiv = document.createElement('div');
+    modalDiv.id = 'modalAgendamentoDono';
+    modalDiv.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;';
+
+    modalDiv.innerHTML = `
+        <div style="background: white; border-radius: 10px; padding: 25px; width: 450px; max-width: 90%;">
+            <h3 style="margin-bottom: 20px;">Novo Agendamento</h3>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Cliente *</label>
+                <select id="clienteIdDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Selecione...</option>
+                    ${clientesList.map(c => `<option value="${c.id}">${c.nome}</option>`).join('')}
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Data *</label>
+                <input type="date" id="dataAgendamentoDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Hora</label>
+                <input type="time" id="horaAgendamentoDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Serviço</label>
+                <select id="servicoIdDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="atualizarValorPorServicoDono()">
+                    <option value="">Selecione um serviço</option>
+                    ${servicosList.map(s => `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}">${s.nome} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`).join('')}
+                </select>
+                <input type="text" id="servicoDescricaoDono" style="width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Ou digite o serviço manualmente">
+                <small style="color:#666;">Selecione um serviço da lista ou digite manualmente</small>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Valor (R$)</label>
+                <input type="number" id="valorAgendamentoDono" step="0.01" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="0,00">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">Profissional</label>
+                <select id="profissionalIdDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                    <option value="">Não atribuir</option>
+                    ${profissionaisList.filter(p => p.ativo === 1).map(p => `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`).join('')}
+                </select>
+                <small style="color:#666;">Se não escolher, o agendamento ficará sem profissional</small>
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                <button onclick="fecharModalAgendamentoDono()" style="background: #ddd; color: #333; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
+                <button onclick="salvarAgendamentoDono()" style="background: #667eea; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Salvar</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modalDiv);
+}
+
+function fecharModalAgendamentoDono() {
+    const modal = document.getElementById('modalAgendamentoDono');
+    if (modal) modal.remove();
+}
+
+async function salvarAgendamentoDono() {
+    const cliente_id = document.getElementById('clienteIdDono').value;
+    const data = document.getElementById('dataAgendamentoDono').value;
+    const hora = document.getElementById('horaAgendamentoDono').value;
+    const servico_id = document.getElementById('servicoIdDono').value;
+    const servico_descricao = document.getElementById('servicoDescricaoDono').value;
+    const valor = document.getElementById('valorAgendamentoDono').value;
+    const profissional_id = document.getElementById('profissionalIdDono').value;
+
+    if (!cliente_id || !data) {
+        alert('Cliente e data são obrigatórios');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+
+    const body = {
+        cliente_id: parseInt(cliente_id),
+        data: data,
+        hora: hora,
+        valor: parseFloat(valor) || 0,
+        profissional_id: profissional_id ? parseInt(profissional_id) : null
+    };
+
+    if (servico_id) {
+        body.servico_id = parseInt(servico_id);
+    } else if (servico_descricao) {
+        body.servico = servico_descricao;
+    }
+
+    const res = await fetch('/api/agendamentos', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify(body)
+    });
+
+    const result = await res.json();
+
+    if (result.success) {
+        alert('Agendamento criado!');
+        fecharModalAgendamentoDono();
+        carregarAgendamentos();
+    } else {
+        alert('Erro: ' + result.message);
+    }
+}
+
+async function concluirAgendamento(id) {
+    if (!confirm('Concluir este agendamento?')) return;
+
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/agendamentos/${id}/concluir`, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const result = await res.json();
+
+    if (result.success) {
+        alert(result.message);
+        carregarAgendamentos();
+        // Atualizar financeiro se estiver aberto
+        if (typeof carregarFinanceiro === 'function') {
+            const btnFinanceiro = document.getElementById('btnFinanceiro');
+            if (btnFinanceiro && btnFinanceiro.classList.contains('active')) {
+                carregarFinanceiro();
+            }
+        }
+    } else {
+        alert('Erro: ' + result.message);
+    }
+}
+
+async function excluirAgendamento(id) {
+    if (!confirm('Excluir este agendamento?')) return;
+
+    const token = localStorage.getItem('token');
+    const res = await fetch(`/api/agendamentos/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const result = await res.json();
+
+    if (result.success) {
+        alert('Agendamento removido');
+        carregarAgendamentos();
+    } else {
+        alert('Erro: ' + result.message);
+    }
+}
+
+window.carregarAgendamentos = carregarAgendamentos;
+window.abrirModalAgendamentoDono = abrirModalAgendamentoDono;
+window.fecharModalAgendamentoDono = fecharModalAgendamentoDono;
+window.salvarAgendamentoDono = salvarAgendamentoDono;
+window.concluirAgendamento = concluirAgendamento;
+window.excluirAgendamento = excluirAgendamento;
+window.atualizarValorPorServicoDono = atualizarValorPorServicoDono;
