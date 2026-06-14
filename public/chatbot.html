@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Agendamento Inteligente - Barbearia Pro</title>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- CSS do Chatbot -->
+    <link rel="stylesheet" href="/css/chatbot.css">
+</head>
+
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-info">
+                <i class="fas fa-cut"></i>
+                <div>
+                    <h2 id="empresaNome">Barbearia Pro</h2>
+                    <p>Agendamento Inteligente</p>
+                </div>
+            </div>
+            <div class="header-status">
+                <span class="status-dot"></span>
+                <span>Online</span>
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
+                <div class="message-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-text">
+                        Olá! 👋 Sou o assistente virtual da barbearia.<br><br>
+                        Posso ajudar você a agendar um horário de forma rápida e fácil.<br><br>
+                        Para começar, por favor me informe seu <strong>nome completo</strong>:
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="input-wrapper">
+                <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autocomplete="off">
+                <button id="sendBtn" onclick="enviarMensagem()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+            <div class="input-options" id="inputOptions" style="display: none;">
+                <!-- Botões de opções dinâmicos -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/chatbot.js"></script>
+</body>
+
+</html>

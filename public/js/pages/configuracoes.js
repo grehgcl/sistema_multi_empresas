@@ -1,4 +1,4 @@
-﻿// Configurações Unificadas - Profissionais + Horários
+﻿// Configurações Unificadas - Profissionais + Horários + Chatbot
 
 let profissionaisData = [];
 
@@ -40,6 +40,9 @@ async function carregarConfiguracoes() {
                     </button>
                     <button class="tab-btn" onclick="switchTab('horarios')">
                         ⏰ Horários de Funcionamento
+                    </button>
+                    <button class="tab-btn" onclick="switchTab('chatbot')">
+                        🤖 Chatbot Inteligente
                     </button>
                 </div>
                 
@@ -98,6 +101,48 @@ async function carregarConfiguracoes() {
                         </div>
                     </div>
                 </div>
+                
+                <!-- TAB CHATBOT -->
+                <div id="tab-chatbot" class="tab-content">
+                    <div class="card">
+                        <h3>🤖 Chatbot de Agendamento Inteligente</h3>
+                        <p>Compartilhe este link com seus clientes para eles agendarem horários automaticamente.</p>
+                        <p>O chatbot respeita todos os horários configurados e evita conflitos de agenda.</p>
+                        
+                        <div class="info-box" style="background: linear-gradient(135deg, #e0e7ff, #ede9fe); padding: 20px; border-radius: 16px; margin: 20px 0;">
+                            <h4 style="margin-bottom: 15px;">📋 Regras do Chatbot:</h4>
+                            <ul style="margin-left: 20px; line-height: 1.8;">
+                                <li>✅ Respeita horários de funcionamento configurados</li>
+                                <li>✅ Respeita intervalo de 30 minutos entre agendamentos</li>
+                                <li>✅ Cliente não pode agendar mais de 1 vez a cada 20 dias</li>
+                                <li>✅ Você pode bloquear clientes específicos na tela de Clientes</li>
+                                <li>✅ Chatbot conversa de forma natural com o cliente</li>
+                                <li>✅ Cliente pode escolher serviço e profissional</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>🔗 Link do Chatbot</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <input type="text" id="chatbotLink" class="form-control" readonly style="flex: 1; background: #f3f4f6; font-size: 12px;">
+                                <button class="btn btn-primary" onclick="copiarLinkChatbot()">
+                                    <i class="fas fa-copy"></i> Copiar
+                                </button>
+                            </div>
+                            <small class="text-muted">Envie este link para seus clientes via WhatsApp, Instagram, Facebook ou outro canal</small>
+                        </div>
+                        
+                        <div class="qr-code-area" style="text-align: center; margin-top: 20px; padding: 20px; background: #f9fafb; border-radius: 16px;">
+                            <p style="margin-bottom: 10px;">📱 Escaneie o QR Code para acessar:</p>
+                            <div id="qrCode" style="display: flex; justify-content: center;"></div>
+                        </div>
+                        
+                        <div style="margin-top: 20px; padding: 15px; background: #fef3c7; border-radius: 12px; border-left: 4px solid #f59e0b;">
+                            <h4 style="color: #92400e;">💡 Dica:</h4>
+                            <p style="color: #92400e; margin-top: 5px;">Você pode personalizar o link em um encurtador como <strong>bit.ly</strong> para ficar mais fácil de compartilhar!</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
 
@@ -114,6 +159,59 @@ async function carregarConfiguracoes() {
     }
 
     hideLoading();
+}
+
+// ============================================
+// FUNÇÕES DO CHATBOT
+// ============================================
+
+async function carregarLinkChatbot() {
+    const token = localStorage.getItem('token');
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+
+    try {
+        const res = await fetch(`/api/chatbot/link/${usuario.empresa_id}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const linkInput = document.getElementById('chatbotLink');
+            if (linkInput) {
+                linkInput.value = data.link;
+
+                // Gerar QR Code se a biblioteca estiver disponível
+                if (typeof QRCode !== 'undefined') {
+                    document.getElementById('qrCode').innerHTML = '';
+                    new QRCode(document.getElementById('qrCode'), {
+                        text: data.link,
+                        width: 150,
+                        height: 150,
+                        colorDark: '#4f46e5',
+                        colorLight: '#ffffff',
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao carregar link:', error);
+    }
+}
+
+function copiarLinkChatbot() {
+    const input = document.getElementById('chatbotLink');
+    if (!input) return;
+
+    input.select();
+    input.setSelectionRange(0, 99999);
+
+    try {
+        document.execCommand('copy');
+        showToast('Link copiado para a área de transferência!', 'success');
+    } catch (err) {
+        showToast('Erro ao copiar link', 'error');
+    }
 }
 
 // ============================================
@@ -137,17 +235,17 @@ function renderProfissionaisList() {
     return profissionaisData.map(prof => `
         <tr>
             <td><strong>${escapeHtml(prof.nome)}</strong></td>
-            <td>${escapeHtml(prof.email)}</td>
+            <td>${escapeHtml(prof.email)}</
             <td>
                 <span class="badge badge-info">${prof.comissao_percent}%</span>
-            </td>
+            </
             <td>
                 ${prof.ativo === 1 || prof.ativo === true ?
             '<span class="badge badge-success">Ativo</span>' :
             '<span class="badge badge-danger">Inativo</span>'
         }
-            </td>
-            <td>${formatarData(prof.created_at)}</td>
+            </
+            <td>${formatarData(prof.created_at)}</
             <td class="actions-cell">
                 <button class="btn-icon" onclick="editarProfissional(${prof.id})" title="Editar">
                     ✏️
@@ -161,8 +259,8 @@ function renderProfissionaisList() {
                 <button class="btn-icon btn-danger" onclick="excluirProfissional(${prof.id}, '${escapeHtml(prof.nome)}')" title="Excluir">
                     🗑️
                 </button>
-            </td>
-        </tr>
+            </
+        40
     `).join('');
 }
 
@@ -190,17 +288,17 @@ function renderHorariosList(horarios) {
                         <input type="checkbox" class="status-toggle" data-dia="${dia}" ${dia === 0 ? '' : 'checked'}>
                         <span class="slider round"></span>
                     </label>
-                </td>
+                </
                 <td>
                     <input type="time" class="hora-inicio" data-dia="${dia}" value="09:00" ${dia === 0 ? 'disabled' : ''}>
                     às
                     <input type="time" class="hora-fim" data-dia="${dia}" value="18:00" ${dia === 0 ? 'disabled' : ''}>
-                </td>
+                </
                 <td>
                     <input type="time" class="almoco-inicio" data-dia="${dia}" value="12:00" ${dia === 0 ? 'disabled' : ''}>
                     às
                     <input type="time" class="almoco-fim" data-dia="${dia}" value="13:00" ${dia === 0 ? 'disabled' : ''}>
-                </td>
+                </
                 <td>
                     <select class="intervalo-select" data-dia="${dia}" ${dia === 0 ? 'disabled' : ''}>
                         <option value="15">15 min</option>
@@ -208,7 +306,7 @@ function renderHorariosList(horarios) {
                         <option value="45">45 min</option>
                         <option value="60">1 hora</option>
                     </select>
-                </td>
+                </
             </tr>
         `).join('');
     }
@@ -221,17 +319,17 @@ function renderHorariosList(horarios) {
                     <input type="checkbox" class="status-toggle" data-dia="${h.dia_semana}" ${h.aberto === 1 ? 'checked' : ''}>
                     <span class="slider round"></span>
                 </label>
-            </td>
+            </
             <td>
                 <input type="time" class="hora-inicio" data-dia="${h.dia_semana}" value="${h.hora_inicio || '09:00'}" ${!h.aberto ? 'disabled' : ''}>
                 às
                 <input type="time" class="hora-fim" data-dia="${h.dia_semana}" value="${h.hora_fim || '18:00'}" ${!h.aberto ? 'disabled' : ''}>
-            </td>
+            </
             <td>
                 <input type="time" class="almoco-inicio" data-dia="${h.dia_semana}" value="${h.almoco_inicio || '12:00'}" ${!h.aberto ? 'disabled' : ''}>
                 às
                 <input type="time" class="almoco-fim" data-dia="${h.dia_semana}" value="${h.almoco_fim || '13:00'}" ${!h.aberto ? 'disabled' : ''}>
-            </td>
+            </
             <td>
                 <select class="intervalo-select" data-dia="${h.dia_semana}" ${!h.aberto ? 'disabled' : ''}>
                     <option value="15" ${h.intervalo_minutos === 15 ? 'selected' : ''}>15 min</option>
@@ -239,8 +337,8 @@ function renderHorariosList(horarios) {
                     <option value="45" ${h.intervalo_minutos === 45 ? 'selected' : ''}>45 min</option>
                     <option value="60" ${h.intervalo_minutos === 60 ? 'selected' : ''}>1 hora</option>
                 </select>
-            </td>
-        </tr>
+            </
+        </table>
     `).join('');
 }
 
@@ -567,6 +665,11 @@ function switchTab(tab) {
     });
 
     document.getElementById(`tab-${tab}`).classList.add('active');
+
+    // Se for a tab do chatbot, carregar o link
+    if (tab === 'chatbot') {
+        setTimeout(() => carregarLinkChatbot(), 100);
+    }
 }
 
 function escapeHtml(text) {
@@ -592,3 +695,5 @@ window.resetarSenhaProfissional = resetarSenhaProfissional;
 window.alternarStatusProfissional = alternarStatusProfissional;
 window.excluirProfissional = excluirProfissional;
 window.fecharModalPersonalizado = fecharModalPersonalizado;
+window.copiarLinkChatbot = copiarLinkChatbot;
+window.carregarLinkChatbot = carregarLinkChatbot;

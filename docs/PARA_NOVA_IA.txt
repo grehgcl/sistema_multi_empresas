@@ -1,6 +1,6 @@
 ﻿=========================================
   GUIA PARA IA - BARBEARIA PRO
-  ULTIMA ATUALIZACAO: 16/12/2024
+  ULTIMA ATUALIZACAO: 17/06/2026
 =========================================
 
 LEIA OS ARQUIVOS NA ORDEM:
@@ -17,8 +17,9 @@ USUARIOS:
   Profissional: (criar pelo dono) - senha definida pelo dono
 
 =========================================
-FUNCIONALIDADES IMPLEMENTADAS (16/12/2024):
+FUNCIONALIDADES IMPLEMENTADAS (17/06/2026):
 =========================================
+
 1. Autenticacao (Super Admin, Dono, Profissional)
 2. CRUD Clientes (apenas Dono)
 3. CRUD Agendamentos (Dono e Profissional)
@@ -43,8 +44,9 @@ FUNCIONALIDADES IMPLEMENTADAS (16/12/2024):
    - Ver suas comissoes
 
 =========================================
-NOVAS FUNCIONALIDADES (16/12/2024):
+NOVAS FUNCIONALIDADES (17/06/2026):
 =========================================
+
 1. 📅 Agendamentos com Filtros:
    - Filtro por data (inicio e fim)
    - Filtro por status (pendente/concluido)
@@ -61,47 +63,58 @@ NOVAS FUNCIONALIDADES (16/12/2024):
    - Configuração de horário de almoço
    - Intervalo configurável (15,30,45,60 min)
    - Salvamento automático das alterações
+   - CORRIGIDO: Horários gerados de 30 em 30 minutos
 
 4. 🔒 Validação de Horários:
    - Agendamentos respeitam horários configurados
    - Validação corrigida para fuso horário (UTC)
    - Apenas horários disponíveis aparecem no select
+   - Agendamentos ocupados não aparecem na lista
 
 5. ⚙️ Configurações Unificadas:
    - Tela única com abas (Profissionais + Horários)
+   - Gestão completa de profissionais (CRUD)
+   - Editar comissão, resetar senha, ativar/desativar
 
-=========================================
-DESIGN E UI (NOVO - 16/12/2024):
-=========================================
-1. 🎨 Design Premium:
+6. 🆕 Botão "+ Novo Cliente" no Agendamento:
+   - Cadastro rápido de cliente dentro do modal
+   - Atualiza automaticamente o select de clientes
+   - Seleciona automaticamente o novo cliente
+
+7. 📊 Dashboard Melhorado:
+   - Cards com faturamento do mês, ticket médio
+   - Comissões a pagar (mesmo valor do financeiro)
+   - Gráfico de agendamentos por dia da semana
+   - Ranking de serviços mais populares
+   - Lista de próximos agendamentos
+   - Grid de últimos clientes
+   - Variação percentual do faturamento
+
+8. 🎨 Design Premium:
    - Glassmorphism (efeito vidro)
    - Gradientes animados
    - Cards com hover effects
    - Botões com ripple effect
+   - Animações suaves
 
-2. 📱 Responsividade Completa:
+9. 📱 Responsividade Completa:
    - Sidebar retrátil com swipe
    - Touch targets de 44px+ (padrão Apple)
    - Suporte a notch dos iPhones
    - Scroll suave (momentum scrolling)
    - Layout adaptativo para todas telas
 
-3. 🎯 Componentes Visuais:
-   - Toast notifications coloridas
-   - Loading spinner animado
-   - Modais com animação slideUp
-   - Tabelas com scroll horizontal no mobile
-   - Badges com gradientes
-
-4. 🌙 Recursos:
-   - Animações suaves
-   - Efeitos hover premium
-   - Feedback visual ao toque (mobile)
-   - Scrollbar customizada
+10. 🎯 Componentes Visuais:
+    - Toast notifications coloridas
+    - Loading spinner animado
+    - Modais com animação slideUp
+    - Tabelas com scroll horizontal no mobile
+    - Badges com gradientes
 
 =========================================
 REGRAS IMPORTANTES:
 =========================================
+
 1. Comissao so e gerada se agendamento tiver profissional_id
 2. Servicos sem profissional = comissao = 0
 3. Dono ve comissoes por profissional no financeiro
@@ -109,11 +122,14 @@ REGRAS IMPORTANTES:
 5. Horários respeitam fuso horário brasileiro (UTC-3)
 6. Design responsivo para todos dispositivos
 7. Sidebar fecha automaticamente no mobile ao clicar em link
+8. Intervalo de horários é sempre 30 minutos (fixo no código)
+9. Dashboard busca comissões do mesmo endpoint do financeiro
 
 =========================================
-ESTRUTURA DOS ARQUIVOS ATUALIZADA:
+ESTRUTURA DOS ARQUIVOS ATUALIZADA (17/06/2026):
 =========================================
-server.js (backend completo com rotas de horarios)
+
+server.js (backend completo com rotas de horarios corrigidas)
 public/
 ├── index.html (frontend principal com meta tags mobile)
 ├── css/
@@ -121,27 +137,25 @@ public/
 ├── js/
 │   ├── ui.js (UI responsiva, toasts, loading)
 │   └── pages/
-│       ├── dashboard.js (Dono)
-│       ├── dashboard-profissional.js
-│       ├── clientes.js
-│       ├── agendamentos.js (Dono - com filtros, edicao, horarios)
-│       ├── agendamentos-profissional.js (Profissional)
+│       ├── dashboard.js (Dono - com gráficos e métricas)
+│       ├── dashboard-profissional.js (Profissional)
+│       ├── clientes.js (Dono)
+│       ├── agendamentos.js (Dono - com +cliente, horarios corrigidos)
+│       ├── agendamentos-profissional.js (Profissional - horarios corrigidos)
 │       ├── servicos.js (Dono)
-│       ├── financeiro.js
+│       ├── financeiro.js (Dono e Profissional)
 │       ├── empresas.js (Super Admin)
 │       └── configuracoes.js (Unificado: Profissionais + Horarios)
 
 =========================================
-ULTIMAS CORRECOES (16/12/2024):
+ULTIMAS CORRECOES (17/06/2026):
 =========================================
-1. Corrigido problema de fuso horário nos agendamentos
-2. Corrigida duplicação de horários no banco de dados
-3. Horários agora mostram minutos corretamente (09:00, 09:30...)
-4. Domingo configurado como FECHADO por padrão
-5. Segunda a Sábado configurados como ABERTOS
-6. Toggle switch com salvamento automático funcionando
-7. Design responsivo para iPhone SE, 12, 13, 14, 15
-8. Sidebar com swipe para fechar no mobile
-9. Safe area para iPhones com notch
-10. Prevenção de zoom automático em inputs no iOS
-=========================================
+
+1. Corrigido geracao de horarios de 30 em 30 minutos
+2. Corrigida formatacao da tabela de agendamentos (linhas separadas)
+3. Adicionado botao "+ Novo Cliente" no modal de agendamento
+4. Dashboard agora busca comissoes do endpoint financeiro (consistente)
+5. Corrigido problema de duplicacao de horarios
+6. Horarios agora mostram minutos corretamente (09:00, 09:30, 10:00...)
+7. Intervalo fixado em 30 minutos no backend
+8. Removido bug da tabela de agendamentos mostrando linhas mescladas

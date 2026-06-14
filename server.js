@@ -562,10 +562,28 @@ app.post('/api/clientes', auth, (req, res) => {
 
     if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
 
+    // Padronizar telefone
+    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+
     db.run(`INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`,
-        [nome, telefone, email, empresa_id], function (err) {
+        [nome, telefonePadrao, email, empresa_id], function (err) {
             if (err) return res.json({ success: false, message: err.message });
             res.json({ success: true, data: { id: this.lastID }, message: 'Cliente cadastrado' });
+        });
+});
+
+// Atualizar cliente (PUT)
+app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
+    const { id } = req.params;
+    const { nome, telefone, email } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+
+    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+
+    db.run(`UPDATE clientes SET nome = COALESCE(?, nome), telefone = COALESCE(?, telefone), email = COALESCE(?, email) WHERE id = ? AND empresa_id = ?`,
+        [nome, telefonePadrao, email, id, empresa_id], function (err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, message: 'Cliente atualizado com sucesso' });
         });
 });
 
@@ -778,65 +796,43 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// ROTA CORRIGIDA: Buscar horários disponíveis com minutos de 30 em 30
+// ROTA: Buscar horários disponíveis com minutos de 30 em 30
 // ============================================
 app.post('/api/horarios/disponiveis', auth, (req, res) => {
     const { data, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    // Corrigir fuso horário - obter dia da semana corretamente
     const [ano, mes, dia] = data.split('-').map(Number);
     const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
     const diaSemana = dataUTC.getUTCDay();
 
-    console.log('=== DEBUG HORARIOS ===');
-    console.log('Data:', data);
-    console.log('Dia da semana:', diaSemana);
-    console.log('Empresa ID:', empresa_id);
-
     db.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?', [empresa_id, diaSemana], (err, horario) => {
         if (err) {
-            console.log('Erro SQL:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('Horario encontrado:', horario);
-
-        if (!horario) {
-            console.log('Nenhum horario cadastrado para este dia');
+        if (!horario || horario.aberto !== 1) {
             return res.json({ success: true, data: { disponivel: false, horarios: [] } });
         }
 
-        if (horario.aberto !== 1) {
-            console.log('Dia marcado como fechado');
-            return res.json({ success: true, data: { disponivel: false, horarios: [] } });
-        }
-
-        // ============================================
-        // GERAR HORÁRIOS DE 30 EM 30 MINUTOS
-        // ============================================
         const horariosDisponiveis = [];
 
-        // Função para converter hora em minutos
         function horaParaMinutos(horaStr) {
             if (!horaStr) return 0;
             const partes = horaStr.split(':');
             return parseInt(partes[0]) * 60 + parseInt(partes[1]);
         }
 
-        // Função para converter minutos em hora formatada (HH:MM)
         function minutosParaHora(minutos) {
             const h = Math.floor(minutos / 60);
             const m = minutos % 60;
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
-        // Horário de abertura e fechamento
         const abertura = horario.hora_inicio || '09:00';
         const fechamento = horario.hora_fim || '18:00';
-        const intervalo = horario.intervalo_minutos || 30;
+        const intervalo = 30; // Fixo em 30 minutos
 
-        // Horário de almoço
         const almocoInicio = horario.almoco_inicio || '12:00';
         const almocoFim = horario.almoco_fim || '13:00';
 
@@ -845,23 +841,13 @@ app.post('/api/horarios/disponiveis', auth, (req, res) => {
         const almocoInicioMinutos = horaParaMinutos(almocoInicio);
         const almocoFimMinutos = horaParaMinutos(almocoFim);
 
-        console.log(`Gerando horários: ${abertura} até ${fechamento}, intervalo: ${intervalo}min`);
-        console.log(`Almoço: ${almocoInicio} até ${almocoFim}`);
-
-        // Gerar horários a cada intervalo
         for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
-            // Pular horário de almoço
             if (minutos >= almocoInicioMinutos && minutos < almocoFimMinutos) {
-                console.log(`Pulando almoço: ${minutosParaHora(minutos)}`);
                 continue;
             }
-
             horariosDisponiveis.push(minutosParaHora(minutos));
         }
 
-        console.log('Horários gerados:', horariosDisponiveis);
-
-        // Buscar agendamentos já existentes
         let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
         let params = [data, empresa_id];
 
@@ -872,15 +858,11 @@ app.post('/api/horarios/disponiveis', auth, (req, res) => {
 
         db.all(query, params, (err, agendamentos) => {
             if (err) {
-                console.log('Erro ao buscar agendamentos:', err);
                 return res.json({ success: false, message: err.message });
             }
 
             const ocupados = new Set(agendamentos.map(a => a.hora));
             const disponiveis = horariosDisponiveis.filter(h => !ocupados.has(h));
-
-            console.log('Horários ocupados:', Array.from(ocupados));
-            console.log('Horários disponíveis final:', disponiveis);
 
             res.json({
                 success: true,
@@ -1029,27 +1011,322 @@ app.get('/api/empresa/info', auth, (req, res) => {
     });
 });
 
-// Função para criar horários padrão para uma empresa (executar uma vez)
-async function criarHorariosPadrao(empresaId) {
-    const dias = [
-        { dia: 0, aberto: 0, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 }, // Domingo fechado
-        { dia: 1, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
-        { dia: 2, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
-        { dia: 3, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
-        { dia: 4, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
-        { dia: 5, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
-        { dia: 6, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 }
-    ];
+// ============================================
+// ROTAS DO CHATBOT (PÚBLICAS)
+// ============================================
 
-    for (const h of dias) {
-        db.run(
-            `INSERT OR IGNORE INTO horarios_funcionamento 
-             (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [empresaId, h.dia, h.aberto, h.hora_inicio, h.hora_fim, h.almoco_inicio, h.almoco_fim, h.intervalo]
-        );
+// Obter dados da empresa para o chatbot
+app.get('/api/chatbot/empresa/:id', (req, res) => {
+    const { id } = req.params;
+
+    db.get('SELECT id, nome FROM empresas WHERE id = ?', [id], (err, empresa) => {
+        if (err || !empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
+        }
+        res.json({ success: true, empresa });
+    });
+});
+
+// Obter serviços da empresa
+app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
+    const { empresaId } = req.params;
+
+    db.all('SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome',
+        [empresaId], (err, servicos) => {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, servicos });
+        });
+});
+
+// Obter profissionais ativos da empresa
+app.get('/api/chatbot/profissionais/:empresaId', (req, res) => {
+    const { empresaId } = req.params;
+
+    db.all('SELECT id, nome FROM profissionais WHERE empresa_id = ? AND ativo = 1 ORDER BY nome',
+        [empresaId], (err, profissionais) => {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, profissionais });
+        });
+});
+
+// Buscar dados do dono da empresa
+app.get('/api/chatbot/dono/:empresaId', (req, res) => {
+    const { empresaId } = req.params;
+
+    db.get('SELECT id, nome FROM usuarios WHERE empresa_id = ? AND role = "dono" LIMIT 1',
+        [empresaId], (err, dono) => {
+            if (err || !dono) {
+                return res.json({ success: false });
+            }
+            res.json({ success: true, dono });
+        });
+});
+
+// Buscar cliente por telefone (com busca flexível)
+// Buscar cliente por telefone
+app.post('/api/chatbot/cliente/buscar', (req, res) => {
+    const { telefone, empresaId } = req.body;
+
+    // Limpar o telefone recebido
+    const telefoneLimpo = telefone.replace(/\D/g, '');
+
+    console.log('=== BUSCANDO CLIENTE ===');
+    console.log('Telefone recebido:', telefone);
+    console.log('Telefone limpo:', telefoneLimpo);
+    console.log('Empresa ID:', empresaId);
+
+    // Buscar cliente que tenha este telefone
+    db.get(`SELECT id, nome, telefone, email 
+            FROM clientes 
+            WHERE empresa_id = ? AND (telefone = ? OR telefone = ?)`,
+        [empresaId, telefoneLimpo, telefone],
+        (err, cliente) => {
+            if (err) {
+                console.error('Erro na busca:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            console.log('Cliente encontrado:', cliente);
+
+            if (cliente) {
+                // Verificar agendamento recente (últimos 20 dias)
+                const dataLimite = new Date();
+                dataLimite.setDate(dataLimite.getDate() - 20);
+                const dataLimiteStr = dataLimite.toISOString().split('T')[0];
+
+                db.get(`SELECT id FROM agendamentos 
+                        WHERE cliente_id = ? AND data >= ? AND status != 'cancelado' 
+                        LIMIT 1`,
+                    [cliente.id, dataLimiteStr], (err, agendamento) => {
+                        res.json({
+                            success: true,
+                            cliente: {
+                                id: cliente.id,
+                                nome: cliente.nome,
+                                telefone: cliente.telefone,
+                                email: cliente.email,
+                                bloqueado_chatbot: 0 // padrão não bloqueado
+                            },
+                            temAgendamentoRecente: !!agendamento
+                        });
+                    });
+            } else {
+                console.log('Nenhum cliente encontrado para o telefone:', telefoneLimpo);
+                res.json({ success: true, cliente: null });
+            }
+        });
+});
+
+// Criar novo cliente
+app.post('/api/chatbot/cliente/criar', (req, res) => {
+    const { nome, telefone, email, empresaId } = req.body;
+
+    const telefonePadrao = telefone.replace(/\D/g, '');
+
+    db.get('SELECT id FROM clientes WHERE telefone = ? AND empresa_id = ?',
+        [telefonePadrao, empresaId], (err, clienteExistente) => {
+            if (err) return res.json({ success: false, message: err.message });
+
+            if (clienteExistente) {
+                return res.json({
+                    success: true,
+                    clienteId: clienteExistente.id,
+                    bloqueado: false,
+                    temAgendamentoRecente: false
+                });
+            }
+
+            db.run('INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)',
+                [nome, telefonePadrao, email || null, empresaId], function (err) {
+                    if (err) return res.json({ success: false, message: err.message });
+                    res.json({
+                        success: true,
+                        clienteId: this.lastID,
+                        bloqueado: false,
+                        temAgendamentoRecente: false
+                    });
+                });
+        });
+});
+
+// Buscar datas disponíveis por mês (para o calendário)
+app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
+    const { empresaId, mes, ano } = req.body;
+
+    const datasDisponiveis = [];
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+
+    const verificacoes = [];
+
+    for (let dia = 1; dia <= ultimoDia; dia++) {
+        const data = new Date(ano, mes, dia);
+        const dataStr = `${ano}-${(mes + 1).toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
+
+        if (data < hoje) continue;
+
+        const diaSemana = data.getDay();
+
+        verificacoes.push(new Promise((resolve) => {
+            db.get('SELECT aberto FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
+                [empresaId, diaSemana], (err, horario) => {
+                    if (!err && horario && horario.aberto === 1) {
+                        datasDisponiveis.push(dataStr);
+                    }
+                    resolve();
+                });
+        }));
     }
-}
+
+    Promise.all(verificacoes).then(() => {
+        res.json({ success: true, diasDisponiveis: datasDisponiveis });
+    });
+});
+
+// Buscar horários disponíveis para uma data específica
+app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
+    const { empresaId, profissionalId, data } = req.body;
+
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
+    const diaSemana = dataUTC.getUTCDay();
+
+    db.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
+        [empresaId, diaSemana], (err, horario) => {
+            if (err || !horario || horario.aberto !== 1) {
+                return res.json({ success: true, horarios: [] });
+            }
+
+            const horariosDisponiveis = [];
+
+            function horaParaMinutos(horaStr) {
+                const partes = horaStr.split(':');
+                return parseInt(partes[0]) * 60 + parseInt(partes[1]);
+            }
+
+            function minutosParaHora(minutos) {
+                const h = Math.floor(minutos / 60);
+                const m = minutos % 60;
+                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+            }
+
+            const inicioMinutos = horaParaMinutos(horario.hora_inicio || '09:00');
+            const fimMinutos = horaParaMinutos(horario.hora_fim || '18:00');
+            const almocoInicio = horaParaMinutos(horario.almoco_inicio || '12:00');
+            const almocoFim = horaParaMinutos(horario.almoco_fim || '13:00');
+            const intervalo = 30;
+
+            for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
+                if (minutos >= almocoInicio && minutos < almocoFim) continue;
+                horariosDisponiveis.push(minutosParaHora(minutos));
+            }
+
+            let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
+            let params = [data, empresaId];
+
+            if (profissionalId && profissionalId !== 'null') {
+                query += ` AND profissional_id = ?`;
+                params.push(profissionalId);
+            }
+
+            db.all(query, params, (err, ocupados) => {
+                const horasOcupadas = new Set(ocupados.map(o => o.hora));
+                const disponiveis = horariosDisponiveis.filter(h => !horasOcupadas.has(h));
+                res.json({ success: true, horarios: disponiveis });
+            });
+        });
+});
+
+// Confirmar agendamento via chatbot
+app.post('/api/chatbot/agendar', (req, res) => {
+    const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
+
+    db.get('SELECT nome, valor FROM servicos WHERE id = ?', [servicoId], (err, servico) => {
+        if (err || !servico) {
+            return res.json({ success: false, message: 'Serviço não encontrado' });
+        }
+
+        let profissionalNome = 'Não atribuído';
+        let profissionalIdReal = null;
+
+        if (profissionalId && profissionalId !== 'null' && !profissionalId.toString().startsWith('dono_')) {
+            profissionalIdReal = profissionalId;
+            db.get('SELECT nome FROM profissionais WHERE id = ?', [profissionalId], (err, profissional) => {
+                if (profissional) profissionalNome = profissional.nome;
+            });
+        }
+
+        db.get(`SELECT id FROM agendamentos 
+                WHERE data = ? AND hora = ? AND profissional_id = ? AND status != 'cancelado'`,
+            [data, hora, profissionalIdReal], (err, existente) => {
+                if (existente) {
+                    return res.json({ success: false, message: 'Este horário já foi reservado' });
+                }
+
+                db.run(`INSERT INTO agendamentos 
+                        (cliente_id, servico_id, servico, valor, data, hora, profissional_id, status, empresa_id) 
+                        VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`,
+                    [clienteId, servicoId, servico.nome, servico.valor, data, hora, profissionalIdReal, empresaId],
+                    function (err) {
+                        if (err) {
+                            return res.json({ success: false, message: err.message });
+                        }
+
+                        res.json({
+                            success: true,
+                            message: `Seu agendamento foi confirmado para ${data} às ${hora}`,
+                            profissionalNome: profissionalNome,
+                            servicoNome: servico.nome,
+                            valor: servico.valor,
+                            agendamentoId: this.lastID
+                        });
+                    });
+            });
+    });
+});
+
+// Rota para o Dono obter o link do chatbot
+app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
+    const { empresaId } = req.params;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const link = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
+
+    res.json({ success: true, link });
+});
+
+// Rota para o Dono bloquear/desbloquear cliente do chatbot
+// Rota para o Dono bloquear/desbloquear cliente do chatbot
+app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
+    const { id } = req.params;
+    const { bloquear } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+
+    // Primeiro verificar se a coluna existe
+    db.get(`PRAGMA table_info(clientes)`, (err, columns) => {
+        // Verificar se a coluna bloqueado_chatbot existe
+        db.get(`SELECT bloqueado_chatbot FROM clientes LIMIT 1`, (err, result) => {
+            if (err && err.message.includes('no such column')) {
+                // Coluna não existe, criar
+                db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => {
+                    if (err) return res.json({ success: false, message: err.message });
+                    executarUpdate();
+                });
+            } else {
+                executarUpdate();
+            }
+        });
+    });
+
+    function executarUpdate() {
+        db.run(`UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?`,
+            [bloquear ? 1 : 0, id, empresa_id], function (err) {
+                if (err) return res.json({ success: false, message: err.message });
+                res.json({ success: true, message: bloquear ? 'Cliente bloqueado do chatbot' : 'Cliente desbloqueado do chatbot' });
+            });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
