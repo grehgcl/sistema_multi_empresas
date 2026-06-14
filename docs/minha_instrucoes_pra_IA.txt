@@ -38,3 +38,38 @@ PROBLEMAS CONHECIDOS:
 
 PROXIMO PASSO:
 Corrigir o arquivo public/js/pages/agendamentos-profissional.js
+
+
+## NOVAS FUNCOES GLOBAIS
+- showToast(msg, type): Exibe notificacao toast
+- showLoading(): Mostra loading spinner
+- hideLoading(): Esconde loading spinner
+- showModal(title, content, callback): Modal customizado
+
+## BREAKPOINTS RESPONSIVOS
+| Dispositivo | Largura | Comportamento |
+|-------------|---------|---------------|
+| Desktop | > 1024px | Sidebar fixa aberta |
+| Tablet | 768px - 1024px | Sidebar retrátil |
+| Mobile | < 768px | Sidebar oculta com botão |
+| Mobile Pequeno | < 380px | Layout compacto |
+
+## MOBILE FEATURES ADICIONADAS
+- ✅ Touch targets mínimos de 44px (padrão Apple)
+- ✅ Safe area para iPhones com notch
+- ✅ Prevenção de zoom automático em inputs (iOS)
+- ✅ Swipe para fechar sidebar
+- ✅ Feedback visual ao toque
+
+=========================================
+### ULTIMAS CORRECOES (16/12/2024)
+=========================================
+1. Design Premium com glassmorphism e gradientes
+2. Responsividade completa (iPhone SE a Pro Max)
+3. Sidebar retrátil com swipe no mobile
+4. Suporte a safe area (iPhones com notch)
+5. Toast notifications coloridas
+6. Loading spinner animado
+7. Touch targets otimizados (44px+)
+8. Scrollbar customizada com gradiente
+=========================================

@@ -777,6 +777,9 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     });
 });
 
+// ============================================
+// ROTA CORRIGIDA: Buscar horários disponíveis com minutos de 30 em 30
+// ============================================
 app.post('/api/horarios/disponiveis', auth, (req, res) => {
     const { data, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
@@ -788,7 +791,7 @@ app.post('/api/horarios/disponiveis', auth, (req, res) => {
 
     console.log('=== DEBUG HORARIOS ===');
     console.log('Data:', data);
-    console.log('Dia da semana (corrigido):', diaSemana);
+    console.log('Dia da semana:', diaSemana);
     console.log('Empresa ID:', empresa_id);
 
     db.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?', [empresa_id, diaSemana], (err, horario) => {
@@ -809,46 +812,84 @@ app.post('/api/horarios/disponiveis', auth, (req, res) => {
             return res.json({ success: true, data: { disponivel: false, horarios: [] } });
         }
 
-        // Gerar slots de horários
-        const slots = [];
-        const intervalo = horario.intervalo_minutos || 30;
+        // ============================================
+        // GERAR HORÁRIOS DE 30 EM 30 MINUTOS
+        // ============================================
+        const horariosDisponiveis = [];
 
-        function toMin(h) {
-            if (!h) return 0;
-            const partes = h.split(':');
+        // Função para converter hora em minutos
+        function horaParaMinutos(horaStr) {
+            if (!horaStr) return 0;
+            const partes = horaStr.split(':');
             return parseInt(partes[0]) * 60 + parseInt(partes[1]);
         }
 
-        function toTime(m) {
-            const h = Math.floor(m / 60);
-            const min = m % 60;
-            return h.toString().padStart(2, '0') + ':' + min.toString().padStart(2, '0');
+        // Função para converter minutos em hora formatada (HH:MM)
+        function minutosParaHora(minutos) {
+            const h = Math.floor(minutos / 60);
+            const m = minutos % 60;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
-        let current = toMin(horario.hora_inicio);
-        const end = toMin(horario.hora_fim);
-        const almocoStart = horario.almoco_inicio ? toMin(horario.almoco_inicio) : null;
-        const almocoEnd = horario.almoco_fim ? toMin(horario.almoco_fim) : null;
+        // Horário de abertura e fechamento
+        const abertura = horario.hora_inicio || '09:00';
+        const fechamento = horario.hora_fim || '18:00';
+        const intervalo = horario.intervalo_minutos || 30;
 
-        while (current < end) {
-            if (almocoStart && almocoEnd && current >= almocoStart && current < almocoEnd) {
-                current = almocoEnd;
+        // Horário de almoço
+        const almocoInicio = horario.almoco_inicio || '12:00';
+        const almocoFim = horario.almoco_fim || '13:00';
+
+        const inicioMinutos = horaParaMinutos(abertura);
+        const fimMinutos = horaParaMinutos(fechamento);
+        const almocoInicioMinutos = horaParaMinutos(almocoInicio);
+        const almocoFimMinutos = horaParaMinutos(almocoFim);
+
+        console.log(`Gerando horários: ${abertura} até ${fechamento}, intervalo: ${intervalo}min`);
+        console.log(`Almoço: ${almocoInicio} até ${almocoFim}`);
+
+        // Gerar horários a cada intervalo
+        for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
+            // Pular horário de almoço
+            if (minutos >= almocoInicioMinutos && minutos < almocoFimMinutos) {
+                console.log(`Pulando almoço: ${minutosParaHora(minutos)}`);
                 continue;
             }
-            slots.push(toTime(current));
-            current += intervalo;
+
+            horariosDisponiveis.push(minutosParaHora(minutos));
         }
 
+        console.log('Horários gerados:', horariosDisponiveis);
+
         // Buscar agendamentos já existentes
-        db.all('SELECT hora FROM agendamentos WHERE data = ? AND status != "cancelado"', [data], (err, agendamentos) => {
+        let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
+        let params = [data, empresa_id];
+
+        if (profissional_id) {
+            query += ` AND profissional_id = ?`;
+            params.push(profissional_id);
+        }
+
+        db.all(query, params, (err, agendamentos) => {
             if (err) {
+                console.log('Erro ao buscar agendamentos:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            const ocupados = agendamentos.map(a => a.hora);
-            const disponiveis = slots.filter(s => !ocupados.includes(s));
+            const ocupados = new Set(agendamentos.map(a => a.hora));
+            const disponiveis = horariosDisponiveis.filter(h => !ocupados.has(h));
 
-            res.json({ success: true, data: { disponivel: true, horarios: disponiveis } });
+            console.log('Horários ocupados:', Array.from(ocupados));
+            console.log('Horários disponíveis final:', disponiveis);
+
+            res.json({
+                success: true,
+                data: {
+                    disponivel: disponiveis.length > 0,
+                    horarios: disponiveis,
+                    intervalo: intervalo
+                }
+            });
         });
     });
 });
@@ -987,6 +1028,28 @@ app.get('/api/empresa/info', auth, (req, res) => {
         });
     });
 });
+
+// Função para criar horários padrão para uma empresa (executar uma vez)
+async function criarHorariosPadrao(empresaId) {
+    const dias = [
+        { dia: 0, aberto: 0, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 }, // Domingo fechado
+        { dia: 1, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
+        { dia: 2, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
+        { dia: 3, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
+        { dia: 4, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
+        { dia: 5, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 },
+        { dia: 6, aberto: 1, hora_inicio: '09:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo: 30 }
+    ];
+
+    for (const h of dias) {
+        db.run(
+            `INSERT OR IGNORE INTO horarios_funcionamento 
+             (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [empresaId, h.dia, h.aberto, h.hora_inicio, h.hora_fim, h.almoco_inicio, h.almoco_fim, h.intervalo]
+        );
+    }
+}
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);

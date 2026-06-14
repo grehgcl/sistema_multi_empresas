@@ -1,4 +1,10 @@
-﻿# ESTRUTURA DO PROJETO - Atualizada em 15/06/2026
+﻿
+---
+
+## 📄 **ARQUIVO: `docs/ESTRUTURA.md`** (Mantendo original + adicionando novidades)
+
+```markdown
+# ESTRUTURA DO PROJETO - Atualizada em 15/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite
@@ -88,3 +94,9 @@ MUDANCAS REALIZADAS:
 - Corrigida duplicacao de horarios no banco de dados
 - Adicionado toggle switch com salvamento automatico
 =========================================
+
+=========================================
+### NOVIDADES - DESIGN E UI (16/12/2024)
+=========================================
+
+## NOVOS ARQUIVOS ADICIONADOS
