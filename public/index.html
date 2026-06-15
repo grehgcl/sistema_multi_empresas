@@ -20,6 +20,9 @@
 
     <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -369,7 +372,6 @@
         </section>
 
         <!-- SEÇÃO PLANOS -->
-        <!-- SEÇÃO PLANOS -->
         <section id="planos" class="pricing-section">
             <div class="container">
                 <h2 class="section-title" data-aos="fade-up">Planos para todos os tamanhos</h2>
@@ -625,6 +627,19 @@
     <!-- Scripts -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="/js/ui.js"></script>
+
+    <!-- Carregar páginas JS -->
+    <script src="/js/pages/dashboard.js"></script>
+    <script src="/js/pages/dashboard-profissional.js"></script>
+    <script src="/js/pages/clientes.js"></script>
+    <script src="/js/pages/agendamentos.js"></script>
+    <script src="/js/pages/agendamentos-profissional.js"></script>
+    <script src="/js/pages/financeiro.js"></script>
+    <script src="/js/pages/empresas.js"></script>
+    <script src="/js/pages/configuracoes.js"></script>
+    <script src="/js/pages/servicos.js"></script>
+    <script src="/js/pages/planos.js"></script>
+
     <script>
         AOS.init({ duration: 800, once: true });
 
@@ -650,6 +665,39 @@
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('cadastroContainer').style.display = 'flex';
             document.getElementById('app').style.display = 'none';
+        }
+
+        function mostrarApp() {
+            document.getElementById('landingContainer').style.display = 'none';
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('cadastroContainer').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+
+            document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
+
+            if (usuario.role === 'superadmin') {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
+            } else if (usuario.role === 'profissional') {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
+            } else {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 DONO</span>';
+            }
+
+            carregarMenu();
+
+            if (usuario.role === 'profissional') {
+                if (typeof carregarDashboardProfissional === 'function') {
+                    carregarDashboardProfissional();
+                }
+            } else if (usuario.role === 'superadmin') {
+                if (typeof carregarDashboardSuperAdmin === 'function') {
+                    carregarDashboardSuperAdmin();
+                }
+            } else {
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
+            }
         }
 
         function verDemonstracao() {
@@ -696,34 +744,8 @@
                 localStorage.setItem('token', token);
                 localStorage.setItem('usuario', JSON.stringify(usuario));
 
-                document.getElementById('landingContainer').style.display = 'none';
-                document.getElementById('loginContainer').style.display = 'none';
-                document.getElementById('cadastroContainer').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
-
-                if (usuario.role === 'superadmin') {
-                    document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
-                } else if (usuario.role === 'profissional') {
-                    document.getElementById('userBadge').innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
-                } else {
-                    document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 DONO</span>';
-                    if (usuario.dias_restantes && usuario.dias_restantes > 0) {
-                        document.getElementById('trialInfo').style.display = 'block';
-                        document.getElementById('trialInfo').innerHTML = '⚠️ Período de teste: ' + usuario.dias_restantes + ' dias restantes. <a href="#" onclick="carregarPlanos()">Fazer upgrade →</a>';
-                    }
-                }
-
-                carregarMenu();
-                if (usuario.role === 'profissional') {
-                    if (typeof carregarDashboardProfissional === 'function') {
-                        carregarDashboardProfissional();
-                    }
-                } else {
-                    if (typeof carregarDashboard === 'function') {
-                        carregarDashboard();
-                    }
-                }
+                // Mostrar app
+                mostrarApp();
                 showToast('Login realizado com sucesso!', 'success');
             } else {
                 document.getElementById('loginMessage').innerHTML = data.message;
@@ -770,8 +792,10 @@
 
         function logout() {
             localStorage.clear();
+            token = null;
+            usuario = null;
             showToast('Logout realizado com sucesso!', 'info');
-            setTimeout(() => location.reload(), 500);
+            mostrarLanding();
         }
 
         function carregarMenu() {
@@ -780,7 +804,7 @@
 
             if (usuario.role === 'superadmin') {
                 botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardSuperAdmin' },
                     { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
                     { id: 'financeiro', nome: 'Financeiro Global', icone: 'fa-globe', funcao: 'carregarFinanceiroGlobal' }
                 ];
@@ -822,47 +846,15 @@
             if (overlay) overlay.classList.toggle('active');
         }
 
-        const scripts = [
-            '/js/pages/dashboard.js', '/js/pages/dashboard-profissional.js', '/js/pages/clientes.js',
-            '/js/pages/agendamentos.js', '/js/pages/agendamentos-profissional.js', '/js/pages/financeiro.js',
-            '/js/pages/empresas.js', '/js/pages/configuracoes.js', '/js/pages/servicos.js', '/js/pages/planos.js'
-        ];
-
-        scripts.forEach(src => {
-            const script = document.createElement('script');
-            script.src = src;
-            document.head.appendChild(script);
-        });
-
-        setTimeout(function () {
-            if (typeof carregarDashboard !== 'undefined') window.carregarDashboard = carregarDashboard;
-            if (typeof carregarDashboardProfissional !== 'undefined') window.carregarDashboardProfissional = carregarDashboardProfissional;
-            if (typeof carregarClientes !== 'undefined') window.carregarClientes = carregarClientes;
-            if (typeof carregarAgendamentos !== 'undefined') window.carregarAgendamentos = carregarAgendamentos;
-            if (typeof carregarAgendamentosProfissional !== 'undefined') window.carregarAgendamentosProfissional = carregarAgendamentosProfissional;
-            if (typeof carregarFinanceiro !== 'undefined') window.carregarFinanceiro = carregarFinanceiro;
-            if (typeof carregarFinanceiroGlobal !== 'undefined') window.carregarFinanceiroGlobal = carregarFinanceiroGlobal;
-            if (typeof carregarEmpresas !== 'undefined') window.carregarEmpresas = carregarEmpresas;
-            if (typeof carregarConfiguracoes !== 'undefined') window.carregarConfiguracoes = carregarConfiguracoes;
-            if (typeof carregarServicos !== 'undefined') window.carregarServicos = carregarServicos;
-            if (typeof carregarPlanos !== 'undefined') window.carregarPlanos = carregarPlanos;
-        }, 200);
-
+        // Verificar se já está logado
         const savedToken = localStorage.getItem('token');
         const savedUsuario = localStorage.getItem('usuario');
+
         if (savedToken && savedUsuario) {
             token = savedToken;
             usuario = JSON.parse(savedUsuario);
-            mostrarLanding();
-            if (usuario.role === 'profissional') {
-                setTimeout(function () {
-                    if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
-                }, 300);
-            } else {
-                setTimeout(function () {
-                    if (typeof carregarDashboard === 'function') carregarDashboard();
-                }, 300);
-            }
+            // Verificar se o token ainda é válido (opcional - fazer uma chamada de verificação)
+            mostrarApp();
         } else {
             mostrarLanding();
         }

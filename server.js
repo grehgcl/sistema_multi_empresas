@@ -1658,6 +1658,54 @@ app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
+// ROTA PARA DADOS DA EMPRESA (DONO)
+// ============================================
+app.get('/api/empresa/dados', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+
+    if (!empresaId) {
+        return res.json({ success: false, message: 'Empresa não identificada' });
+    }
+
+    db.get('SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at FROM empresas WHERE id = ?',
+        [empresaId],
+        (err, empresa) => {
+            if (err) {
+                console.error('Erro ao buscar empresa:', err);
+                return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
+            }
+            if (!empresa) {
+                return res.json({ success: false, message: 'Empresa não encontrada' });
+            }
+            res.json({ success: true, data: empresa });
+        });
+});
+
+// ============================================
+// ROTA PARA DADOS DA EMPRESA (SUPER ADMIN - para listar)
+// ============================================
+app.get('/api/admin/empresas/:id', auth, (req, res) => {
+    if (req.usuario.role !== 'superadmin') {
+        return res.status(403).json({ success: false, message: 'Acesso negado' });
+    }
+
+    const { id } = req.params;
+
+    db.get(`SELECT e.*, 
+            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
+            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
+            FROM empresas e WHERE e.id = ?`,
+        [id],
+        (err, empresa) => {
+            if (err) {
+                return res.json({ success: false, message: 'Erro ao buscar empresa' });
+            }
+            res.json({ success: true, data: empresa });
+        });
+});
+
+// ============================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================
 

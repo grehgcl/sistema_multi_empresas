@@ -1,4 +1,4 @@
-﻿// pages/dashboard.js - Versão Melhorada
+﻿// pages/dashboard.js - Versão Corrigida Completa
 let dashboardData = null;
 let chartInstance = null;
 
@@ -7,9 +7,13 @@ async function carregarDashboard() {
     showLoading();
 
     try {
-        if (usuario.role === 'superadmin') {
+        // Verificar role do usuário
+        const usuarioStr = localStorage.getItem('usuario');
+        const usuarioAtual = usuarioStr ? JSON.parse(usuarioStr) : null;
+
+        if (usuarioAtual && usuarioAtual.role === 'superadmin') {
             await carregarDashboardSuperAdmin();
-        } else if (usuario.role === 'profissional') {
+        } else if (usuarioAtual && usuarioAtual.role === 'profissional') {
             await carregarDashboardProfissional();
         } else {
             await carregarDashboardDono();
@@ -35,12 +39,28 @@ async function carregarDashboard() {
 async function carregarDashboardDono() {
     const token = localStorage.getItem('token');
 
-    // Buscar dados em paralelo
+    // Buscar dados da empresa para verificar período de teste
+    let empresa = { plano: 'trial', assinatura_ativa: 0 };
+
+    try {
+        const empresaRes = await fetch('/api/empresa/dados', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const empresaData = await empresaRes.json();
+        if (empresaData.success) {
+            empresa = empresaData.data;
+        }
+    } catch (error) {
+        console.warn('Não foi possível buscar dados da empresa:', error);
+        // Continua sem os dados da empresa
+    }
+
+    // Buscar outros dados
     const [agendamentosRes, clientesRes, servicosRes, financeiroRes, profissionaisRes] = await Promise.all([
         fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
         fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
         fetch('/api/servicos/todos', { headers: { 'Authorization': 'Bearer ' + token } }),
-        fetch('/api/financeiro', { headers: { 'Authorization': 'Bearer ' + token } }),  // ← Mesmo endpoint do Financeiro
+        fetch('/api/financeiro', { headers: { 'Authorization': 'Bearer ' + token } }),
         fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } })
     ]);
 
@@ -51,43 +71,61 @@ async function carregarDashboardDono() {
     const profissionais = (await profissionaisRes.json()).data || [];
 
     // ============================================
-    // USAR OS MESMOS DADOS DO FINANCEIRO
+    // VERIFICAR SE MOSTRA MENSAGEM DE TRIAL
     // ============================================
-    const totais = financeiro.totais || {};
+    const planoAtual = empresa.plano || 'trial';
+    const assinaturaAtiva = empresa.assinatura_ativa === 1;
 
-    // Faturamento Bruto, Comissões e Líquido vindos diretamente do endpoint financeiro
+    let mostrarAvisoTrial = false;
+    let diasRestantes = 0;
+    let mensagemTrial = '';
+
+    // Se NÃO tem assinatura ativa E está em trial
+    if (!assinaturaAtiva && planoAtual === 'trial') {
+        if (empresa.trial_expira) {
+            const hoje = new Date();
+            const dataExpira = new Date(empresa.trial_expira);
+            diasRestantes = Math.ceil((dataExpira - hoje) / (1000 * 60 * 60 * 24));
+
+            if (diasRestantes > 0 && diasRestantes <= 45) {
+                mostrarAvisoTrial = true;
+                mensagemTrial = `⚠️ Período de teste: ${diasRestantes} dias restantes.`;
+            }
+        }
+    }
+
+    // Se tem assinatura ativa, NUNCA mostrar aviso de trial
+    if (assinaturaAtiva) {
+        mostrarAvisoTrial = false;
+    }
+
+    const totais = financeiro.totais || {};
     const faturamentoBruto = totais.faturamento_bruto || 0;
-    const totalComissoes = totais.total_comissoes || 0;  // ← Esta é a comissão que aparece no Financeiro!
+    const totalComissoes = totais.total_comissoes || 0;
     const faturamentoLiquido = totais.faturamento_liquido || 0;
     const totalServicosConcluidos = totais.total_servicos || 0;
 
-    // Estatísticas adicionais
     const hoje = new Date().toISOString().split('T')[0];
     const agendamentosHoje = agendamentos.filter(a => a.data === hoje);
     const pendentes = agendamentos.filter(a => a.status === 'pendente');
     const concluidos = agendamentos.filter(a => a.status === 'concluido');
 
-    // Faturamento do mês (para o card específico)
     const dataAtual = new Date();
     const primeiroDiaMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1).toISOString().split('T')[0];
     const faturamentoMes = agendamentos.filter(a =>
         a.status === 'concluido' && a.data >= primeiroDiaMes
     ).reduce((sum, a) => sum + (parseFloat(a.valor) || 0), 0);
 
-    // Ticket médio
     const ticketMedio = concluidos.length > 0 ?
         (concluidos.reduce((sum, a) => sum + (parseFloat(a.valor) || 0), 0) / concluidos.length).toFixed(2) : 0;
 
-    // Contar profissionais ativos
     const profissionaisAtivos = profissionais.filter(p => p.ativo === 1 || p.ativo === true).length;
 
-    // Novos clientes este mês
     const novosClientesMes = clientes.filter(c => {
         const dataCriacao = new Date(c.created_at);
         return dataCriacao >= new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1);
     }).length;
 
-    // Agendamentos por dia da semana (para gráfico)
     const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
     const agendamentosPorDia = [0, 0, 0, 0, 0, 0, 0];
     agendamentos.forEach(ag => {
@@ -96,7 +134,6 @@ async function carregarDashboardDono() {
         agendamentosPorDia[diaSemana]++;
     });
 
-    // Serviços mais populares
     const servicosPopulares = {};
     concluidos.forEach(ag => {
         const nomeServico = ag.servico || 'Serviço';
@@ -106,13 +143,11 @@ async function carregarDashboardDono() {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
 
-    // Próximos agendamentos
     const proximosAgendamentos = agendamentos
         .filter(a => a.status === 'pendente' && a.data >= hoje)
         .sort((a, b) => (a.data + ' ' + a.hora).localeCompare(b.data + ' ' + b.hora))
         .slice(0, 5);
 
-    // Calcular variação do faturamento
     const mesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1);
     const primeiroDiaMesAnterior = mesAnterior.toISOString().split('T')[0];
     const ultimoDiaMesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 0).toISOString().split('T')[0];
@@ -128,6 +163,15 @@ async function carregarDashboardDono() {
 
     const html = `
         <div class="fade-in">
+            ${mostrarAvisoTrial ? `
+                <div class="trial-banner">
+                    <div class="trial-content">
+                        <span>${mensagemTrial}</span>
+                        <button onclick="carregarPlanos()" class="btn-upgrade">Fazer upgrade →</button>
+                    </div>
+                </div>
+            ` : ''}
+            
             <div class="dashboard-header">
                 <h2 class="page-title">📊 Dashboard da Barbearia</h2>
                 <div class="date-range">
@@ -178,7 +222,7 @@ async function carregarDashboardDono() {
                 </div>
             </div>
             
-            <!-- Cards de Performance (com os dados do Financeiro) -->
+            <!-- Cards de Performance -->
             <div class="card-grid">
                 <div class="stat-card">
                     <div class="stat-icon">🎫</div>
@@ -193,11 +237,10 @@ async function carregarDashboardDono() {
                     <div class="stat-content">
                         <div class="stat-value">${totalServicosConcluidos}</div>
                         <div class="stat-label">Serviços Concluídos</div>
-                        <div class="stat-sub">${((totalServicosConcluidos / agendamentos.length) * 100 || 0).toFixed(1)}% do total</div>
+                        <div class="stat-sub">${((totalServicosConcluidos / (agendamentos.length || 1)) * 100 || 0).toFixed(1)}% do total</div>
                     </div>
                 </div>
                 
-                <!-- Card de Comissões a Pagar - MESMO VALOR DO FINANCEIRO -->
                 <div class="stat-card">
                     <div class="stat-icon">💸</div>
                     <div class="stat-content">
@@ -205,7 +248,6 @@ async function carregarDashboardDono() {
                         <div class="stat-label">Comissões a Pagar</div>
                         <div class="stat-sub">
                             <i class="fas fa-users"></i> ${profissionaisAtivos} profissionais
-                            ${totalComissoes > 0 ? '<br><small style="color:#f59e0b;">💰 Total de comissões calculadas</small>' : ''}
                         </div>
                     </div>
                 </div>
@@ -220,7 +262,7 @@ async function carregarDashboardDono() {
                 </div>
             </div>
             
-            <!-- Cards Extras - Faturamento Bruto e Líquido (igual Financeiro) -->
+            <!-- Cards Extras -->
             <div class="card-grid">
                 <div class="stat-card">
                     <div class="stat-icon">📊</div>
@@ -251,18 +293,18 @@ async function carregarDashboardDono() {
                 <div class="card">
                     <h3><i class="fas fa-trophy"></i> Serviços Mais Populares</h3>
                     ${topServicos.length > 0 ? `
-                        <div class="top-servicos">
+                        <div class="top-servicos-list">
                             ${topServicos.map(([nome, qtd], idx) => `
-                                <div class="servico-item">
-                                    <div class="servico-rank ${idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : ''}">
+                                <div class="servico-rank-item">
+                                    <div class="rank-number ${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other'}">
                                         ${idx + 1}º
                                     </div>
-                                    <div class="servico-info">
-                                        <div class="servico-nome">${escapeHtml(nome)}</div>
-                                        <div class="servico-quantidade">${qtd} atendimentos</div>
-                                    </div>
-                                    <div class="servico-percent">
-                                        ${((qtd / totalServicosConcluidos) * 100 || 0).toFixed(1)}%
+                                    <div class="servico-rank-info">
+                                        <div class="servico-rank-nome">${escapeHtml(nome)}</div>
+                                        <div class="servico-rank-stats">
+                                            <span class="qtd">${qtd} atendimento${qtd !== 1 ? 's' : ''}</span>
+                                            <span class="percent">${((qtd / (totalServicosConcluidos || 1)) * 100).toFixed(1)}%</span>
+                                        </div>
                                     </div>
                                 </div>
                             `).join('')}
@@ -295,13 +337,13 @@ async function carregarDashboardDono() {
                             <tbody>
                                 ${proximosAgendamentos.map(ag => `
                                     <tr>
-                                        <td><strong>${escapeHtml(ag.cliente_nome || 'Cliente')}</strong></td>
-                                        <td>${escapeHtml(ag.servico || '-')}</td>
+                                        <td><strong>${escapeHtml(ag.cliente_nome || 'Cliente')}</strong></
+                                        <td>${escapeHtml(ag.servico || '-')}</
                                         <td>${formatarDataBr(ag.data)}</
                                         <td>${ag.hora || '-'}</
                                         <td>${escapeHtml(ag.profissional_nome || '-')}</
                                         <td>R$ ${formatarMoeda(ag.valor)}</
-                                    40
+                                    </tr>
                                 `).join('')}
                             </tbody>
                         60
@@ -312,15 +354,15 @@ async function carregarDashboardDono() {
             <!-- Últimos Clientes -->
             <div class="card">
                 <h3><i class="fas fa-users"></i> Últimos Clientes</h3>
-                <div class="clientes-grid">
+                <div class="ultimos-clientes-grid">
                     ${clientes.slice(0, 6).map(cliente => `
-                        <div class="cliente-card">
-                            <div class="cliente-avatar">
-                                <i class="fas fa-user-circle"></i>
+                        <div class="cliente-card-item" onclick="editarCliente(${cliente.id})">
+                            <div class="cliente-avatar-icon">
+                                <i class="fas fa-user"></i>
                             </div>
-                            <div class="cliente-info">
-                                <div class="cliente-nome">${escapeHtml(cliente.nome)}</div>
-                                <div class="cliente-contato">${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}</div>
+                            <div class="cliente-info-data">
+                                <div class="cliente-nome-completo">${escapeHtml(cliente.nome)}</div>
+                                <div class="cliente-contato-info">${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}</div>
                             </div>
                         </div>
                     `).join('')}
@@ -338,208 +380,243 @@ async function carregarDashboardDono() {
 
     document.getElementById('content').innerHTML = html;
 
-    // Renderizar gráfico
     setTimeout(() => {
         renderizarGraficoAgendamentos(diasSemana, agendamentosPorDia);
     }, 100);
 }
 
 // ============================================
-// DASHBOARD SUPER ADMIN
+// DASHBOARD SUPER ADMIN (IMPLEMENTADO)
 // ============================================
 async function carregarDashboardSuperAdmin() {
     const token = localStorage.getItem('token');
 
-    const [statsRes, empresasRes] = await Promise.all([
-        fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
-        fetch('/api/admin/empresas', { headers: { 'Authorization': 'Bearer ' + token } })
-    ]);
+    try {
+        const [statsRes, empresasRes] = await Promise.all([
+            fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/admin/empresas', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
 
-    const stats = (await statsRes.json()).data || {};
-    const empresas = (await empresasRes.json()).data || [];
+        const stats = (await statsRes.json()).data || {};
+        const empresas = (await empresasRes.json()).data || [];
 
-    const empresasTrial = empresas.filter(e => e.plano === 'trial').length;
-    const empresasPagas = empresas.filter(e => e.plano !== 'trial').length;
+        const empresasTrial = empresas.filter(e => e.plano === 'trial').length;
+        const empresasPagas = empresas.filter(e => e.plano !== 'trial' && e.plano !== null).length;
 
-    const html = `
-        <div class="fade-in">
-            <h2 class="page-title">🏢 Dashboard Super Admin</h2>
-            
-            <!-- Cards Principais -->
-            <div class="card-grid">
-                <div class="stat-card premium">
-                    <div class="stat-icon">🏢</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${stats.empresas || 0}</div>
-                        <div class="stat-label">Total de Empresas</div>
+        const html = `
+            <div class="fade-in">
+                <div class="dashboard-header">
+                    <h2 class="page-title">🏢 Dashboard Super Admin</h2>
+                    <div class="date-range">
+                        <span class="badge badge-info">
+                            <i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}
+                        </span>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon">👨‍💼</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${stats.donos || 0}</div>
-                        <div class="stat-label">Donos</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">👥</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${stats.clientes || 0}</div>
-                        <div class="stat-label">Total Clientes</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">✂️</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${stats.agendamentos || 0}</div>
-                        <div class="stat-label">Agendamentos</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Status Planos -->
-            <div class="card-grid-2">
-                <div class="card">
-                    <h3><i class="fas fa-chart-pie"></i> Distribuição de Planos</h3>
-                    <div style="padding: 20px;">
-                        <div class="progress-item">
-                            <div class="progress-label">
-                                <span>Trial</span>
-                                <span>${empresasTrial}</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${(empresasTrial / (empresas.length || 1)) * 100}%; background: #f59e0b;"></div>
-                            </div>
+                <!-- Cards Principais -->
+                <div class="card-grid">
+                    <div class="stat-card premium">
+                        <div class="stat-icon">🏢</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${stats.empresas || 0}</div>
+                            <div class="stat-label">Total de Empresas</div>
                         </div>
-                        <div class="progress-item">
-                            <div class="progress-label">
-                                <span>Premium/Básico</span>
-                                <span>${empresasPagas}</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="progress-fill" style="width: ${(empresasPagas / (empresas.length || 1)) * 100}%; background: #10b981;"></div>
-                            </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">👨‍💼</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${stats.donos || 0}</div>
+                            <div class="stat-label">Donos</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${stats.clientes || 0}</div>
+                            <div class="stat-label">Total Clientes</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">✂️</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${stats.agendamentos || 0}</div>
+                            <div class="stat-label">Agendamentos</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card">
-                    <h3><i class="fas fa-clock"></i> Empresas em Trial</h3>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        ${empresas.filter(e => e.plano === 'trial').slice(0, 5).map(emp => `
-                            <div class="empresa-trial-item">
-                                <div>
-                                    <strong>${escapeHtml(emp.nome)}</strong>
-                                    <div class="text-muted small">Expira: ${formatarDataBr(emp.trial_expira)}</div>
+                <!-- Status Planos -->
+                <div class="card-grid-2">
+                    <div class="card">
+                        <h3><i class="fas fa-chart-pie"></i> Distribuição de Planos</h3>
+                        <div style="padding: 20px;">
+                            <div class="progress-item">
+                                <div class="progress-label">
+                                    <span>Trial</span>
+                                    <span>${empresasTrial}</span>
                                 </div>
-                                <button class="btn btn-sm btn-primary" onclick="estenderTrial(${emp.id})">
-                                    +30 dias
-                                </button>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${(empresasTrial / (empresas.length || 1)) * 100}%; background: #f59e0b;"></div>
+                                </div>
                             </div>
-                        `).join('')}
-                        ${empresas.filter(e => e.plano === 'trial').length === 0 ?
-            '<p class="text-muted">Nenhuma empresa em trial</p>' : ''}
+                            <div class="progress-item">
+                                <div class="progress-label">
+                                    <span>Planos Pagos</span>
+                                    <span>${empresasPagas}</span>
+                                </div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" style="width: ${(empresasPagas / (empresas.length || 1)) * 100}%; background: #10b981;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3><i class="fas fa-clock"></i> Empresas em Trial</h3>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            ${empresas.filter(e => e.plano === 'trial').slice(0, 5).map(emp => `
+                                <div class="empresa-trial-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                                    <div>
+                                        <strong>${escapeHtml(emp.nome)}</strong>
+                                        <div class="text-muted small">Expira: ${formatarDataBr(emp.trial_expira)}</div>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" onclick="estenderTrial(${emp.id})">
+                                        +30 dias
+                                    </button>
+                                </div>
+                            `).join('')}
+                            ${empresas.filter(e => e.plano === 'trial').length === 0 ?
+                '<p class="text-muted" style="padding: 20px; text-align: center;">Nenhuma empresa em trial</p>' : ''}
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
-    document.getElementById('content').innerHTML = html;
+        document.getElementById('content').innerHTML = html;
+    } catch (error) {
+        console.error('Erro ao carregar dashboard super admin:', error);
+        document.getElementById('content').innerHTML = `
+            <div class="error-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Erro ao carregar dashboard Super Admin</p>
+                <button onclick="carregarDashboard()" class="btn btn-primary">Tentar Novamente</button>
+            </div>
+        `;
+    }
 }
 
 // ============================================
-// DASHBOARD PROFISSIONAL
+// DASHBOARD PROFISSIONAL (IMPLEMENTADO)
 // ============================================
 async function carregarDashboardProfissional() {
     const token = localStorage.getItem('token');
 
-    const [agendamentosRes, financeiroRes] = await Promise.all([
-        fetch('/api/profissional/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
-        fetch('/api/financeiro', { headers: { 'Authorization': 'Bearer ' + token } })
-    ]);
+    try {
+        const [agendamentosRes, financeiroRes] = await Promise.all([
+            fetch('/api/profissional/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/profissional/financeiro', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
 
-    const agendamentos = (await agendamentosRes.json()).data || [];
-    const financeiro = (await financeiroRes.json()).data || {};
+        const agendamentos = (await agendamentosRes.json()).data || [];
+        const financeiro = (await financeiroRes.json()).data || {};
 
-    const pendentes = agendamentos.filter(a => a.status === 'pendente');
-    const concluidos = agendamentos.filter(a => a.status === 'concluido');
-    const totalComissoes = financeiro.total_comissoes || 0;
+        const pendentes = agendamentos.filter(a => a.status === 'pendente');
+        const concluidos = agendamentos.filter(a => a.status === 'concluido');
+        const totalComissoes = financeiro.total_comissoes || 0;
 
-    const html = `
-        <div class="fade-in">
-            <h2 class="page-title">📊 Meu Dashboard</h2>
-            
-            <div class="card-grid">
-                <div class="stat-card premium">
-                    <div class="stat-icon">💰</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${formatarMoeda(totalComissoes)}</div>
-                        <div class="stat-label">Total em Comissões</div>
+        const html = `
+            <div class="fade-in">
+                <div class="dashboard-header">
+                    <h2 class="page-title">📊 Meu Dashboard</h2>
+                    <div class="date-range">
+                        <span class="badge badge-info">
+                            <i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}
+                        </span>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon">✂️</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${agendamentos.length}</div>
-                        <div class="stat-label">Total Atendimentos</div>
+                <div class="card-grid">
+                    <div class="stat-card premium">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-value">R$ ${formatarMoeda(totalComissoes)}</div>
+                            <div class="stat-label">Total em Comissões</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">✂️</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${agendamentos.length}</div>
+                            <div class="stat-label">Total Atendimentos</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">⏳</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${pendentes.length}</div>
+                            <div class="stat-label">Pendentes</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-value">${concluidos.length}</div>
+                            <div class="stat-label">Concluídos</div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon">⏳</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${pendentes.length}</div>
-                        <div class="stat-label">Pendentes</div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-calendar-alt"></i> Meus Próximos Atendimentos</h3>
+                        <button class="btn btn-sm btn-primary" onclick="carregarAgendamentosProfissional()">
+                            Ver Todos
+                        </button>
                     </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon">✅</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${concluidos.length}</div>
-                        <div class="stat-label">Concluídos</div>
-                    </div>
+                    ${pendentes.length > 0 ? `
+                        <div class="table-responsive">
+                            <table class="data-table">
+                                <thead>
+                                    <tr><th>Cliente</th><th>Serviço</th><th>Data</th><th>Hora</th><th>Valor</th><th>Comissão</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${pendentes.slice(0, 5).map(ag => `
+                                        <tr>
+                                            <td>${escapeHtml(ag.cliente_nome || 'Cliente')}</
+                                            <td>${escapeHtml(ag.servico || '-')}</
+                                            <td>${formatarDataBr(ag.data)}</
+                                            <td>${ag.hora || '-'}</
+                                            <td>R$ ${formatarMoeda(ag.valor)}</
+                                            <td>R$ ${formatarMoeda(ag.comissao || 0)}</
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            60
+                        </div>
+                    ` : '<p class="text-muted" style="padding: 40px; text-align: center;">Nenhum atendimento pendente</p>'}
                 </div>
             </div>
-            
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-calendar-alt"></i> Meus Próximos Atendimentos</h3>
-                    <button class="btn btn-sm btn-primary" onclick="carregarAgendamentosProfissional()">
-                        Ver Todos
-                    </button>
-                </div>
-                ${pendentes.length > 0 ? `
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr><th>Cliente</th><th>Serviço</th><th>Data</th><th>Hora</th><th>Valor</th><th>Comissão</th></tr>
-                            </thead>
-                            <tbody>
-                                ${pendentes.slice(0, 5).map(ag => `
-                                    <tr>
-                                        <td>${escapeHtml(ag.cliente_nome || 'Cliente')}</td>
-                                        <td>${escapeHtml(ag.servico || '-')}</td>
-                                        <td>${formatarDataBr(ag.data)}</td>
-                                        <td>${ag.hora || '-'}</td>
-                                        <td>R$ ${formatarMoeda(ag.valor)}</td>
-                                        <td>R$ ${formatarMoeda(ag.comissao || 0)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                ` : '<p class="text-muted" style="padding: 40px; text-align: center;">Nenhum atendimento pendente</p>'}
-            </div>
-        </div>
-    `;
+        `;
 
-    document.getElementById('content').innerHTML = html;
+        document.getElementById('content').innerHTML = html;
+    } catch (error) {
+        console.error('Erro ao carregar dashboard profissional:', error);
+        document.getElementById('content').innerHTML = `
+            <div class="error-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>Erro ao carregar dashboard do profissional</p>
+                <button onclick="carregarDashboard()" class="btn btn-primary">Tentar Novamente</button>
+            </div>
+        `;
+    }
 }
 
 // ============================================
@@ -550,7 +627,6 @@ function renderizarGraficoAgendamentos(dias, dados) {
     const canvas = document.getElementById('chartAgendamentos');
     if (!canvas) return;
 
-    // Usar Chart.js se disponível, ou fallback simples
     if (typeof Chart !== 'undefined') {
         if (chartInstance) chartInstance.destroy();
 
@@ -579,9 +655,6 @@ function renderizarGraficoAgendamentos(dias, dados) {
                 }
             }
         });
-    } else {
-        // Fallback simples sem Chart.js
-        console.log('Chart.js não carregado');
     }
 }
 
@@ -628,7 +701,7 @@ window.estenderTrial = async function (empresaId) {
     hideLoading();
 };
 
-// Exportar
+// Exportar funções globais
 window.carregarDashboard = carregarDashboard;
 window.carregarDashboardSuperAdmin = carregarDashboardSuperAdmin;
 window.carregarDashboardProfissional = carregarDashboardProfissional;

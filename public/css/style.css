@@ -2163,3 +2163,181 @@ input:checked+.slider:before {
         grid-template-columns: 1fr;
     }
 }
+
+/* ============================================
+   SERVIÇOS MAIS POPULARES - CORRIGIDO
+   ============================================ */
+.top-servicos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.servico-rank-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px;
+    background: var(--gray-50);
+    border-radius: 12px;
+    transition: all 0.2s;
+}
+
+.servico-rank-item:hover {
+    background: var(--gray-100);
+    transform: translateX(5px);
+}
+
+.rank-number {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    border-radius: 12px;
+    background: var(--gray-200);
+    color: var(--gray-700);
+}
+
+.rank-number.rank-1 {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: white;
+    box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3);
+}
+
+.rank-number.rank-2 {
+    background: linear-gradient(135deg, #9ca3af, #6b7280);
+    color: white;
+    box-shadow: 0 4px 10px rgba(107, 114, 128, 0.3);
+}
+
+.rank-number.rank-3 {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: white;
+}
+
+.rank-number.rank-other {
+    background: var(--gray-200);
+    color: var(--gray-600);
+}
+
+.servico-rank-info {
+    flex: 1;
+}
+
+.servico-rank-nome {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 4px;
+}
+
+.servico-rank-stats {
+    display: flex;
+    gap: 15px;
+    font-size: 0.8rem;
+}
+
+.servico-rank-stats .qtd {
+    color: var(--primary);
+    font-weight: 500;
+}
+
+.servico-rank-stats .percent {
+    color: var(--gray-500);
+}
+
+/* ============================================
+   ÚLTIMOS CLIENTES - CORRIGIDO
+   ============================================ */
+.ultimos-clientes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.cliente-card-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    background: var(--gray-50);
+    border-radius: 12px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.cliente-card-item:hover {
+    background: var(--gray-100);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.cliente-avatar-icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    border-radius: 50%;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.cliente-info-data {
+    flex: 1;
+}
+
+.cliente-nome-completo {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 4px;
+}
+
+.cliente-contato-info {
+    font-size: 0.8rem;
+    color: var(--gray-500);
+}
+
+/* ============================================
+   BANNER DE TRIAL
+   ============================================ */
+.trial-banner {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-left: 4px solid #f59e0b;
+    border-radius: 12px;
+    padding: 12px 20px;
+    margin-bottom: 24px;
+}
+
+.trial-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.trial-content span {
+    color: #92400e;
+    font-weight: 500;
+}
+
+.btn-upgrade {
+    background: #f59e0b;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-upgrade:hover {
+    background: #d97706;
+    transform: scale(1.02);
+}
