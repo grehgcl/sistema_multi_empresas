@@ -1,6 +1,10 @@
-﻿=========================================
-  GUIA PARA IA - BARBEARIA PRO
-  ULTIMA ATUALIZACAO: 18/06/2026
+﻿
+## 4. `PARA_NOVA_IA.txt` - Atualizado
+
+```markdown
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 19/06/2026
 =========================================
 
 LEIA OS ARQUIVOS NA ORDEM:
@@ -17,7 +21,7 @@ USUARIOS:
   Profissional: (criar pelo dono) - senha definida pelo dono
 
 =========================================
-FUNCIONALIDADES IMPLEMENTADAS (18/06/2026):
+FUNCIONALIDADES IMPLEMENTADAS (19/06/2026):
 =========================================
 
 1. Autenticacao (Super Admin, Dono, Profissional)
@@ -44,7 +48,7 @@ FUNCIONALIDADES IMPLEMENTADAS (18/06/2026):
    - Ver suas comissoes
 
 =========================================
-FUNCIONALIDADES ADICIONADAS (18/06/2026):
+FUNCIONALIDADES ADICIONADAS (19/06/2026):
 =========================================
 
 1. 🤖 CHATBOT INTELIGENTE PARA AGENDAMENTOS:
@@ -80,6 +84,28 @@ FUNCIONALIDADES ADICIONADAS (18/06/2026):
    - Área para QR Code
    - Explicação das regras do chatbot
 
+6. 💎 SISTEMA DE PLANOS DE ASSINATURA:
+   - Starter: R$ 24,90/mês (1 profissional)
+   - Pro: R$ 49,90/mês (5 profissionais)
+   - Business: R$ 99,90/mês (12 profissionais)
+   - Enterprise: R$ 199,90/mês (Ilimitado)
+   - 45 dias de teste grátis para novos cadastros
+   - Middleware de verificação de limite
+   - Página de planos com upgrade
+
+7. 🚀 LANDING PAGE DE VENDAS:
+   - Estrutura separada do sistema de login
+   - Menu superior com navegação
+   - Seção Hero com CTA principal
+   - Estatísticas de credibilidade
+   - Seção Problema x Solução
+   - Showcase do sistema em CSS puro
+   - Benefícios e resultados
+   - Depoimentos de clientes
+   - Tabela comparativa
+   - Cards de planos
+   - Rodapé com informações de contato
+
 =========================================
 REGRAS DO CHATBOT:
 =========================================
@@ -92,15 +118,25 @@ REGRAS DO CHATBOT:
 7. Dono aparece como opção de profissional
 
 =========================================
-ESTRUTURA DOS ARQUIVOS ATUALIZADA (18/06/2026):
+REGRAS DO SISTEMA DE PLANOS:
+=========================================
+1. Dono cria empresa com 45 dias de trial (plano trial, limite 1)
+2. Ao criar profissional, verifica limite do plano
+3. Se limite atingido, retorna erro com needs_upgrade
+4. Upgrade de plano registra histórico na tabela planos_historico
+5. Trial expirado bloqueia criação de novos agendamentos
+6. Planos pagos tem data de validade
+
+=========================================
+ESTRUTURA DOS ARQUIVOS ATUALIZADA (19/06/2026):
 =========================================
 
-server.js (backend com rotas do chatbot)
+server.js (backend com rotas do chatbot e planos)
 public/
-├── index.html (frontend principal)
+├── index.html (landing page + frontend principal)
 ├── chatbot.html (página do chatbot)
 ├── css/
-│   ├── style.css (estilos principais)
+│   ├── style.css (estilos da landing page + app)
 │   └── chatbot.css (estilos do chatbot)
 └── js/
     ├── ui.js (UI global)
@@ -113,10 +149,11 @@ public/
         ├── servicos.js
         ├── financeiro.js
         ├── empresas.js (Super Admin)
-        └── configuracoes.js (com aba chatbot)
+        ├── configuracoes.js (com aba chatbot)
+        └── planos.js (página de planos e upgrade)
 
 =========================================
-ULTIMAS CORRECOES (18/06/2026):
+ULTIMAS CORRECOES (19/06/2026):
 =========================================
 1. Implementado chatbot com calendário visual
 2. Adicionado bloqueio de clientes para chatbot
@@ -125,4 +162,11 @@ ULTIMAS CORRECOES (18/06/2026):
 5. Dono agora aparece como opção de profissional
 6. Link do chatbot disponível nas configurações
 7. QR Code para facilitar compartilhamento
+8. Criada landing page de vendas completa
+9. Implementado sistema de planos de assinatura
+10. Adicionados planos Starter, Pro, Business, Enterprise
+11. Corrigido dashboard do profissional
+12. Adicionada tabela planos_historico
+13. Corrigido CSS da tela de login/cadastro
+14. Adicionado menu hambúrguer responsivo
 =========================================

@@ -1,13 +1,9 @@
-﻿
-## 📄 **ARQUIVO 3: `docs/ESTRUTURA.md`**
-
-```markdown
-# ESTRUTURA DO PROJETO - Atualizada em 18/06/2026
+﻿# ESTRUTURA DO PROJETO - Atualizada em 19/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite
 ├── public/
-│   ├── index.html            # Frontend principal
+│   ├── index.html            # Landing Page + Frontend principal
 │   ├── chatbot.html          # Página do Chatbot Inteligente
 │   ├── css/
 │   │   ├── style.css         # Estilos premium principais
@@ -23,7 +19,8 @@
 │           ├── servicos.js               # CRUD Servicos (Dono)
 │           ├── financeiro.js             # Financeiro (cards por profissional)
 │           ├── empresas.js               # Gestao empresas (Super Admin)
-│           └── configuracoes.js          # Configuracoes + Chatbot
+│           ├── configuracoes.js          # Configuracoes + Chatbot
+│           └── planos.js                 # Página de Planos e Upgrade
 ├── docs/                    # Documentacao
 └── server.js                # Backend completo + rotas chatbot
 
@@ -36,6 +33,9 @@
 - fecharModal(id): Fecha modal
 - logout(): Sai do sistema
 - carregarMenu(): Monta menu baseado na role
+- mostrarLanding(): Mostra landing page de vendas
+- mostrarLoginApp(): Mostra tela de login
+- mostrarCadastroApp(): Mostra tela de cadastro
 
 ## FUNCOES GLOBAIS UI (ui.js)
 - showToast(msg, type): Exibe notificacao toast
@@ -57,6 +57,7 @@
 - Financeiro (cards por profissional + totais)
 - Clientes (CRUD + bloqueio chatbot)
 - Configuracoes (Profissionais + Horarios + Chatbot)
+- Planos (Visualizar planos e fazer upgrade)
 
 ### Profissional
 - Dashboard (suas comissoes e pendentes)
@@ -84,6 +85,15 @@
 - Salvamento automático ao alterar valores
 - Agendamentos validam automaticamente os horários
 
+## SISTEMA DE PLANOS (NOVO)
+- Starter: R$ 24,90/mês - 1 profissional
+- Pro: R$ 49,90/mês - 5 profissionais
+- Business: R$ 99,90/mês - 12 profissionais
+- Enterprise: R$ 199,90/mês - Profissionais ilimitados
+- 45 dias de teste grátis para novos cadastros
+- Middleware verifica limite antes de criar profissional
+- Tabela planos_historico registra todas as mudanças
+
 ## CHATBOT INTELIGENTE (NOVO)
 - Página pública: /chatbot.html?empresa=ID
 - Conversa natural estilo assistente virtual
@@ -109,8 +119,15 @@
 - Lista de próximos agendamentos
 - Grid de últimos clientes
 
+## LANDING PAGE (NOVO)
+- Estrutura separada do sistema de login
+- Seções: Hero, Estatísticas, Problema, Solução, Showcase, Benefícios, Depoimentos, Comparação, Planos
+- Design responsivo com animações AOS
+- Mockups do dashboard em CSS puro
+- Botões de CTA para cadastro
+
 ## CONFIGURACOES (TABS)
-1. 👥 Profissionais - CRUD completo
+1. 👥 Profissionais - CRUD completo + limite por plano
 2. ⏰ Horários - Configuração de expediente
 3. 🤖 Chatbot - Link e QR Code para compartilhar
 
@@ -121,7 +138,7 @@
 - Edição completa de dados
 
 =========================================
-## ULTIMA ATUALIZACAO: 18/06/2026
+## ULTIMA ATUALIZACAO: 19/06/2026
 
 MUDANCAS REALIZADAS:
 - Implementado Chatbot Inteligente com calendário visual
@@ -132,4 +149,9 @@ MUDANCAS REALIZADAS:
 - Dono adicionado como opção de profissional no chatbot
 - Link do chatbot disponível nas configurações
 - QR Code para compartilhamento fácil
+- Criada Landing Page de vendas completa
+- Implementado sistema de planos de assinatura
+- Adicionados planos: Starter, Pro, Business, Enterprise
+- Criado sistema de upgrade com middleware
+- Corrigido dashboard do profissional
 =========================================
