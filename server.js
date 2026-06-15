@@ -1305,6 +1305,7 @@ app.get('/api/financeiro', auth, (req, res) => {
     }
 });
 
+// Rota para profissional ver suas comissões
 app.get('/api/profissional/financeiro', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
@@ -1317,12 +1318,16 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
         FROM agendamentos a
         LEFT JOIN clientes c ON a.cliente_id = c.id
         LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = ? AND a.status = 'concluido' AND a.comissao > 0
+        WHERE a.profissional_id = ? AND a.status = 'concluido'
         ORDER BY a.data DESC
     `, [profissional_id], (err, comissoes) => {
-        if (err) return res.json({ success: false, message: err.message });
+        if (err) {
+            console.error('Erro ao buscar comissões:', err);
+            return res.json({ success: false, message: err.message });
+        }
 
         const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
+        const totalServicos = comissoes.length;
 
         res.json({
             success: true,
@@ -1330,7 +1335,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
                 comissoes: comissoes,
                 totais: {
                     total_comissoes: totalComissoes,
-                    total_servicos: comissoes.length
+                    total_servicos: totalServicos
                 }
             }
         });
