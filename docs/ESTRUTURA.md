@@ -2,31 +2,30 @@
 ## 📄 **ARQUIVO 3: `docs/ESTRUTURA.md`**
 
 ```markdown
-# ESTRUTURA DO PROJETO - Atualizada em 17/06/2026
+# ESTRUTURA DO PROJETO - Atualizada em 18/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite
 ├── public/
 │   ├── index.html            # Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
 │   ├── css/
-│   │   └── style.css         # Estilos premium completos
+│   │   ├── style.css         # Estilos premium principais
+│   │   └── chatbot.css       # Estilos específicos do chatbot
 │   └── js/
 │       ├── ui.js             # UI Global (toasts, loading, modal)
 │       └── pages/
 │           ├── dashboard.js              # Dashboard Dono (completo)
 │           ├── dashboard-profissional.js # Dashboard Profissional
-│           ├── clientes.js               # CRUD Clientes (Dono)
-│           ├── agendamentos.js           # CRUD Agendamentos (Dono) 
-│           │   # COM FILTROS, EDIÇÃO, HORÁRIOS 30/30min, +NOVO CLIENTE
+│           ├── clientes.js               # CRUD Clientes + Bloqueio Chatbot
+│           ├── agendamentos.js           # CRUD Agendamentos (Dono)
 │           ├── agendamentos-profissional.js # Agendamentos (Profissional)
-│           │   # COM EDIÇÃO, HORÁRIOS 30/30min
 │           ├── servicos.js               # CRUD Servicos (Dono)
 │           ├── financeiro.js             # Financeiro (cards por profissional)
 │           ├── empresas.js               # Gestao empresas (Super Admin)
-│           └── configuracoes.js          # CONFIGURACOES UNIFICADAS
-│               # Profissionais (CRUD completo) + Horarios
+│           └── configuracoes.js          # Configuracoes + Chatbot
 ├── docs/                    # Documentacao
-└── server.js                # Backend completo (com rotas de horarios 30/30min)
+└── server.js                # Backend completo + rotas chatbot
 
 ## VARIAVEIS GLOBAIS (localStorage)
 - token: JWT do usuario logado
@@ -53,15 +52,15 @@
 
 ### Dono
 - Dashboard (stats da empresa, gráficos, métricas)
-- Agendamentos (CRUD com filtros, edicao, horarios 30/30min, +cliente)
+- Agendamentos (CRUD com filtros, edicao, horarios 30/30min)
 - Servicos (CRUD completo)
 - Financeiro (cards por profissional + totais)
-- Clientes (CRUD)
-- Configuracoes (UNIFICADO: profissionais + horarios de funcionamento)
+- Clientes (CRUD + bloqueio chatbot)
+- Configuracoes (Profissionais + Horarios + Chatbot)
 
 ### Profissional
 - Dashboard (suas comissoes e pendentes)
-- Meus Agendamentos (listar, criar, editar, concluir, horarios 30/30min)
+- Meus Agendamentos (listar, criar, editar, concluir)
 - Minhas Comissoes (suas comissoes)
 
 ## SISTEMA DE COMISSOES
@@ -81,11 +80,20 @@
 - Toggle switch liga/desliga por dia da semana
 - Configuração de horário de abertura e fechamento
 - Configuração de horário de almoço (início e fim)
-- Intervalo entre agendamentos (15,30,45,60 min) - PADRÃO 30 min no código
+- Intervalo FIXO de 30 minutos (código)
 - Salvamento automático ao alterar valores
 - Agendamentos validam automaticamente os horários
-- Corrigido fuso horário para datas
-- **NOVO: Horários gerados de 30 em 30 minutos (09:00, 09:30, 10:00...)**
+
+## CHATBOT INTELIGENTE (NOVO)
+- Página pública: /chatbot.html?empresa=ID
+- Conversa natural estilo assistente virtual
+- Verifica cliente por telefone (busca flexível)
+- Cadastro automático de novos clientes
+- Calendário visual para seleção de datas
+- Horários de 30 em 30 minutos
+- Limite de 1 agendamento a cada 20 dias
+- Dono pode bloquear clientes na tela de Clientes
+- Dono aparece como opção de profissional
 
 ## FINANCEIRO DO DONO
 - Faturamento Bruto: soma de todos os servicos concluidos
@@ -93,48 +101,35 @@
 - Faturamento Liquido: Bruto - Comissoes
 - Cards por profissional: cada profissional com seu total de comissao
 
-## DASHBOARD DO DONO (MELHORADO)
+## DASHBOARD DO DONO
 - Cards com faturamento do mês, total atendimentos, clientes, pendentes
-- Cards com ticket médio, serviços concluídos, comissões a pagar, serviços ativos
+- Cards com ticket médio, serviços concluídos, comissões a pagar
 - Gráfico de agendamentos por dia da semana
 - Ranking de serviços mais populares (Top 5)
 - Lista de próximos agendamentos
 - Grid de últimos clientes
-- Variação percentual do faturamento
 
-## NOVIDADE: +NOVO CLIENTE NO AGENDAMENTO
-- Botão "+ Novo Cliente" dentro do modal de agendamento
-- Modal para cadastro rápido (nome, telefone, email)
-- Atualização automática do select de clientes
-- Seleção automática do novo cliente criado
+## CONFIGURACOES (TABS)
+1. 👥 Profissionais - CRUD completo
+2. ⏰ Horários - Configuração de expediente
+3. 🤖 Chatbot - Link e QR Code para compartilhar
+
+## CLIENTES (MELHORADO)
+- Listagem completa com ações
+- Botão para bloquear/desbloquear chatbot
+- Badges de status (🔓 Liberado / 🔒 Bloqueado)
+- Edição completa de dados
 
 =========================================
-## ULTIMA ATUALIZACAO: 17/06/2026
+## ULTIMA ATUALIZACAO: 18/06/2026
 
 MUDANCAS REALIZADAS:
-- Adicionado sistema de Horarios de Funcionamento completo
-- Adicionado Filtros nos Agendamentos (data, status, profissional)
-- Adicionado Edicao de Agendamentos (Dono e Profissional)
-- Unificado Configuracoes em uma unica tela
-- Corrigido problema de fuso horario nas datas dos agendamentos
-- Corrigida duplicacao de horarios no banco de dados
-- Adicionado toggle switch com salvamento automatico
-- **NOVO: Corrigido geracao de horarios de 30 em 30 minutos**
-- **NOVO: Adicionado botao "+ Novo Cliente" no modal de agendamento**
-- **NOVO: Dashboard melhorado com graficos e metricas**
-- **NOVO: Dashboard agora consistente com tela financeiro**
-- **NOVO: Gestao completa de profissionais na tela de configuracoes**
-=========================================
-
-## NOVIDADES - DESIGN E UI (17/06/2026)
-- Glassmorphism com gradientes animados
-- Responsividade completa (iPhone SE a Pro Max)
-- Sidebar retrátil com swipe no mobile
-- Suporte a safe area (iPhones com notch)
-- Toast notifications coloridas
-- Loading spinner animado
-- Touch targets otimizados (44px+)
-- Scrollbar customizada com gradiente
-- Animações fade-in e slide-up
-- Badges com gradientes por tipo de usuário
+- Implementado Chatbot Inteligente com calendário visual
+- Adicionado bloqueio de clientes para chatbot
+- Criada página pública /chatbot.html
+- Adicionada rota de busca de cliente por telefone
+- Criado sistema de limite de 20 dias entre agendamentos
+- Dono adicionado como opção de profissional no chatbot
+- Link do chatbot disponível nas configurações
+- QR Code para compartilhamento fácil
 =========================================

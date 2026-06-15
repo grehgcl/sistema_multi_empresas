@@ -1447,3 +1447,97 @@ input:checked+.slider:before {
 .mb-4 {
     margin-bottom: 16px;
 }
+
+/* Adicionar ao style.css */
+.planos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.plano-card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    transition: transform 0.3s, box-shadow 0.3s;
+    border: 2px solid transparent;
+}
+
+.plano-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.plano-card.plano-current {
+    border-color: var(--primary);
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+}
+
+.plano-preco {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--primary);
+    margin: 16px 0;
+}
+
+.plano-preco span {
+    font-size: 14px;
+    color: #666;
+}
+
+.plano-profs {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.plano-recursos {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0;
+    text-align: left;
+}
+
+.plano-recursos li {
+    padding: 8px 0;
+    font-size: 14px;
+}
+
+/* TABS CONFIGURAÇÕES */
+.tabs-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    border: none;
+    background: #e2e8f0;
+    color: #333;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+    background: #cbd5e1;
+}
+
+.tab-btn.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}

@@ -16,22 +16,36 @@ async function carregarAgendamentos() {
         ]);
 
         const profResult = await profRes.json();
-        if (profResult.success) profissionaisList = profResult.data;
+        if (profResult.success) profissionaisList = profResult.data || [];
+        else profissionaisList = [];
 
         const clientesResult = await clientesRes.json();
-        if (clientesResult.success) clientesList = clientesResult.data;
+        if (clientesResult.success) clientesList = clientesResult.data || [];
+        else clientesList = [];
 
         const servicosResult = await servicosRes.json();
-        if (servicosResult.success) servicosList = servicosResult.data;
+        if (servicosResult.success) servicosList = servicosResult.data || [];
+        else servicosList = [];
+
+        console.log("Dados carregados:", {
+            clientes: clientesList.length,
+            profissionais: profissionaisList.length,
+            servicos: servicosList.length
+        });
     } catch (error) {
         console.error("Erro ao carregar dados:", error);
         showToast("Erro ao carregar dados", "error");
+        profissionaisList = [];
+        clientesList = [];
+        servicosList = [];
     }
 
     let profissionaisOptions = "";
-    for (let p of profissionaisList) {
-        if (p.ativo === 1) {
-            profissionaisOptions += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
+    if (profissionaisList.length > 0) {
+        for (let p of profissionaisList) {
+            if (p.ativo === 1) {
+                profissionaisOptions += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
+            }
         }
     }
 
@@ -86,9 +100,9 @@ async function carregarAgendamentos() {
                                 <th>Valor</th>
                                 <th>Status</th>
                                 <th>Ações</th>
-                            </thead>
-                            <tbody id="listaAgendamentos"></tbody>
-                        </tbody>
+                            </tr>
+                        </thead>
+                        <tbody id="listaAgendamentos"></tbody>
                     60
                 </div>
             </div>
@@ -139,17 +153,17 @@ async function carregarListaAgendamentosComFiltro() {
             for (let a of agendamentos) {
                 rows += `
                     <tr>
-                        <td>${formatarDataBr(a.data)} ${a.hora || ""}</td>
-                        <td><strong>${escapeHtml(a.cliente_nome || "N/A")}</strong></td>
-                        <td>${escapeHtml(a.profissional_nome || "Não atribuído")}</td>
-                        <td>${escapeHtml(a.servico_nome || a.servico || "N/A")}</td>
-                        <td>R$ ${(a.valor || 0).toFixed(2)}</td>
-                        <td>${a.status === "concluido" ? '<span class="badge badge-success">Concluído</span>' : '<span class="badge badge-warning">Pendente</span>'}</td>
+                        <td>${formatarDataBr(a.data)} ${a.hora || ""}</
+                        <td><strong>${escapeHtml(a.cliente_nome || "N/A")}</strong></
+                        <td>${escapeHtml(a.profissional_nome || "Não atribuído")}</
+                        <td>${escapeHtml(a.servico_nome || a.servico || "N/A")}</
+                        <td>R$ ${(a.valor || 0).toFixed(2)}</
+                        <td>${a.status === "concluido" ? '<span class="badge badge-success">Concluído</span>' : '<span class="badge badge-warning">Pendente</span>'}</
                         <td class="actions-cell">
                             <button class="btn-icon" onclick="editarAgendamento(${a.id})" title="Editar">✏️</button>
                             ${a.status !== "concluido" ? `<button class="btn-icon" onclick="concluirAgendamento(${a.id})" title="Concluir" style="color:#10b981;">✅</button>` : ""}
                             <button class="btn-icon" onclick="excluirAgendamento(${a.id})" title="Excluir" style="color:#ef4444;">🗑️</button>
-                        </td>
+                        </
                     </tr>
                 `;
             }
@@ -239,22 +253,19 @@ async function salvarNovoCliente(event) {
 
         if (result.success) {
             showToast("Cliente cadastrado com sucesso!", "success");
-            const novoCliente = result.data;
 
-            clientesList.push(novoCliente);
-
-            // Atualizar o select de clientes
-            const selectCliente = document.getElementById("clienteIdDono");
-            if (selectCliente) {
-                let clientesOptions = '<option value="">Selecione...</option>';
-                for (let c of clientesList) {
-                    clientesOptions += `<option value="${c.id}">${escapeHtml(c.nome)}</option>`;
-                }
-                selectCliente.innerHTML = clientesOptions;
-                selectCliente.value = novoCliente.id;
-            }
+            // Recarregar a lista de clientes
+            const clientesRes = await fetch("/api/clientes", {
+                headers: { "Authorization": "Bearer " + token }
+            });
+            const clientesResult = await clientesRes.json();
+            if (clientesResult.success) clientesList = clientesResult.data || [];
 
             fecharModalNovoCliente();
+
+            // Reabrir o modal de agendamento com a lista atualizada
+            fecharModalAgendamentoDono();
+            abrirModalAgendamentoDono();
         } else {
             showToast("Erro: " + result.message, "error");
         }
@@ -286,7 +297,7 @@ async function carregarHorariosDisponiveisDono() {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + token
             },
-            body: JSON.stringify({ data: data, profissional_id: profissional_id || null })
+            body: JSON.stringify({ data: data, profesional_id: profissional_id || null })
         });
         const result = await res.json();
 
@@ -313,21 +324,36 @@ function formatarHoraCompleta(hora) {
     return hora;
 }
 
-function abrirModalAgendamentoDono() {
+async function abrirModalAgendamentoDono() {
+    // Garantir que clientesList é um array
+    const clientes = Array.isArray(clientesList) ? clientesList : [];
+    const servicos = Array.isArray(servicosList) ? servicosList : [];
+    const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
+
+    console.log("Abrindo modal - Clientes:", clientes.length);
+
     let clientesOptions = '<option value="">Selecione...</option>';
-    for (let c of clientesList) {
-        clientesOptions += `<option value="${c.id}">${escapeHtml(c.nome)}</option>`;
+    if (clientes.length > 0) {
+        for (let c of clientes) {
+            clientesOptions += `<option value="${c.id}">${escapeHtml(c.nome)}</option>`;
+        }
+    } else {
+        clientesOptions = '<option value="">Nenhum cliente cadastrado. Clique em "+ Novo Cliente"</option>';
     }
 
     let servicosOptions = '<option value="">Selecione um serviço</option>';
-    for (let s of servicosList) {
-        servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}">${escapeHtml(s.nome)} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`;
+    if (servicos.length > 0) {
+        for (let s of servicos) {
+            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}">${escapeHtml(s.nome)} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`;
+        }
     }
 
     let profissionaisOptions = '<option value="">Não atribuir</option>';
-    for (let p of profissionaisList) {
-        if (p.ativo === 1) {
-            profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)} (${p.comissao_percent}%)</option>`;
+    if (profissionais.length > 0) {
+        for (let p of profissionais) {
+            if (p.ativo === 1) {
+                profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)} (${p.comissao_percent}%)</option>`;
+            }
         }
     }
 
@@ -548,7 +574,7 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Funções de edição (manter as existentes)
+// Funções de edição
 async function editarAgendamento(id) {
     const token = localStorage.getItem("token");
     const res = await fetch("/api/agendamentos", {
@@ -568,20 +594,24 @@ async function editarAgendamento(id) {
             return;
         }
 
+        const clientes = Array.isArray(clientesList) ? clientesList : [];
+        const servicos = Array.isArray(servicosList) ? servicosList : [];
+        const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
+
         let clientesOptions = "";
-        for (let c of clientesList) {
+        for (let c of clientes) {
             const selected = c.id === agendamento.cliente_id ? "selected" : "";
             clientesOptions += `<option value="${c.id}" ${selected}>${c.nome}</option>`;
         }
 
         let servicosOptions = '<option value="">Selecione um serviço</option>';
-        for (let s of servicosList) {
+        for (let s of servicos) {
             const selected = s.id === agendamento.servico_id ? "selected" : "";
             servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${s.nome} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`;
         }
 
         let profissionaisOptions = '<option value="">Não atribuir</option>';
-        for (let p of profissionaisList) {
+        for (let p of profissionais) {
             if (p.ativo === 1) {
                 const selected = p.id === agendamento.profissional_id ? "selected" : "";
                 profissionaisOptions += `<option value="${p.id}" ${selected}>${p.nome} (${p.comissao_percent}%)</option>`;

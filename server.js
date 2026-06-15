@@ -14,6 +14,10 @@ app.use(express.static('public'));
 
 const db = new sqlite3.Database('./database/barbearia.db');
 
+// ============================================
+// MIDDLEWARES
+// ============================================
+
 function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) {
@@ -42,14 +46,95 @@ function verificarDono(req, res, next) {
     next();
 }
 
-// Função para obter o dia da semana ignorando fuso horário
+// Middleware para verificar limite de profissionais
+function verificarLimiteProfissionais(req, res, next) {
+    const empresaId = req.usuario.empresa_id;
+
+    db.get(`SELECT plano, limite_profissionais, 
+            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = ? AND ativo = 1) as total_profs 
+            FROM empresas WHERE id = ?`,
+        [empresaId, empresaId], (err, empresa) => {
+            if (err) return res.status(500).json({ success: false, message: 'Erro interno' });
+
+            if (!empresa) {
+                return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+            }
+
+            if (empresa.total_profs >= empresa.limite_profissionais) {
+                return res.status(403).json({
+                    success: false,
+                    message: `Seu plano (${empresa.plano}) permite apenas ${empresa.limite_profissionais} profissional(is). Faça upgrade para adicionar mais.`,
+                    needs_upgrade: true
+                });
+            }
+            next();
+        });
+}
+
+// Middleware para verificar se pode criar agendamentos (trial expirado ou assinatura vencida)
+function verificarAcessoAgendamentos(req, res, next) {
+    const empresaId = req.usuario.empresa_id;
+
+    db.get(`SELECT plano, trial_expira, assinatura_ativa, assinatura_valida_ate 
+            FROM empresas WHERE id = ?`, [empresaId], (err, empresa) => {
+        if (err) return res.status(500).json({ success: false, message: 'Erro interno' });
+
+        if (!empresa) {
+            return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        let acessoLiberado = false;
+        let mensagem = '';
+
+        if (empresa.plano === 'trial' && empresa.trial_expira) {
+            const trialExpira = new Date(empresa.trial_expira);
+            if (hoje <= trialExpira) {
+                acessoLiberado = true;
+            } else {
+                mensagem = 'Seu período de teste expirou. Faça upgrade para continuar agendando.';
+            }
+        } else if (empresa.plano !== 'trial') {
+            if (empresa.assinatura_ativa === 1) {
+                if (empresa.assinatura_valida_ate) {
+                    const validaAte = new Date(empresa.assinatura_valida_ate);
+                    if (hoje <= validaAte) {
+                        acessoLiberado = true;
+                    } else {
+                        mensagem = 'Sua assinatura expirou. Renove para continuar usando o sistema.';
+                    }
+                } else {
+                    acessoLiberado = true;
+                }
+            } else {
+                mensagem = 'Sua assinatura está inativa. Entre em contato com o suporte.';
+            }
+        }
+
+        if (!acessoLiberado) {
+            return res.status(403).json({
+                success: false,
+                message: mensagem || 'Acesso bloqueado. Verifique seu plano.',
+                requires_upgrade: true
+            });
+        }
+
+        next();
+    });
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
 function getDiaSemanaFromDate(dataStr) {
     const [ano, mes, dia] = dataStr.split('-').map(Number);
     const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
     return dataUTC.getUTCDay();
 }
 
-// Validar horário com data corrigida
 function validarHorarioFuncionamento(empresa_id, data, hora, callback) {
     const diaSemana = getDiaSemanaFromDate(data);
 
@@ -74,10 +159,14 @@ function validarHorarioFuncionamento(empresa_id, data, hora, callback) {
         });
 }
 
+// ============================================
+// AUTENTICAÇÃO
+// ============================================
+
 app.post('/api/login', (req, res) => {
     const { email, senha } = req.body;
 
-    db.get(`SELECT p.*, e.nome as empresa_nome, e.trial_expira 
+    db.get(`SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
             FROM profissionais p 
             LEFT JOIN empresas e ON p.empresa_id = e.id 
             WHERE p.email = ? AND p.ativo = 1`, [email], (err, profissional) => {
@@ -105,7 +194,7 @@ app.post('/api/login', (req, res) => {
             });
         }
 
-        db.get(`SELECT u.*, e.trial_expira, e.nome as empresa_nome 
+        db.get(`SELECT u.*, e.trial_expira, e.nome as empresa_nome, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
                 FROM usuarios u 
                 LEFT JOIN empresas e ON u.empresa_id = e.id 
                 WHERE u.email = ?`, [email], (err, user) => {
@@ -117,12 +206,25 @@ app.post('/api/login', (req, res) => {
                 return res.json({ success: false, message: 'Email ou senha incorretos' });
             }
 
-            if (user.role === 'dono' && user.trial_expira) {
-                const hoje = new Date().toISOString().split('T')[0];
-                if (user.trial_expira < hoje) {
-                    return res.json({ success: false, message: 'Seu período de teste expirou.' });
+            let diasRestantes = 0;
+            let planoStatus = user.plano;
+
+            if (user.role === 'dono') {
+                if (user.plano === 'trial' && user.trial_expira) {
+                    const hoje = new Date();
+                    const trialExpira = new Date(user.trial_expira);
+                    if (hoje > trialExpira) {
+                        return res.json({ success: false, message: 'Seu período de teste expirou. Faça upgrade para continuar usando o sistema.' });
+                    }
+                    diasRestantes = Math.ceil((trialExpira - hoje) / (1000 * 60 * 60 * 24));
+                } else if (user.plano !== 'trial' && user.assinatura_ativa === 1 && user.assinatura_valida_ate) {
+                    const hoje = new Date();
+                    const validaAte = new Date(user.assinatura_valida_ate);
+                    if (hoje > validaAte) {
+                        return res.json({ success: false, message: 'Sua assinatura expirou. Renove para continuar usando o sistema.' });
+                    }
+                    diasRestantes = Math.ceil((validaAte - hoje) / (1000 * 60 * 60 * 24));
                 }
-                user.dias_restantes = Math.ceil((new Date(user.trial_expira) - new Date()) / (1000 * 60 * 60 * 24));
             }
 
             const token = jwt.sign(
@@ -142,7 +244,9 @@ app.post('/api/login', (req, res) => {
                         role: user.role,
                         empresa_id: user.empresa_id,
                         empresa_nome: user.empresa_nome,
-                        dias_restantes: user.dias_restantes
+                        dias_restantes: diasRestantes,
+                        plano: user.plano,
+                        limite_profissionais: user.limite_profissionais
                     }
                 }
             });
@@ -166,7 +270,8 @@ app.post('/api/cadastro', (req, res) => {
         trialExpira.setDate(trialExpira.getDate() + 45);
         const trialData = trialExpira.toISOString().split('T')[0];
 
-        db.run(`INSERT INTO empresas (nome, plano, trial_expira) VALUES (?, 'trial', ?)`,
+        db.run(`INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
+                VALUES (?, 'trial', 1, ?, 1)`,
             [empresa_nome, trialData], function (err) {
                 if (err) {
                     return res.json({ success: false, message: 'Erro ao criar empresa' });
@@ -185,6 +290,146 @@ app.post('/api/cadastro', (req, res) => {
             });
     });
 });
+
+// ============================================
+// ROTAS DE PLANOS
+// ============================================
+
+// Adicione esta rota no server.js se não existir
+app.get('/api/empresa/plano', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+
+    const planosNomes = {
+        'trial': 'Trial',
+        'starter': 'Starter',
+        'pro': 'Pro',
+        'business': 'Business',
+        'enterprise': 'Enterprise'
+    };
+
+    db.get(`SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate 
+            FROM empresas WHERE id = ?`, [empresaId], (err, empresa) => {
+        if (err || !empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        let diasRestantes = 0;
+        let validaAte = null;
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        if (empresa.plano === 'trial' && empresa.trial_expira) {
+            const trialExpira = new Date(empresa.trial_expira);
+            diasRestantes = Math.max(0, Math.ceil((trialExpira - hoje) / (1000 * 60 * 60 * 24)));
+            validaAte = empresa.trial_expira;
+        } else if (empresa.plano !== 'trial' && empresa.assinatura_valida_ate) {
+            const validaAteDate = new Date(empresa.assinatura_valida_ate);
+            diasRestantes = Math.max(0, Math.ceil((validaAteDate - hoje) / (1000 * 60 * 60 * 24)));
+            validaAte = empresa.assinatura_valida_ate;
+        }
+
+        res.json({
+            success: true,
+            data: {
+                plano: empresa.plano,
+                plano_nome: planosNomes[empresa.plano] || empresa.plano,
+                limite_profissionais: empresa.limite_profissionais,
+                assinatura_ativa: empresa.assinatura_ativa,
+                dias_restantes: diasRestantes,
+                valida_ate: validaAte,
+                is_trial: empresa.plano === 'trial'
+            }
+        });
+    });
+});
+
+// Fazer upgrade de plano
+app.post('/api/upgrade', auth, verificarDono, (req, res) => {
+    const { plano, metodo_pagamento, comprovante } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    const planosConfig = {
+        'starter': { limite: 1, valor: 24.90, dias_acesso: 30, nome: 'Starter' },
+        'pro': { limite: 5, valor: 49.90, dias_acesso: 30, nome: 'Pro' },
+        'business': { limite: 12, valor: 99.90, dias_acesso: 30, nome: 'Business' },
+        'enterprise': { limite: 999, valor: 199.90, dias_acesso: 30, nome: 'Enterprise' }
+    };
+
+    if (!planosConfig[plano]) {
+        return res.status(400).json({ success: false, message: 'Plano inválido' });
+    }
+
+    const config = planosConfig[plano];
+    const agora = new Date();
+    const validaAte = new Date();
+    validaAte.setDate(validaAte.getDate() + config.dias_acesso);
+    const validaAteStr = validaAte.toISOString().split('T')[0];
+
+    // Buscar plano atual para histórico
+    db.get('SELECT plano FROM empresas WHERE id = ?', [empresaId], (err, empresaAtual) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        // Verificar se já existe tabela de histórico, se não, criar
+        db.run(`CREATE TABLE IF NOT EXISTS planos_historico (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empresa_id INTEGER,
+            plano_antigo TEXT,
+            plano_novo TEXT,
+            valor_pago REAL,
+            metodo_pagamento TEXT,
+            comprovante TEXT,
+            data_mudanca DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (err) console.error('Erro ao criar tabela historico:', err);
+        });
+
+        // Atualizar empresa
+        db.run(`UPDATE empresas SET 
+                plano = ?, 
+                limite_profissionais = ?,
+                assinatura_ativa = 1,
+                assinatura_valida_ate = ?,
+                trial_expira = NULL
+                WHERE id = ?`,
+            [plano, config.limite, validaAteStr, empresaId],
+            function (err) {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).json({ success: false, message: err.message });
+                }
+
+                // Registrar no histórico
+                db.run(`INSERT INTO planos_historico 
+                        (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
+                        VALUES (?, ?, ?, ?, ?, ?)`,
+                    [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null],
+                    (err) => {
+                        if (err) console.error('Erro ao salvar histórico:', err);
+                    }
+                );
+
+                res.json({
+                    success: true,
+                    message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
+                    data: {
+                        plano: plano,
+                        plano_nome: config.nome,
+                        limite: config.limite,
+                        valida_ate: validaAteStr,
+                        valor: config.valor
+                    }
+                });
+            }
+        );
+    });
+});
+
+// ============================================
+// SUPER ADMIN
+// ============================================
 
 app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
     db.get("SELECT COUNT(*) as total FROM empresas", (err, empresas) => {
@@ -279,6 +524,10 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
     });
 });
 
+// ============================================
+// SERVIÇOS
+// ============================================
+
 app.get('/api/servicos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     if (!empresa_id) return res.json({ success: true, data: [] });
@@ -344,6 +593,10 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
     });
 });
 
+// ============================================
+// PROFISSIONAIS (COM VERIFICAÇÃO DE LIMITE)
+// ============================================
+
 app.get('/api/profissionais', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     if (!empresa_id || req.usuario.role === 'profissional') {
@@ -356,13 +609,9 @@ app.get('/api/profissionais', auth, (req, res) => {
     });
 });
 
-app.post('/api/profissionais', auth, (req, res) => {
+app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais, (req, res) => {
     const { nome, email, comissao_percent, senha } = req.body;
     const empresa_id = req.usuario.empresa_id;
-
-    if (req.usuario.role === 'profissional') {
-        return res.json({ success: false, message: 'Acesso negado' });
-    }
 
     if (!nome || !email) {
         return res.json({ success: false, message: 'Nome e email são obrigatórios' });
@@ -395,14 +644,10 @@ app.post('/api/profissionais', auth, (req, res) => {
         });
 });
 
-app.put('/api/profissionais/:id', auth, (req, res) => {
+app.put('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { nome, email, comissao_percent, ativo, senha } = req.body;
     const empresa_id = req.usuario.empresa_id;
-
-    if (req.usuario.role === 'profissional') {
-        return res.json({ success: false, message: 'Acesso negado' });
-    }
 
     let query = `UPDATE profissionais SET nome = COALESCE(?, nome), email = COALESCE(?, email), comissao_percent = COALESCE(?, comissao_percent), ativo = COALESCE(?, ativo)`;
     let params = [nome, email, comissao_percent, ativo];
@@ -427,7 +672,7 @@ app.put('/api/profissionais/:id', auth, (req, res) => {
     });
 });
 
-app.post('/api/profissionais/:id/reset-senha', auth, (req, res) => {
+app.post('/api/profissionais/:id/reset-senha', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
@@ -441,7 +686,7 @@ app.post('/api/profissionais/:id/reset-senha', auth, (req, res) => {
         });
 });
 
-app.delete('/api/profissionais/:id', auth, (req, res) => {
+app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
@@ -460,141 +705,9 @@ app.delete('/api/profissionais/:id', auth, (req, res) => {
     });
 });
 
-app.get('/api/profissional/agendamentos', auth, (req, res) => {
-    if (req.usuario.role !== 'profissional') {
-        return res.json({ success: false, message: 'Acesso negado' });
-    }
-
-    const profissional_id = req.usuario.id;
-
-    db.all(`
-        SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = ?
-        ORDER BY a.data DESC
-    `, [profissional_id], (err, agendamentos) => {
-        if (err) return res.json({ success: false, message: err.message });
-        res.json({ success: true, data: agendamentos });
-    });
-});
-
-app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
-    if (req.usuario.role !== 'profissional') {
-        return res.json({ success: false, message: 'Acesso negado' });
-    }
-
-    const { id } = req.params;
-    const profissional_id = req.usuario.id;
-    const comissao_percent = req.usuario.comissao_percent || 30;
-
-    db.get(`SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`, [id, profissional_id], (err, agendamento) => {
-        if (err || !agendamento) {
-            return res.json({ success: false, message: 'Agendamento não encontrado' });
-        }
-
-        if (agendamento.status === 'concluido') {
-            return res.json({ success: false, message: 'Agendamento já foi concluído' });
-        }
-
-        const comissao = (agendamento.valor || 0) * (comissao_percent / 100);
-
-        db.run(`UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ?`,
-            [comissao, id], (err) => {
-                if (err) {
-                    return res.json({ success: false, message: err.message });
-                }
-
-                res.json({
-                    success: true,
-                    message: `Agendamento concluído! Sua comissão: R$ ${comissao.toFixed(2)}`,
-                    data: { comissao: comissao }
-                });
-            });
-    });
-});
-
-app.get('/api/profissional/financeiro', auth, (req, res) => {
-    if (req.usuario.role !== 'profissional') {
-        return res.json({ success: false, message: 'Acesso negado' });
-    }
-
-    const profissional_id = req.usuario.id;
-
-    db.all(`
-        SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = ? AND a.status = 'concluido' AND a.comissao > 0
-        ORDER BY a.data DESC
-    `, [profissional_id], (err, comissoes) => {
-        if (err) return res.json({ success: false, message: err.message });
-
-        const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
-
-        res.json({
-            success: true,
-            data: {
-                comissoes: comissoes,
-                totais: {
-                    total_comissoes: totalComissoes,
-                    total_servicos: comissoes.length
-                }
-            }
-        });
-    });
-});
-
-app.get('/api/clientes', auth, (req, res) => {
-    const empresa_id = req.usuario.empresa_id;
-    if (!empresa_id) return res.json({ success: true, data: [] });
-
-    db.all(`SELECT * FROM clientes WHERE empresa_id = ? ORDER BY nome`, [empresa_id], (err, clientes) => {
-        res.json({ success: true, data: clientes });
-    });
-});
-
-app.post('/api/clientes', auth, (req, res) => {
-    const { nome, telefone, email } = req.body;
-    const empresa_id = req.usuario.empresa_id;
-
-    if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
-
-    // Padronizar telefone
-    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
-
-    db.run(`INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`,
-        [nome, telefonePadrao, email, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, data: { id: this.lastID }, message: 'Cliente cadastrado' });
-        });
-});
-
-// Atualizar cliente (PUT)
-app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
-    const { id } = req.params;
-    const { nome, telefone, email } = req.body;
-    const empresa_id = req.usuario.empresa_id;
-
-    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
-
-    db.run(`UPDATE clientes SET nome = COALESCE(?, nome), telefone = COALESCE(?, telefone), email = COALESCE(?, email) WHERE id = ? AND empresa_id = ?`,
-        [nome, telefonePadrao, email, id, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: 'Cliente atualizado com sucesso' });
-        });
-});
-
-app.delete('/api/clientes/:id', auth, (req, res) => {
-    const { id } = req.params;
-    const empresa_id = req.usuario.empresa_id;
-
-    db.run(`DELETE FROM clientes WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function (err) {
-        res.json({ success: true, message: 'Cliente removido' });
-    });
-});
+// ============================================
+// AGENDAMENTOS (COM VERIFICAÇÃO DE ACESSO)
+// ============================================
 
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -615,7 +728,7 @@ app.get('/api/agendamentos', auth, (req, res) => {
     });
 });
 
-app.post('/api/agendamentos', auth, (req, res) => {
+app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
@@ -657,7 +770,115 @@ app.post('/api/agendamentos', auth, (req, res) => {
     });
 });
 
-app.put('/api/agendamentos/:id/concluir', auth, (req, res) => {
+// Rotas de agendamento para profissional
+app.get('/api/profissional/agendamentos', auth, (req, res) => {
+    if (req.usuario.role !== 'profissional') {
+        return res.json({ success: false, message: 'Acesso negado' });
+    }
+
+    const profissional_id = req.usuario.id;
+
+    db.all(`
+        SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.profissional_id = ?
+        ORDER BY a.data DESC
+    `, [profissional_id], (err, agendamentos) => {
+        if (err) return res.json({ success: false, message: err.message });
+        res.json({ success: true, data: agendamentos });
+    });
+});
+
+app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
+    if (req.usuario.role !== 'profissional') {
+        return res.json({ success: false, message: 'Acesso negado' });
+    }
+
+    const { id } = req.params;
+    const { data, hora, cliente_id } = req.body;
+    const profissional_id = req.usuario.id;
+
+    db.get(`SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`, [id, profissional_id], (err, agendamento) => {
+        if (err || !agendamento) {
+            return res.json({ success: false, message: 'Agendamento não encontrado' });
+        }
+
+        if (agendamento.status === 'concluido') {
+            return res.json({ success: false, message: 'Agendamentos concluídos não podem ser editados' });
+        }
+
+        let query = `UPDATE agendamentos SET `;
+        let params = [];
+        let updates = [];
+
+        if (data !== undefined) {
+            updates.push(`data = ?`);
+            params.push(data);
+        }
+        if (hora !== undefined) {
+            updates.push(`hora = ?`);
+            params.push(hora);
+        }
+        if (cliente_id !== undefined) {
+            updates.push(`cliente_id = ?`);
+            params.push(cliente_id);
+        }
+
+        if (updates.length === 0) {
+            return res.json({ success: false, message: 'Nenhum campo para atualizar' });
+        }
+
+        query += updates.join(', ');
+        query += ` WHERE id = ? AND profissional_id = ?`;
+        params.push(id, profissional_id);
+
+        db.run(query, params, function (err) {
+            if (err) {
+                return res.json({ success: false, message: err.message });
+            }
+            res.json({ success: true, message: 'Agendamento atualizado com sucesso' });
+        });
+    });
+});
+
+app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
+    if (req.usuario.role !== 'profissional') {
+        return res.json({ success: false, message: 'Acesso negado' });
+    }
+
+    const { id } = req.params;
+    const profissional_id = req.usuario.id;
+    const comissao_percent = req.usuario.comissao_percent || 30;
+
+    db.get(`SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`, [id, profissional_id], (err, agendamento) => {
+        if (err || !agendamento) {
+            return res.json({ success: false, message: 'Agendamento não encontrado' });
+        }
+
+        if (agendamento.status === 'concluido') {
+            return res.json({ success: false, message: 'Agendamento já foi concluído' });
+        }
+
+        const comissao = (agendamento.valor || 0) * (comissao_percent / 100);
+
+        db.run(`UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ?`,
+            [comissao, id], (err) => {
+                if (err) {
+                    return res.json({ success: false, message: err.message });
+                }
+
+                res.json({
+                    success: true,
+                    message: `Agendamento concluído! Sua comissão: R$ ${comissao.toFixed(2)}`,
+                    data: { comissao: comissao }
+                });
+            });
+    });
+});
+
+app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
@@ -698,7 +919,7 @@ app.put('/api/agendamentos/:id/concluir', auth, (req, res) => {
     });
 });
 
-app.put('/api/agendamentos/:id', auth, (req, res) => {
+app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
@@ -762,7 +983,7 @@ app.put('/api/agendamentos/:id', auth, (req, res) => {
     });
 });
 
-app.delete('/api/agendamentos/:id', auth, (req, res) => {
+app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
@@ -771,7 +992,99 @@ app.delete('/api/agendamentos/:id', auth, (req, res) => {
     });
 });
 
-// ========== ROTAS DE HORARIOS ==========
+// ============================================
+// CLIENTES
+// ============================================
+
+app.get('/api/clientes', auth, (req, res) => {
+    const empresa_id = req.usuario.empresa_id;
+
+    console.log('GET /api/clientes - Empresa ID:', empresa_id);
+
+    if (!empresa_id) {
+        return res.json({ success: true, data: [] });
+    }
+
+    // Garantir que a coluna bloqueado_chatbot existe
+    db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => {
+        // Ignorar erro se já existe
+    });
+
+    db.all(`SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+            FROM clientes 
+            WHERE empresa_id = ? 
+            ORDER BY nome`,
+        [empresa_id],
+        (err, clientes) => {
+            if (err) {
+                console.error('Erro ao buscar clientes:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            console.log(`Clientes encontrados para empresa ${empresa_id}:`, clientes.length);
+            res.json({ success: true, data: clientes });
+        });
+});
+
+app.post('/api/clientes', auth, (req, res) => {
+    const { nome, telefone, email } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+
+    if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
+
+    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+
+    db.run(`INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`,
+        [nome, telefonePadrao, email, empresa_id], function (err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, data: { id: this.lastID }, message: 'Cliente cadastrado' });
+        });
+});
+
+app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
+    const { id } = req.params;
+    const { nome, telefone, email } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+
+    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+
+    db.run(`UPDATE clientes SET nome = COALESCE(?, nome), telefone = COALESCE(?, telefone), email = COALESCE(?, email) WHERE id = ? AND empresa_id = ?`,
+        [nome, telefonePadrao, email, id, empresa_id], function (err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, message: 'Cliente atualizado com sucesso' });
+        });
+});
+
+app.delete('/api/clientes/:id', auth, verificarDono, (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+
+    db.run(`DELETE FROM clientes WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function (err) {
+        res.json({ success: true, message: 'Cliente removido' });
+    });
+});
+
+// Bloquear/desbloquear cliente do chatbot
+app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
+    const { id } = req.params;
+    const { bloquear } = req.body;
+    const empresa_id = req.usuario.empresa_id;
+
+    // Garantir que a coluna existe
+    db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => {
+        // Ignorar erro se já existe
+    });
+
+    db.run(`UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?`,
+        [bloquear ? 1 : 0, id, empresa_id], function (err) {
+            if (err) return res.json({ success: false, message: err.message });
+            res.json({ success: true, message: bloquear ? 'Cliente bloqueado do chatbot' : 'Cliente desbloqueado do chatbot' });
+        });
+});
+
+// ============================================
+// HORÁRIOS
+// ============================================
 
 app.get('/api/horarios', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -795,9 +1108,6 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================
-// ROTA: Buscar horários disponíveis com minutos de 30 em 30
-// ============================================
 app.post('/api/horarios/disponiveis', auth, (req, res) => {
     const { data, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
@@ -831,7 +1141,7 @@ app.post('/api/horarios/disponiveis', auth, (req, res) => {
 
         const abertura = horario.hora_inicio || '09:00';
         const fechamento = horario.hora_fim || '18:00';
-        const intervalo = 30; // Fixo em 30 minutos
+        const intervalo = 30;
 
         const almocoInicio = horario.almoco_inicio || '12:00';
         const almocoFim = horario.almoco_fim || '13:00';
@@ -875,6 +1185,10 @@ app.post('/api/horarios/disponiveis', auth, (req, res) => {
         });
     });
 });
+
+// ============================================
+// FINANCEIRO
+// ============================================
 
 app.get('/api/financeiro', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -991,15 +1305,52 @@ app.get('/api/financeiro', auth, (req, res) => {
     }
 });
 
+app.get('/api/profissional/financeiro', auth, (req, res) => {
+    if (req.usuario.role !== 'profissional') {
+        return res.json({ success: false, message: 'Acesso negado' });
+    }
+
+    const profissional_id = req.usuario.id;
+
+    db.all(`
+        SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.profissional_id = ? AND a.status = 'concluido' AND a.comissao > 0
+        ORDER BY a.data DESC
+    `, [profissional_id], (err, comissoes) => {
+        if (err) return res.json({ success: false, message: err.message });
+
+        const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
+
+        res.json({
+            success: true,
+            data: {
+                comissoes: comissoes,
+                totais: {
+                    total_comissoes: totalComissoes,
+                    total_servicos: comissoes.length
+                }
+            }
+        });
+    });
+});
+
 app.get('/api/empresa/info', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     if (!empresa_id) return res.json({ success: false, message: 'Empresa não encontrada' });
 
-    db.get(`SELECT nome, plano, trial_expira FROM empresas WHERE id = ?`, [empresa_id], (err, empresa) => {
+    db.get(`SELECT nome, plano, trial_expira, limite_profissionais, assinatura_ativa, assinatura_valida_ate 
+            FROM empresas WHERE id = ?`, [empresa_id], (err, empresa) => {
         if (err) return res.json({ success: false, message: err.message });
 
-        const dias_restantes = empresa.trial_expira ?
-            Math.ceil((new Date(empresa.trial_expira) - new Date()) / (1000 * 60 * 60 * 24)) : 0;
+        let dias_restantes = 0;
+        if (empresa.plano === 'trial' && empresa.trial_expira) {
+            dias_restantes = Math.ceil((new Date(empresa.trial_expira) - new Date()) / (1000 * 60 * 60 * 24));
+        } else if (empresa.plano !== 'trial' && empresa.assinatura_valida_ate) {
+            dias_restantes = Math.ceil((new Date(empresa.assinatura_valida_ate) - new Date()) / (1000 * 60 * 60 * 24));
+        }
 
         res.json({
             success: true,
@@ -1015,7 +1366,6 @@ app.get('/api/empresa/info', auth, (req, res) => {
 // ROTAS DO CHATBOT (PÚBLICAS)
 // ============================================
 
-// Obter dados da empresa para o chatbot
 app.get('/api/chatbot/empresa/:id', (req, res) => {
     const { id } = req.params;
 
@@ -1027,7 +1377,6 @@ app.get('/api/chatbot/empresa/:id', (req, res) => {
     });
 });
 
-// Obter serviços da empresa
 app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
@@ -1038,7 +1387,6 @@ app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
         });
 });
 
-// Obter profissionais ativos da empresa
 app.get('/api/chatbot/profissionais/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
@@ -1049,7 +1397,6 @@ app.get('/api/chatbot/profissionais/:empresaId', (req, res) => {
         });
 });
 
-// Buscar dados do dono da empresa
 app.get('/api/chatbot/dono/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
@@ -1062,34 +1409,24 @@ app.get('/api/chatbot/dono/:empresaId', (req, res) => {
         });
 });
 
-// Buscar cliente por telefone (com busca flexível)
-// Buscar cliente por telefone
 app.post('/api/chatbot/cliente/buscar', (req, res) => {
     const { telefone, empresaId } = req.body;
 
-    // Limpar o telefone recebido
     const telefoneLimpo = telefone.replace(/\D/g, '');
 
-    console.log('=== BUSCANDO CLIENTE ===');
-    console.log('Telefone recebido:', telefone);
-    console.log('Telefone limpo:', telefoneLimpo);
-    console.log('Empresa ID:', empresaId);
+    // Garantir que a coluna bloqueado_chatbot existe
+    db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => { });
 
-    // Buscar cliente que tenha este telefone
-    db.get(`SELECT id, nome, telefone, email 
+    db.get(`SELECT id, nome, telefone, email, bloqueado_chatbot 
             FROM clientes 
             WHERE empresa_id = ? AND (telefone = ? OR telefone = ?)`,
         [empresaId, telefoneLimpo, telefone],
         (err, cliente) => {
             if (err) {
-                console.error('Erro na busca:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            console.log('Cliente encontrado:', cliente);
-
             if (cliente) {
-                // Verificar agendamento recente (últimos 20 dias)
                 const dataLimite = new Date();
                 dataLimite.setDate(dataLimite.getDate() - 20);
                 const dataLimiteStr = dataLimite.toISOString().split('T')[0];
@@ -1105,19 +1442,17 @@ app.post('/api/chatbot/cliente/buscar', (req, res) => {
                                 nome: cliente.nome,
                                 telefone: cliente.telefone,
                                 email: cliente.email,
-                                bloqueado_chatbot: 0 // padrão não bloqueado
+                                bloqueado_chatbot: cliente.bloqueado_chatbot || 0
                             },
                             temAgendamentoRecente: !!agendamento
                         });
                     });
             } else {
-                console.log('Nenhum cliente encontrado para o telefone:', telefoneLimpo);
                 res.json({ success: true, cliente: null });
             }
         });
 });
 
-// Criar novo cliente
 app.post('/api/chatbot/cliente/criar', (req, res) => {
     const { nome, telefone, email, empresaId } = req.body;
 
@@ -1149,7 +1484,6 @@ app.post('/api/chatbot/cliente/criar', (req, res) => {
         });
 });
 
-// Buscar datas disponíveis por mês (para o calendário)
 app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     const { empresaId, mes, ano } = req.body;
 
@@ -1185,7 +1519,6 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     });
 });
 
-// Buscar horários disponíveis para uma data específica
 app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     const { empresaId, profissionalId, data } = req.body;
 
@@ -1239,55 +1572,78 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
         });
 });
 
-// Confirmar agendamento via chatbot
 app.post('/api/chatbot/agendar', (req, res) => {
     const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
 
-    db.get('SELECT nome, valor FROM servicos WHERE id = ?', [servicoId], (err, servico) => {
-        if (err || !servico) {
-            return res.json({ success: false, message: 'Serviço não encontrado' });
+    // Verificar se o cliente está bloqueado
+    db.get(`SELECT bloqueado_chatbot FROM clientes WHERE id = ?`, [clienteId], (err, cliente) => {
+        if (err) {
+            return res.json({ success: false, message: err.message });
         }
 
-        let profissionalNome = 'Não atribuído';
-        let profissionalIdReal = null;
-
-        if (profissionalId && profissionalId !== 'null' && !profissionalId.toString().startsWith('dono_')) {
-            profissionalIdReal = profissionalId;
-            db.get('SELECT nome FROM profissionais WHERE id = ?', [profissionalId], (err, profissional) => {
-                if (profissional) profissionalNome = profissional.nome;
-            });
+        if (cliente && cliente.bloqueado_chatbot === 1) {
+            return res.json({ success: false, message: 'Você está bloqueado para agendamentos via chatbot. Entre em contato com a barbearia.' });
         }
+
+        // Verificar limite de 20 dias
+        const dataLimite = new Date();
+        dataLimite.setDate(dataLimite.getDate() - 20);
+        const dataLimiteStr = dataLimite.toISOString().split('T')[0];
 
         db.get(`SELECT id FROM agendamentos 
-                WHERE data = ? AND hora = ? AND profissional_id = ? AND status != 'cancelado'`,
-            [data, hora, profissionalIdReal], (err, existente) => {
-                if (existente) {
-                    return res.json({ success: false, message: 'Este horário já foi reservado' });
+                WHERE cliente_id = ? AND data >= ? AND status != 'cancelado' 
+                LIMIT 1`,
+            [clienteId, dataLimiteStr], (err, agendamentoRecente) => {
+                if (agendamentoRecente) {
+                    return res.json({ success: false, message: 'Você já possui um agendamento nos últimos 20 dias. Aguarde para fazer outro.' });
                 }
 
-                db.run(`INSERT INTO agendamentos 
-                        (cliente_id, servico_id, servico, valor, data, hora, profissional_id, status, empresa_id) 
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`,
-                    [clienteId, servicoId, servico.nome, servico.valor, data, hora, profissionalIdReal, empresaId],
-                    function (err) {
-                        if (err) {
-                            return res.json({ success: false, message: err.message });
-                        }
+                db.get('SELECT nome, valor FROM servicos WHERE id = ?', [servicoId], (err, servico) => {
+                    if (err || !servico) {
+                        return res.json({ success: false, message: 'Serviço não encontrado' });
+                    }
 
-                        res.json({
-                            success: true,
-                            message: `Seu agendamento foi confirmado para ${data} às ${hora}`,
-                            profissionalNome: profissionalNome,
-                            servicoNome: servico.nome,
-                            valor: servico.valor,
-                            agendamentoId: this.lastID
+                    let profissionalNome = 'Não atribuído';
+                    let profissionalIdReal = null;
+
+                    if (profissionalId && profissionalId !== 'null' && !profissionalId.toString().startsWith('dono_')) {
+                        profissionalIdReal = profissionalId;
+                        db.get('SELECT nome FROM profissionais WHERE id = ?', [profissionalId], (err, profissional) => {
+                            if (profissional) profissionalNome = profissional.nome;
                         });
-                    });
+                    }
+
+                    db.get(`SELECT id FROM agendamentos 
+                            WHERE data = ? AND hora = ? AND profissional_id = ? AND status != 'cancelado'`,
+                        [data, hora, profissionalIdReal], (err, existente) => {
+                            if (existente) {
+                                return res.json({ success: false, message: 'Este horário já foi reservado' });
+                            }
+
+                            db.run(`INSERT INTO agendamentos 
+                                    (cliente_id, servico_id, servico, valor, data, hora, profissional_id, status, empresa_id) 
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`,
+                                [clienteId, servicoId, servico.nome, servico.valor, data, hora, profissionalIdReal, empresaId],
+                                function (err) {
+                                    if (err) {
+                                        return res.json({ success: false, message: err.message });
+                                    }
+
+                                    res.json({
+                                        success: true,
+                                        message: `Seu agendamento foi confirmado para ${data} às ${hora}`,
+                                        profissionalNome: profissionalNome,
+                                        servicoNome: servico.nome,
+                                        valor: servico.valor,
+                                        agendamentoId: this.lastID
+                                    });
+                                });
+                        });
+                });
             });
     });
 });
 
-// Rota para o Dono obter o link do chatbot
 app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
     const { empresaId } = req.params;
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -1296,40 +1652,17 @@ app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
     res.json({ success: true, link });
 });
 
-// Rota para o Dono bloquear/desbloquear cliente do chatbot
-// Rota para o Dono bloquear/desbloquear cliente do chatbot
-app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
-    const { id } = req.params;
-    const { bloquear } = req.body;
-    const empresa_id = req.usuario.empresa_id;
-
-    // Primeiro verificar se a coluna existe
-    db.get(`PRAGMA table_info(clientes)`, (err, columns) => {
-        // Verificar se a coluna bloqueado_chatbot existe
-        db.get(`SELECT bloqueado_chatbot FROM clientes LIMIT 1`, (err, result) => {
-            if (err && err.message.includes('no such column')) {
-                // Coluna não existe, criar
-                db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => {
-                    if (err) return res.json({ success: false, message: err.message });
-                    executarUpdate();
-                });
-            } else {
-                executarUpdate();
-            }
-        });
-    });
-
-    function executarUpdate() {
-        db.run(`UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?`,
-            [bloquear ? 1 : 0, id, empresa_id], function (err) {
-                if (err) return res.json({ success: false, message: err.message });
-                res.json({ success: true, message: bloquear ? 'Cliente bloqueado do chatbot' : 'Cliente desbloqueado do chatbot' });
-            });
-    }
-});
+// ============================================
+// INICIALIZAÇÃO DO SERVIDOR
+// ============================================
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
     console.log(`📧 Super Admin: super@admin.com / super123`);
     console.log(`📧 Dono: admin@teste.com / 123456`);
+    console.log(`\n💰 PLANOS DISPONÍVEIS:`);
+    console.log(`   Starter: R$ 24,90/mês - 1 profissional`);
+    console.log(`   Pro: R$ 49,90/mês - 5 profissionais`);
+    console.log(`   Business: R$ 99,90/mês - 12 profissionais`);
+    console.log(`   Enterprise: R$ 199,90/mês - Profissionais ilimitados`);
 });

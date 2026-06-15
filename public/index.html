@@ -99,6 +99,17 @@
         </div>
     </div>
 
+    <!-- Modal de Upgrade de Plano -->
+    <div id="modalUpgrade" class="modal">
+        <div class="modal-content">
+            <h3>💎 Fazer Upgrade</h3>
+            <div id="upgradeContent"></div>
+            <div class="modal-buttons" style="margin-top:20px;">
+                <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- UI JS -->
     <script src="/js/ui.js"></script>
 
@@ -149,7 +160,7 @@
                     document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 DONO</span>';
                     if (usuario.dias_restantes && usuario.dias_restantes > 0) {
                         document.getElementById('trialInfo').style.display = 'block';
-                        document.getElementById('trialInfo').innerHTML = '⚠️ Período de teste: ' + usuario.dias_restantes + ' dias restantes';
+                        document.getElementById('trialInfo').innerHTML = '⚠️ Período de teste: ' + usuario.dias_restantes + ' dias restantes. <a href="#" onclick="carregarPlanos()">Fazer upgrade →</a>';
                     }
                 }
 
@@ -228,7 +239,8 @@
                     { id: 'servicos', nome: 'Serviços', icone: 'fa-cut', funcao: 'carregarServicos' },
                     { id: 'financeiro', nome: 'Financeiro', icone: 'fa-chart-simple', funcao: 'carregarFinanceiro' },
                     { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
-                    { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' }
+                    { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
+                    { id: 'planos', nome: '💎 Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
                 ];
             }
 
@@ -255,7 +267,8 @@
             '/js/pages/financeiro.js',
             '/js/pages/empresas.js',
             '/js/pages/configuracoes.js',
-            '/js/pages/servicos.js'
+            '/js/pages/servicos.js',
+            '/js/pages/planos.js'
         ];
 
         scripts.forEach(src => {
@@ -275,6 +288,7 @@
             if (typeof carregarEmpresas !== 'undefined') window.carregarEmpresas = carregarEmpresas;
             if (typeof carregarConfiguracoes !== 'undefined') window.carregarConfiguracoes = carregarConfiguracoes;
             if (typeof carregarServicos !== 'undefined') window.carregarServicos = carregarServicos;
+            if (typeof carregarPlanos !== 'undefined') window.carregarPlanos = carregarPlanos;
         }, 200);
 
         const savedToken = localStorage.getItem('token');

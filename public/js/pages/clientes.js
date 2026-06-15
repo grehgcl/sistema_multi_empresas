@@ -1,97 +1,115 @@
 ﻿// pages/clientes.js - COM BLOQUEIO DE CHATBOT E EDIÇÃO
 
 async function carregarClientes() {
+    console.log("🟢 carregarClientes chamada");
     ativarBotao('clientes');
     showLoading();
 
     const token = localStorage.getItem('token');
 
-    const res = await fetch('/api/clientes', {
-        headers: { 'Authorization': 'Bearer ' + token }
-    });
-    const clientes = (await res.json()).data || [];
+    try {
+        const res = await fetch('/api/clientes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
 
-    let html = `
-        <div class="fade-in">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                <h2 class="page-title">👥 Clientes</h2>
-                <button class="btn btn-primary" onclick="abrirModalCliente()">+ Novo Cliente</button>
-            </div>
-            <div class="card">
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th>Telefone</th>
-                                <th>Email</th>
-                                <th>Chatbot</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-    `;
+        console.log("Resposta da API:", data);
 
-    if (clientes.length === 0) {
-        html += `
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 40px;">
-                    <span style="font-size: 48px;">👥</span>
-                    <p>Nenhum cliente cadastrado</p>
-                    <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">
-                        Adicionar Cliente
-                    </button>
-                </td>
-            </tr>
+        // Garantir que pegamos os clientes corretamente
+        const clientes = data.data || [];
+
+        console.log("Clientes a serem exibidos:", clientes.length);
+
+        let html = `
+            <div class="fade-in">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+                    <h2 class="page-title">👥 Clientes</h2>
+                    <button class="btn btn-primary" onclick="abrirModalCliente()">+ Novo Cliente</button>
+                </div>
+                <div class="card">
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nome</th>
+                                    <th>Telefone</th>
+                                    <th>Email</th>
+                                    <th>Chatbot</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
         `;
-    } else {
-        for (let c of clientes) {
+
+        if (clientes.length === 0) {
             html += `
                 <tr>
-                    <td><strong>${escapeHtml(c.nome)}</strong></td>
-                    <td>${c.telefone || '-'}</td>
-                    <td>${c.email || '-'}</td>
-                    <td>
-                        ${c.bloqueado_chatbot === 1 ?
-                    '<span class="badge badge-danger">🔒 Bloqueado</span>' :
-                    '<span class="badge badge-success">🔓 Liberado</span>'
-                }
-                    </td>
-                    <td class="actions-cell">
-                        <button class="btn-icon" onclick="editarCliente(${c.id})" title="Editar Cliente">
-                            ✏️
-                        </button>
-                        ${c.bloqueado_chatbot === 1 ?
-                    `<button class="btn-icon" onclick="desbloquearChatbot(${c.id})" title="Liberar Chatbot" style="color:#10b981;">
-                                🤖🔓
-                            </button>` :
-                    `<button class="btn-icon" onclick="bloquearChatbot(${c.id})" title="Bloquear Chatbot" style="color:#ef4444;">
-                                🤖🔒
-                            </button>`
-                }
-                        <button class="btn-icon btn-danger" onclick="excluirCliente(${c.id})" title="Excluir">
-                            🗑️
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        <span style="font-size: 48px;">👥</span>
+                        <p>Nenhum cliente cadastrado</p>
+                        <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">
+                            Adicionar Cliente
                         </button>
                     </td>
                 </tr>
             `;
+        } else {
+            for (let c of clientes) {
+                html += `
+                    <tr>
+                        <td>${c.id}</
+                        <td><strong>${escapeHtml(c.nome)}</strong></td>
+                        <td>${c.telefone || '-'}</
+                        <td>${c.email || '-'}</
+                        <td>
+                            ${c.bloqueado_chatbot === 1 ?
+                        '<span class="badge badge-danger">🔒 Bloqueado</span>' :
+                        '<span class="badge badge-success">🔓 Liberado</span>'
+                    }
+                        </
+                        <td class="actions-cell">
+                            <button class="btn-icon" onclick="editarCliente(${c.id})" title="Editar Cliente">
+                                ✏️
+                            </button>
+                            ${c.bloqueado_chatbot === 1 ?
+                        `<button class="btn-icon" onclick="desbloquearChatbot(${c.id})" title="Liberar Chatbot" style="color:#10b981;">
+                                    🤖🔓
+                                </button>` :
+                        `<button class="btn-icon" onclick="bloquearChatbot(${c.id})" title="Bloquear Chatbot" style="color:#ef4444;">
+                                    🤖🔒
+                                </button>`
+                    }
+                            <button class="btn-icon btn-danger" onclick="excluirCliente(${c.id})" title="Excluir">
+                                🗑️
+                            </button>
+                        </
+                    </tr>
+                `;
+            }
         }
-    }
 
-    html += `
-                        </tbody>
-                    </table>
+        html += `
+                            </tbody>
+                        60
+                    </div>
                 </div>
             </div>
-        </div>
-    `;
+        `;
 
-    document.getElementById('content').innerHTML = html;
+        document.getElementById('content').innerHTML = html;
+    } catch (error) {
+        console.error("Erro ao carregar clientes:", error);
+        showToast("Erro ao carregar clientes", "error");
+    }
+
     hideLoading();
 }
 
 // Abrir modal para novo cliente
 window.abrirModalCliente = function () {
+    console.log("🟡 abrirModalCliente chamada");
+
     const modalHtml = `
         <div id="modalCliente" class="modal" style="display: flex;">
             <div class="modal-content" style="max-width: 400px;">
@@ -110,7 +128,7 @@ window.abrirModalCliente = function () {
                         <input type="email" id="clienteEmail" class="form-control" placeholder="cliente@email.com">
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="fecharModal('modalCliente')">Cancelar</button>
+                        <button type="button" class="btn btn-secondary" onclick="fecharModalCliente()">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>
@@ -124,13 +142,23 @@ window.abrirModalCliente = function () {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 };
 
+// Fechar modal do cliente
+function fecharModalCliente() {
+    const modal = document.getElementById('modalCliente');
+    if (modal) modal.remove();
+}
+
 // Salvar novo cliente
 window.salvarCliente = async function (event) {
     if (event) event.preventDefault();
 
+    console.log("🟠 salvarCliente chamada");
+
     const nome = document.getElementById('clienteNome').value;
     const telefone = document.getElementById('clienteTelefone').value;
     const email = document.getElementById('clienteEmail').value;
+
+    console.log("Dados:", { nome, telefone, email });
 
     if (!nome) {
         showToast('Nome é obrigatório', 'warning');
@@ -140,24 +168,34 @@ window.salvarCliente = async function (event) {
     showLoading();
 
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/clientes', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + token
-        },
-        body: JSON.stringify({ nome, telefone, email })
-    });
-    const data = await res.json();
 
-    hideLoading();
+    try {
+        const res = await fetch('/api/clientes', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ nome, telefone, email })
+        });
 
-    if (data.success) {
-        showToast('Cliente cadastrado com sucesso!', 'success');
-        fecharModal('modalCliente');
-        carregarClientes();
-    } else {
-        showToast(data.message, 'error');
+        const data = await res.json();
+        console.log("Resposta API:", data);
+
+        hideLoading();
+
+        if (data.success) {
+            showToast('Cliente cadastrado com sucesso!', 'success');
+            fecharModalCliente();
+            // Forçar recarregamento da lista
+            await carregarClientes();
+        } else {
+            showToast(data.message || 'Erro ao cadastrar cliente', 'error');
+        }
+    } catch (error) {
+        console.error("Erro no fetch:", error);
+        hideLoading();
+        showToast('Erro ao cadastrar cliente', 'error');
     }
 };
 
@@ -225,31 +263,31 @@ window.atualizarCliente = async function (event, id) {
     const token = localStorage.getItem('token');
 
     try {
-        // Primeiro buscar o cliente atual
-        const resGet = await fetch('/api/clientes', {
-            headers: { 'Authorization': 'Bearer ' + token }
+        const res = await fetch(`/api/clientes/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ nome, telefone, email })
         });
-        const clientes = (await resGet.json()).data || [];
-        const clienteAtual = clientes.find(c => c.id === id);
 
-        if (!clienteAtual) {
-            showToast('Cliente não encontrado', 'error');
-            hideLoading();
-            return;
+        const data = await res.json();
+
+        hideLoading();
+
+        if (data.success) {
+            showToast('Cliente atualizado com sucesso!', 'success');
+            fecharModal('modalEditarCliente');
+            carregarClientes();
+        } else {
+            showToast(data.message || 'Erro ao atualizar cliente', 'error');
         }
-
-        // Atualizar via PUT (como não temos endpoint PUT, vamos deletar e recriar ou usar um endpoint específico)
-        // Como não temos endpoint PUT, vamos usar o mesmo POST? Não, melhor criar um endpoint PUT no server.js
-        // Por enquanto, vamos recarregar a página e mostrar mensagem que precisa de endpoint
-        showToast('Funcionalidade em desenvolvimento. Por favor, exclua e recrie o cliente.', 'warning');
-
     } catch (error) {
         console.error('Erro ao atualizar cliente:', error);
+        hideLoading();
         showToast('Erro ao atualizar cliente', 'error');
     }
-
-    hideLoading();
-    fecharModal('modalEditarCliente');
 };
 
 // Excluir cliente
@@ -259,14 +297,20 @@ window.excluirCliente = async function (id) {
     showLoading();
 
     const token = localStorage.getItem('token');
-    await fetch('/api/clientes/' + id, {
+    const res = await fetch('/api/clientes/' + id, {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer ' + token }
     });
+    const data = await res.json();
 
     hideLoading();
-    showToast('Cliente removido', 'success');
-    carregarClientes();
+
+    if (data.success) {
+        showToast('Cliente removido', 'success');
+        carregarClientes();
+    } else {
+        showToast(data.message || 'Erro ao excluir cliente', 'error');
+    }
 };
 
 // Bloquear cliente do chatbot
@@ -333,6 +377,11 @@ window.desbloquearChatbot = async function (id) {
     }
 };
 
+function fecharModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+}
+
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -340,4 +389,6 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// Exportar funções
 window.carregarClientes = carregarClientes;
+window.fecharModalCliente = fecharModalCliente;
