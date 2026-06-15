@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
-    <title>Barbearia Pro</title>
+    <title>See&Agende - Gestão para Salões, Barbearias e Estéticas</title>
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,36 +17,543 @@
 
     <!-- CSS Principal -->
     <link rel="stylesheet" href="/css/style.css">
+
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 </head>
 
 <body>
-    <div id="loginContainer" class="container">
-        <div class="box">
-            <h2>Login</h2>
-            <input type="email" id="loginEmail" placeholder="Email">
-            <input type="password" id="loginSenha" placeholder="Senha">
-            <button onclick="fazerLogin()">Entrar</button>
-            <div class="link" onclick="mostrarCadastro()">Não tem conta? Cadastre-se</div>
-            <div id="loginMessage" class="error"></div>
+    <!-- LANDING PAGE DE VENDAS -->
+    <div id="landingContainer">
+        <!-- MENU SUPERIOR -->
+        <nav class="navbar-landing">
+            <div class="nav-container">
+                <div class="nav-logo">
+                    <i class="fas fa-eye"></i>
+                    <span>See<span>&Agende</span></span>
+                </div>
+                <div class="nav-menu">
+                    <a href="#funcionalidades">Funcionalidades</a>
+                    <a href="#planos">Planos</a>
+                    <a href="#depoimentos">Depoimentos</a>
+                    <a href="#contato">Contato</a>
+                </div>
+                <div class="nav-buttons">
+                    <button class="btn-outline" onclick="mostrarLoginApp()">Entrar</button>
+                    <button class="btn-primary" onclick="mostrarCadastroApp()">Começar Grátis</button>
+                </div>
+                <button class="mobile-menu-btn" onclick="toggleMobileNav()">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- HERO PRINCIPAL -->
+        <section class="hero-section">
+            <div class="hero-container">
+                <div class="hero-content" data-aos="fade-right">
+                    <h1>Pare de perder clientes por <span>falta de organização</span></h1>
+                    <p>Agendamentos automáticos, financeiro, comissões e WhatsApp em um único sistema.</p>
+                    <div class="hero-badges">
+                        <span><i class="fas fa-check-circle"></i> 45 dias grátis</span>
+                        <span><i class="fas fa-credit-card"></i> Sem cartão de crédito</span>
+                        <span><i class="fas fa-clock"></i> Configuração em menos de 5 minutos</span>
+                    </div>
+                    <div class="hero-buttons">
+                        <button class="btn-hero-primary" onclick="mostrarCadastroApp()">COMEÇAR GRÁTIS</button>
+                        <button class="btn-hero-secondary" onclick="verDemonstracao()">VER DEMONSTRAÇÃO</button>
+                    </div>
+                </div>
+                <div class="hero-image" data-aos="fade-left">
+                    <div class="dashboard-mockup">
+                        <div class="mockup-header">
+                            <div class="mockup-dots">
+                                <span></span><span></span><span></span>
+                            </div>
+                            <div class="mockup-title">See&Agende Dashboard</div>
+                        </div>
+                        <div class="mockup-stats">
+                            <div class="mockup-stat">
+                                <div class="mockup-stat-value">R$ 12.450</div>
+                                <div class="mockup-stat-label">Faturamento</div>
+                            </div>
+                            <div class="mockup-stat">
+                                <div class="mockup-stat-value">156</div>
+                                <div class="mockup-stat-label">Agendamentos</div>
+                            </div>
+                            <div class="mockup-stat">
+                                <div class="mockup-stat-value">32</div>
+                                <div class="mockup-stat-label">Clientes</div>
+                            </div>
+                        </div>
+                        <div class="mockup-chart"></div>
+                        <div class="mockup-footer">
+                            <div class="mockup-appointments">
+                                <div class="mockup-appointment">
+                                    <span class="time">14:00</span>
+                                    <span>João - Corte</span>
+                                </div>
+                                <div class="mockup-appointment">
+                                    <span class="time">15:30</span>
+                                    <span>Maria - Progressiva</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ESTATÍSTICAS -->
+        <section class="stats-section">
+            <div class="stats-container">
+                <div class="stat-item" data-aos="zoom-in">
+                    <div class="stat-number">+1.500</div>
+                    <div class="stat-label">Agendamentos realizados</div>
+                </div>
+                <div class="stat-item" data-aos="zoom-in" data-aos-delay="100">
+                    <div class="stat-number">+300</div>
+                    <div class="stat-label">Negócios atendidos</div>
+                </div>
+                <div class="stat-item" data-aos="zoom-in" data-aos-delay="200">
+                    <div class="stat-number">24h</div>
+                    <div class="stat-label">Agendamento Online</div>
+                </div>
+                <div class="stat-item" data-aos="zoom-in" data-aos-delay="300">
+                    <div class="stat-number">99,9%</div>
+                    <div class="stat-label">Disponibilidade</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO PROBLEMA -->
+        <section class="problem-section">
+            <div class="container">
+                <h2 class="section-title" data-aos="fade-up">Seu negócio sofre com isso?</h2>
+                <div class="problem-grid">
+                    <div class="problem-card" data-aos="flip-left">
+                        <i class="fas fa-book"></i>
+                        <h3>❌ Agenda no papel</h3>
+                        <p>Rabiscos, rasuras e risco de perder informações importantes</p>
+                    </div>
+                    <div class="problem-card" data-aos="flip-left" data-aos-delay="100">
+                        <i class="fas fa-clock"></i>
+                        <h3>❌ Clientes esquecem horários</h3>
+                        <p>Faltas de última hora que prejudicam seu faturamento</p>
+                    </div>
+                    <div class="problem-card" data-aos="flip-left" data-aos-delay="200">
+                        <i class="fas fa-calculator"></i>
+                        <h3>❌ Comissões calculadas manualmente</h3>
+                        <p>Erros e retrabalho no fechamento do mês</p>
+                    </div>
+                    <div class="problem-card" data-aos="flip-left" data-aos-delay="300">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>❌ Controle financeiro confuso</h3>
+                        <p>Sem visibilidade real do lucro do seu negócio</p>
+                    </div>
+                    <div class="problem-card" data-aos="flip-left" data-aos-delay="400">
+                        <i class="fab fa-whatsapp"></i>
+                        <h3>❌ Atendimento preso ao WhatsApp</h3>
+                        <p>Perde horas respondendo mensagens repetitivas</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO SOLUÇÃO -->
+        <section id="funcionalidades" class="solution-section">
+            <div class="container">
+                <h2 class="section-title" data-aos="fade-up">Tudo em um <span>único sistema</span></h2>
+                <div class="solution-grid">
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="0">
+                        <i class="fas fa-calendar-alt"></i>
+                        <h3>📅 Agenda Inteligente</h3>
+                        <p>Agendamentos com intervalo de 30 minutos, evita conflitos</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="100">
+                        <i class="fas fa-robot"></i>
+                        <h3>🤖 Chatbot 24h</h3>
+                        <p>Clientes agendam automaticamente, mesmo fora do horário</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="200">
+                        <i class="fas fa-chart-line"></i>
+                        <h3>💰 Financeiro Completo</h3>
+                        <p>Faturamento, comissões e lucro líquido em tempo real</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="300">
+                        <i class="fas fa-users"></i>
+                        <h3>👥 Cadastro de Clientes</h3>
+                        <p>Histórico completo, bloqueio de chatbot e fidelização</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="400">
+                        <i class="fas fa-chart-pie"></i>
+                        <h3>📈 Relatórios</h3>
+                        <p>Gráficos e análises para decisões estratégicas</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="500">
+                        <i class="fas fa-percent"></i>
+                        <h3>💸 Comissões Automáticas</h3>
+                        <p>Cálculo automático, sem erros e sem retrabalho</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO MOSTRAR O SISTEMA -->
+        <section class="showcase-section">
+            <div class="container">
+                <h2 class="section-title" data-aos="fade-up">Veja o <span>See&Agende</span> funcionando</h2>
+                <div class="showcase-grid">
+                    <div class="showcase-card" data-aos="flip-up">
+                        <div class="showcase-image">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3>Dashboard</h3>
+                        <p>Visão completa do seu negócio em um só lugar</p>
+                    </div>
+                    <div class="showcase-card" data-aos="flip-up" data-aos-delay="100">
+                        <div class="showcase-image">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <h3>Agenda</h3>
+                        <p>Visualize e gerencie todos os agendamentos</p>
+                    </div>
+                    <div class="showcase-card" data-aos="flip-up" data-aos-delay="200">
+                        <div class="showcase-image">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <h3>Financeiro</h3>
+                        <p>Controle total de receitas e comissões</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO BENEFÍCIOS -->
+        <section class="benefits-section">
+            <div class="container">
+                <div class="benefits-container">
+                    <div class="benefits-content" data-aos="fade-right">
+                        <h2>Resultados reais<br><span>para o seu negócio</span></h2>
+                        <div class="benefits-list">
+                            <div class="benefit-item">
+                                <i class="fas fa-chart-line"></i>
+                                <div>
+                                    <h4>Aumente seus agendamentos</h4>
+                                    <p>Até 40% mais agendamentos com chatbot 24/7</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <i class="fas fa-bell-slash"></i>
+                                <div>
+                                    <h4>Reduza faltas de clientes</h4>
+                                    <p>Lembretes automáticos reduzem em até 70% as faltas</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <i class="fas fa-users-gear"></i>
+                                <div>
+                                    <h4>Controle sua equipe</h4>
+                                    <p>Comissões automatizadas e metas por profissional</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <i class="fas fa-file-alt"></i>
+                                <div>
+                                    <h4>Receba relatórios automáticos</h4>
+                                    <p>Decisões baseadas em dados reais</p>
+                                </div>
+                            </div>
+                            <div class="benefit-item">
+                                <i class="fas fa-hourglass-half"></i>
+                                <div>
+                                    <h4>Economize horas por semana</h4>
+                                    <p>Automatize tarefas repetitivas e foque no que importa</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="benefits-image" data-aos="fade-left">
+                        <div class="result-mockup">
+                            <div class="result-card">
+                                <i class="fas fa-chart-line"></i>
+                                <div class="result-value">+40%</div>
+                                <div class="result-label">Mais agendamentos</div>
+                            </div>
+                            <div class="result-card">
+                                <i class="fas fa-calendar-check"></i>
+                                <div class="result-value">-70%</div>
+                                <div class="result-label">Menos faltas</div>
+                            </div>
+                            <div class="result-card">
+                                <i class="fas fa-clock"></i>
+                                <div class="result-value">5h/semana</div>
+                                <div class="result-label">Economia de tempo</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO DEPOIMENTOS -->
+        <section id="depoimentos" class="testimonials-section">
+            <div class="container">
+                <h2 class="section-title" data-aos="fade-up">O que nossos clientes dizem</h2>
+                <div class="testimonials-grid">
+                    <div class="testimonial-card" data-aos="fade-up" data-aos-delay="0">
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <p>"Reduzimos em 70% as faltas dos clientes. O chatbot é sensacional!"</p>
+                        <div class="testimonial-author">
+                            <strong>João Silva</strong>
+                            <span>Barbearia Premium</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-card" data-aos="fade-up" data-aos-delay="100">
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <p>"Hoje controlamos toda a comissão da equipe de forma automática."</p>
+                        <div class="testimonial-author">
+                            <strong>Marina Souza</strong>
+                            <span>Beauty Studio</span>
+                        </div>
+                    </div>
+                    <div class="testimonial-card" data-aos="fade-up" data-aos-delay="200">
+                        <div class="stars">⭐⭐⭐⭐⭐</div>
+                        <p>"O melhor investimento que fiz para minha barbearia. Recomendo!"</p>
+                        <div class="testimonial-author">
+                            <strong>Carlos Mendes</strong>
+                            <span>Mendes Barbearia</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO COMPARAÇÃO -->
+        <section class="comparison-section">
+            <div class="container">
+                <h2 class="section-title" data-aos="fade-up">Por que escolher o <span>See&Agende</span>?</h2>
+                <div class="comparison-table" data-aos="fade-up">
+                    <div class="comparison-row header">
+                        <div>Funcionalidades</div>
+                        <div>See&Agende</div>
+                        <div>Outros Sistemas</div>
+                    </div>
+                    <div class="comparison-row">
+                        <div>45 dias grátis</div>
+                        <div><i class="fas fa-check-circle"></i> Sim</div>
+                        <div><i class="fas fa-times-circle"></i> Não</div>
+                    </div>
+                    <div class="comparison-row">
+                        <div>Chatbot Automático</div>
+                        <div><i class="fas fa-check-circle"></i> Sim</div>
+                        <div><i class="fas fa-times-circle"></i> Não</div>
+                    </div>
+                    <div class="comparison-row">
+                        <div>Comissões Automáticas</div>
+                        <div><i class="fas fa-check-circle"></i> Sim</div>
+                        <div><i class="fas fa-check-circle"></i> Sim</div>
+                    </div>
+                    <div class="comparison-row">
+                        <div>Suporte WhatsApp</div>
+                        <div><i class="fas fa-check-circle"></i> Sim</div>
+                        <div><i class="fas fa-times-circle"></i> Não</div>
+                    </div>
+                    <div class="comparison-row">
+                        <div>Preço inicial acessível</div>
+                        <div><i class="fas fa-check-circle"></i> R$ 24,90</div>
+                        <div><i class="fas fa-times-circle"></i> R$ 89,90+</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SEÇÃO PLANOS -->
+        <!-- SEÇÃO PLANOS -->
+        <section id="planos" class="pricing-section">
+            <div class="container">
+                <h2 class="section-title" data-aos="fade-up">Planos para todos os tamanhos</h2>
+                <div class="pricing-grid">
+                    <div class="pricing-card" data-aos="fade-up" data-aos-delay="0">
+                        <div class="pricing-name">Starter</div>
+                        <div class="pricing-price">R$ 24,90<span>/mês</span></div>
+                        <div class="pricing-users">👥 Até 1 profissional</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Chatbot Completo</li>
+                            <li><i class="fas fa-check"></i> Relatórios Básicos</li>
+                            <li><i class="fas fa-check"></i> Suporte por Email</li>
+                            <li><i class="fas fa-check"></i> Gestão de Clientes</li>
+                            <li><i class="fas fa-check"></i> Agenda Inteligente</li>
+                        </ul>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                    </div>
+
+                    <div class="pricing-card popular" data-aos="fade-up" data-aos-delay="100">
+                        <div class="popular-badge">⭐ Mais Popular</div>
+                        <div class="pricing-name">Pro</div>
+                        <div class="pricing-price">R$ 49,90<span>/mês</span></div>
+                        <div class="pricing-users">👥 Até 5 profissionais</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Chatbot Completo</li>
+                            <li><i class="fas fa-check"></i> Relatórios Avançados</li>
+                            <li><i class="fas fa-check"></i> Suporte WhatsApp</li>
+                            <li><i class="fas fa-check"></i> Dashboard Analytics</li>
+                            <li><i class="fas fa-check"></i> Comissões Automáticas</li>
+                        </ul>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                    </div>
+
+                    <div class="pricing-card" data-aos="fade-up" data-aos-delay="200">
+                        <div class="pricing-name">Business</div>
+                        <div class="pricing-price">R$ 99,90<span>/mês</span></div>
+                        <div class="pricing-users">👥 Até 12 profissionais</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Chatbot Premium</li>
+                            <li><i class="fas fa-check"></i> Relatórios Customizáveis</li>
+                            <li><i class="fas fa-check"></i> Suporte Prioritário</li>
+                            <li><i class="fas fa-check"></i> API Básica</li>
+                            <li><i class="fas fa-check"></i> Até 12 Profissionais</li>
+                        </ul>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                    </div>
+
+                    <div class="pricing-card" data-aos="fade-up" data-aos-delay="300">
+                        <div class="pricing-name">Enterprise</div>
+                        <div class="pricing-price">R$ 199,90<span>/mês</span></div>
+                        <div class="pricing-users">👥 Ilimitado</div>
+                        <ul class="pricing-features">
+                            <li><i class="fas fa-check"></i> Tudo do Business</li>
+                            <li><i class="fas fa-check"></i> API Completa</li>
+                            <li><i class="fas fa-check"></i> Suporte Dedicado</li>
+                            <li><i class="fas fa-check"></i> Onboarding Personalizado</li>
+                            <li><i class="fas fa-check"></i> Profissionais Ilimitados</li>
+                        </ul>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                    </div>
+                </div>
+                <p class="pricing-note">* Todos os planos incluem 45 dias de teste grátis</p>
+            </div>
+        </section>
+
+        <!-- CHAMADA FINAL -->
+        <section class="cta-section">
+            <div class="cta-container" data-aos="zoom-in">
+                <h2>Pronto para organizar seu negócio?</h2>
+                <p>Experimente todas as funcionalidades por 45 dias.<br>Sem cartão de crédito. Sem compromisso.</p>
+                <button class="btn-cta" onclick="mostrarCadastroApp()">COMEÇAR AGORA <i
+                        class="fas fa-arrow-right"></i></button>
+            </div>
+        </section>
+
+        <!-- RODAPÉ -->
+        <footer class="footer" id="contato">
+            <div class="footer-container">
+                <div class="footer-col">
+                    <div class="footer-logo">
+                        <i class="fas fa-eye"></i>
+                        <span>See<span>&Agende</span></span>
+                    </div>
+                    <p>Sistema para barbearias, salões de beleza, estéticas e clínicas</p>
+                    <div class="footer-social">
+                        <a href="#"><i class="fab fa-whatsapp"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-facebook"></i></a>
+                    </div>
+                </div>
+                <div class="footer-col">
+                    <h4>Produto</h4>
+                    <a href="#funcionalidades">Funcionalidades</a>
+                    <a href="#planos">Planos</a>
+                    <a href="#depoimentos">Depoimentos</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Suporte</h4>
+                    <a href="#">Central de Ajuda</a>
+                    <a href="#">Contato</a>
+                    <a href="#">Política de Privacidade</a>
+                </div>
+                <div class="footer-col">
+                    <h4>Contato</h4>
+                    <p><i class="fas fa-envelope"></i> contato@seeagende.com</p>
+                    <p><i class="fab fa-whatsapp"></i> (11) 99999-9999</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>© 2026 See&Agende. Todos os direitos reservados.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- TELAS DE LOGIN E CADASTRO -->
+    <div id="loginContainer" class="login-wrapper" style="display:none">
+        <div class="login-card">
+            <div class="card-header">
+                <div class="logo-icon">
+                    <i class="fas fa-eye"></i>
+                </div>
+                <h2>See&Agende</h2>
+                <p>Acesse sua conta para gerenciar seu negócio</p>
+                <button class="btn-back" onclick="mostrarLanding()">← Voltar</button>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="loginEmail" placeholder="seu@email.com">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginSenha" placeholder="Sua senha">
+                    <i class="fas fa-eye-slash toggle-pwd" onclick="togglePassword()"></i>
+                </div>
+                <button class="btn-login" onclick="fazerLogin()">Entrar</button>
+                <div id="loginMessage" class="error-message"></div>
+                <div class="login-footer">
+                    <p>Não tem conta? <span onclick="mostrarCadastroApp()">Cadastre-se gratuitamente</span></p>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div id="cadastroContainer" class="container" style="display:none">
-        <div class="box">
-            <h2>Cadastro de Barbearia</h2>
-            <input type="text" id="cadastroNome" placeholder="Seu nome">
-            <input type="email" id="cadastroEmail" placeholder="Email">
-            <input type="password" id="cadastroSenha" placeholder="Senha">
-            <input type="text" id="cadastroEmpresa" placeholder="Nome da barbearia">
-            <button onclick="fazerCadastro()">Cadastrar</button>
-            <div class="link" onclick="mostrarLogin()">Já tem conta? Faça login</div>
-            <div id="cadastroMessage" class="error"></div>
+    <div id="cadastroContainer" class="cadastro-wrapper" style="display:none">
+        <div class="cadastro-card">
+            <div class="card-header">
+                <div class="logo-icon">
+                    <i class="fas fa-rocket"></i>
+                </div>
+                <h2>Comece seu teste grátis</h2>
+                <p>45 dias para experimentar todas as funcionalidades</p>
+                <button class="btn-back" onclick="mostrarLanding()">← Voltar</button>
+            </div>
+            <div class="card-body">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="cadastroNome" placeholder="Seu nome completo">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="cadastroEmail" placeholder="seu@email.com">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="cadastroSenha" placeholder="Sua senha">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-building"></i>
+                    <input type="text" id="cadastroEmpresa" placeholder="Nome da sua empresa">
+                </div>
+                <button class="btn-login" onclick="fazerCadastro()">Criar conta grátis</button>
+                <div id="cadastroMessage" class="error-message"></div>
+                <div class="login-footer">
+                    <p>Já tem conta? <span onclick="mostrarLoginApp()">Faça login</span></p>
+                </div>
+            </div>
         </div>
     </div>
 
+    <!-- APP PRINCIPAL -->
     <div id="app" class="app">
         <div class="header">
-            <h2>✂️ Barbearia Pro</h2>
+            <h2><i class="fas fa-eye"></i> See&Agende</h2>
             <div>
                 <span id="userBadge"></span>
                 <span id="userName"></span>
@@ -60,7 +567,7 @@
         </div>
     </div>
 
-    <!-- Modais -->
+    <!-- MODAIS -->
     <div id="modalCliente" class="modal">
         <div class="modal-content">
             <h3>Novo Cliente</h3>
@@ -99,7 +606,6 @@
         </div>
     </div>
 
-    <!-- Modal de Upgrade de Plano -->
     <div id="modalUpgrade" class="modal">
         <div class="modal-content">
             <h3>💎 Fazer Upgrade</h3>
@@ -110,22 +616,63 @@
         </div>
     </div>
 
-    <!-- UI JS -->
-    <script src="/js/ui.js"></script>
+    <!-- Menu Mobile -->
+    <button class="menu-mobile-btn" onclick="toggleMobileMenu()" style="display:none;">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
-    <!-- Script principal -->
+    <!-- Scripts -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    <script src="/js/ui.js"></script>
     <script>
+        AOS.init({ duration: 800, once: true });
+
         let token = null;
         let usuario = null;
 
-        function mostrarCadastro() {
+        function mostrarLanding() {
+            document.getElementById('landingContainer').style.display = 'block';
             document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('cadastroContainer').style.display = 'flex';
+            document.getElementById('cadastroContainer').style.display = 'none';
+            document.getElementById('app').style.display = 'none';
         }
 
-        function mostrarLogin() {
+        function mostrarLoginApp() {
+            document.getElementById('landingContainer').style.display = 'none';
             document.getElementById('loginContainer').style.display = 'flex';
             document.getElementById('cadastroContainer').style.display = 'none';
+            document.getElementById('app').style.display = 'none';
+        }
+
+        function mostrarCadastroApp() {
+            document.getElementById('landingContainer').style.display = 'none';
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('cadastroContainer').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+        }
+
+        function verDemonstracao() {
+            showToast('Em breve vídeo demonstrativo!', 'info');
+        }
+
+        function toggleMobileNav() {
+            const navMenu = document.querySelector('.nav-menu');
+            navMenu.classList.toggle('active');
+        }
+
+        function togglePassword() {
+            const pwd = document.getElementById('loginSenha');
+            const icon = document.querySelector('.toggle-pwd');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            } else {
+                pwd.type = 'password';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            }
         }
 
         async function fazerLogin() {
@@ -148,7 +695,10 @@
                 usuario = data.data.usuario;
                 localStorage.setItem('token', token);
                 localStorage.setItem('usuario', JSON.stringify(usuario));
+
+                document.getElementById('landingContainer').style.display = 'none';
                 document.getElementById('loginContainer').style.display = 'none';
+                document.getElementById('cadastroContainer').style.display = 'none';
                 document.getElementById('app').style.display = 'block';
                 document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
 
@@ -177,6 +727,7 @@
                 showToast('Login realizado com sucesso!', 'success');
             } else {
                 document.getElementById('loginMessage').innerHTML = data.message;
+                document.getElementById('loginMessage').style.display = 'block';
                 showToast(data.message, 'error');
             }
         }
@@ -186,6 +737,11 @@
             const email = document.getElementById('cadastroEmail').value;
             const senha = document.getElementById('cadastroSenha').value;
             const empresa_nome = document.getElementById('cadastroEmpresa').value;
+
+            if (!nome || !email || !senha || !empresa_nome) {
+                showToast('Preencha todos os campos', 'warning');
+                return;
+            }
 
             showLoading();
 
@@ -199,13 +755,15 @@
             hideLoading();
 
             if (data.success) {
-                document.getElementById('cadastroMessage').className = 'success';
+                document.getElementById('cadastroMessage').className = 'success-message';
                 document.getElementById('cadastroMessage').innerHTML = data.message;
+                document.getElementById('cadastroMessage').style.display = 'block';
                 showToast(data.message, 'success');
-                setTimeout(() => mostrarLogin(), 2000);
+                setTimeout(() => mostrarLoginApp(), 2000);
             } else {
-                document.getElementById('cadastroMessage').className = 'error';
+                document.getElementById('cadastroMessage').className = 'error-message';
                 document.getElementById('cadastroMessage').innerHTML = data.message;
+                document.getElementById('cadastroMessage').style.display = 'block';
                 showToast(data.message, 'error');
             }
         }
@@ -257,18 +815,17 @@
             document.getElementById(modalId).style.display = 'none';
         }
 
-        // Carregar os módulos das páginas
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (sidebar) sidebar.classList.toggle('open');
+            if (overlay) overlay.classList.toggle('active');
+        }
+
         const scripts = [
-            '/js/pages/dashboard.js',
-            '/js/pages/dashboard-profissional.js',
-            '/js/pages/clientes.js',
-            '/js/pages/agendamentos.js',
-            '/js/pages/agendamentos-profissional.js',
-            '/js/pages/financeiro.js',
-            '/js/pages/empresas.js',
-            '/js/pages/configuracoes.js',
-            '/js/pages/servicos.js',
-            '/js/pages/planos.js'
+            '/js/pages/dashboard.js', '/js/pages/dashboard-profissional.js', '/js/pages/clientes.js',
+            '/js/pages/agendamentos.js', '/js/pages/agendamentos-profissional.js', '/js/pages/financeiro.js',
+            '/js/pages/empresas.js', '/js/pages/configuracoes.js', '/js/pages/servicos.js', '/js/pages/planos.js'
         ];
 
         scripts.forEach(src => {
@@ -296,30 +853,18 @@
         if (savedToken && savedUsuario) {
             token = savedToken;
             usuario = JSON.parse(savedUsuario);
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
-            if (usuario.role === 'superadmin') {
-                document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
-            } else if (usuario.role === 'profissional') {
-                document.getElementById('userBadge').innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
-            } else {
-                document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 DONO</span>';
-            }
-            carregarMenu();
+            mostrarLanding();
             if (usuario.role === 'profissional') {
                 setTimeout(function () {
-                    if (typeof carregarDashboardProfissional === 'function') {
-                        carregarDashboardProfissional();
-                    }
+                    if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
                 }, 300);
             } else {
                 setTimeout(function () {
-                    if (typeof carregarDashboard === 'function') {
-                        carregarDashboard();
-                    }
+                    if (typeof carregarDashboard === 'function') carregarDashboard();
                 }, 300);
             }
+        } else {
+            mostrarLanding();
         }
     </script>
 </body>
