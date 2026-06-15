@@ -15,6 +15,143 @@ app.use(express.static('public'));
 const db = new sqlite3.Database('./database/barbearia.db');
 
 // ============================================
+// CRIAÇÃO DAS TABELAS (INICIALIZAÇÃO)
+// ============================================
+
+db.run(`CREATE TABLE IF NOT EXISTS empresas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    plano TEXT DEFAULT 'trial',
+    limite_profissionais INTEGER DEFAULT 1,
+    trial_expira DATE,
+    assinatura_ativa INTEGER DEFAULT 1,
+    assinatura_valida_ate DATE,
+    ultima_cobranca DATE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    senha TEXT NOT NULL,
+    role TEXT DEFAULT 'dono',
+    empresa_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS profissionais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    senha TEXT NOT NULL,
+    comissao_percent REAL DEFAULT 30,
+    empresa_id INTEGER,
+    ativo INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    telefone TEXT,
+    email TEXT,
+    bloqueado_chatbot INTEGER DEFAULT 0,
+    empresa_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS servicos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL,
+    descricao TEXT,
+    valor REAL NOT NULL,
+    duracao INTEGER DEFAULT 30,
+    ativo INTEGER DEFAULT 1,
+    empresa_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS agendamentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    servico_id INTEGER,
+    servico TEXT,
+    valor REAL,
+    data DATE NOT NULL,
+    hora TEXT NOT NULL,
+    status TEXT DEFAULT 'pendente',
+    comissao REAL DEFAULT 0,
+    empresa_id INTEGER,
+    profissional_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+    FOREIGN KEY (servico_id) REFERENCES servicos(id),
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id),
+    FOREIGN KEY (profissional_id) REFERENCES profissionais(id)
+)`);
+
+db.run(`CREATE TABLE IF NOT EXISTS horarios_funcionamento (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER,
+    dia_semana INTEGER,
+    aberto INTEGER DEFAULT 1,
+    hora_inicio TEXT DEFAULT '09:00',
+    hora_fim TEXT DEFAULT '18:00',
+    almoco_inicio TEXT DEFAULT '12:00',
+    almoco_fim TEXT DEFAULT '13:00',
+    intervalo_minutos INTEGER DEFAULT 30,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+// Criar tabela de transações de pagamento
+db.run(`CREATE TABLE IF NOT EXISTS transacoes_pagamento (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER NOT NULL,
+    plano_id VARCHAR(50) NOT NULL,
+    plano_nome VARCHAR(100) NOT NULL,
+    valor DECIMAL(10,2) NOT NULL,
+    metodo VARCHAR(50) NOT NULL,
+    transacao_id VARCHAR(255),
+    pagamento_id VARCHAR(255),
+    status VARCHAR(50) DEFAULT 'pending',
+    qr_code TEXT,
+    qr_code_base64 TEXT,
+    boleto_url TEXT,
+    payment_method VARCHAR(50),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+// Criar tabela de histórico de planos
+db.run(`CREATE TABLE IF NOT EXISTS planos_historico (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    empresa_id INTEGER NOT NULL,
+    plano_antigo VARCHAR(50),
+    plano_novo VARCHAR(50) NOT NULL,
+    valor_pago DECIMAL(10,2),
+    metodo_pagamento VARCHAR(50),
+    comprovante TEXT,
+    data_mudanca DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+)`);
+
+// Inserir horários padrão para uma empresa
+function inserirHorariosPadrao(empresaId) {
+    for (let i = 1; i <= 6; i++) {
+        db.run(`INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
+                VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00')`, [empresaId, i]);
+    }
+    db.run(`INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
+            VALUES (?, 0, 0, '09:00', '18:00', '12:00', '13:00')`, [empresaId]);
+}
+
+// ============================================
 // MIDDLEWARES
 // ============================================
 
@@ -46,7 +183,6 @@ function verificarDono(req, res, next) {
     next();
 }
 
-// Middleware para verificar limite de profissionais
 function verificarLimiteProfissionais(req, res, next) {
     const empresaId = req.usuario.empresa_id;
 
@@ -71,7 +207,6 @@ function verificarLimiteProfissionais(req, res, next) {
         });
 }
 
-// Middleware para verificar se pode criar agendamentos (trial expirado ou assinatura vencida)
 function verificarAcessoAgendamentos(req, res, next) {
     const empresaId = req.usuario.empresa_id;
 
@@ -125,38 +260,10 @@ function verificarAcessoAgendamentos(req, res, next) {
     });
 }
 
-// ============================================
-// FUNÇÕES AUXILIARES
-// ============================================
-
 function getDiaSemanaFromDate(dataStr) {
     const [ano, mes, dia] = dataStr.split('-').map(Number);
     const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
     return dataUTC.getUTCDay();
-}
-
-function validarHorarioFuncionamento(empresa_id, data, hora, callback) {
-    const diaSemana = getDiaSemanaFromDate(data);
-
-    db.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
-        [empresa_id, diaSemana], (err, horario) => {
-            if (err) return callback(err);
-            if (!horario || horario.aberto === 0) {
-                return callback(null, { valido: false, mensagem: 'Estabelecimento fechado neste dia' });
-            }
-
-            if (hora < horario.hora_inicio || hora > horario.hora_fim) {
-                return callback(null, { valido: false, mensagem: 'Horario fora do expediente. Funcionamos das ' + horario.hora_inicio + ' as ' + horario.hora_fim });
-            }
-
-            if (horario.almoco_inicio && horario.almoco_fim) {
-                if (hora >= horario.almoco_inicio && hora < horario.almoco_fim) {
-                    return callback(null, { valido: false, mensagem: 'Horario de almoco das ' + horario.almoco_inicio + ' as ' + horario.almoco_fim });
-                }
-            }
-
-            callback(null, { valido: true });
-        });
 }
 
 // ============================================
@@ -280,6 +387,8 @@ app.post('/api/cadastro', (req, res) => {
                 const empresa_id = this.lastID;
                 const senhaHash = bcrypt.hashSync(senha, 10);
 
+                inserirHorariosPadrao(empresa_id);
+
                 db.run(`INSERT INTO usuarios (nome, email, senha, role, empresa_id) VALUES (?, ?, ?, 'dono', ?)`,
                     [nome, email, senhaHash, empresa_id], (err) => {
                         if (err) {
@@ -295,7 +404,6 @@ app.post('/api/cadastro', (req, res) => {
 // ROTAS DE PLANOS
 // ============================================
 
-// Adicione esta rota no server.js se não existir
 app.get('/api/empresa/plano', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
@@ -344,7 +452,6 @@ app.get('/api/empresa/plano', auth, (req, res) => {
     });
 });
 
-// Fazer upgrade de plano
 app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     const { plano, metodo_pagamento, comprovante } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -366,27 +473,11 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     validaAte.setDate(validaAte.getDate() + config.dias_acesso);
     const validaAteStr = validaAte.toISOString().split('T')[0];
 
-    // Buscar plano atual para histórico
     db.get('SELECT plano FROM empresas WHERE id = ?', [empresaId], (err, empresaAtual) => {
         if (err) {
             return res.status(500).json({ success: false, message: err.message });
         }
 
-        // Verificar se já existe tabela de histórico, se não, criar
-        db.run(`CREATE TABLE IF NOT EXISTS planos_historico (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            empresa_id INTEGER,
-            plano_antigo TEXT,
-            plano_novo TEXT,
-            valor_pago REAL,
-            metodo_pagamento TEXT,
-            comprovante TEXT,
-            data_mudanca DATETIME DEFAULT CURRENT_TIMESTAMP
-        )`, (err) => {
-            if (err) console.error('Erro ao criar tabela historico:', err);
-        });
-
-        // Atualizar empresa
         db.run(`UPDATE empresas SET 
                 plano = ?, 
                 limite_profissionais = ?,
@@ -401,7 +492,6 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
                     return res.status(500).json({ success: false, message: err.message });
                 }
 
-                // Registrar no histórico
                 db.run(`INSERT INTO planos_historico 
                         (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
                         VALUES (?, ?, ?, ?, ?, ?)`,
@@ -425,6 +515,114 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
             }
         );
     });
+});
+
+// ============================================
+// CANCELAMENTO DE ASSINATURA
+// ============================================
+
+app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const { motivo } = req.body;
+
+    console.log('Cancelando assinatura da empresa:', empresaId);
+
+    db.get('SELECT plano, assinatura_valida_ate FROM empresas WHERE id = ?', [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('Erro ao buscar empresa:', err);
+            return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
+        }
+
+        if (!empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        if (empresa.plano === 'trial') {
+            return res.json({ success: false, message: 'Você já está no plano Trial' });
+        }
+
+        // Registrar no histórico o cancelamento
+        db.run(`INSERT INTO planos_historico 
+                (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
+                VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`,
+            [empresaId, empresa.plano, motivo || 'Usuário cancelou assinatura'],
+            (err) => {
+                if (err) console.error('Erro ao registrar cancelamento:', err);
+            }
+        );
+
+        // Atualizar empresa para plano Trial com 7 dias
+        const dataTrialExpira = new Date();
+        dataTrialExpira.setDate(dataTrialExpira.getDate() + 7);
+
+        db.run(`UPDATE empresas SET 
+                plano = 'trial',
+                limite_profissionais = 1,
+                assinatura_ativa = 0,
+                assinatura_valida_ate = NULL,
+                trial_expira = ?
+                WHERE id = ?`,
+            [dataTrialExpira.toISOString(), empresaId],
+            function (err) {
+                if (err) {
+                    console.error('Erro ao cancelar assinatura:', err);
+                    return res.json({ success: false, message: 'Erro ao cancelar assinatura' });
+                }
+
+                res.json({
+                    success: true,
+                    message: `Assinatura cancelada! Você tem 7 dias de acesso ao plano Trial até ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
+                    dias_trial: 7
+                });
+            });
+    });
+});
+
+// Rota para verificar se pode voltar ao Trial
+app.get('/api/can-return-trial', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+
+    db.get(`SELECT plano, assinatura_ativa, assinatura_valida_ate,
+            (SELECT COUNT(*) FROM planos_historico WHERE empresa_id = ? AND plano_novo = 'cancelado' AND data_mudanca > datetime('now', '-30 days')) as cancelamentos_recentes
+            FROM empresas WHERE id = ?`,
+        [empresaId, empresaId],
+        (err, empresa) => {
+            if (err) {
+                return res.json({ success: false, message: 'Erro ao verificar' });
+            }
+
+            const podeVoltarTrial = empresa.plano !== 'trial' && (empresa.cancelamentos_recentes || 0) < 2;
+
+            res.json({
+                success: true,
+                pode_voltar_trial: podeVoltarTrial,
+                plano_atual: empresa.plano,
+                cancelamentos_recentes: empresa.cancelamentos_recentes || 0
+            });
+        });
+});
+
+// Rota para simular downgrade (apenas para teste)
+app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+
+    const dataTrialExpira = new Date();
+    dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
+
+    db.run(`UPDATE empresas SET 
+            plano = 'trial',
+            limite_profissionais = 1,
+            assinatura_ativa = 0,
+            assinatura_valida_ate = NULL,
+            trial_expira = ?
+            WHERE id = ?`,
+        [dataTrialExpira.toISOString(), empresaId],
+        function (err) {
+            if (err) {
+                return res.json({ success: false, message: 'Erro ao voltar para trial' });
+            }
+            res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! Válido até ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
+        });
 });
 
 // ============================================
@@ -469,59 +667,20 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 
-app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
-    const { id } = req.params;
-
-    db.get(`SELECT * FROM empresas WHERE id = ?`, [id], (err, empresa) => {
-        if (err) return res.json({ success: false, message: err.message });
-
-        db.all(`SELECT id, nome, email, created_at FROM usuarios WHERE empresa_id = ? AND role = 'dono'`, [id], (err, donos) => {
-            db.get(`SELECT COUNT(*) as total FROM clientes WHERE empresa_id = ?`, [id], (err, clientes) => {
-                db.get(`SELECT COUNT(*) as total, SUM(CASE WHEN status = 'concluido' THEN 1 ELSE 0 END) as concluidos FROM agendamentos WHERE empresa_id = ?`, [id], (err, agendamentos) => {
-                    res.json({
-                        success: true,
-                        data: {
-                            empresa,
-                            donos,
-                            total_clientes: clientes?.total || 0,
-                            total_agendamentos: agendamentos?.total || 0,
-                            agendamentos_concluidos: agendamentos?.concluidos || 0
-                        }
-                    });
-                });
-            });
-        });
-    });
-});
-
-app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
-    const { id } = req.params;
-    const { nome, plano } = req.body;
-
-    db.run(`UPDATE empresas SET nome = COALESCE(?, nome), plano = COALESCE(?, plano) WHERE id = ?`,
-        [nome, plano, id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: 'Empresa atualizada' });
-        });
-});
-
 app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    const { dias } = req.body;
 
-    db.get(`SELECT trial_expira FROM empresas WHERE id = ?`, [id], (err, empresa) => {
-        let novaData = new Date();
-        if (empresa?.trial_expira) {
-            novaData = new Date(empresa.trial_expira);
-        }
-        novaData.setDate(novaData.getDate() + (dias || 30));
-        const dataStr = novaData.toISOString().split('T')[0];
+    const dataTrialExpira = new Date();
+    dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
 
-        db.run(`UPDATE empresas SET trial_expira = ? WHERE id = ?`, [dataStr, id], (err) => {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: `Trial estendido até ${dataStr}` });
+    db.run(`UPDATE empresas SET trial_expira = ? WHERE id = ?`,
+        [dataTrialExpira.toISOString(), id],
+        function (err) {
+            if (err) {
+                return res.json({ success: false, message: 'Erro ao estender trial' });
+            }
+            res.json({ success: true, message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
         });
-    });
 });
 
 // ============================================
@@ -594,7 +753,7 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// PROFISSIONAIS (COM VERIFICAÇÃO DE LIMITE)
+// PROFISSIONAIS
 // ============================================
 
 app.get('/api/profissionais', auth, (req, res) => {
@@ -706,7 +865,7 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// AGENDAMENTOS (COM VERIFICAÇÃO DE ACESSO)
+// AGENDAMENTOS
 // ============================================
 
 app.get('/api/agendamentos', auth, (req, res) => {
@@ -736,41 +895,29 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
         return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
     }
 
-    if (!hora) {
-        return res.json({ success: false, message: 'Horário é obrigatório' });
-    }
-
-    validarHorarioFuncionamento(empresa_id, data, hora, (err, validacao) => {
-        if (err) return res.json({ success: false, message: err.message });
-        if (!validacao.valido) {
-            return res.json({ success: false, message: validacao.mensagem });
-        }
-
-        if (servico_id) {
-            db.get(`SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`, [servico_id, empresa_id], (err, servicoData) => {
-                if (servicoData) {
-                    db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                            VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`,
-                        [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
-                            if (err) return res.json({ success: false, message: err.message });
-                            res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
-                        });
-                } else {
-                    res.json({ success: false, message: 'Serviço não encontrado' });
-                }
+    if (servico_id) {
+        db.get(`SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`, [servico_id, empresa_id], (err, servicoData) => {
+            if (servicoData) {
+                db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                        VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`,
+                    [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
+                        if (err) return res.json({ success: false, message: err.message });
+                        res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
+                    });
+            } else {
+                res.json({ success: false, message: 'Serviço não encontrado' });
+            }
+        });
+    } else {
+        db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
+                VALUES (?, ?, ?, ?, ?, 'pendente', ?, ?)`,
+            [cliente_id, data, hora, servico || '', valor || 0, empresa_id, profissional_id || null], function (err) {
+                if (err) return res.json({ success: false, message: err.message });
+                res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
             });
-        } else {
-            db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
-                    VALUES (?, ?, ?, ?, ?, 'pendente', ?, ?)`,
-                [cliente_id, data, hora, servico || '', valor || 0, empresa_id, profissional_id || null], function (err) {
-                    if (err) return res.json({ success: false, message: err.message });
-                    res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
-                });
-        }
-    });
+    }
 });
 
-// Rotas de agendamento para profissional
 app.get('/api/profissional/agendamentos', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
@@ -999,16 +1146,9 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 app.get('/api/clientes', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('GET /api/clientes - Empresa ID:', empresa_id);
-
     if (!empresa_id) {
         return res.json({ success: true, data: [] });
     }
-
-    // Garantir que a coluna bloqueado_chatbot existe
-    db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => {
-        // Ignorar erro se já existe
-    });
 
     db.all(`SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
             FROM clientes 
@@ -1020,8 +1160,6 @@ app.get('/api/clientes', auth, (req, res) => {
                 console.error('Erro ao buscar clientes:', err);
                 return res.json({ success: false, message: err.message });
             }
-
-            console.log(`Clientes encontrados para empresa ${empresa_id}:`, clientes.length);
             res.json({ success: true, data: clientes });
         });
 });
@@ -1064,16 +1202,10 @@ app.delete('/api/clientes/:id', auth, verificarDono, (req, res) => {
     });
 });
 
-// Bloquear/desbloquear cliente do chatbot
 app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { bloquear } = req.body;
     const empresa_id = req.usuario.empresa_id;
-
-    // Garantir que a coluna existe
-    db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => {
-        // Ignorar erro se já existe
-    });
 
     db.run(`UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?`,
         [bloquear ? 1 : 0, id, empresa_id], function (err) {
@@ -1105,84 +1237,6 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     db.run(sql, [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia], function (err) {
         if (err) return res.json({ success: false, message: err.message });
         res.json({ success: true, message: 'Horario atualizado com sucesso' });
-    });
-});
-
-app.post('/api/horarios/disponiveis', auth, (req, res) => {
-    const { data, profissional_id } = req.body;
-    const empresa_id = req.usuario.empresa_id;
-
-    const [ano, mes, dia] = data.split('-').map(Number);
-    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
-    const diaSemana = dataUTC.getUTCDay();
-
-    db.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?', [empresa_id, diaSemana], (err, horario) => {
-        if (err) {
-            return res.json({ success: false, message: err.message });
-        }
-
-        if (!horario || horario.aberto !== 1) {
-            return res.json({ success: true, data: { disponivel: false, horarios: [] } });
-        }
-
-        const horariosDisponiveis = [];
-
-        function horaParaMinutos(horaStr) {
-            if (!horaStr) return 0;
-            const partes = horaStr.split(':');
-            return parseInt(partes[0]) * 60 + parseInt(partes[1]);
-        }
-
-        function minutosParaHora(minutos) {
-            const h = Math.floor(minutos / 60);
-            const m = minutos % 60;
-            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        }
-
-        const abertura = horario.hora_inicio || '09:00';
-        const fechamento = horario.hora_fim || '18:00';
-        const intervalo = 30;
-
-        const almocoInicio = horario.almoco_inicio || '12:00';
-        const almocoFim = horario.almoco_fim || '13:00';
-
-        const inicioMinutos = horaParaMinutos(abertura);
-        const fimMinutos = horaParaMinutos(fechamento);
-        const almocoInicioMinutos = horaParaMinutos(almocoInicio);
-        const almocoFimMinutos = horaParaMinutos(almocoFim);
-
-        for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
-            if (minutos >= almocoInicioMinutos && minutos < almocoFimMinutos) {
-                continue;
-            }
-            horariosDisponiveis.push(minutosParaHora(minutos));
-        }
-
-        let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
-        let params = [data, empresa_id];
-
-        if (profissional_id) {
-            query += ` AND profissional_id = ?`;
-            params.push(profissional_id);
-        }
-
-        db.all(query, params, (err, agendamentos) => {
-            if (err) {
-                return res.json({ success: false, message: err.message });
-            }
-
-            const ocupados = new Set(agendamentos.map(a => a.hora));
-            const disponiveis = horariosDisponiveis.filter(h => !ocupados.has(h));
-
-            res.json({
-                success: true,
-                data: {
-                    disponivel: disponiveis.length > 0,
-                    horarios: disponiveis,
-                    intervalo: intervalo
-                }
-            });
-        });
     });
 });
 
@@ -1243,9 +1297,7 @@ app.get('/api/financeiro', auth, (req, res) => {
                     comissoes: comissoes,
                     totais: {
                         total_comissoes: totalComissoes,
-                        total_servicos: comissoes.length,
-                        faturamento_bruto: 0,
-                        faturamento_liquido: 0
+                        total_servicos: comissoes.length
                     }
                 }
             });
@@ -1305,7 +1357,6 @@ app.get('/api/financeiro', auth, (req, res) => {
     }
 });
 
-// Rota para profissional ver suas comissões
 app.get('/api/profissional/financeiro', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
@@ -1342,29 +1393,25 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
     });
 });
 
-app.get('/api/empresa/info', auth, (req, res) => {
-    const empresa_id = req.usuario.empresa_id;
-    if (!empresa_id) return res.json({ success: false, message: 'Empresa não encontrada' });
+app.get('/api/empresa/dados', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
 
-    db.get(`SELECT nome, plano, trial_expira, limite_profissionais, assinatura_ativa, assinatura_valida_ate 
-            FROM empresas WHERE id = ?`, [empresa_id], (err, empresa) => {
-        if (err) return res.json({ success: false, message: err.message });
+    if (!empresaId) {
+        return res.json({ success: false, message: 'Empresa não identificada' });
+    }
 
-        let dias_restantes = 0;
-        if (empresa.plano === 'trial' && empresa.trial_expira) {
-            dias_restantes = Math.ceil((new Date(empresa.trial_expira) - new Date()) / (1000 * 60 * 60 * 24));
-        } else if (empresa.plano !== 'trial' && empresa.assinatura_valida_ate) {
-            dias_restantes = Math.ceil((new Date(empresa.assinatura_valida_ate) - new Date()) / (1000 * 60 * 60 * 24));
-        }
-
-        res.json({
-            success: true,
-            data: {
-                ...empresa,
-                dias_restantes: dias_restantes > 0 ? dias_restantes : 0
+    db.get('SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at FROM empresas WHERE id = ?',
+        [empresaId],
+        (err, empresa) => {
+            if (err) {
+                console.error('Erro ao buscar empresa:', err);
+                return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
             }
+            if (!empresa) {
+                return res.json({ success: false, message: 'Empresa não encontrada' });
+            }
+            res.json({ success: true, data: empresa });
         });
-    });
 });
 
 // ============================================
@@ -1385,7 +1432,7 @@ app.get('/api/chatbot/empresa/:id', (req, res) => {
 app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
-    db.all('SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome',
+    db.all('SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nombre',
         [empresaId], (err, servicos) => {
             if (err) return res.json({ success: false, message: err.message });
             res.json({ success: true, servicos });
@@ -1419,10 +1466,7 @@ app.post('/api/chatbot/cliente/buscar', (req, res) => {
 
     const telefoneLimpo = telefone.replace(/\D/g, '');
 
-    // Garantir que a coluna bloqueado_chatbot existe
-    db.run(`ALTER TABLE clientes ADD COLUMN bloqueado_chatbot INTEGER DEFAULT 0`, (err) => { });
-
-    db.get(`SELECT id, nome, telefone, email, bloqueado_chatbot 
+    db.get(`SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
             FROM clientes 
             WHERE empresa_id = ? AND (telefone = ? OR telefone = ?)`,
         [empresaId, telefoneLimpo, telefone],
@@ -1580,7 +1624,6 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 app.post('/api/chatbot/agendar', (req, res) => {
     const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
 
-    // Verificar se o cliente está bloqueado
     db.get(`SELECT bloqueado_chatbot FROM clientes WHERE id = ?`, [clienteId], (err, cliente) => {
         if (err) {
             return res.json({ success: false, message: err.message });
@@ -1590,7 +1633,6 @@ app.post('/api/chatbot/agendar', (req, res) => {
             return res.json({ success: false, message: 'Você está bloqueado para agendamentos via chatbot. Entre em contato com a barbearia.' });
         }
 
-        // Verificar limite de 20 dias
         const dataLimite = new Date();
         dataLimite.setDate(dataLimite.getDate() - 20);
         const dataLimiteStr = dataLimite.toISOString().split('T')[0];
@@ -1658,56 +1700,162 @@ app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// ROTA PARA DADOS DA EMPRESA (DONO)
+// SIMULAÇÃO DE PAGAMENTO (para testes)
 // ============================================
-app.get('/api/empresa/dados', auth, (req, res) => {
+
+app.post('/api/simulate-pix', auth, (req, res) => {
+    const { plano_id, plano_nome, valor } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    if (!empresaId) {
-        return res.json({ success: false, message: 'Empresa não identificada' });
-    }
+    const qrCodeSimulado = `00020126580014BR.GOV.BCB.PIX0136b9f5e0-4b1e-4b3e-8a6e-8a5e4b3e2a1e5204000053039865404${Math.floor(valor * 100)}.005802BR5925See&Agende6009SAO PAULO62070503***6304E2C9`;
+    const qrCodeBase64Simulado = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const paymentId = "sim_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 
-    db.get('SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at FROM empresas WHERE id = ?',
-        [empresaId],
-        (err, empresa) => {
-            if (err) {
-                console.error('Erro ao buscar empresa:', err);
-                return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
-            }
-            if (!empresa) {
-                return res.json({ success: false, message: 'Empresa não encontrada' });
-            }
-            res.json({ success: true, data: empresa });
+    db.run(`INSERT INTO transacoes_pagamento 
+            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
+            VALUES (?, ?, ?, ?, 'pix_simulado', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`,
+        [empresaId, plano_id, plano_nome, valor, paymentId, qrCodeSimulado, qrCodeBase64Simulado],
+        (err) => {
+            if (err) console.error('Erro ao salvar simulação:', err);
         });
+
+    res.json({
+        success: true,
+        qr_code: qrCodeSimulado,
+        qr_code_base64: qrCodeBase64Simulado,
+        payment_id: paymentId,
+        simulado: true
+    });
 });
 
-// ============================================
-// ROTA PARA DADOS DA EMPRESA (SUPER ADMIN - para listar)
-// ============================================
-app.get('/api/admin/empresas/:id', auth, (req, res) => {
-    if (req.usuario.role !== 'superadmin') {
-        return res.status(403).json({ success: false, message: 'Acesso negado' });
+app.post('/api/simulate-card', auth, (req, res) => {
+    const { plano_id, plano_nome, valor } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    const paymentId = "sim_card_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+
+    db.run(`INSERT INTO transacoes_pagamento 
+            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
+            VALUES (?, ?, ?, ?, 'cartao_simulado', ?, 'approved', CURRENT_TIMESTAMP)`,
+        [empresaId, plano_id, plano_nome, valor, paymentId],
+        (err) => {
+            if (err) console.error('Erro ao salvar simulação:', err);
+        });
+
+    const planosConfig = {
+        starter: { limite: 1, nome: 'starter' },
+        pro: { limite: 5, nome: 'pro' },
+        business: { limite: 12, nome: 'business' },
+        enterprise: { limite: 999999, nome: 'enterprise' }
+    };
+
+    const plano = planosConfig[plano_id];
+    if (plano) {
+        const dataValidade = new Date();
+        dataValidade.setMonth(dataValidade.getMonth() + 1);
+
+        db.run(`UPDATE empresas SET 
+                plano = ?,
+                limite_profissionais = ?,
+                assinatura_ativa = 1,
+                assinatura_valida_ate = ?,
+                ultima_cobranca = CURRENT_TIMESTAMP
+                WHERE id = ?`,
+            [plano.nome, plano.limite, dataValidade.toISOString(), empresaId]);
     }
 
-    const { id } = req.params;
+    res.json({
+        success: true,
+        payment_id: paymentId,
+        status: 'approved',
+        simulado: true,
+        message: 'Pagamento simulado aprovado!'
+    });
+});
 
-    db.get(`SELECT e.*, 
-            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
-            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
-            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
-            FROM empresas e WHERE e.id = ?`,
-        [id],
-        (err, empresa) => {
-            if (err) {
-                return res.json({ success: false, message: 'Erro ao buscar empresa' });
+app.post('/api/simulate-boleto', auth, (req, res) => {
+    const { plano_id, plano_nome, valor, cpf } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    const paymentId = "sim_boleto_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+    const boletoUrl = "https://www.mercadopago.com.br/boleto/simulado/" + paymentId;
+
+    db.run(`INSERT INTO transacoes_pagamento 
+            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
+            VALUES (?, ?, ?, ?, 'boleto_simulado', ?, 'pending', ?, CURRENT_TIMESTAMP)`,
+        [empresaId, plano_id, plano_nome, valor, paymentId, boletoUrl],
+        (err) => {
+            if (err) console.error('Erro ao salvar simulação:', err);
+        });
+
+    res.json({
+        success: true,
+        boleto_url: boletoUrl,
+        payment_id: paymentId,
+        simulado: true
+    });
+});
+
+app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
+    const { paymentId } = req.params;
+
+    db.get('SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = ?',
+        [paymentId], (err, transacao) => {
+            if (err || !transacao) {
+                return res.json({ success: false, message: 'Transação não encontrada' });
             }
-            res.json({ success: true, data: empresa });
+
+            const planosConfig = {
+                starter: { limite: 1, nome: 'starter' },
+                pro: { limite: 5, nome: 'pro' },
+                business: { limite: 12, nome: 'business' },
+                enterprise: { limite: 999999, nome: 'enterprise' }
+            };
+
+            const plano = planosConfig[transacao.plano_id];
+            if (plano) {
+                const dataValidade = new Date();
+                dataValidade.setMonth(dataValidade.getMonth() + 1);
+
+                db.run(`UPDATE empresas SET 
+                        plano = ?,
+                        limite_profissionais = ?,
+                        assinatura_ativa = 1,
+                        assinatura_valida_ate = ?,
+                        ultima_cobranca = CURRENT_TIMESTAMP
+                        WHERE id = ?`,
+                    [plano.nome, plano.limite, dataValidade.toISOString(), transacao.empresa_id]);
+
+                db.run(`UPDATE transacoes_pagamento 
+                        SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                        WHERE pagamento_id = ?`, [paymentId]);
+
+                res.json({ success: true, message: 'Pagamento confirmado!' });
+            } else {
+                res.json({ success: false, message: 'Plano não encontrado' });
+            }
         });
 });
 
 // ============================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================
+
+// Criar usuário Super Admin se não existir
+const superAdminSenha = bcrypt.hashSync('super123', 10);
+db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role) VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`, [superAdminSenha]);
+
+// Criar empresa de teste e usuário dono se não existir
+db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
+    if (!empresa) {
+        db.run(`INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`, () => {
+            inserirHorariosPadrao(1);
+
+            const donoSenha = bcrypt.hashSync('123456', 10);
+            db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role, empresa_id) VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`, [donoSenha]);
+        });
+    }
+});
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
