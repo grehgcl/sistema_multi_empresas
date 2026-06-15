@@ -15,7 +15,6 @@ async function carregarClientes() {
 
         console.log("Resposta da API:", data);
 
-        // Garantir que pegamos os clientes corretamente
         const clientes = data.data || [];
 
         console.log("Clientes a serem exibidos:", clientes.length);
@@ -44,54 +43,41 @@ async function carregarClientes() {
 
         if (clientes.length === 0) {
             html += `
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 40px;">
-                        <span style="font-size: 48px;">👥</span>
-                        <p>Nenhum cliente cadastrado</p>
-                        <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">
-                            Adicionar Cliente
-                        </button>
-                    </td>
-                </tr>
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 40px;">
+                                        <span style="font-size: 48px;">👥</span>
+                                        <p>Nenhum cliente cadastrado</p>
+                                        <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">Adicionar Cliente</button>
+                                    </td>
+                                </tr>
             `;
         } else {
             for (let c of clientes) {
                 html += `
-                    <tr>
-                        <td>${c.id}</
-                        <td><strong>${escapeHtml(c.nome)}</strong></td>
-                        <td>${c.telefone || '-'}</
-                        <td>${c.email || '-'}</
-                        <td>
-                            ${c.bloqueado_chatbot === 1 ?
-                        '<span class="badge badge-danger">🔒 Bloqueado</span>' :
-                        '<span class="badge badge-success">🔓 Liberado</span>'
+                                <tr>
+                                    <td style="text-align: center; padding: 10px;">${c.id}</td>
+                                    <td style="padding: 10px;"><strong>${escapeHtml(c.nome)}</strong></td>
+                                    <td style="padding: 10px;">${c.telefone || '-'}</td>
+                                    <td style="padding: 10px;">${c.email || '-'}</td>
+                                    <td style="text-align: center; padding: 10px;">
+                                        ${c.bloqueado_chatbot === 1 ? '<span class="badge badge-danger">🔒 Bloqueado</span>' : '<span class="badge badge-success">🔓 Liberado</span>'}
+                                    </td>
+                                    <td class="actions-cell" style="padding: 10px; white-space: nowrap;">
+                                        <button class="btn-icon" onclick="editarCliente(${c.id})" title="Editar Cliente">✏️</button>
+                                        ${c.bloqueado_chatbot === 1 ?
+                        `<button class="btn-icon" onclick="desbloquearChatbot(${c.id})" title="Liberar Chatbot">🔓</button>` :
+                        `<button class="btn-icon" onclick="bloquearChatbot(${c.id})" title="Bloquear Chatbot">🔒</button>`
                     }
-                        </
-                        <td class="actions-cell">
-                            <button class="btn-icon" onclick="editarCliente(${c.id})" title="Editar Cliente">
-                                ✏️
-                            </button>
-                            ${c.bloqueado_chatbot === 1 ?
-                        `<button class="btn-icon" onclick="desbloquearChatbot(${c.id})" title="Liberar Chatbot" style="color:#10b981;">
-                                    🤖🔓
-                                </button>` :
-                        `<button class="btn-icon" onclick="bloquearChatbot(${c.id})" title="Bloquear Chatbot" style="color:#ef4444;">
-                                    🤖🔒
-                                </button>`
-                    }
-                            <button class="btn-icon btn-danger" onclick="excluirCliente(${c.id})" title="Excluir">
-                                🗑️
-                            </button>
-                        </
-                    </tr>
+                                        <button class="btn-icon btn-danger" onclick="excluirCliente(${c.id})" title="Excluir">🗑️</button>
+                                    </td>
+                                </tr>
                 `;
             }
         }
 
         html += `
                             </tbody>
-                        60
+                        </table>
                     </div>
                 </div>
             </div>

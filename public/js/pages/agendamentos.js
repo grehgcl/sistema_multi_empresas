@@ -151,19 +151,49 @@ async function carregarListaAgendamentosComFiltro() {
         } else {
             let rows = "";
             for (let a of agendamentos) {
+                // Formatar data e hora
+                const dataFormatada = formatarDataBr(a.data);
+                const horaFormatada = a.hora ? a.hora.substring(0, 5) : "";
+
+                // Determinar cor do status
+                const statusClass = a.status === "concluido" ? "badge-success" : "badge-warning";
+                const statusText = a.status === "concluido" ? "✅ Concluído" : "⏳ Pendente";
+
                 rows += `
                     <tr>
-                        <td>${formatarDataBr(a.data)} ${a.hora || ""}</
-                        <td><strong>${escapeHtml(a.cliente_nome || "N/A")}</strong></
-                        <td>${escapeHtml(a.profissional_nome || "Não atribuído")}</
-                        <td>${escapeHtml(a.servico_nome || a.servico || "N/A")}</
-                        <td>R$ ${(a.valor || 0).toFixed(2)}</
-                        <td>${a.status === "concluido" ? '<span class="badge badge-success">Concluído</span>' : '<span class="badge badge-warning">Pendente</span>'}</
+                        <td style="white-space: nowrap;">
+                            <strong>${dataFormatada}</strong><br>
+                            <small>${horaFormatada}</small>
+                        </td>
+                        <td>
+                            <strong>${escapeHtml(a.cliente_nome || "N/A")}</strong>
+                        </td>
+                        <td>
+                            ${a.profissional_nome ?
+                        `<span class="badge badge-info">${escapeHtml(a.profissional_nome)}</span>` :
+                        '<span class="badge" style="background:#e2e8f0;">Não atribuído</span>'
+                    }
+                        </td>
+                        <td>${escapeHtml(a.servico_nome || a.servico || "N/A")}</td>
+                        <td style="white-space: nowrap;">
+                            <strong>R$ ${(a.valor || 0).toFixed(2)}</strong>
+                        </td>
+                        <td>
+                            <span class="badge ${statusClass}">${statusText}</span>
+                        </td>
                         <td class="actions-cell">
-                            <button class="btn-icon" onclick="editarAgendamento(${a.id})" title="Editar">✏️</button>
-                            ${a.status !== "concluido" ? `<button class="btn-icon" onclick="concluirAgendamento(${a.id})" title="Concluir" style="color:#10b981;">✅</button>` : ""}
-                            <button class="btn-icon" onclick="excluirAgendamento(${a.id})" title="Excluir" style="color:#ef4444;">🗑️</button>
-                        </
+                            <button class="btn-icon" onclick="editarAgendamento(${a.id})" title="Editar">
+                                ✏️
+                            </button>
+                            ${a.status !== "concluido" ?
+                        `<button class="btn-icon" onclick="concluirAgendamento(${a.id})" title="Concluir" style="color:#10b981;">
+                                    ✅
+                                </button>` : ""
+                    }
+                            <button class="btn-icon" onclick="excluirAgendamento(${a.id})" title="Excluir" style="color:#ef4444;">
+                                🗑️
+                            </button>
+                        </td>
                     </tr>
                 `;
             }
