@@ -172,37 +172,91 @@ app.post('/api/cadastro', (req, res) => {
         return res.json({ success: false, message: 'Todos os campos são obrigatórios' });
     }
 
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    // Verificar se email já existe
     db.get(`SELECT id FROM usuarios WHERE email = ?`, [email], (err, user) => {
+        if (err) {
+            console.error('❌ Erro ao verificar email:', err.message);
+            return res.json({ success: false, message: 'Erro ao verificar email' });
+        }
+
         if (user) {
             return res.json({ success: false, message: 'Email já cadastrado' });
         }
 
+        // Calcular data de expiração do trial (45 dias)
         const trialExpira = new Date();
         trialExpira.setDate(trialExpira.getDate() + 45);
         const trialData = trialExpira.toISOString().split('T')[0];
 
-        db.run(`INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
-                VALUES (?, 'trial', 1, ?, 1)`,
-            [empresa_nome, trialData], function (err) {
-                if (err) {
-                    return res.json({ success: false, message: 'Erro ao criar empresa' });
-                }
+        // SQL para criar empresa (adaptado para PostgreSQL e SQLite)
+        const sqlEmpresa = isProduction
+            ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
+               VALUES ($1, 'trial', 1, $2, 1) RETURNING id`
+            : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
+               VALUES (?, 'trial', 1, ?, 1)`;
 
-                const empresa_id = this.lastID;
-                const senhaHash = bcrypt.hashSync(senha, 10);
+        db.run(sqlEmpresa, [empresa_nome, trialData], function (err) {
+            if (err) {
+                console.error('❌ Erro ao criar empresa:', err.message);
+                return res.json({ success: false, message: 'Erro ao criar empresa: ' + err.message });
+            }
 
-                inserirHorariosPadrao(empresa_id);
+            // Pegar o ID da empresa criada
+            let empresa_id = null;
 
-                db.run(`INSERT INTO usuarios (nome, email, senha, role, empresa_id) VALUES (?, ?, ?, 'dono', ?)`,
-                    [nome, email, senhaHash, empresa_id], (err) => {
-                        if (err) {
-                            return res.json({ success: false, message: 'Erro ao criar usuário' });
-                        }
-                        res.json({ success: true, message: 'Cadastro realizado! Você tem 45 dias de teste.' });
-                    });
-            });
+            // Para PostgreSQL: o ID vem no objeto de resultado
+            if (this && this.lastID) {
+                empresa_id = this.lastID;
+            } else if (this && this.id) {
+                empresa_id = this.id;
+            }
+
+            // Se não veio no callback, buscar pelo nome
+            if (!empresa_id) {
+                db.get('SELECT id FROM empresas WHERE nome = ?', [empresa_nome], (err, row) => {
+                    if (err || !row) {
+                        console.error('❌ Erro ao buscar ID da empresa:', err?.message);
+                        return res.json({ success: false, message: 'Erro ao buscar ID da empresa' });
+                    }
+                    empresa_id = row.id;
+                    criarUsuario(empresa_id, res, nome, email, senha);
+                });
+                return;
+            }
+
+            criarUsuario(empresa_id, res, nome, email, senha);
+        });
     });
 });
+
+// Função auxiliar para criar o usuário (colocar fora da rota, depois do app.post)
+function criarUsuario(empresa_id, res, nome, email, senha) {
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const senhaHash = bcrypt.hashSync(senha, 10);
+
+    const sqlUsuario = isProduction
+        ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
+           VALUES ($1, $2, $3, 'dono', $4)`
+        : `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
+           VALUES (?, ?, ?, 'dono', ?)`;
+
+    db.run(sqlUsuario, [nome, email, senhaHash, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao criar usuário:', err.message);
+            return res.json({ success: false, message: 'Erro ao criar usuário: ' + err.message });
+        }
+
+        // Inserir horários padrão para a nova empresa
+        inserirHorariosPadrao(empresa_id);
+
+        res.json({
+            success: true,
+            message: 'Cadastro realizado! Você tem 45 dias de teste.'
+        });
+    });
+}
 
 // ============================================================
 // ROTAS DE PLANOS
