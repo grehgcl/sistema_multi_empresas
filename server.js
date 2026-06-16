@@ -1598,7 +1598,9 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================================
 
-const PORT = process.env.PORT || 3000;
+// PORT já foi declarado no início do arquivo
+// const PORT = process.env.PORT || 3000;  ← REMOVA ESTA LINHA
+
 const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
 
 app.listen(PORT, HOST, () => {
