@@ -435,23 +435,27 @@ function inserirHorariosPadrao(empresaId) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (isProduction) {
-        // PostgreSQL: Usa ON CONFLICT (sintaxe correta do PostgreSQL)
-        for (let i = 1; i <= 6; i++) {
+        // PostgreSQL: Deleta e insere novamente para evitar conflitos
+        db.run(`DELETE FROM horarios_funcionamento WHERE empresa_id = $1`, [empresaId], (err) => {
+            if (err) {
+                console.error('❌ Erro ao deletar horários antigos:', err.message);
+                return;
+            }
+            for (let i = 1; i <= 6; i++) {
+                db.run(`INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
+                        VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00')`,
+                    [empresaId, i], (err) => {
+                        if (err) console.error('❌ Erro ao inserir horário:', err.message);
+                    });
+            }
             db.run(`INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
-                    VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00')
-                    ON CONFLICT (empresa_id, dia_semana) DO NOTHING`,
-                [empresaId, i], (err) => {
-                    if (err) console.error('❌ Erro ao inserir horário:', err.message);
+                    VALUES ($1, 0, 0, '09:00', '18:00', '12:00', '13:00')`,
+                [empresaId], (err) => {
+                    if (err) console.error('❌ Erro ao inserir horário domingo:', err.message);
                 });
-        }
-        db.run(`INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
-                VALUES ($1, 0, 0, '09:00', '18:00', '12:00', '13:00')
-                ON CONFLICT (empresa_id, dia_semana) DO NOTHING`,
-            [empresaId], (err) => {
-                if (err) console.error('❌ Erro ao inserir horário domingo:', err.message);
-            });
+        });
     } else {
-        // SQLite: Usa INSERT OR IGNORE (sintaxe do SQLite)
+        // SQLite: Mantém o INSERT OR IGNORE
         for (let i = 1; i <= 6; i++) {
             db.run(`INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
                     VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00')`, [empresaId, i]);

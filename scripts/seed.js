@@ -11,7 +11,8 @@ console.log('🌱 Iniciando seed do banco de dados...');
 // Função para verificar se já existem dados
 function verificarDadosExistentes() {
     return new Promise((resolve) => {
-        db.get('SELECT COUNT(*) as total FROM empresas', (err, result) => {
+        const sql = 'SELECT COUNT(*) as total FROM empresas';
+        db.get(sql, [], (err, result) => {
             if (err) {
                 console.error('❌ Erro ao verificar dados:', err.message);
                 resolve(0);
@@ -48,7 +49,6 @@ async function criarDadosTeste() {
             trialExpira.setDate(trialExpira.getDate() + 45);
             const trialData = trialExpira.toISOString().split('T')[0];
 
-            // SQL adaptado para PostgreSQL e SQLite
             const sql = isProduction
                 ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
                    VALUES ($1, $2, $3, $4, $5) RETURNING id`
@@ -56,6 +56,9 @@ async function criarDadosTeste() {
                    VALUES (?, ?, ?, ?, ?)`;
 
             const params = ['Barbearia Teste', 'trial', 1, trialData, 1];
+
+            console.log('📝 Query SQL:', sql);
+            console.log('📝 Parâmetros:', params);
 
             db.run(sql, params, function (err) {
                 if (err) {
