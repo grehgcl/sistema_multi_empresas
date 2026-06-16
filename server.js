@@ -174,11 +174,17 @@ app.post('/api/cadastro', (req, res) => {
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    // Verificar se email já existe
-    db.get(`SELECT id FROM usuarios WHERE email = ?`, [email], (err, user) => {
+    console.log('📝 Tentando cadastrar:', { nome, email, empresa_nome });
+
+    // Verificar se email já existe - usando query com placeholders corretos
+    const sqlCheck = isProduction
+        ? 'SELECT id FROM usuarios WHERE email = $1'
+        : 'SELECT id FROM usuarios WHERE email = ?';
+
+    db.get(sqlCheck, [email], (err, user) => {
         if (err) {
             console.error('❌ Erro ao verificar email:', err.message);
-            return res.json({ success: false, message: 'Erro ao verificar email' });
+            return res.json({ success: false, message: 'Erro ao verificar email: ' + err.message });
         }
 
         if (user) {
@@ -197,6 +203,9 @@ app.post('/api/cadastro', (req, res) => {
             : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
                VALUES (?, 'trial', 1, ?, 1)`;
 
+        console.log('📝 Criando empresa com SQL:', sqlEmpresa);
+        console.log('📝 Parâmetros:', [empresa_nome, trialData]);
+
         db.run(sqlEmpresa, [empresa_nome, trialData], function (err) {
             if (err) {
                 console.error('❌ Erro ao criar empresa:', err.message);
@@ -206,21 +215,28 @@ app.post('/api/cadastro', (req, res) => {
             // Pegar o ID da empresa criada
             let empresa_id = null;
 
-            // Para PostgreSQL: o ID vem no objeto de resultado
+            // Para PostgreSQL: o ID pode vir no objeto this
             if (this && this.lastID) {
                 empresa_id = this.lastID;
             } else if (this && this.id) {
                 empresa_id = this.id;
             }
 
+            console.log('📝 ID da empresa obtido:', empresa_id);
+
             // Se não veio no callback, buscar pelo nome
             if (!empresa_id) {
-                db.get('SELECT id FROM empresas WHERE nome = ?', [empresa_nome], (err, row) => {
+                const sqlFind = isProduction
+                    ? 'SELECT id FROM empresas WHERE nome = $1'
+                    : 'SELECT id FROM empresas WHERE nome = ?';
+
+                db.get(sqlFind, [empresa_nome], (err, row) => {
                     if (err || !row) {
                         console.error('❌ Erro ao buscar ID da empresa:', err?.message);
                         return res.json({ success: false, message: 'Erro ao buscar ID da empresa' });
                     }
                     empresa_id = row.id;
+                    console.log('📝 ID da empresa buscado:', empresa_id);
                     criarUsuario(empresa_id, res, nome, email, senha);
                 });
                 return;
@@ -231,10 +247,12 @@ app.post('/api/cadastro', (req, res) => {
     });
 });
 
-// Função auxiliar para criar o usuário (colocar fora da rota, depois do app.post)
+// FUNÇÃO AUXILIAR PARA CRIAR USUÁRIO (colocar DEPOIS da rota /api/cadastro)
 function criarUsuario(empresa_id, res, nome, email, senha) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
     const senhaHash = bcrypt.hashSync(senha, 10);
+
+    console.log('📝 Criando usuário para empresa:', empresa_id);
 
     const sqlUsuario = isProduction
         ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
@@ -249,7 +267,12 @@ function criarUsuario(empresa_id, res, nome, email, senha) {
         }
 
         // Inserir horários padrão para a nova empresa
-        inserirHorariosPadrao(empresa_id);
+        try {
+            inserirHorariosPadrao(empresa_id);
+            console.log('✅ Horários padrão criados para empresa:', empresa_id);
+        } catch (err) {
+            console.error('⚠️ Erro ao criar horários padrão:', err.message);
+        }
 
         res.json({
             success: true,
