@@ -1,4 +1,4 @@
-﻿# ESTRUTURA DO PROJETO - Atualizada em 19/06/2026
+﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 16/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite
@@ -22,7 +22,19 @@
 │           ├── configuracoes.js          # Configuracoes + Chatbot
 │           └── planos.js                 # Página de Planos e Upgrade
 ├── docs/                    # Documentacao
-└── server.js                # Backend completo + rotas chatbot
+│   ├── DEV_GUIDE.md
+│   ├── ESTRUTURA.md
+│   ├── IA_CONTEXT.md
+│   └── PARA_NOVA_IA.txt
+├── server/                  # NOVA ESTRUTURA MODULAR (16/06/2026)
+│   ├── config/
+│   │   └── database.js      # Conexão com banco + criação das tabelas
+│   ├── middlewares/
+│   │   └── auth.js          # Middlewares de autenticação (auth, verificarDono, etc)
+│   └── utils/
+│       ├── constants.js     # Constantes (PLANOS, PLANOS_NOMES, JWT_SECRET)
+│       └── helpers.js       # Funções auxiliares (horaParaMinutos, etc)
+└── server.js                # Backend completo + rotas (APENAS rotas, ~700 linhas)
 
 ## VARIAVEIS GLOBAIS (localStorage)
 - token: JWT do usuario logado
@@ -93,6 +105,16 @@
 - 45 dias de teste grátis para novos cadastros
 - Middleware verifica limite antes de criar profissional
 - Tabela planos_historico registra todas as mudanças
+- Rota de cancelamento de assinatura (/api/cancel-subscription)
+- Ao cancelar, volta para Trial com 7 dias
+
+## SISTEMA DE PAGAMENTOS (NOVO)
+- Integração com Mercado Pago (PIX, Cartão, Boleto)
+- Modo de simulação para testes (modoSimulacao = true)
+- Tabela transacoes_pagamento para registrar pagamentos
+- Webhook para confirmação automática
+- QR Code para pagamento PIX
+- Suporte a parcelamento no cartão
 
 ## CHATBOT INTELIGENTE (NOVO)
 - Página pública: /chatbot.html?empresa=ID
@@ -137,8 +159,41 @@
 - Badges de status (🔓 Liberado / 🔒 Bloqueado)
 - Edição completa de dados
 
+## REFATORAÇÃO DO BACKEND (16/06/2026) - NOVO
 =========================================
-## ULTIMA ATUALIZACAO: 19/06/2026
+
+Estrutura modular criada para melhor organização:
+
+### server/config/database.js
+- Conexão com banco SQLite
+- Função initDatabase() para criar todas as tabelas
+- Função inserirHorariosPadrao() para horários iniciais
+
+### server/middlewares/auth.js
+- auth() - Middleware de autenticação JWT
+- verificarSuperAdmin() - Apenas Super Admin
+- verificarDono() - Apenas Dono
+- verificarLimiteProfissionais() - Verifica limite do plano
+- verificarAcessoAgendamentos() - Verifica trial/assinatura
+
+### server/utils/constants.js
+- PLANOS - Configurações de todos os planos
+- PLANOS_NOMES - Nomes dos planos
+- JWT_SECRET - Chave secreta do JWT
+
+### server/utils/helpers.js
+- horaParaMinutos() - Converte hora para minutos
+- minutosParaHora() - Converte minutos para hora
+- getDiaSemanaFromDate() - Pega dia da semana da data
+- gerarSenhaTemporaria() - Gera senha aleatória
+
+### server.js (refatorado)
+- Apenas as rotas da API (~700 linhas)
+- Importa as partes fixas dos arquivos acima
+- ~200 linhas a menos que o original
+
+=========================================
+## ULTIMA ATUALIZACAO: 16/06/2026
 
 MUDANCAS REALIZADAS:
 - Implementado Chatbot Inteligente com calendário visual
@@ -153,5 +208,10 @@ MUDANCAS REALIZADAS:
 - Implementado sistema de planos de assinatura
 - Adicionados planos: Starter, Pro, Business, Enterprise
 - Criado sistema de upgrade com middleware
+- Implementado sistema de pagamentos (Mercado Pago)
+- Adicionado modo de simulação para testes
+- Criada tabela transacoes_pagamento
+- Adicionada rota de cancelamento de assinatura
 - Corrigido dashboard do profissional
+- **REFATORAÇÃO DO BACKEND: Código modularizado em server/ (16/06/2026)**
 =========================================

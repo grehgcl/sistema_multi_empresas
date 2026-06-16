@@ -1,10 +1,12 @@
 ﻿
-## 4. `PARA_NOVA_IA.txt` - Atualizado
+---
+
+## 📄 **4. `PARA_NOVA_IA.txt` - ATUALIZADO**
 
 ```markdown
 =========================================
   GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 19/06/2026
+  ULTIMA ATUALIZACAO: 16/06/2026
 =========================================
 
 LEIA OS ARQUIVOS NA ORDEM:
@@ -21,7 +23,7 @@ USUARIOS:
   Profissional: (criar pelo dono) - senha definida pelo dono
 
 =========================================
-FUNCIONALIDADES IMPLEMENTADAS (19/06/2026):
+FUNCIONALIDADES IMPLEMENTADAS (16/06/2026):
 =========================================
 
 1. Autenticacao (Super Admin, Dono, Profissional)
@@ -48,7 +50,7 @@ FUNCIONALIDADES IMPLEMENTADAS (19/06/2026):
    - Ver suas comissoes
 
 =========================================
-FUNCIONALIDADES ADICIONADAS (19/06/2026):
+FUNCIONALIDADES ADICIONADAS (16/06/2026):
 =========================================
 
 1. 🤖 CHATBOT INTELIGENTE PARA AGENDAMENTOS:
@@ -92,8 +94,18 @@ FUNCIONALIDADES ADICIONADAS (19/06/2026):
    - 45 dias de teste grátis para novos cadastros
    - Middleware de verificação de limite
    - Página de planos com upgrade
+   - Botão de cancelamento de assinatura
+   - Ao cancelar, volta para Trial com 7 dias
 
-7. 🚀 LANDING PAGE DE VENDAS:
+7. 💳 SISTEMA DE PAGAMENTOS:
+   - Integração com Mercado Pago (PIX, Cartão, Boleto)
+   - Modo de simulação para testes (modoSimulacao = true)
+   - Tabela transacoes_pagamento para registro
+   - Webhook para confirmação automática
+   - QR Code para pagamento PIX
+   - Suporte a parcelamento no cartão
+
+8. 🚀 LANDING PAGE DE VENDAS:
    - Estrutura separada do sistema de login
    - Menu superior com navegação
    - Seção Hero com CTA principal
@@ -105,6 +117,13 @@ FUNCIONALIDADES ADICIONADAS (19/06/2026):
    - Tabela comparativa
    - Cards de planos
    - Rodapé com informações de contato
+
+9. 🔧 REFATORAÇÃO DO BACKEND (16/06/2026) - NOVO:
+   - Código modularizado em pastas server/
+   - server.js agora tem apenas ~700 linhas (só rotas)
+   - Criados arquivos: config/database.js, middlewares/auth.js, utils/constants.js, utils/helpers.js
+   - Código mais organizado e fácil de manter
+   - ~200 linhas a menos no server.js
 
 =========================================
 REGRAS DO CHATBOT:
@@ -126,34 +145,54 @@ REGRAS DO SISTEMA DE PLANOS:
 4. Upgrade de plano registra histórico na tabela planos_historico
 5. Trial expirado bloqueia criação de novos agendamentos
 6. Planos pagos tem data de validade
+7. Cancelamento de assinatura volta para Trial com 7 dias
 
 =========================================
-ESTRUTURA DOS ARQUIVOS ATUALIZADA (19/06/2026):
+REGRAS DO SISTEMA DE PAGAMENTOS:
+=========================================
+1. Modo simulação ativo por padrão (modoSimulacao = true)
+2. Para pagamento real, configurar .env com credenciais MP
+3. Webhook deve estar configurado no Mercado Pago
+4. Tabela transacoes_pagamento registra todas as transações
+5. PIX gera QR Code, Cartão redireciona, Boleto gera link
+
+=========================================
+ESTRUTURA DOS ARQUIVOS ATUALIZADA (16/06/2026):
 =========================================
 
-server.js (backend com rotas do chatbot e planos)
+server/                      # NOVA ESTRUTURA MODULAR
+├── config/
+│   └── database.js          # Conexão com banco + criação das tabelas
+├── middlewares/
+│   └── auth.js              # Middlewares de autenticação
+└── utils/
+    ├── constants.js         # Constantes (planos, JWT_SECRET)
+    └── helpers.js           # Funções auxiliares
+
+server.js                    # Backend: APENAS as rotas (~700 linhas)
+
 public/
-├── index.html (landing page + frontend principal)
-├── chatbot.html (página do chatbot)
+├── index.html               # landing page + frontend principal
+├── chatbot.html             # página do chatbot
 ├── css/
-│   ├── style.css (estilos da landing page + app)
-│   └── chatbot.css (estilos do chatbot)
+│   ├── style.css            # estilos da landing page + app
+│   └── chatbot.css          # estilos do chatbot
 └── js/
-    ├── ui.js (UI global)
+    ├── ui.js                # UI global
     └── pages/
-        ├── dashboard.js (Dono)
+        ├── dashboard.js                # Dono
         ├── dashboard-profissional.js
-        ├── clientes.js (com bloqueio chatbot)
-        ├── agendamentos.js (Dono)
+        ├── clientes.js                 # com bloqueio chatbot
+        ├── agendamentos.js             # Dono
         ├── agendamentos-profissional.js
         ├── servicos.js
         ├── financeiro.js
-        ├── empresas.js (Super Admin)
-        ├── configuracoes.js (com aba chatbot)
-        └── planos.js (página de planos e upgrade)
+        ├── empresas.js                 # Super Admin
+        ├── configuracoes.js            # com aba chatbot
+        └── planos.js                   # upgrade e cancelamento
 
 =========================================
-ULTIMAS CORRECOES (19/06/2026):
+ULTIMAS CORRECOES (16/06/2026):
 =========================================
 1. Implementado chatbot com calendário visual
 2. Adicionado bloqueio de clientes para chatbot
@@ -165,8 +204,15 @@ ULTIMAS CORRECOES (19/06/2026):
 8. Criada landing page de vendas completa
 9. Implementado sistema de planos de assinatura
 10. Adicionados planos Starter, Pro, Business, Enterprise
-11. Corrigido dashboard do profissional
-12. Adicionada tabela planos_historico
-13. Corrigido CSS da tela de login/cadastro
-14. Adicionado menu hambúrguer responsivo
+11. Implementado sistema de pagamentos com Mercado Pago
+12. Adicionado modo de simulação para testes
+13. Criada tabela transacoes_pagamento
+14. Adicionada rota de cancelamento de assinatura
+15. Corrigido dashboard do profissional
+16. Adicionada tabela planos_historico
+17. Corrigido CSS da tela de login/cadastro
+18. Adicionado menu hambúrguer responsivo
+19. Implementado cancelamento com volta ao Trial (7 dias)
+20. REFATORAÇÃO: Backend modularizado (server/config, server/middlewares, server/utils)
+21. Server.js reduzido de ~900 para ~700 linhas
 =========================================

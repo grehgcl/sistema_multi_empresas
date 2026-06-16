@@ -1,9 +1,42 @@
-﻿const express = require('express');
+﻿// ============================================================
+// 🚨 ATENÇÃO: PARTES EXTRATÍDAS PARA OUTROS ARQUIVOS 🚨
+// ============================================================
+// 
+// As seguintes partes NÃO ESTÃO MAIS AQUI e NÃO DEVEM SER MEXIDAS:
+//
+// 📁 server\config\database.js - Criação das tabelas
+// 📁 server\middlewares\auth.js - Middlewares de autenticação
+// 📁 server\utils\constants.js - Constantes dos planos
+// 📁 server\utils\helpers.js - Funções auxiliares
+//
+// ============================================================
+// O CÓDIGO ABAIXO SÃO AS ROTAS - AQUI VOCÊS MEXEM!
+// ============================================================
+
+const express = require('express');
 const cors = require('cors');
-const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const sqlite3 = require('sqlite3').verbose();
+
+// ============================================================
+// IMPORTS DAS PARTES EXTRATÍDAS
+// ============================================================
+
+const { db, initDatabase, inserirHorariosPadrao } = require('./server/config/database');
+const {
+    auth,
+    verificarSuperAdmin,
+    verificarDono,
+    verificarLimiteProfissionais,
+    verificarAcessoAgendamentos
+} = require('./server/middlewares/auth');
+const { PLANOS, PLANOS_NOMES, JWT_SECRET } = require('./server/utils/constants');
+const {
+    horaParaMinutos,
+    minutosParaHora,
+    getDiaSemanaFromDate,
+    gerarSenhaTemporaria
+} = require('./server/utils/helpers');
 
 const app = express();
 const PORT = 3000;
@@ -12,263 +45,34 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-const db = new sqlite3.Database('./database/barbearia.db');
+// ============================================================
+// INICIALIZAÇÃO DO BANCO E USUÁRIOS PADRÃO
+// ============================================================
 
-// ============================================
-// CRIAÇÃO DAS TABELAS (INICIALIZAÇÃO)
-// ============================================
+initDatabase();
 
-db.run(`CREATE TABLE IF NOT EXISTS empresas (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    plano TEXT DEFAULT 'trial',
-    limite_profissionais INTEGER DEFAULT 1,
-    trial_expira DATE,
-    assinatura_ativa INTEGER DEFAULT 1,
-    assinatura_valida_ate DATE,
-    ultima_cobranca DATE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-)`);
+// Criar usuário Super Admin se não existir
+const superAdminSenha = bcrypt.hashSync('super123', 10);
+db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role) 
+        VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`, [superAdminSenha]);
 
-db.run(`CREATE TABLE IF NOT EXISTS usuarios (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    senha TEXT NOT NULL,
-    role TEXT DEFAULT 'dono',
-    empresa_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
+// Criar empresa de teste e usuário dono se não existir
+db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
+    if (!empresa) {
+        db.run(`INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
+                VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`, () => {
+            inserirHorariosPadrao(1);
 
-db.run(`CREATE TABLE IF NOT EXISTS profissionais (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    senha TEXT NOT NULL,
-    comissao_percent REAL DEFAULT 30,
-    empresa_id INTEGER,
-    ativo INTEGER DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
-
-db.run(`CREATE TABLE IF NOT EXISTS clientes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    telefone TEXT,
-    email TEXT,
-    bloqueado_chatbot INTEGER DEFAULT 0,
-    empresa_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
-
-db.run(`CREATE TABLE IF NOT EXISTS servicos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nome TEXT NOT NULL,
-    descricao TEXT,
-    valor REAL NOT NULL,
-    duracao INTEGER DEFAULT 30,
-    ativo INTEGER DEFAULT 1,
-    empresa_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
-
-db.run(`CREATE TABLE IF NOT EXISTS agendamentos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    cliente_id INTEGER,
-    servico_id INTEGER,
-    servico TEXT,
-    valor REAL,
-    data DATE NOT NULL,
-    hora TEXT NOT NULL,
-    status TEXT DEFAULT 'pendente',
-    comissao REAL DEFAULT 0,
-    empresa_id INTEGER,
-    profissional_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
-    FOREIGN KEY (servico_id) REFERENCES servicos(id),
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id),
-    FOREIGN KEY (profissional_id) REFERENCES profissionais(id)
-)`);
-
-db.run(`CREATE TABLE IF NOT EXISTS horarios_funcionamento (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    empresa_id INTEGER,
-    dia_semana INTEGER,
-    aberto INTEGER DEFAULT 1,
-    hora_inicio TEXT DEFAULT '09:00',
-    hora_fim TEXT DEFAULT '18:00',
-    almoco_inicio TEXT DEFAULT '12:00',
-    almoco_fim TEXT DEFAULT '13:00',
-    intervalo_minutos INTEGER DEFAULT 30,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
-
-// Criar tabela de transações de pagamento
-db.run(`CREATE TABLE IF NOT EXISTS transacoes_pagamento (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    empresa_id INTEGER NOT NULL,
-    plano_id VARCHAR(50) NOT NULL,
-    plano_nome VARCHAR(100) NOT NULL,
-    valor DECIMAL(10,2) NOT NULL,
-    metodo VARCHAR(50) NOT NULL,
-    transacao_id VARCHAR(255),
-    pagamento_id VARCHAR(255),
-    status VARCHAR(50) DEFAULT 'pending',
-    qr_code TEXT,
-    qr_code_base64 TEXT,
-    boleto_url TEXT,
-    payment_method VARCHAR(50),
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
-
-// Criar tabela de histórico de planos
-db.run(`CREATE TABLE IF NOT EXISTS planos_historico (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    empresa_id INTEGER NOT NULL,
-    plano_antigo VARCHAR(50),
-    plano_novo VARCHAR(50) NOT NULL,
-    valor_pago DECIMAL(10,2),
-    metodo_pagamento VARCHAR(50),
-    comprovante TEXT,
-    data_mudanca DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (empresa_id) REFERENCES empresas(id)
-)`);
-
-// Inserir horários padrão para uma empresa
-function inserirHorariosPadrao(empresaId) {
-    for (let i = 1; i <= 6; i++) {
-        db.run(`INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
-                VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00')`, [empresaId, i]);
-    }
-    db.run(`INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
-            VALUES (?, 0, 0, '09:00', '18:00', '12:00', '13:00')`, [empresaId]);
-}
-
-// ============================================
-// MIDDLEWARES
-// ============================================
-
-function auth(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-        return res.status(401).json({ success: false, message: 'Token não fornecido' });
-    }
-    try {
-        const decoded = jwt.verify(token, 'secret_key');
-        req.usuario = decoded;
-        next();
-    } catch (err) {
-        res.status(401).json({ success: false, message: 'Token inválido' });
-    }
-}
-
-function verificarSuperAdmin(req, res, next) {
-    if (req.usuario.role !== 'superadmin') {
-        return res.status(403).json({ success: false, message: 'Acesso negado. Apenas Super Admin.' });
-    }
-    next();
-}
-
-function verificarDono(req, res, next) {
-    if (req.usuario.role !== 'dono') {
-        return res.status(403).json({ success: false, message: 'Acesso negado. Apenas Dono.' });
-    }
-    next();
-}
-
-function verificarLimiteProfissionais(req, res, next) {
-    const empresaId = req.usuario.empresa_id;
-
-    db.get(`SELECT plano, limite_profissionais, 
-            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = ? AND ativo = 1) as total_profs 
-            FROM empresas WHERE id = ?`,
-        [empresaId, empresaId], (err, empresa) => {
-            if (err) return res.status(500).json({ success: false, message: 'Erro interno' });
-
-            if (!empresa) {
-                return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
-            }
-
-            if (empresa.total_profs >= empresa.limite_profissionais) {
-                return res.status(403).json({
-                    success: false,
-                    message: `Seu plano (${empresa.plano}) permite apenas ${empresa.limite_profissionais} profissional(is). Faça upgrade para adicionar mais.`,
-                    needs_upgrade: true
-                });
-            }
-            next();
+            const donoSenha = bcrypt.hashSync('123456', 10);
+            db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role, empresa_id) 
+                    VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`, [donoSenha]);
         });
-}
+    }
+});
 
-function verificarAcessoAgendamentos(req, res, next) {
-    const empresaId = req.usuario.empresa_id;
-
-    db.get(`SELECT plano, trial_expira, assinatura_ativa, assinatura_valida_ate 
-            FROM empresas WHERE id = ?`, [empresaId], (err, empresa) => {
-        if (err) return res.status(500).json({ success: false, message: 'Erro interno' });
-
-        if (!empresa) {
-            return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
-        }
-
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
-        let acessoLiberado = false;
-        let mensagem = '';
-
-        if (empresa.plano === 'trial' && empresa.trial_expira) {
-            const trialExpira = new Date(empresa.trial_expira);
-            if (hoje <= trialExpira) {
-                acessoLiberado = true;
-            } else {
-                mensagem = 'Seu período de teste expirou. Faça upgrade para continuar agendando.';
-            }
-        } else if (empresa.plano !== 'trial') {
-            if (empresa.assinatura_ativa === 1) {
-                if (empresa.assinatura_valida_ate) {
-                    const validaAte = new Date(empresa.assinatura_valida_ate);
-                    if (hoje <= validaAte) {
-                        acessoLiberado = true;
-                    } else {
-                        mensagem = 'Sua assinatura expirou. Renove para continuar usando o sistema.';
-                    }
-                } else {
-                    acessoLiberado = true;
-                }
-            } else {
-                mensagem = 'Sua assinatura está inativa. Entre em contato com o suporte.';
-            }
-        }
-
-        if (!acessoLiberado) {
-            return res.status(403).json({
-                success: false,
-                message: mensagem || 'Acesso bloqueado. Verifique seu plano.',
-                requires_upgrade: true
-            });
-        }
-
-        next();
-    });
-}
-
-function getDiaSemanaFromDate(dataStr) {
-    const [ano, mes, dia] = dataStr.split('-').map(Number);
-    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
-    return dataUTC.getUTCDay();
-}
-
-// ============================================
+// ============================================================
 // AUTENTICAÇÃO
-// ============================================
+// ============================================================
 
 app.post('/api/login', (req, res) => {
     const { email, senha } = req.body;
@@ -280,7 +84,7 @@ app.post('/api/login', (req, res) => {
         if (!err && profissional && bcrypt.compareSync(senha, profissional.senha)) {
             const token = jwt.sign(
                 { id: profissional.id, email: profissional.email, role: 'profissional', empresa_id: profissional.empresa_id, nome: profissional.nome, comissao_percent: profissional.comissao_percent },
-                'secret_key',
+                JWT_SECRET,
                 { expiresIn: '7d' }
             );
 
@@ -336,7 +140,7 @@ app.post('/api/login', (req, res) => {
 
             const token = jwt.sign(
                 { id: user.id, email: user.email, role: user.role, empresa_id: user.empresa_id, nome: user.nome },
-                'secret_key',
+                JWT_SECRET,
                 { expiresIn: '7d' }
             );
 
@@ -400,20 +204,12 @@ app.post('/api/cadastro', (req, res) => {
     });
 });
 
-// ============================================
+// ============================================================
 // ROTAS DE PLANOS
-// ============================================
+// ============================================================
 
 app.get('/api/empresa/plano', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
-
-    const planosNomes = {
-        'trial': 'Trial',
-        'starter': 'Starter',
-        'pro': 'Pro',
-        'business': 'Business',
-        'enterprise': 'Enterprise'
-    };
 
     db.get(`SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate 
             FROM empresas WHERE id = ?`, [empresaId], (err, empresa) => {
@@ -441,7 +237,7 @@ app.get('/api/empresa/plano', auth, (req, res) => {
             success: true,
             data: {
                 plano: empresa.plano,
-                plano_nome: planosNomes[empresa.plano] || empresa.plano,
+                plano_nome: PLANOS_NOMES[empresa.plano] || empresa.plano,
                 limite_profissionais: empresa.limite_profissionais,
                 assinatura_ativa: empresa.assinatura_ativa,
                 dias_restantes: diasRestantes,
@@ -456,18 +252,11 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     const { plano, metodo_pagamento, comprovante } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    const planosConfig = {
-        'starter': { limite: 1, valor: 24.90, dias_acesso: 30, nome: 'Starter' },
-        'pro': { limite: 5, valor: 49.90, dias_acesso: 30, nome: 'Pro' },
-        'business': { limite: 12, valor: 99.90, dias_acesso: 30, nome: 'Business' },
-        'enterprise': { limite: 999, valor: 199.90, dias_acesso: 30, nome: 'Enterprise' }
-    };
-
-    if (!planosConfig[plano]) {
+    if (!PLANOS[plano]) {
         return res.status(400).json({ success: false, message: 'Plano inválido' });
     }
 
-    const config = planosConfig[plano];
+    const config = PLANOS[plano];
     const agora = new Date();
     const validaAte = new Date();
     validaAte.setDate(validaAte.getDate() + config.dias_acesso);
@@ -517,10 +306,6 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================
-// CANCELAMENTO DE ASSINATURA
-// ============================================
-
 app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { motivo } = req.body;
@@ -541,7 +326,6 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
             return res.json({ success: false, message: 'Você já está no plano Trial' });
         }
 
-        // Registrar no histórico o cancelamento
         db.run(`INSERT INTO planos_historico 
                 (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
                 VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`,
@@ -551,7 +335,6 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
             }
         );
 
-        // Atualizar empresa para plano Trial com 7 dias
         const dataTrialExpira = new Date();
         dataTrialExpira.setDate(dataTrialExpira.getDate() + 7);
 
@@ -578,7 +361,6 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
     });
 });
 
-// Rota para verificar se pode voltar ao Trial
 app.get('/api/can-return-trial', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
@@ -602,7 +384,6 @@ app.get('/api/can-return-trial', auth, verificarDono, (req, res) => {
         });
 });
 
-// Rota para simular downgrade (apenas para teste)
 app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
@@ -625,9 +406,9 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
         });
 });
 
-// ============================================
+// ============================================================
 // SUPER ADMIN
-// ============================================
+// ============================================================
 
 app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
     db.get("SELECT COUNT(*) as total FROM empresas", (err, empresas) => {
@@ -683,9 +464,9 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
         });
 });
 
-// ============================================
+// ============================================================
 // SERVIÇOS
-// ============================================
+// ============================================================
 
 app.get('/api/servicos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -752,9 +533,9 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================
+// ============================================================
 // PROFISSIONAIS
-// ============================================
+// ============================================================
 
 app.get('/api/profissionais', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -780,7 +561,7 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
     let senhaGerada = false;
 
     if (!senhaFinal) {
-        senhaFinal = Math.random().toString(36).slice(-8);
+        senhaFinal = gerarSenhaTemporaria();
         senhaGerada = true;
     }
 
@@ -835,7 +616,7 @@ app.post('/api/profissionais/:id/reset-senha', auth, verificarDono, (req, res) =
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
-    const novaSenha = Math.random().toString(36).slice(-8);
+    const novaSenha = gerarSenhaTemporaria();
     const senhaHash = bcrypt.hashSync(novaSenha, 10);
 
     db.run(`UPDATE profissionais SET senha = ? WHERE id = ? AND empresa_id = ?`,
@@ -864,9 +645,9 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================
+// ============================================================
 // AGENDAMENTOS
-// ============================================
+// ============================================================
 
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -1139,9 +920,9 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================
+// ============================================================
 // CLIENTES
-// ============================================
+// ============================================================
 
 app.get('/api/clientes', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -1214,9 +995,9 @@ app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) =>
         });
 });
 
-// ============================================
+// ============================================================
 // HORÁRIOS
-// ============================================
+// ============================================================
 
 app.get('/api/horarios', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -1240,9 +1021,9 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================
+// ============================================================
 // FINANCEIRO
-// ============================================
+// ============================================================
 
 app.get('/api/financeiro', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -1414,9 +1195,9 @@ app.get('/api/empresa/dados', auth, (req, res) => {
         });
 });
 
-// ============================================
+// ============================================================
 // ROTAS DO CHATBOT (PÚBLICAS)
-// ============================================
+// ============================================================
 
 app.get('/api/chatbot/empresa/:id', (req, res) => {
     const { id } = req.params;
@@ -1432,7 +1213,7 @@ app.get('/api/chatbot/empresa/:id', (req, res) => {
 app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
-    db.all('SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nombre',
+    db.all('SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome',
         [empresaId], (err, servicos) => {
             if (err) return res.json({ success: false, message: err.message });
             res.json({ success: true, servicos });
@@ -1583,17 +1364,6 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
             const horariosDisponiveis = [];
 
-            function horaParaMinutos(horaStr) {
-                const partes = horaStr.split(':');
-                return parseInt(partes[0]) * 60 + parseInt(partes[1]);
-            }
-
-            function minutosParaHora(minutos) {
-                const h = Math.floor(minutos / 60);
-                const m = minutos % 60;
-                return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            }
-
             const inicioMinutos = horaParaMinutos(horario.hora_inicio || '09:00');
             const fimMinutos = horaParaMinutos(horario.hora_fim || '18:00');
             const almocoInicio = horaParaMinutos(horario.almoco_inicio || '12:00');
@@ -1699,9 +1469,9 @@ app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
     res.json({ success: true, link });
 });
 
-// ============================================
-// SIMULAÇÃO DE PAGAMENTO (para testes)
-// ============================================
+// ============================================================
+// SIMULAÇÃO DE PAGAMENTO
+// ============================================================
 
 app.post('/api/simulate-pix', auth, (req, res) => {
     const { plano_id, plano_nome, valor } = req.body;
@@ -1742,14 +1512,7 @@ app.post('/api/simulate-card', auth, (req, res) => {
             if (err) console.error('Erro ao salvar simulação:', err);
         });
 
-    const planosConfig = {
-        starter: { limite: 1, nome: 'starter' },
-        pro: { limite: 5, nome: 'pro' },
-        business: { limite: 12, nome: 'business' },
-        enterprise: { limite: 999999, nome: 'enterprise' }
-    };
-
-    const plano = planosConfig[plano_id];
+    const plano = PLANOS[plano_id];
     if (plano) {
         const dataValidade = new Date();
         dataValidade.setMonth(dataValidade.getMonth() + 1);
@@ -1805,14 +1568,7 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
                 return res.json({ success: false, message: 'Transação não encontrada' });
             }
 
-            const planosConfig = {
-                starter: { limite: 1, nome: 'starter' },
-                pro: { limite: 5, nome: 'pro' },
-                business: { limite: 12, nome: 'business' },
-                enterprise: { limite: 999999, nome: 'enterprise' }
-            };
-
-            const plano = planosConfig[transacao.plano_id];
+            const plano = PLANOS[transacao.plano_id];
             if (plano) {
                 const dataValidade = new Date();
                 dataValidade.setMonth(dataValidade.getMonth() + 1);
@@ -1837,25 +1593,9 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
         });
 });
 
-// ============================================
+// ============================================================
 // INICIALIZAÇÃO DO SERVIDOR
-// ============================================
-
-// Criar usuário Super Admin se não existir
-const superAdminSenha = bcrypt.hashSync('super123', 10);
-db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role) VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`, [superAdminSenha]);
-
-// Criar empresa de teste e usuário dono se não existir
-db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
-    if (!empresa) {
-        db.run(`INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`, () => {
-            inserirHorariosPadrao(1);
-
-            const donoSenha = bcrypt.hashSync('123456', 10);
-            db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role, empresa_id) VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`, [donoSenha]);
-        });
-    }
-});
+// ============================================================
 
 app.listen(PORT, () => {
     console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
