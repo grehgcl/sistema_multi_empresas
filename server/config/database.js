@@ -2,7 +2,21 @@
 // CONFIGURAÇÃO DO BANCO DE DADOS
 // ============================================
 
-const sqlite3 = require('sqlite3').verbose();
+// Carregar sqlite3 apenas se não estiver em produção
+let sqlite3;
+try {
+    if (process.env.NODE_ENV !== 'production' && process.env.RENDER !== 'true') {
+        sqlite3 = require('sqlite3').verbose();
+        console.log('✅ sqlite3 carregado para desenvolvimento');
+    } else {
+        console.log('ℹ️ sqlite3 não carregado (ambiente de produção)');
+        sqlite3 = null;
+    }
+} catch (e) {
+    console.log('⚠️ sqlite3 não disponível');
+    sqlite3 = null;
+}
+
 const { Pool } = require('pg');
 const path = require('path');
 
@@ -64,7 +78,12 @@ if (isProduction || isRender) {
             }
             pool.query(sql, params, (err, result) => {
                 if (err) return callback(err);
-                callback(null, { lastID: result.rows?.[0]?.id || null });
+                // Para PostgreSQL, pegamos o ID da primeira linha se houver RETURNING
+                let lastID = null;
+                if (result && result.rows && result.rows.length > 0) {
+                    lastID = result.rows[0].id || null;
+                }
+                callback(null, { lastID: lastID });
             });
         },
         // Para queries com resultado (SELECT com retorno)
@@ -98,11 +117,15 @@ if (isProduction || isRender) {
     // ============================================
     console.log('🟢 Conectando ao SQLite (Desenvolvimento)...');
 
-    const sqliteDb = new sqlite3.Database(path.join(__dirname, '../../database/barbearia.db'));
-
-    db = sqliteDb;
-
-    console.log('✅ SQLite conectado com sucesso!');
+    if (sqlite3) {
+        const sqliteDb = new sqlite3.Database(path.join(__dirname, '../../database/barbearia.db'));
+        db = sqliteDb;
+        console.log('✅ SQLite conectado com sucesso!');
+    } else {
+        console.error('❌ sqlite3 não disponível! Certifique-se de instalar as dependências de desenvolvimento.');
+        console.error('   Execute: npm install --include=dev');
+        process.exit(1);
+    }
 }
 
 // ============================================
