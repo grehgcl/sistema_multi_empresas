@@ -10,14 +10,15 @@ console.log('🌱 Iniciando seed do banco de dados...');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// Função para executar queries com Promise
+// Função para executar queries com Promise (usando o wrapper do db)
 function runQuery(sql, params = []) {
     return new Promise((resolve, reject) => {
-        db.run(sql, params, function (err) {
+        db.run(sql, params, function (err, result) {
             if (err) {
                 reject(err);
             } else {
-                resolve(this);
+                // O resultado pode vir como { lastID, id } ou um objeto com o ID
+                resolve(result || this);
             }
         });
     });
@@ -62,11 +63,28 @@ async function runSeed() {
             : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
                VALUES (?, ?, ?, ?, ?)`;
 
+        // Executar a query e capturar o resultado
         const resultEmpresa = await runQuery(sqlEmpresa, ['Barbearia Teste', 'trial', 1, trialData, 1]);
-        const empresaId = resultEmpresa?.lastID || resultEmpresa?.id;
+
+        // Extrair o ID do resultado (funciona para PostgreSQL e SQLite)
+        let empresaId = null;
+        if (resultEmpresa) {
+            // Para PostgreSQL: o ID pode vir em resultEmpresa.id ou resultEmpresa.lastID
+            // Para SQLite: o ID pode vir em resultEmpresa.lastID
+            empresaId = resultEmpresa.id || resultEmpresa.lastID || null;
+        }
+
+        // Se não veio no resultado, buscar o ID da empresa pelo nome
+        if (!empresaId) {
+            console.log('⚠️ ID não retornado na inserção. Buscando pelo nome...');
+            const empresa = await getQuery('SELECT id FROM empresas WHERE nome = ?', ['Barbearia Teste']);
+            if (empresa) {
+                empresaId = empresa.id;
+            }
+        }
 
         if (!empresaId) {
-            console.error('❌ Erro ao criar empresa: ID não retornado');
+            console.error('❌ Erro ao criar empresa: ID não encontrado');
             process.exit(1);
         }
 
