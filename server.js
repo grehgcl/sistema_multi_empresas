@@ -1593,12 +1593,16 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
         });
 });
 
+
 // ============================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================================
 
-app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
+
+app.listen(PORT, HOST, () => {
+    console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
     console.log(`📧 Super Admin: super@admin.com / super123`);
     console.log(`📧 Dono: admin@teste.com / 123456`);
     console.log(`\n💰 PLANOS DISPONÍVEIS:`);
@@ -1607,3 +1611,14 @@ app.listen(PORT, () => {
     console.log(`   Business: R$ 99,90/mês - 12 profissionais`);
     console.log(`   Enterprise: R$ 199,90/mês - Profissionais ilimitados`);
 });
+
+// ============================================================
+// KEEP ALIVE (Evita dormir no Render)
+// ============================================================
+
+// Se estiver no Render, ativa o keep alive
+if (process.env.RENDER === 'true') {
+    const { keepAlive } = require('./keep_alive');
+    keepAlive();
+    console.log('🔄 Keep Alive ativado para o Render!');
+}

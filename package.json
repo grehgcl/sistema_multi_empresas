@@ -1,24 +1,37 @@
 {
-  "name": "barbearia-pro",
+  "name": "see-agende",
   "version": "2.0.0",
-  "description": "Sistema de Barbearia com Comissões Automáticas",
+  "description": "Sistema de agendamento para barbearias com comissões automáticas, chatbot e planos de assinatura",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "keep-alive": "node keep_alive.js",
+    "migrate": "node scripts/migrate.js",
+    "seed": "node scripts/seed.js"
   },
   "dependencies": {
-    "axios": "^1.18.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0",
-    "mercadopago": "^3.1.0",
-    "sqlite3": "^5.1.6",
-    "stripe": "^22.2.1"
+    "pg": "^8.21.0",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"
-  }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "barbearia",
+    "agendamento",
+    "chatbot",
+    "comissoes",
+    "assinaturas"
+  ],
+  "author": "See&Agende",
+  "license": "MIT"
 }

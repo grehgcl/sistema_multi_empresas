@@ -1,0 +1,24 @@
+# Configuração para o Render
+services:
+  - type: web
+    name: see-agende
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: RENDER
+        value: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: see-agende-db
+          property: connectionString
+    healthCheckPath: /
+    autoDeploy: true
+
+databases:
+  - name: see-agende-db
+    databaseName: barbearia
+    user: barbearia_user
+    plan: free
