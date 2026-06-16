@@ -55,8 +55,12 @@ if (isProduction || isRender) {
                 params = [];
             }
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
-                callback(null, result.rows[0] || null);
+                if (err) {
+                    if (callback) return callback(err);
+                    console.error('❌ Erro no get:', err.message);
+                    return;
+                }
+                if (callback) callback(null, result.rows[0] || null);
             });
         },
         // Para queries que retornam várias linhas
@@ -66,8 +70,12 @@ if (isProduction || isRender) {
                 params = [];
             }
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
-                callback(null, result.rows);
+                if (err) {
+                    if (callback) return callback(err);
+                    console.error('❌ Erro no all:', err.message);
+                    return;
+                }
+                if (callback) callback(null, result.rows);
             });
         },
         // Para INSERT/UPDATE/DELETE
@@ -76,14 +84,26 @@ if (isProduction || isRender) {
                 callback = params;
                 params = [];
             }
+
+            // Verificar se é um INSERT com RETURNING
+            const isInsert = sql.trim().toUpperCase().startsWith('INSERT');
+
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
-                // Para PostgreSQL, pegamos o ID da primeira linha se houver RETURNING
+                if (err) {
+                    if (callback) return callback(err);
+                    console.error('❌ Erro no run:', err.message);
+                    return;
+                }
+
                 let lastID = null;
-                if (result && result.rows && result.rows.length > 0) {
+                // Para INSERT com RETURNING, pegar o ID da primeira linha
+                if (isInsert && result && result.rows && result.rows.length > 0) {
                     lastID = result.rows[0].id || null;
                 }
-                callback(null, { lastID: lastID });
+
+                if (callback) {
+                    callback(null, { lastID: lastID, id: lastID });
+                }
             });
         },
         // Para queries com resultado (SELECT com retorno)
@@ -93,8 +113,12 @@ if (isProduction || isRender) {
                 params = [];
             }
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
-                callback(null, { rows: result.rows });
+                if (err) {
+                    if (callback) return callback(err);
+                    console.error('❌ Erro no query:', err.message);
+                    return;
+                }
+                if (callback) callback(null, { rows: result.rows });
             });
         },
         // Pool nativo para queries avançadas
@@ -416,12 +440,16 @@ function inserirHorariosPadrao(empresaId) {
             db.run(`INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
                     SELECT $1, $2, 1, '09:00', '18:00', '12:00', '13:00'
                     WHERE NOT EXISTS (SELECT 1 FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = $2)`,
-                [empresaId, i]);
+                [empresaId, i], (err) => {
+                    if (err) console.error('❌ Erro ao inserir horário:', err.message);
+                });
         }
         db.run(`INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
                 SELECT $1, 0, 0, '09:00', '18:00', '12:00', '13:00'
                 WHERE NOT EXISTS (SELECT 1 FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = 0)`,
-            [empresaId]);
+            [empresaId], (err) => {
+                if (err) console.error('❌ Erro ao inserir horário domingo:', err.message);
+            });
     } else {
         // SQLite
         for (let i = 1; i <= 6; i++) {
