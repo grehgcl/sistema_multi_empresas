@@ -49,11 +49,14 @@ if (isProduction || isRender) {
     // Wrapper para manter compatibilidade com o SQLite
     db = {
         // Para queries que retornam uma linha
+        // Dentro do wrapper do PostgreSQL, na função get:
         get: (sql, params, callback) => {
             if (typeof params === 'function') {
                 callback = params;
                 params = [];
             }
+            console.log('🔍 db.get SQL:', sql);
+            console.log('🔍 db.get Params:', params);
             pool.query(sql, params, (err, result) => {
                 if (err) {
                     if (callback) return callback(err);
@@ -435,7 +438,7 @@ function inserirHorariosPadrao(empresaId) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (isProduction) {
-        // PostgreSQL: Deleta e insere novamente para evitar conflitos
+        // PostgreSQL: Deleta e insere novamente
         db.run(`DELETE FROM horarios_funcionamento WHERE empresa_id = $1`, [empresaId], (err) => {
             if (err) {
                 console.error('❌ Erro ao deletar horários antigos:', err.message);
@@ -455,7 +458,7 @@ function inserirHorariosPadrao(empresaId) {
                 });
         });
     } else {
-        // SQLite: Mantém o INSERT OR IGNORE
+        // SQLite
         for (let i = 1; i <= 6; i++) {
             db.run(`INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
                     VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00')`, [empresaId, i]);
@@ -464,5 +467,4 @@ function inserirHorariosPadrao(empresaId) {
                 VALUES (?, 0, 0, '09:00', '18:00', '12:00', '13:00')`, [empresaId]);
     }
 }
-
 module.exports = { db, initDatabase, inserirHorariosPadrao };
