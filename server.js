@@ -55,14 +55,18 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER
 
 // Criar usuário Super Admin se não existir
 const superAdminSenha = bcrypt.hashSync('super123', 10);
-const sqlSuperAdmin = isProduction
-    ? `INSERT INTO usuarios (id, nome, email, senha, role) 
-       VALUES (1, 'Super Admin', 'super@admin.com', $1, 'superadmin') 
-       ON CONFLICT (id) DO NOTHING`
-    : `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role) 
-       VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`;
 
-db.run(sqlSuperAdmin, [superAdminSenha]);
+// Verificar se já existe
+db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, (err, existing) => {
+    if (!existing) {
+        const sqlSuperAdmin = isProduction
+            ? `INSERT INTO usuarios (id, nome, email, senha, role) 
+               VALUES (1, 'Super Admin', 'super@admin.com', $1, 'superadmin')`
+            : `INSERT INTO usuarios (id, nome, email, senha, role) 
+               VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`;
+        db.run(sqlSuperAdmin, [superAdminSenha]);
+    }
+});
 
 // Criar empresa de teste e usuário dono se não existir
 db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
@@ -77,14 +81,18 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
             inserirHorariosPadrao(1);
 
             const donoSenha = bcrypt.hashSync('123456', 10);
-            const sqlDono = isProduction
-                ? `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
-                   VALUES (2, 'Admin Teste', 'admin@teste.com', $1, 'dono', 1) 
-                   ON CONFLICT (id) DO NOTHING`
-                : `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role, empresa_id) 
-                   VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`;
 
-            db.run(sqlDono, [donoSenha]);
+            // Verificar se o usuário dono já existe
+            db.get(`SELECT id FROM usuarios WHERE email = 'admin@teste.com'`, (err, existing) => {
+                if (!existing) {
+                    const sqlDono = isProduction
+                        ? `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
+                           VALUES (2, 'Admin Teste', 'admin@teste.com', $1, 'dono', 1)`
+                        : `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
+                           VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`;
+                    db.run(sqlDono, [donoSenha]);
+                }
+            });
         });
     }
 });
@@ -1398,21 +1406,35 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     const { dia } = req.params;
     const { aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = req.body;
 
-    // Esta query tem muitos parâmetros, vamos usar a versão com ?
-    // já que o PostgreSQL também aceita ? com o wrapper que criamos
-    const sql = `UPDATE horarios_funcionamento SET 
-        aberto = COALESCE(?, aberto), 
-        hora_inicio = COALESCE(?, hora_inicio), 
-        hora_fim = COALESCE(?, hora_fim), 
-        almoco_inicio = COALESCE(?, almoco_inicio), 
-        almoco_fim = COALESCE(?, almoco_fim), 
-        intervalo_minutos = COALESCE(?, intervalo_minutos), 
-        updated_at = CURRENT_TIMESTAMP 
-        WHERE empresa_id = ? AND dia_semana = ?`;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    // Para PostgreSQL: usar $1, $2, ... com COALESCE
+    // Para SQLite: usar ?, ?, ... com COALESCE
+    const sql = isProduction
+        ? `UPDATE horarios_funcionamento SET 
+           aberto = COALESCE($1, aberto), 
+           hora_inicio = COALESCE($2, hora_inicio), 
+           hora_fim = COALESCE($3, hora_fim), 
+           almoco_inicio = COALESCE($4, almoco_inicio), 
+           almoco_fim = COALESCE($5, almoco_fim), 
+           intervalo_minutos = COALESCE($6, intervalo_minutos), 
+           updated_at = CURRENT_TIMESTAMP 
+           WHERE empresa_id = $7 AND dia_semana = $8`
+        : `UPDATE horarios_funcionamento SET 
+           aberto = COALESCE(?, aberto), 
+           hora_inicio = COALESCE(?, hora_inicio), 
+           hora_fim = COALESCE(?, hora_fim), 
+           almoco_inicio = COALESCE(?, almoco_inicio), 
+           almoco_fim = COALESCE(?, almoco_fim), 
+           intervalo_minutos = COALESCE(?, intervalo_minutos), 
+           updated_at = CURRENT_TIMESTAMP 
+           WHERE empresa_id = ? AND dia_semana = ?`;
 
     db.run(sql, [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia], function (err) {
         if (err) {
             console.error('❌ Erro ao atualizar horário:', err.message);
+            console.error('📝 SQL:', sql);
+            console.error('📝 Parâmetros:', [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia]);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, message: 'Horario atualizado com sucesso' });
