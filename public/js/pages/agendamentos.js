@@ -103,7 +103,7 @@ async function carregarAgendamentos() {
                             </tr>
                         </thead>
                         <tbody id="listaAgendamentos"></tbody>
-                    60
+                    </table>
                 </div>
             </div>
         </div>
@@ -132,8 +132,8 @@ async function carregarListaAgendamentosComFiltro() {
         }
 
         // Filtrar pelos valores selecionados
-        const statusFiltro = document.getElementById('filtro-status')?.value || 'todos';
-        const profissionalFiltro = document.getElementById('filtro-profissional')?.value || 'todos';
+        const statusFiltro = document.getElementById('filtroStatus')?.value || 'todos';
+        const profissionalFiltro = document.getElementById('filtroProfissional')?.value || 'todos';
 
         let listaFiltrada = agendamentos;
 
@@ -154,16 +154,16 @@ async function carregarListaAgendamentosComFiltro() {
             });
         }
 
-        const tbody = document.getElementById('lista-agendamentos');
+        const tbody = document.getElementById('listaAgendamentos');
         if (!tbody) {
-            console.warn('⚠️ Elemento lista-agendamentos não encontrado');
+            console.warn('⚠️ Elemento listaAgendamentos não encontrado');
             return;
         }
 
         if (listaFiltrada.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-3">
+                    <td colspan="7" class="text-center text-muted py-3">
                         ${agendamentos.length === 0 ? '📋 Nenhum agendamento encontrado' : '🔍 Nenhum agendamento com os filtros selecionados'}
                     </td>
                 </tr>
@@ -179,22 +179,27 @@ async function carregarListaAgendamentosComFiltro() {
                     ? '<span class="badge badge-warning">⏳ Pendente</span>'
                     : '<span class="badge badge-secondary">❌ Cancelado</span>';
 
+            const dataFormatada = item.data ? formatarData(item.data) : '-';
+            const horaFormatada = item.hora || '-';
+
             html += `
                 <tr>
-                    <td>${item.id}</td>
+                    <td>${dataFormatada} ${horaFormatada}</td>
                     <td>${item.cliente_nome || item.cliente_id || 'N/A'}</td>
-                    <td>${item.servico_nome || item.servico || '-'}</td>
-                    <td>${formatarData(item.data)}</td>
-                    <td>${item.hora}</td>
                     <td>${item.profissional_nome || 'Não atribuído'}</td>
+                    <td>${item.servico_nome || item.servico || '-'}</td>
                     <td>R$ ${(item.valor || 0).toFixed(2)}</td>
                     <td>${statusBadge}</td>
+                    <td>
+                        ${item.status === 'pendente' ? `<button class="btn-icon" onclick="editarAgendamento(${item.id})">✏️</button>` : ''}
+                        ${item.status === 'pendente' ? `<button class="btn-icon" onclick="concluirAgendamento(${item.id})">✅</button>` : ''}
+                        <button class="btn-icon" onclick="excluirAgendamento(${item.id})">🗑️</button>
+                    </td>
                 </tr>
             `;
         }
 
         tbody.innerHTML = html;
-        atualizarContadores(agendamentos);
 
     } catch (error) {
         console.error('❌ Erro ao carregar agendamentos:', error);
@@ -210,23 +215,6 @@ function formatarData(dataStr) {
         return data.toLocaleDateString('pt-BR');
     } catch {
         return dataStr;
-    }
-}
-
-// Função para atualizar contadores
-function atualizarContadores(agendamentos) {
-    const totalEl = document.getElementById('total-agendamentos');
-    const pendentesEl = document.getElementById('pendentes-agendamentos');
-    const concluidosEl = document.getElementById('concluidos-agendamentos');
-
-    if (totalEl) totalEl.textContent = agendamentos.length || 0;
-    if (pendentesEl) {
-        const pendentes = agendamentos.filter(a => a.status === 'pendente').length;
-        pendentesEl.textContent = pendentes;
-    }
-    if (concluidosEl) {
-        const concluidos = agendamentos.filter(a => a.status === 'concluido').length;
-        concluidosEl.textContent = concluidos;
     }
 }
 
@@ -349,37 +337,49 @@ async function carregarHorariosDisponiveisDono() {
 
     const token = localStorage.getItem("token");
     try {
-        const res = await fetch("/api/horarios/disponiveis", {
+        // Usar a rota correta do backend
+        const res = await fetch("/api/chatbot/horarios-disponiveis", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + token
             },
-            body: JSON.stringify({ data: data, profesional_id: profissional_id || null })
+            body: JSON.stringify({
+                empresaId: JSON.parse(atob(token.split('.')[1])).empresa_id,
+                profissionalId: profissional_id || null,
+                data: data
+            })
         });
-        const result = await res.json();
 
-        if (result.success && result.data && result.data.horarios && result.data.horarios.length > 0) {
-            let options = '<option value="">Selecione um horário</option>';
-            for (let hora of result.data.horarios) {
-                const horaFormatada = formatarHoraCompleta(hora);
-                options += `<option value="${horaFormatada}">${horaFormatada}</option>`;
+        const result = await res.json();
+        console.log("📝 Resposta horários:", result);
+
+        if (result.success) {
+            let horarios = [];
+            if (Array.isArray(result.horarios)) {
+                horarios = result.horarios;
+            } else if (Array.isArray(result.data)) {
+                horarios = result.data;
+            } else {
+                horarios = [];
             }
-            horaSelect.innerHTML = options;
+
+            if (horarios.length > 0) {
+                let options = '<option value="">Selecione um horário</option>';
+                for (let hora of horarios) {
+                    options += `<option value="${hora}">${hora}</option>`;
+                }
+                horaSelect.innerHTML = options;
+            } else {
+                horaSelect.innerHTML = '<option value="">Nenhum horário disponível neste dia</option>';
+            }
         } else {
-            horaSelect.innerHTML = '<option value="">Nenhum horário disponível neste dia</option>';
+            horaSelect.innerHTML = '<option value="">Erro ao carregar horários</option>';
         }
     } catch (error) {
         console.error("Erro ao buscar horários:", error);
         horaSelect.innerHTML = '<option value="">Erro ao carregar horários</option>';
     }
-}
-
-function formatarHoraCompleta(hora) {
-    if (!hora) return "";
-    if (/^\d{2}:\d{2}$/.test(hora)) return hora;
-    if (/^\d{1,2}$/.test(hora)) return hora.padStart(2, '0') + ":00";
-    return hora;
 }
 
 async function abrirModalAgendamentoDono() {
@@ -554,6 +554,7 @@ async function salvarAgendamentoDono() {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
+        console.error("Erro ao criar agendamento:", error);
         showToast("Erro ao criar agendamento", "error");
     }
 
@@ -586,6 +587,7 @@ async function concluirAgendamento(id) {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
+        console.error("Erro ao concluir agendamento:", error);
         showToast("Erro ao concluir agendamento", "error");
     }
 
@@ -612,17 +614,11 @@ async function excluirAgendamento(id) {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
+        console.error("Erro ao excluir agendamento:", error);
         showToast("Erro ao excluir agendamento", "error");
     }
 
     hideLoading();
-}
-
-// Funções auxiliares
-function formatarDataBr(dataStr) {
-    if (!dataStr) return "-";
-    const data = new Date(dataStr + "T00:00:00");
-    return data.toLocaleDateString("pt-BR");
 }
 
 function escapeHtml(text) {
@@ -643,12 +639,12 @@ async function editarAgendamento(id) {
     if (result.success) {
         const agendamento = result.data.find(a => a.id === id);
         if (!agendamento) {
-            alert("Agendamento não encontrado");
+            showToast("Agendamento não encontrado", "error");
             return;
         }
 
         if (agendamento.status === "concluido") {
-            alert("Agendamentos concluídos não podem ser editados");
+            showToast("Agendamentos concluídos não podem ser editados", "warning");
             return;
         }
 
@@ -676,59 +672,60 @@ async function editarAgendamento(id) {
             }
         }
 
-        const modalDiv = document.createElement("div");
-        modalDiv.id = "modalEditarAgendamentoDono";
-        modalDiv.style.cssText = "position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;";
-
-        modalDiv.innerHTML = `
-            <div style="background: white; border-radius: 10px; padding: 25px; width: 450px; max-width: 90%;">
-                <h3 style="margin-bottom: 20px;">✏️ Editar Agendamento</h3>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Cliente *</label>
-                    <select id="editClienteIdDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        ${clientesOptions}
-                    </select>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Data *</label>
-                    <input type="date" id="editDataAgendamentoDono" value="${agendamento.data}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Hora</label>
-                    <input type="time" id="editHoraAgendamentoDono" value="${agendamento.hora || ""}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Serviço</label>
-                    <select id="editServicoIdDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" onchange="atualizarValorPorServicoEditDono()">
-                        ${servicosOptions}
-                    </select>
-                    <input type="text" id="editServicoDescricaoDono" value="${agendamento.servico || ""}" style="width: 100%; margin-top: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 4px;" placeholder="Ou digite o serviço manualmente">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Valor (R$)</label>
-                    <input type="number" id="editValorAgendamentoDono" step="0.01" value="${agendamento.valor}" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; margin-bottom: 5px;">Profissional</label>
-                    <select id="editProfissionalIdDono" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                        ${profissionaisOptions}
-                    </select>
-                </div>
-                
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-                    <button onclick="fecharModalEditarAgendamentoDono()" style="background: #ddd; color: #333; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Cancelar</button>
-                    <button onclick="salvarEdicaoAgendamentoDono(${id})" style="background: #667eea; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">Salvar</button>
+        const modalHtml = `
+            <div id="modalEditarAgendamentoDono" class="modal" style="display: flex;">
+                <div class="modal-content" style="max-width: 500px; width: 90%;">
+                    <h3>✏️ Editar Agendamento</h3>
+                    
+                    <div class="form-group">
+                        <label>Cliente *</label>
+                        <select id="editClienteIdDono" class="form-control">
+                            ${clientesOptions}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Data *</label>
+                        <input type="date" id="editDataAgendamentoDono" class="form-control" value="${agendamento.data}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Hora</label>
+                        <input type="time" id="editHoraAgendamentoDono" class="form-control" value="${agendamento.hora || ''}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Serviço</label>
+                        <select id="editServicoIdDono" class="form-control" onchange="atualizarValorPorServicoEditDono()">
+                            ${servicosOptions}
+                        </select>
+                        <input type="text" id="editServicoDescricaoDono" class="form-control" style="margin-top: 10px;" value="${agendamento.servico || ''}" placeholder="Ou digite o serviço manualmente">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Valor (R$)</label>
+                        <input type="number" id="editValorAgendamentoDono" class="form-control" step="0.01" value="${agendamento.valor || 0}">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Profissional</label>
+                        <select id="editProfissionalIdDono" class="form-control">
+                            ${profissionaisOptions}
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button class="btn btn-secondary" onclick="fecharModalEditarAgendamentoDono()">Cancelar</button>
+                        <button class="btn btn-primary" onclick="salvarEdicaoAgendamentoDono(${id})">Salvar</button>
+                    </div>
                 </div>
             </div>
         `;
 
-        document.body.appendChild(modalDiv);
+        const existingModal = document.getElementById("modalEditarAgendamentoDono");
+        if (existingModal) existingModal.remove();
+
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 }
 
@@ -759,9 +756,11 @@ async function salvarEdicaoAgendamentoDono(id) {
     const profissional_id = document.getElementById("editProfissionalIdDono").value;
 
     if (!cliente_id || !data) {
-        alert("Cliente e data são obrigatórios");
+        showToast("Cliente e data são obrigatórios", "warning");
         return;
     }
+
+    showLoading();
 
     const token = localStorage.getItem("token");
     const body = {
@@ -778,24 +777,31 @@ async function salvarEdicaoAgendamentoDono(id) {
         body.servico = servico_descricao;
     }
 
-    const res = await fetch(`/api/agendamentos/${id}`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify(body)
-    });
+    try {
+        const res = await fetch(`/api/agendamentos/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(body)
+        });
 
-    const result = await res.json();
+        const result = await res.json();
 
-    if (result.success) {
-        alert("Agendamento atualizado!");
-        fecharModalEditarAgendamentoDono();
-        carregarAgendamentos();
-    } else {
-        alert("Erro: " + result.message);
+        if (result.success) {
+            showToast("Agendamento atualizado com sucesso!", "success");
+            fecharModalEditarAgendamentoDono();
+            carregarAgendamentos();
+        } else {
+            showToast("Erro: " + result.message, "error");
+        }
+    } catch (error) {
+        console.error("Erro ao atualizar agendamento:", error);
+        showToast("Erro ao atualizar agendamento", "error");
     }
+
+    hideLoading();
 }
 
 // Exportar funções
