@@ -528,11 +528,14 @@ async function salvarAgendamentoDono() {
         profissional_id: profissional_id ? parseInt(profissional_id) : null
     };
 
-    if (servico_id) {
+    // Se tiver serviço_id e for um número válido
+    if (servico_id && servico_id !== '') {
         body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao) {
-        body.servico = servico_descricao;
+    } else if (servico_descricao && servico_descricao.trim() !== '') {
+        body.servico = servico_descricao.trim();
     }
+
+    console.log('📝 Enviando agendamento:', body);
 
     try {
         const res = await fetch("/api/agendamentos", {
@@ -545,6 +548,7 @@ async function salvarAgendamentoDono() {
         });
 
         const result = await res.json();
+        console.log('📝 Resposta:', result);
 
         if (result.success) {
             showToast("Agendamento criado com sucesso!", "success");
@@ -554,7 +558,7 @@ async function salvarAgendamentoDono() {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
-        console.error("Erro ao criar agendamento:", error);
+        console.error("❌ Erro ao criar agendamento:", error);
         showToast("Erro ao criar agendamento", "error");
     }
 

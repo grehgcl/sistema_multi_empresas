@@ -958,9 +958,13 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
+    console.log('📝 Criando agendamento:', { cliente_id, data, hora, servico_id, servico, valor, profissional_id, empresa_id });
+
     if (!cliente_id || !data) {
         return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
     }
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (servico_id) {
         const sqlServico = isProduction
@@ -970,29 +974,32 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
         db.get(sqlServico, [servico_id, empresa_id], (err, servicoData) => {
             if (err) {
                 console.error('❌ Erro ao buscar serviço:', err.message);
-                return res.json({ success: false, message: err.message });
+                return res.json({ success: false, message: 'Erro ao buscar serviço: ' + err.message });
             }
 
-            if (servicoData) {
-                const sqlInsert = isProduction
-                    ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                       VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
-                    : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                       VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
-
-                db.run(sqlInsert, [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
-                    if (err) {
-                        console.error('❌ Erro ao criar agendamento:', err.message);
-                        return res.json({ success: false, message: err.message });
-                    }
-                    let id = this?.lastID || this?.id || null;
-                    res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
-                });
-            } else {
-                res.json({ success: false, message: 'Serviço não encontrado' });
+            if (!servicoData) {
+                return res.json({ success: false, message: 'Serviço não encontrado' });
             }
+
+            const sqlInsert = isProduction
+                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                   VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
+                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                   VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+
+            db.run(sqlInsert, [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
+                if (err) {
+                    console.error('❌ Erro ao criar agendamento:', err.message);
+                    return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
+                }
+
+                let id = this?.lastID || this?.id || null;
+                console.log('✅ Agendamento criado com ID:', id);
+                res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
+            });
         });
     } else {
+        // Sem serviço_id (serviço manual)
         const sqlInsert = isProduction
             ? `INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
                VALUES ($1, $2, $3, $4, $5, 'pendente', $6, $7) RETURNING id`
@@ -1002,9 +1009,11 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
         db.run(sqlInsert, [cliente_id, data, hora, servico || '', valor || 0, empresa_id, profissional_id || null], function (err) {
             if (err) {
                 console.error('❌ Erro ao criar agendamento:', err.message);
-                return res.json({ success: false, message: err.message });
+                return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
             }
+
             let id = this?.lastID || this?.id || null;
+            console.log('✅ Agendamento criado com ID:', id);
             res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
         });
     }
