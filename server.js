@@ -1125,6 +1125,7 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 app.get('/api/financeiro', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     const role = req.usuario.role;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (role === 'superadmin') {
         db.all(`
@@ -1137,7 +1138,10 @@ app.get('/api/financeiro', auth, (req, res) => {
             WHERE a.status = 'concluido'
             ORDER BY a.data DESC
         `, (err, comissoes) => {
-            if (err) return res.json({ success: false, message: err.message });
+            if (err) {
+                console.error('❌ Erro no financeiro superadmin:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
 
             const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
             const faturamentoBruto = comissoes.reduce((s, c) => s + (c.valor || 0), 0);
@@ -1157,15 +1161,25 @@ app.get('/api/financeiro', auth, (req, res) => {
         });
     } else if (role === 'profissional') {
         const profissional_id = req.usuario.id;
-        db.all(`
-            SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.profissional_id = ? AND a.status = 'concluido'
-            ORDER BY a.data DESC
-        `, [profissional_id], (err, comissoes) => {
-            if (err) return res.json({ success: false, message: err.message });
+        const sql = isProduction
+            ? `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+               FROM agendamentos a
+               LEFT JOIN clientes c ON a.cliente_id = c.id
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.profissional_id = $1 AND a.status = 'concluido'
+               ORDER BY a.data DESC`
+            : `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+               FROM agendamentos a
+               LEFT JOIN clientes c ON a.cliente_id = c.id
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.profissional_id = ? AND a.status = 'concluido'
+               ORDER BY a.data DESC`;
+
+        db.all(sql, [profissional_id], (err, comissoes) => {
+            if (err) {
+                console.error('❌ Erro no financeiro profissional:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
 
             const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
 
@@ -1181,16 +1195,28 @@ app.get('/api/financeiro', auth, (req, res) => {
             });
         });
     } else {
-        db.all(`
-            SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, p.id as profissional_id, s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.empresa_id = ? AND a.status = 'concluido'
-            ORDER BY a.data DESC
-        `, [empresa_id], (err, agendamentos) => {
-            if (err) return res.json({ success: false, message: err.message });
+        // Dono
+        const sql = isProduction
+            ? `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, p.id as profissional_id, s.nome as servico_nome
+               FROM agendamentos a
+               LEFT JOIN clientes c ON a.cliente_id = c.id
+               LEFT JOIN profissionais p ON a.profissional_id = p.id
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = $1 AND a.status = 'concluido'
+               ORDER BY a.data DESC`
+            : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, p.id as profissional_id, s.nome as servico_nome
+               FROM agendamentos a
+               LEFT JOIN clientes c ON a.cliente_id = c.id
+               LEFT JOIN profissionais p ON a.profissional_id = p.id
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = ? AND a.status = 'concluido'
+               ORDER BY a.data DESC`;
+
+        db.all(sql, [empresa_id], (err, agendamentos) => {
+            if (err) {
+                console.error('❌ Erro no financeiro dono:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
 
             let faturamentoBruto = 0;
             let totalComissoes = 0;

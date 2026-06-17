@@ -115,90 +115,118 @@ async function carregarAgendamentos() {
 }
 
 async function carregarListaAgendamentosComFiltro() {
-    const token = localStorage.getItem("token");
-    const dataInicio = document.getElementById("filtroDataInicio")?.value;
-    const dataFim = document.getElementById("filtroDataFim")?.value;
-    const statusFilter = document.getElementById("filtroStatus")?.value;
-    const profissionalFilter = document.getElementById("filtroProfissional")?.value;
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/agendamentos', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
 
-    const res = await fetch("/api/agendamentos", {
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const result = await res.json();
+        // VERIFICAÇÃO DE SEGURANÇA - Garantir que data.data é um array
+        let agendamentos = [];
+        if (data.success && Array.isArray(data.data)) {
+            agendamentos = data.data;
+        } else {
+            console.warn('⚠️ Nenhum agendamento encontrado ou formato inválido');
+            agendamentos = [];
+        }
 
-    if (result.success) {
-        let agendamentos = result.data;
+        // Filtrar pelos valores selecionados
+        const statusFiltro = document.getElementById('filtro-status')?.value || 'todos';
+        const profissionalFiltro = document.getElementById('filtro-profissional')?.value || 'todos';
 
-        if (dataInicio) agendamentos = agendamentos.filter(a => a.data >= dataInicio);
-        if (dataFim) agendamentos = agendamentos.filter(a => a.data <= dataFim);
-        if (statusFilter && statusFilter !== "todos") agendamentos = agendamentos.filter(a => a.status === statusFilter);
-        if (profissionalFilter && profissionalFilter !== "todos") agendamentos = agendamentos.filter(a => a.profissional_id == profissionalFilter);
+        let listaFiltrada = agendamentos;
 
-        agendamentos.sort((a, b) => new Date(b.data) - new Date(a.data));
+        if (statusFiltro !== 'todos') {
+            listaFiltrada = listaFiltrada.filter(a => a.status === statusFiltro);
+        }
 
-        const tbody = document.getElementById("listaAgendamentos");
-        if (!tbody) return;
+        if (profissionalFiltro !== 'todos') {
+            listaFiltrada = listaFiltrada.filter(a => a.profissional_id == profissionalFiltro);
+        }
 
-        if (agendamentos.length === 0) {
+        // ORDENAÇÃO - só executa se houver itens
+        if (listaFiltrada.length > 0) {
+            listaFiltrada.sort((a, b) => {
+                if (a.data < b.data) return 1;
+                if (a.data > b.data) return -1;
+                return 0;
+            });
+        }
+
+        const tbody = document.getElementById('lista-agendamentos');
+        if (!tbody) {
+            console.warn('⚠️ Elemento lista-agendamentos não encontrado');
+            return;
+        }
+
+        if (listaFiltrada.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 40px;">
-                        <span style="font-size: 48px;">📅</span>
-                        <p>Nenhum agendamento encontrado</p>
+                    <td colspan="8" class="text-center text-muted py-3">
+                        ${agendamentos.length === 0 ? '📋 Nenhum agendamento encontrado' : '🔍 Nenhum agendamento com os filtros selecionados'}
                     </td>
                 </tr>
             `;
-        } else {
-            let rows = "";
-            for (let a of agendamentos) {
-                // Formatar data e hora
-                const dataFormatada = formatarDataBr(a.data);
-                const horaFormatada = a.hora ? a.hora.substring(0, 5) : "";
-
-                // Determinar cor do status
-                const statusClass = a.status === "concluido" ? "badge-success" : "badge-warning";
-                const statusText = a.status === "concluido" ? "✅ Concluído" : "⏳ Pendente";
-
-                rows += `
-                    <tr>
-                        <td style="white-space: nowrap;">
-                            <strong>${dataFormatada}</strong><br>
-                            <small>${horaFormatada}</small>
-                        </td>
-                        <td>
-                            <strong>${escapeHtml(a.cliente_nome || "N/A")}</strong>
-                        </td>
-                        <td>
-                            ${a.profissional_nome ?
-                        `<span class="badge badge-info">${escapeHtml(a.profissional_nome)}</span>` :
-                        '<span class="badge" style="background:#e2e8f0;">Não atribuído</span>'
-                    }
-                        </td>
-                        <td>${escapeHtml(a.servico_nome || a.servico || "N/A")}</td>
-                        <td style="white-space: nowrap;">
-                            <strong>R$ ${(a.valor || 0).toFixed(2)}</strong>
-                        </td>
-                        <td>
-                            <span class="badge ${statusClass}">${statusText}</span>
-                        </td>
-                        <td class="actions-cell">
-                            <button class="btn-icon" onclick="editarAgendamento(${a.id})" title="Editar">
-                                ✏️
-                            </button>
-                            ${a.status !== "concluido" ?
-                        `<button class="btn-icon" onclick="concluirAgendamento(${a.id})" title="Concluir" style="color:#10b981;">
-                                    ✅
-                                </button>` : ""
-                    }
-                            <button class="btn-icon" onclick="excluirAgendamento(${a.id})" title="Excluir" style="color:#ef4444;">
-                                🗑️
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }
-            tbody.innerHTML = rows;
+            return;
         }
+
+        let html = '';
+        for (let item of listaFiltrada) {
+            const statusBadge = item.status === 'concluido'
+                ? '<span class="badge badge-success">✅ Concluído</span>'
+                : item.status === 'pendente'
+                    ? '<span class="badge badge-warning">⏳ Pendente</span>'
+                    : '<span class="badge badge-secondary">❌ Cancelado</span>';
+
+            html += `
+                <tr>
+                    <td>${item.id}</td>
+                    <td>${item.cliente_nome || item.cliente_id || 'N/A'}</td>
+                    <td>${item.servico_nome || item.servico || '-'}</td>
+                    <td>${formatarData(item.data)}</td>
+                    <td>${item.hora}</td>
+                    <td>${item.profissional_nome || 'Não atribuído'}</td>
+                    <td>R$ ${(item.valor || 0).toFixed(2)}</td>
+                    <td>${statusBadge}</td>
+                </tr>
+            `;
+        }
+
+        tbody.innerHTML = html;
+        atualizarContadores(agendamentos);
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar agendamentos:', error);
+        showToast('Erro ao carregar agendamentos', 'error');
+    }
+}
+
+// Função auxiliar para formatar data
+function formatarData(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        const data = new Date(dataStr + 'T00:00:00');
+        return data.toLocaleDateString('pt-BR');
+    } catch {
+        return dataStr;
+    }
+}
+
+// Função para atualizar contadores
+function atualizarContadores(agendamentos) {
+    const totalEl = document.getElementById('total-agendamentos');
+    const pendentesEl = document.getElementById('pendentes-agendamentos');
+    const concluidosEl = document.getElementById('concluidos-agendamentos');
+
+    if (totalEl) totalEl.textContent = agendamentos.length || 0;
+    if (pendentesEl) {
+        const pendentes = agendamentos.filter(a => a.status === 'pendente').length;
+        pendentesEl.textContent = pendentes;
+    }
+    if (concluidosEl) {
+        const concluidos = agendamentos.filter(a => a.status === 'concluido').length;
+        concluidosEl.textContent = concluidos;
     }
 }
 
