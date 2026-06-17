@@ -39,7 +39,7 @@ const {
 } = require('./server/utils/helpers');
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -51,21 +51,40 @@ app.use(express.static('public'));
 
 initDatabase();
 
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
 // Criar usuário Super Admin se não existir
 const superAdminSenha = bcrypt.hashSync('super123', 10);
-db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role) 
-        VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`, [superAdminSenha]);
+const sqlSuperAdmin = isProduction
+    ? `INSERT INTO usuarios (id, nome, email, senha, role) 
+       VALUES (1, 'Super Admin', 'super@admin.com', $1, 'superadmin') 
+       ON CONFLICT (id) DO NOTHING`
+    : `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role) 
+       VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`;
+
+db.run(sqlSuperAdmin, [superAdminSenha]);
 
 // Criar empresa de teste e usuário dono se não existir
 db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
     if (!empresa) {
-        db.run(`INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
-                VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`, () => {
+        const sqlEmpresa = isProduction
+            ? `INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
+               VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`
+            : `INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
+               VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`;
+
+        db.run(sqlEmpresa, [], () => {
             inserirHorariosPadrao(1);
 
             const donoSenha = bcrypt.hashSync('123456', 10);
-            db.run(`INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role, empresa_id) 
-                    VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`, [donoSenha]);
+            const sqlDono = isProduction
+                ? `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
+                   VALUES (2, 'Admin Teste', 'admin@teste.com', $1, 'dono', 1) 
+                   ON CONFLICT (id) DO NOTHING`
+                : `INSERT OR IGNORE INTO usuarios (id, nome, email, senha, role, empresa_id) 
+                   VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`;
+
+            db.run(sqlDono, [donoSenha]);
         });
     }
 });
@@ -76,8 +95,6 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 
 app.post('/api/login', (req, res) => {
     const { email, senha } = req.body;
-
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     console.log('🔍 Tentando login:', { email });
 
@@ -212,21 +229,16 @@ app.post('/api/cadastro', (req, res) => {
         return res.json({ success: false, message: 'Todos os campos são obrigatórios' });
     }
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
     console.log('📝 Tentando cadastrar:', { nome, email, empresa_nome });
 
-    // Usar a sintaxe correta para cada banco
+    // Verificar se email já existe
     const sqlCheck = isProduction
         ? 'SELECT id FROM usuarios WHERE email = $1'
         : 'SELECT id FROM usuarios WHERE email = ?';
 
-    // Verificar se email já existe
     db.get(sqlCheck, [email], (err, user) => {
         if (err) {
             console.error('❌ Erro ao verificar email:', err.message);
-            console.error('❌ SQL:', sqlCheck);
-            console.error('❌ Parâmetros:', [email]);
             return res.json({ success: false, message: 'Erro ao verificar email: ' + err.message });
         }
 
@@ -308,8 +320,13 @@ app.post('/api/cadastro', (req, res) => {
 app.get('/api/empresa/plano', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
-    db.get(`SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate 
-            FROM empresas WHERE id = ?`, [empresaId], (err, empresa) => {
+    const sql = isProduction
+        ? `SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate 
+           FROM empresas WHERE id = $1`
+        : `SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate 
+           FROM empresas WHERE id = ?`;
+
+    db.get(sql, [empresaId], (err, empresa) => {
         if (err || !empresa) {
             return res.json({ success: false, message: 'Empresa não encontrada' });
         }
@@ -354,52 +371,65 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     }
 
     const config = PLANOS[plano];
-    const agora = new Date();
     const validaAte = new Date();
     validaAte.setDate(validaAte.getDate() + config.dias_acesso);
     const validaAteStr = validaAte.toISOString().split('T')[0];
 
-    db.get('SELECT plano FROM empresas WHERE id = ?', [empresaId], (err, empresaAtual) => {
+    const sqlSelect = isProduction
+        ? 'SELECT plano FROM empresas WHERE id = $1'
+        : 'SELECT plano FROM empresas WHERE id = ?';
+
+    db.get(sqlSelect, [empresaId], (err, empresaAtual) => {
         if (err) {
             return res.status(500).json({ success: false, message: err.message });
         }
 
-        db.run(`UPDATE empresas SET 
-                plano = ?, 
-                limite_profissionais = ?,
-                assinatura_ativa = 1,
-                assinatura_valida_ate = ?,
-                trial_expira = NULL
-                WHERE id = ?`,
-            [plano, config.limite, validaAteStr, empresaId],
-            function (err) {
-                if (err) {
-                    console.error(err);
-                    return res.status(500).json({ success: false, message: err.message });
-                }
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET 
+               plano = $1, 
+               limite_profissionais = $2,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = $3,
+               trial_expira = NULL
+               WHERE id = $4`
+            : `UPDATE empresas SET 
+               plano = ?, 
+               limite_profissionais = ?,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = ?,
+               trial_expira = NULL
+               WHERE id = ?`;
 
-                db.run(`INSERT INTO planos_historico 
-                        (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
-                        VALUES (?, ?, ?, ?, ?, ?)`,
-                    [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null],
-                    (err) => {
-                        if (err) console.error('Erro ao salvar histórico:', err);
-                    }
-                );
-
-                res.json({
-                    success: true,
-                    message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
-                    data: {
-                        plano: plano,
-                        plano_nome: config.nome,
-                        limite: config.limite,
-                        valida_ate: validaAteStr,
-                        valor: config.valor
-                    }
-                });
+        db.run(sqlUpdate, [plano, config.limite, validaAteStr, empresaId], function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ success: false, message: err.message });
             }
-        );
+
+            const sqlHistorico = isProduction
+                ? `INSERT INTO planos_historico 
+                   (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
+                   VALUES ($1, $2, $3, $4, $5, $6)`
+                : `INSERT INTO planos_historico 
+                   (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
+                   VALUES (?, ?, ?, ?, ?, ?)`;
+
+            db.run(sqlHistorico, [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null], (err) => {
+                if (err) console.error('Erro ao salvar histórico:', err);
+            });
+
+            res.json({
+                success: true,
+                message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
+                data: {
+                    plano: plano,
+                    plano_nome: config.nome,
+                    limite: config.limite,
+                    valida_ate: validaAteStr,
+                    valor: config.valor
+                }
+            });
+        });
     });
 });
 
@@ -409,7 +439,11 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
 
     console.log('Cancelando assinatura da empresa:', empresaId);
 
-    db.get('SELECT plano, assinatura_valida_ate FROM empresas WHERE id = ?', [empresaId], (err, empresa) => {
+    const sqlSelect = isProduction
+        ? 'SELECT plano, assinatura_valida_ate FROM empresas WHERE id = $1'
+        : 'SELECT plano, assinatura_valida_ate FROM empresas WHERE id = ?';
+
+    db.get(sqlSelect, [empresaId], (err, empresa) => {
         if (err) {
             console.error('Erro ao buscar empresa:', err);
             return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
@@ -423,62 +457,77 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
             return res.json({ success: false, message: 'Você já está no plano Trial' });
         }
 
-        db.run(`INSERT INTO planos_historico 
-                (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
-                VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`,
-            [empresaId, empresa.plano, motivo || 'Usuário cancelou assinatura'],
-            (err) => {
-                if (err) console.error('Erro ao registrar cancelamento:', err);
-            }
-        );
+        const sqlHistorico = isProduction
+            ? `INSERT INTO planos_historico 
+               (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
+               VALUES ($1, $2, 'cancelado', 0, 'cancelamento', $3, CURRENT_TIMESTAMP)`
+            : `INSERT INTO planos_historico 
+               (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
+               VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`;
+
+        db.run(sqlHistorico, [empresaId, empresa.plano, motivo || 'Usuário cancelou assinatura'], (err) => {
+            if (err) console.error('Erro ao registrar cancelamento:', err);
+        });
 
         const dataTrialExpira = new Date();
         dataTrialExpira.setDate(dataTrialExpira.getDate() + 7);
 
-        db.run(`UPDATE empresas SET 
-                plano = 'trial',
-                limite_profissionais = 1,
-                assinatura_ativa = 0,
-                assinatura_valida_ate = NULL,
-                trial_expira = ?
-                WHERE id = ?`,
-            [dataTrialExpira.toISOString(), empresaId],
-            function (err) {
-                if (err) {
-                    console.error('Erro ao cancelar assinatura:', err);
-                    return res.json({ success: false, message: 'Erro ao cancelar assinatura' });
-                }
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET 
+               plano = 'trial',
+               limite_profissionais = 1,
+               assinatura_ativa = 0,
+               assinatura_valida_ate = NULL,
+               trial_expira = $1
+               WHERE id = $2`
+            : `UPDATE empresas SET 
+               plano = 'trial',
+               limite_profissionais = 1,
+               assinatura_ativa = 0,
+               assinatura_valida_ate = NULL,
+               trial_expira = ?
+               WHERE id = ?`;
 
-                res.json({
-                    success: true,
-                    message: `Assinatura cancelada! Você tem 7 dias de acesso ao plano Trial até ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
-                    dias_trial: 7
-                });
+        db.run(sqlUpdate, [dataTrialExpira.toISOString(), empresaId], function (err) {
+            if (err) {
+                console.error('Erro ao cancelar assinatura:', err);
+                return res.json({ success: false, message: 'Erro ao cancelar assinatura' });
+            }
+
+            res.json({
+                success: true,
+                message: `Assinatura cancelada! Você tem 7 dias de acesso ao plano Trial até ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
+                dias_trial: 7
             });
+        });
     });
 });
 
 app.get('/api/can-return-trial', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
-    db.get(`SELECT plano, assinatura_ativa, assinatura_valida_ate,
-            (SELECT COUNT(*) FROM planos_historico WHERE empresa_id = ? AND plano_novo = 'cancelado' AND data_mudanca > datetime('now', '-30 days')) as cancelamentos_recentes
-            FROM empresas WHERE id = ?`,
-        [empresaId, empresaId],
-        (err, empresa) => {
-            if (err) {
-                return res.json({ success: false, message: 'Erro ao verificar' });
-            }
+    const sql = isProduction
+        ? `SELECT plano, assinatura_ativa, assinatura_valida_ate,
+           (SELECT COUNT(*) FROM planos_historico WHERE empresa_id = $1 AND plano_novo = 'cancelado' AND data_mudanca > datetime('now', '-30 days')) as cancelamentos_recentes
+           FROM empresas WHERE id = $1`
+        : `SELECT plano, assinatura_ativa, assinatura_valida_ate,
+           (SELECT COUNT(*) FROM planos_historico WHERE empresa_id = ? AND plano_novo = 'cancelado' AND data_mudanca > datetime('now', '-30 days')) as cancelamentos_recentes
+           FROM empresas WHERE id = ?`;
 
-            const podeVoltarTrial = empresa.plano !== 'trial' && (empresa.cancelamentos_recentes || 0) < 2;
+    db.get(sql, [empresaId], (err, empresa) => {
+        if (err) {
+            return res.json({ success: false, message: 'Erro ao verificar' });
+        }
 
-            res.json({
-                success: true,
-                pode_voltar_trial: podeVoltarTrial,
-                plano_atual: empresa.plano,
-                cancelamentos_recentes: empresa.cancelamentos_recentes || 0
-            });
+        const podeVoltarTrial = empresa.plano !== 'trial' && (empresa.cancelamentos_recentes || 0) < 2;
+
+        res.json({
+            success: true,
+            pode_voltar_trial: podeVoltarTrial,
+            plano_atual: empresa.plano,
+            cancelamentos_recentes: empresa.cancelamentos_recentes || 0
         });
+    });
 });
 
 app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
@@ -487,20 +536,28 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
     const dataTrialExpira = new Date();
     dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
 
-    db.run(`UPDATE empresas SET 
-            plano = 'trial',
-            limite_profissionais = 1,
-            assinatura_ativa = 0,
-            assinatura_valida_ate = NULL,
-            trial_expira = ?
-            WHERE id = ?`,
-        [dataTrialExpira.toISOString(), empresaId],
-        function (err) {
-            if (err) {
-                return res.json({ success: false, message: 'Erro ao voltar para trial' });
-            }
-            res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! Válido até ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
-        });
+    const sql = isProduction
+        ? `UPDATE empresas SET 
+           plano = 'trial',
+           limite_profissionais = 1,
+           assinatura_ativa = 0,
+           assinatura_valida_ate = NULL,
+           trial_expira = $1
+           WHERE id = $2`
+        : `UPDATE empresas SET 
+           plano = 'trial',
+           limite_profissionais = 1,
+           assinatura_ativa = 0,
+           assinatura_valida_ate = NULL,
+           trial_expira = ?
+           WHERE id = ?`;
+
+    db.run(sql, [dataTrialExpira.toISOString(), empresaId], function (err) {
+        if (err) {
+            return res.json({ success: false, message: 'Erro ao voltar para trial' });
+        }
+        res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! Válido até ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
+    });
 });
 
 // ============================================================
@@ -551,14 +608,16 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
     const dataTrialExpira = new Date();
     dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
 
-    db.run(`UPDATE empresas SET trial_expira = ? WHERE id = ?`,
-        [dataTrialExpira.toISOString(), id],
-        function (err) {
-            if (err) {
-                return res.json({ success: false, message: 'Erro ao estender trial' });
-            }
-            res.json({ success: true, message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
-        });
+    const sql = isProduction
+        ? `UPDATE empresas SET trial_expira = $1 WHERE id = $2`
+        : `UPDATE empresas SET trial_expira = ? WHERE id = ?`;
+
+    db.run(sql, [dataTrialExpira.toISOString(), id], function (err) {
+        if (err) {
+            return res.json({ success: false, message: 'Erro ao estender trial' });
+        }
+        res.json({ success: true, message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
+    });
 });
 
 // ============================================================
@@ -567,7 +626,6 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
 
 app.get('/api/servicos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresa_id) return res.json({ success: true, data: [] });
 
@@ -586,7 +644,6 @@ app.get('/api/servicos', auth, (req, res) => {
 
 app.get('/api/servicos/todos', auth, verificarDono, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `SELECT * FROM servicos WHERE empresa_id = $1 ORDER BY nome`
@@ -604,7 +661,6 @@ app.get('/api/servicos/todos', auth, verificarDono, (req, res) => {
 app.post('/api/servicos', auth, verificarDono, (req, res) => {
     const { nome, descricao, valor, duracao } = req.body;
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!nome || !valor) {
         return res.json({ success: false, message: 'Nome e valor são obrigatórios' });
@@ -631,7 +687,6 @@ app.put('/api/servicos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { nome, descricao, valor, duracao, ativo } = req.body;
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `UPDATE servicos SET 
@@ -662,14 +717,22 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
-    db.get(`SELECT COUNT(*) as total FROM agendamentos WHERE servico_id = ?`, [id], (err, result) => {
+    const sqlCheck = isProduction
+        ? `SELECT COUNT(*) as total FROM agendamentos WHERE servico_id = $1`
+        : `SELECT COUNT(*) as total FROM agendamentos WHERE servico_id = ?`;
+
+    db.get(sqlCheck, [id], (err, result) => {
         if (err) {
             console.error('❌ Erro ao verificar agendamentos:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
         if (result?.total > 0) {
-            db.run(`UPDATE servicos SET ativo = 0 WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err) => {
+            const sqlUpdate = isProduction
+                ? `UPDATE servicos SET ativo = 0 WHERE id = $1 AND empresa_id = $2`
+                : `UPDATE servicos SET ativo = 0 WHERE id = ? AND empresa_id = ?`;
+
+            db.run(sqlUpdate, [id, empresa_id], (err) => {
                 if (err) {
                     console.error('❌ Erro ao desativar serviço:', err.message);
                     return res.json({ success: false, message: err.message });
@@ -677,7 +740,11 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
                 res.json({ success: true, message: 'Serviço desativado (possui agendamentos)' });
             });
         } else {
-            db.run(`DELETE FROM servicos WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err) => {
+            const sqlDelete = isProduction
+                ? `DELETE FROM servicos WHERE id = $1 AND empresa_id = $2`
+                : `DELETE FROM servicos WHERE id = ? AND empresa_id = ?`;
+
+            db.run(sqlDelete, [id, empresa_id], (err) => {
                 if (err) {
                     console.error('❌ Erro ao excluir serviço:', err.message);
                     return res.json({ success: false, message: err.message });
@@ -694,7 +761,6 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/profissionais', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresa_id || req.usuario.role === 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
@@ -733,21 +799,27 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
 
     const senhaHash = bcrypt.hashSync(senhaFinal, 10);
 
-    db.run(`INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo) VALUES (?, ?, ?, ?, ?, 1)`,
-        [nome, email, senhaHash, comissao_percent || 30, empresa_id], function (err) {
-            if (err) {
-                if (err.message.includes('UNIQUE')) {
-                    return res.json({ success: false, message: 'Email já cadastrado' });
-                }
-                return res.json({ success: false, message: err.message });
-            }
+    const sql = isProduction
+        ? `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo) 
+           VALUES ($1, $2, $3, $4, $5, 1) RETURNING id`
+        : `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo) 
+           VALUES (?, ?, ?, ?, ?, 1)`;
 
-            res.json({
-                success: true,
-                data: { id: this.lastID, senha_temp: senhaFinal },
-                message: `Profissional criado! ${senhaGerada ? `Senha temporária: ${senhaFinal}` : 'Senha definida pelo dono.'}`
-            });
+    db.run(sql, [nome, email, senhaHash, comissao_percent || 30, empresa_id], function (err) {
+        if (err) {
+            if (err.message.includes('UNIQUE')) {
+                return res.json({ success: false, message: 'Email já cadastrado' });
+            }
+            return res.json({ success: false, message: err.message });
+        }
+
+        let id = this?.lastID || this?.id || null;
+        res.json({
+            success: true,
+            data: { id: id, senha_temp: senhaFinal },
+            message: `Profissional criado! ${senhaGerada ? `Senha temporária: ${senhaFinal}` : 'Senha definida pelo dono.'}`
         });
+    });
 });
 
 app.put('/api/profissionais/:id', auth, verificarDono, (req, res) => {
@@ -755,16 +827,19 @@ app.put('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     const { nome, email, comissao_percent, ativo, senha } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    let query = `UPDATE profissionais SET nome = COALESCE(?, nome), email = COALESCE(?, email), comissao_percent = COALESCE(?, comissao_percent), ativo = COALESCE(?, ativo)`;
+    let query = isProduction
+        ? `UPDATE profissionais SET nome = COALESCE($1, nome), email = COALESCE($2, email), comissao_percent = COALESCE($3, comissao_percent), ativo = COALESCE($4, ativo)`
+        : `UPDATE profissionais SET nome = COALESCE(?, nome), email = COALESCE(?, email), comissao_percent = COALESCE(?, comissao_percent), ativo = COALESCE(?, ativo)`;
+
     let params = [nome, email, comissao_percent, ativo];
 
     if (senha && senha.trim() !== '') {
         const senhaHash = bcrypt.hashSync(senha, 10);
-        query += `, senha = ?`;
+        query += isProduction ? `, senha = $5` : `, senha = ?`;
         params.push(senhaHash);
     }
 
-    query += ` WHERE id = ? AND empresa_id = ?`;
+    query += isProduction ? ` WHERE id = $${params.length + 1} AND empresa_id = $${params.length + 2}` : ` WHERE id = ? AND empresa_id = ?`;
     params.push(id, empresa_id);
 
     db.run(query, params, function (err) {
@@ -785,26 +860,52 @@ app.post('/api/profissionais/:id/reset-senha', auth, verificarDono, (req, res) =
     const novaSenha = gerarSenhaTemporaria();
     const senhaHash = bcrypt.hashSync(novaSenha, 10);
 
-    db.run(`UPDATE profissionais SET senha = ? WHERE id = ? AND empresa_id = ?`,
-        [senhaHash, id, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: `Nova senha: ${novaSenha}`, senha: novaSenha });
-        });
+    const sql = isProduction
+        ? `UPDATE profissionais SET senha = $1 WHERE id = $2 AND empresa_id = $3`
+        : `UPDATE profissionais SET senha = ? WHERE id = ? AND empresa_id = ?`;
+
+    db.run(sql, [senhaHash, id, empresa_id], function (err) {
+        if (err) return res.json({ success: false, message: err.message });
+        res.json({ success: true, message: `Nova senha: ${novaSenha}`, senha: novaSenha });
+    });
 });
 
 app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
-    db.get(`SELECT COUNT(*) as total FROM agendamentos WHERE profissional_id = ?`, [id], (err, result) => {
+    const sqlCheck = isProduction
+        ? `SELECT COUNT(*) as total FROM agendamentos WHERE profissional_id = $1`
+        : `SELECT COUNT(*) as total FROM agendamentos WHERE profissional_id = ?`;
+
+    db.get(sqlCheck, [id], (err, result) => {
+        if (err) {
+            console.error('❌ Erro ao verificar agendamentos:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
         if (result?.total > 0) {
-            db.run(`UPDATE profissionais SET ativo = 0 WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err) => {
-                if (err) return res.json({ success: false, message: err.message });
+            const sqlUpdate = isProduction
+                ? `UPDATE profissionais SET ativo = 0 WHERE id = $1 AND empresa_id = $2`
+                : `UPDATE profissionais SET ativo = 0 WHERE id = ? AND empresa_id = ?`;
+
+            db.run(sqlUpdate, [id, empresa_id], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao desativar profissional:', err.message);
+                    return res.json({ success: false, message: err.message });
+                }
                 res.json({ success: true, message: 'Profissional desativado (possui agendamentos)' });
             });
         } else {
-            db.run(`DELETE FROM profissionais WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err) => {
-                if (err) return res.json({ success: false, message: err.message });
+            const sqlDelete = isProduction
+                ? `DELETE FROM profissionais WHERE id = $1 AND empresa_id = $2`
+                : `DELETE FROM profissionais WHERE id = ? AND empresa_id = ?`;
+
+            db.run(sqlDelete, [id, empresa_id], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao excluir profissional:', err.message);
+                    return res.json({ success: false, message: err.message });
+                }
                 res.json({ success: true, message: 'Profissional removido' });
             });
         }
@@ -817,7 +918,6 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresa_id) return res.json({ success: true, data: [] });
 
@@ -855,25 +955,50 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
     }
 
     if (servico_id) {
-        db.get(`SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`, [servico_id, empresa_id], (err, servicoData) => {
+        const sqlServico = isProduction
+            ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
+            : `SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`;
+
+        db.get(sqlServico, [servico_id, empresa_id], (err, servicoData) => {
+            if (err) {
+                console.error('❌ Erro ao buscar serviço:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
+
             if (servicoData) {
-                db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                        VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`,
-                    [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
-                        if (err) return res.json({ success: false, message: err.message });
-                        res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
-                    });
+                const sqlInsert = isProduction
+                    ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                       VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
+                    : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                       VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+
+                db.run(sqlInsert, [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
+                    if (err) {
+                        console.error('❌ Erro ao criar agendamento:', err.message);
+                        return res.json({ success: false, message: err.message });
+                    }
+                    let id = this?.lastID || this?.id || null;
+                    res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
+                });
             } else {
                 res.json({ success: false, message: 'Serviço não encontrado' });
             }
         });
     } else {
-        db.run(`INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
-                VALUES (?, ?, ?, ?, ?, 'pendente', ?, ?)`,
-            [cliente_id, data, hora, servico || '', valor || 0, empresa_id, profissional_id || null], function (err) {
-                if (err) return res.json({ success: false, message: err.message });
-                res.json({ success: true, data: { id: this.lastID }, message: 'Agendamento criado' });
-            });
+        const sqlInsert = isProduction
+            ? `INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
+               VALUES ($1, $2, $3, $4, $5, 'pendente', $6, $7) RETURNING id`
+            : `INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
+               VALUES (?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+
+        db.run(sqlInsert, [cliente_id, data, hora, servico || '', valor || 0, empresa_id, profissional_id || null], function (err) {
+            if (err) {
+                console.error('❌ Erro ao criar agendamento:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
+            let id = this?.lastID || this?.id || null;
+            res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
+        });
     }
 });
 
@@ -884,15 +1009,25 @@ app.get('/api/profissional/agendamentos', auth, (req, res) => {
 
     const profissional_id = req.usuario.id;
 
-    db.all(`
-        SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = ?
-        ORDER BY a.data DESC
-    `, [profissional_id], (err, agendamentos) => {
-        if (err) return res.json({ success: false, message: err.message });
+    const sql = isProduction
+        ? `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.profissional_id = $1
+           ORDER BY a.data DESC`
+        : `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.profissional_id = ?
+           ORDER BY a.data DESC`;
+
+    db.all(sql, [profissional_id], (err, agendamentos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar agendamentos do profissional:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, data: agendamentos });
     });
 });
@@ -906,7 +1041,11 @@ app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
     const { data, hora, cliente_id } = req.body;
     const profissional_id = req.usuario.id;
 
-    db.get(`SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`, [id, profissional_id], (err, agendamento) => {
+    const sqlSelect = isProduction
+        ? `SELECT * FROM agendamentos WHERE id = $1 AND profissional_id = $2`
+        : `SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`;
+
+    db.get(sqlSelect, [id, profissional_id], (err, agendamento) => {
         if (err || !agendamento) {
             return res.json({ success: false, message: 'Agendamento não encontrado' });
         }
@@ -915,20 +1054,21 @@ app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
             return res.json({ success: false, message: 'Agendamentos concluídos não podem ser editados' });
         }
 
-        let query = `UPDATE agendamentos SET `;
+        let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
         let params = [];
         let updates = [];
+        let counter = 1;
 
         if (data !== undefined) {
-            updates.push(`data = ?`);
+            updates.push(isProduction ? `data = $${counter++}` : `data = ?`);
             params.push(data);
         }
         if (hora !== undefined) {
-            updates.push(`hora = ?`);
+            updates.push(isProduction ? `hora = $${counter++}` : `hora = ?`);
             params.push(hora);
         }
         if (cliente_id !== undefined) {
-            updates.push(`cliente_id = ?`);
+            updates.push(isProduction ? `cliente_id = $${counter++}` : `cliente_id = ?`);
             params.push(cliente_id);
         }
 
@@ -937,7 +1077,7 @@ app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
         }
 
         query += updates.join(', ');
-        query += ` WHERE id = ? AND profissional_id = ?`;
+        query += isProduction ? ` WHERE id = $${counter++} AND profissional_id = $${counter++}` : ` WHERE id = ? AND profissional_id = ?`;
         params.push(id, profissional_id);
 
         db.run(query, params, function (err) {
@@ -958,7 +1098,11 @@ app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
     const profissional_id = req.usuario.id;
     const comissao_percent = req.usuario.comissao_percent || 30;
 
-    db.get(`SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`, [id, profissional_id], (err, agendamento) => {
+    const sqlSelect = isProduction
+        ? `SELECT * FROM agendamentos WHERE id = $1 AND profissional_id = $2`
+        : `SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`;
+
+    db.get(sqlSelect, [id, profissional_id], (err, agendamento) => {
         if (err || !agendamento) {
             return res.json({ success: false, message: 'Agendamento não encontrado' });
         }
@@ -969,18 +1113,21 @@ app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
 
         const comissao = (agendamento.valor || 0) * (comissao_percent / 100);
 
-        db.run(`UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ?`,
-            [comissao, id], (err) => {
-                if (err) {
-                    return res.json({ success: false, message: err.message });
-                }
+        const sqlUpdate = isProduction
+            ? `UPDATE agendamentos SET status = 'concluido', comissao = $1 WHERE id = $2`
+            : `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ?`;
 
-                res.json({
-                    success: true,
-                    message: `Agendamento concluído! Sua comissão: R$ ${comissao.toFixed(2)}`,
-                    data: { comissao: comissao }
-                });
+        db.run(sqlUpdate, [comissao, id], (err) => {
+            if (err) {
+                return res.json({ success: false, message: err.message });
+            }
+
+            res.json({
+                success: true,
+                message: `Agendamento concluído! Sua comissão: R$ ${comissao.toFixed(2)}`,
+                data: { comissao: comissao }
             });
+        });
     });
 });
 
@@ -988,9 +1135,11 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
-    const sql = `SELECT a.*, p.comissao_percent FROM agendamentos a LEFT JOIN profissionais p ON a.profissional_id = p.id WHERE a.id = ? AND a.empresa_id = ?`;
+    const sqlSelect = isProduction
+        ? `SELECT a.*, p.comissao_percent FROM agendamentos a LEFT JOIN profissionais p ON a.profissional_id = p.id WHERE a.id = $1 AND a.empresa_id = $2`
+        : `SELECT a.*, p.comissao_percent FROM agendamentos a LEFT JOIN profissionais p ON a.profissional_id = p.id WHERE a.id = ? AND a.empresa_id = ?`;
 
-    db.get(sql, [id, empresa_id], (err, agendamento) => {
+    db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {
             return res.json({ success: false, message: 'Agendamento não encontrado' });
         }
@@ -1010,18 +1159,21 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
             mensagemComissao = ' Sem comissão (serviço sem profissional)';
         }
 
-        db.run(`UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ? AND empresa_id = ?`,
-            [comissao, id, empresa_id], (err) => {
-                if (err) {
-                    return res.json({ success: false, message: err.message });
-                }
+        const sqlUpdate = isProduction
+            ? `UPDATE agendamentos SET status = 'concluido', comissao = $1 WHERE id = $2 AND empresa_id = $3`
+            : `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ? AND empresa_id = ?`;
 
-                res.json({
-                    success: true,
-                    message: `Agendamento concluído!${mensagemComissao}`,
-                    data: { comissao: comissao }
-                });
+        db.run(sqlUpdate, [comissao, id, empresa_id], (err) => {
+            if (err) {
+                return res.json({ success: false, message: err.message });
+            }
+
+            res.json({
+                success: true,
+                message: `Agendamento concluído!${mensagemComissao}`,
+                data: { comissao: comissao }
             });
+        });
     });
 });
 
@@ -1030,7 +1182,11 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    db.get(`SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err, agendamento) => {
+    const sqlSelect = isProduction
+        ? `SELECT * FROM agendamentos WHERE id = $1 AND empresa_id = $2`
+        : `SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?`;
+
+    db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {
             return res.json({ success: false, message: 'Agendamento não encontrado' });
         }
@@ -1039,36 +1195,37 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
             return res.json({ success: false, message: 'Agendamentos concluídos não podem ser editados' });
         }
 
-        let query = `UPDATE agendamentos SET `;
+        let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
         let params = [];
         let updates = [];
+        let counter = 1;
 
         if (cliente_id !== undefined) {
-            updates.push(`cliente_id = ?`);
+            updates.push(isProduction ? `cliente_id = $${counter++}` : `cliente_id = ?`);
             params.push(cliente_id);
         }
         if (data !== undefined) {
-            updates.push(`data = ?`);
+            updates.push(isProduction ? `data = $${counter++}` : `data = ?`);
             params.push(data);
         }
         if (hora !== undefined) {
-            updates.push(`hora = ?`);
+            updates.push(isProduction ? `hora = $${counter++}` : `hora = ?`);
             params.push(hora);
         }
         if (servico_id !== undefined) {
-            updates.push(`servico_id = ?`);
+            updates.push(isProduction ? `servico_id = $${counter++}` : `servico_id = ?`);
             params.push(servico_id || null);
         }
         if (servico !== undefined) {
-            updates.push(`servico = ?`);
+            updates.push(isProduction ? `servico = $${counter++}` : `servico = ?`);
             params.push(servico);
         }
         if (valor !== undefined) {
-            updates.push(`valor = ?`);
+            updates.push(isProduction ? `valor = $${counter++}` : `valor = ?`);
             params.push(valor);
         }
         if (profissional_id !== undefined) {
-            updates.push(`profissional_id = ?`);
+            updates.push(isProduction ? `profissional_id = $${counter++}` : `profissional_id = ?`);
             params.push(profissional_id || null);
         }
 
@@ -1077,7 +1234,7 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
         }
 
         query += updates.join(', ');
-        query += ` WHERE id = ? AND empresa_id = ?`;
+        query += isProduction ? ` WHERE id = $${counter++} AND empresa_id = $${counter++}` : ` WHERE id = ? AND empresa_id = ?`;
         params.push(id, empresa_id);
 
         db.run(query, params, function (err) {
@@ -1093,7 +1250,15 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
-    db.run(`DELETE FROM agendamentos WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function (err) {
+    const sql = isProduction
+        ? `DELETE FROM agendamentos WHERE id = $1 AND empresa_id = $2`
+        : `DELETE FROM agendamentos WHERE id = ? AND empresa_id = ?`;
+
+    db.run(sql, [id, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao excluir agendamento:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, message: 'Agendamento removido' });
     });
 });
@@ -1104,13 +1269,11 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/clientes', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresa_id) {
         return res.json({ success: true, data: [] });
     }
 
-    // Query adaptada para PostgreSQL e SQLite
     const sql = isProduction
         ? `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
            FROM clientes 
@@ -1133,7 +1296,6 @@ app.get('/api/clientes', auth, (req, res) => {
 app.post('/api/clientes', auth, (req, res) => {
     const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
 
@@ -1158,7 +1320,6 @@ app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
 
@@ -1181,7 +1342,11 @@ app.delete('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresa_id = req.usuario.empresa_id;
 
-    db.run(`DELETE FROM clientes WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function (err) {
+    const sql = isProduction
+        ? `DELETE FROM clientes WHERE id = $1 AND empresa_id = $2`
+        : `DELETE FROM clientes WHERE id = ? AND empresa_id = ?`;
+
+    db.run(sql, [id, empresa_id], function (err) {
         if (err) {
             console.error('❌ Erro ao excluir cliente:', err.message);
             return res.json({ success: false, message: err.message });
@@ -1194,7 +1359,6 @@ app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) =>
     const { id } = req.params;
     const { bloquear } = req.body;
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `UPDATE clientes SET bloqueado_chatbot = $1 WHERE id = $2 AND empresa_id = $3`
@@ -1215,7 +1379,6 @@ app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) =>
 
 app.get('/api/horarios', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `SELECT * FROM horarios_funcionamento WHERE empresa_id = $1 ORDER BY dia_semana`
@@ -1235,10 +1398,23 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     const { dia } = req.params;
     const { aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = req.body;
 
-    const sql = "UPDATE horarios_funcionamento SET aberto = COALESCE(?, aberto), hora_inicio = COALESCE(?, hora_inicio), hora_fim = COALESCE(?, hora_fim), almoco_inicio = COALESCE(?, almoco_inicio), almoco_fim = COALESCE(?, almoco_fim), intervalo_minutos = COALESCE(?, intervalo_minutos), updated_at = CURRENT_TIMESTAMP WHERE empresa_id = ? AND dia_semana = ?";
+    // Esta query tem muitos parâmetros, vamos usar a versão com ?
+    // já que o PostgreSQL também aceita ? com o wrapper que criamos
+    const sql = `UPDATE horarios_funcionamento SET 
+        aberto = COALESCE(?, aberto), 
+        hora_inicio = COALESCE(?, hora_inicio), 
+        hora_fim = COALESCE(?, hora_fim), 
+        almoco_inicio = COALESCE(?, almoco_inicio), 
+        almoco_fim = COALESCE(?, almoco_fim), 
+        intervalo_minutos = COALESCE(?, intervalo_minutos), 
+        updated_at = CURRENT_TIMESTAMP 
+        WHERE empresa_id = ? AND dia_semana = ?`;
 
     db.run(sql, [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia], function (err) {
-        if (err) return res.json({ success: false, message: err.message });
+        if (err) {
+            console.error('❌ Erro ao atualizar horário:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, message: 'Horario atualizado com sucesso' });
     });
 });
@@ -1250,7 +1426,6 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 app.get('/api/financeiro', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     const role = req.usuario.role;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (role === 'superadmin') {
         db.all(`
@@ -1286,6 +1461,7 @@ app.get('/api/financeiro', auth, (req, res) => {
         });
     } else if (role === 'profissional') {
         const profissional_id = req.usuario.id;
+
         const sql = isProduction
             ? `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
                FROM agendamentos a
@@ -1393,14 +1569,21 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
 
     const profissional_id = req.usuario.id;
 
-    db.all(`
-        SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = ? AND a.status = 'concluido'
-        ORDER BY a.data DESC
-    `, [profissional_id], (err, comissoes) => {
+    const sql = isProduction
+        ? `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.profissional_id = $1 AND a.status = 'concluido'
+           ORDER BY a.data DESC`
+        : `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.profissional_id = ? AND a.status = 'concluido'
+           ORDER BY a.data DESC`;
+
+    db.all(sql, [profissional_id], (err, comissoes) => {
         if (err) {
             console.error('Erro ao buscar comissões:', err);
             return res.json({ success: false, message: err.message });
@@ -1424,7 +1607,6 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
 
 app.get('/api/empresa/dados', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresaId) {
         return res.json({ success: false, message: 'Empresa não identificada' });
@@ -1449,7 +1631,7 @@ app.get('/api/empresa/dados', auth, (req, res) => {
 });
 
 // ============================================================
-// ROTAS DO CHATBOT (PÚBLICAS)
+// ROTAS DO CHATBOT (PÚBLICAS) - Mantidas com ? porque são públicas
 // ============================================================
 
 app.get('/api/chatbot/empresa/:id', (req, res) => {
@@ -1734,13 +1916,17 @@ app.post('/api/simulate-pix', auth, (req, res) => {
     const qrCodeBase64Simulado = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
     const paymentId = "sim_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 
-    db.run(`INSERT INTO transacoes_pagamento 
-            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
-            VALUES (?, ?, ?, ?, 'pix_simulado', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`,
-        [empresaId, plano_id, plano_nome, valor, paymentId, qrCodeSimulado, qrCodeBase64Simulado],
-        (err) => {
-            if (err) console.error('Erro ao salvar simulação:', err);
-        });
+    const sql = isProduction
+        ? `INSERT INTO transacoes_pagamento 
+           (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
+           VALUES ($1, $2, $3, $4, 'pix_simulado', $5, 'pending', $6, $7, CURRENT_TIMESTAMP)`
+        : `INSERT INTO transacoes_pagamento 
+           (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
+           VALUES (?, ?, ?, ?, 'pix_simulado', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`;
+
+    db.run(sql, [empresaId, plano_id, plano_nome, valor, paymentId, qrCodeSimulado, qrCodeBase64Simulado], (err) => {
+        if (err) console.error('Erro ao salvar simulação:', err);
+    });
 
     res.json({
         success: true,
@@ -1757,27 +1943,40 @@ app.post('/api/simulate-card', auth, (req, res) => {
 
     const paymentId = "sim_card_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
 
-    db.run(`INSERT INTO transacoes_pagamento 
-            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
-            VALUES (?, ?, ?, ?, 'cartao_simulado', ?, 'approved', CURRENT_TIMESTAMP)`,
-        [empresaId, plano_id, plano_nome, valor, paymentId],
-        (err) => {
-            if (err) console.error('Erro ao salvar simulação:', err);
-        });
+    const sql = isProduction
+        ? `INSERT INTO transacoes_pagamento 
+           (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
+           VALUES ($1, $2, $3, $4, 'cartao_simulado', $5, 'approved', CURRENT_TIMESTAMP)`
+        : `INSERT INTO transacoes_pagamento 
+           (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
+           VALUES (?, ?, ?, ?, 'cartao_simulado', ?, 'approved', CURRENT_TIMESTAMP)`;
+
+    db.run(sql, [empresaId, plano_id, plano_nome, valor, paymentId], (err) => {
+        if (err) console.error('Erro ao salvar simulação:', err);
+    });
 
     const plano = PLANOS[plano_id];
     if (plano) {
         const dataValidade = new Date();
         dataValidade.setMonth(dataValidade.getMonth() + 1);
 
-        db.run(`UPDATE empresas SET 
-                plano = ?,
-                limite_profissionais = ?,
-                assinatura_ativa = 1,
-                assinatura_valida_ate = ?,
-                ultima_cobranca = CURRENT_TIMESTAMP
-                WHERE id = ?`,
-            [plano.nome, plano.limite, dataValidade.toISOString(), empresaId]);
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET 
+               plano = $1,
+               limite_profissionais = $2,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = $3,
+               ultima_cobranca = CURRENT_TIMESTAMP
+               WHERE id = $4`
+            : `UPDATE empresas SET 
+               plano = ?,
+               limite_profissionais = ?,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = ?,
+               ultima_cobranca = CURRENT_TIMESTAMP
+               WHERE id = ?`;
+
+        db.run(sqlUpdate, [plano.nome, plano.limite, dataValidade.toISOString(), empresaId]);
     }
 
     res.json({
@@ -1796,13 +1995,17 @@ app.post('/api/simulate-boleto', auth, (req, res) => {
     const paymentId = "sim_boleto_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
     const boletoUrl = "https://www.mercadopago.com.br/boleto/simulado/" + paymentId;
 
-    db.run(`INSERT INTO transacoes_pagamento 
-            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
-            VALUES (?, ?, ?, ?, 'boleto_simulado', ?, 'pending', ?, CURRENT_TIMESTAMP)`,
-        [empresaId, plano_id, plano_nome, valor, paymentId, boletoUrl],
-        (err) => {
-            if (err) console.error('Erro ao salvar simulação:', err);
-        });
+    const sql = isProduction
+        ? `INSERT INTO transacoes_pagamento 
+           (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
+           VALUES ($1, $2, $3, $4, 'boleto_simulado', $5, 'pending', $6, CURRENT_TIMESTAMP)`
+        : `INSERT INTO transacoes_pagamento 
+           (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
+           VALUES (?, ?, ?, ?, 'boleto_simulado', ?, 'pending', ?, CURRENT_TIMESTAMP)`;
+
+    db.run(sql, [empresaId, plano_id, plano_nome, valor, paymentId, boletoUrl], (err) => {
+        if (err) console.error('Erro ao salvar simulação:', err);
+    });
 
     res.json({
         success: true,
@@ -1815,44 +2018,58 @@ app.post('/api/simulate-boleto', auth, (req, res) => {
 app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
     const { paymentId } = req.params;
 
-    db.get('SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = ?',
-        [paymentId], (err, transacao) => {
-            if (err || !transacao) {
-                return res.json({ success: false, message: 'Transação não encontrada' });
-            }
+    const sqlSelect = isProduction
+        ? 'SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = $1'
+        : 'SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = ?';
 
-            const plano = PLANOS[transacao.plano_id];
-            if (plano) {
-                const dataValidade = new Date();
-                dataValidade.setMonth(dataValidade.getMonth() + 1);
+    db.get(sqlSelect, [paymentId], (err, transacao) => {
+        if (err || !transacao) {
+            return res.json({ success: false, message: 'Transação não encontrada' });
+        }
 
-                db.run(`UPDATE empresas SET 
-                        plano = ?,
-                        limite_profissionais = ?,
-                        assinatura_ativa = 1,
-                        assinatura_valida_ate = ?,
-                        ultima_cobranca = CURRENT_TIMESTAMP
-                        WHERE id = ?`,
-                    [plano.nome, plano.limite, dataValidade.toISOString(), transacao.empresa_id]);
+        const plano = PLANOS[transacao.plano_id];
+        if (plano) {
+            const dataValidade = new Date();
+            dataValidade.setMonth(dataValidade.getMonth() + 1);
 
-                db.run(`UPDATE transacoes_pagamento 
-                        SET status = 'approved', updated_at = CURRENT_TIMESTAMP
-                        WHERE pagamento_id = ?`, [paymentId]);
+            const sqlUpdate = isProduction
+                ? `UPDATE empresas SET 
+                   plano = $1,
+                   limite_profissionais = $2,
+                   assinatura_ativa = 1,
+                   assinatura_valida_ate = $3,
+                   ultima_cobranca = CURRENT_TIMESTAMP
+                   WHERE id = $4`
+                : `UPDATE empresas SET 
+                   plano = ?,
+                   limite_profissionais = ?,
+                   assinatura_ativa = 1,
+                   assinatura_valida_ate = ?,
+                   ultima_cobranca = CURRENT_TIMESTAMP
+                   WHERE id = ?`;
 
-                res.json({ success: true, message: 'Pagamento confirmado!' });
-            } else {
-                res.json({ success: false, message: 'Plano não encontrado' });
-            }
-        });
+            db.run(sqlUpdate, [plano.nome, plano.limite, dataValidade.toISOString(), transacao.empresa_id]);
+
+            const sqlUpdateTransacao = isProduction
+                ? `UPDATE transacoes_pagamento 
+                   SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                   WHERE pagamento_id = $1`
+                : `UPDATE transacoes_pagamento 
+                   SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                   WHERE pagamento_id = ?`;
+
+            db.run(sqlUpdateTransacao, [paymentId]);
+
+            res.json({ success: true, message: 'Pagamento confirmado!' });
+        } else {
+            res.json({ success: false, message: 'Plano não encontrado' });
+        }
+    });
 });
-
 
 // ============================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================================
-
-// PORT já foi declarado no início do arquivo
-// const PORT = process.env.PORT || 3000;  ← REMOVA ESTA LINHA
 
 const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
 
@@ -1871,7 +2088,6 @@ app.listen(PORT, HOST, () => {
 // KEEP ALIVE (Evita dormir no Render)
 // ============================================================
 
-// Se estiver no Render, ativa o keep alive
 if (process.env.RENDER === 'true') {
     const { keepAlive } = require('./keep_alive');
     keepAlive();
