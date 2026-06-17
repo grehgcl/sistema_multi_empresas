@@ -1408,26 +1408,25 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    // Para PostgreSQL: usar $1, $2, ... com COALESCE
-    // Para SQLite: usar ?, ?, ... com COALESCE
+    console.log('📝 Atualizando horário:', { empresa_id, dia, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim });
+
+    // Query adaptada para PostgreSQL e SQLite
     const sql = isProduction
-        ? `UPDATE horarios_funcionamento SET 
-           aberto = COALESCE($1, aberto), 
-           hora_inicio = COALESCE($2, hora_inicio), 
-           hora_fim = COALESCE($3, hora_fim), 
-           almoco_inicio = COALESCE($4, almoco_inicio), 
-           almoco_fim = COALESCE($5, almoco_fim), 
-           intervalo_minutos = COALESCE($6, intervalo_minutos), 
-           updated_at = CURRENT_TIMESTAMP 
+        ? `UPDATE horarios_funcionamento 
+           SET aberto = COALESCE($1, aberto), 
+               hora_inicio = COALESCE($2, hora_inicio), 
+               hora_fim = COALESCE($3, hora_fim), 
+               almoco_inicio = COALESCE($4, almoco_inicio), 
+               almoco_fim = COALESCE($5, almoco_fim), 
+               intervalo_minutos = COALESCE($6, intervalo_minutos)
            WHERE empresa_id = $7 AND dia_semana = $8`
-        : `UPDATE horarios_funcionamento SET 
-           aberto = COALESCE(?, aberto), 
-           hora_inicio = COALESCE(?, hora_inicio), 
-           hora_fim = COALESCE(?, hora_fim), 
-           almoco_inicio = COALESCE(?, almoco_inicio), 
-           almoco_fim = COALESCE(?, almoco_fim), 
-           intervalo_minutos = COALESCE(?, intervalo_minutos), 
-           updated_at = CURRENT_TIMESTAMP 
+        : `UPDATE horarios_funcionamento 
+           SET aberto = COALESCE(?, aberto), 
+               hora_inicio = COALESCE(?, hora_inicio), 
+               hora_fim = COALESCE(?, hora_fim), 
+               almoco_inicio = COALESCE(?, almoco_inicio), 
+               almoco_fim = COALESCE(?, almoco_fim), 
+               intervalo_minutos = COALESCE(?, intervalo_minutos)
            WHERE empresa_id = ? AND dia_semana = ?`;
 
     db.run(sql, [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia], function (err) {
@@ -1435,9 +1434,28 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
             console.error('❌ Erro ao atualizar horário:', err.message);
             console.error('📝 SQL:', sql);
             console.error('📝 Parâmetros:', [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia]);
-            return res.json({ success: false, message: err.message });
+            return res.json({ success: false, message: 'Erro ao atualizar horário: ' + err.message });
         }
-        res.json({ success: true, message: 'Horario atualizado com sucesso' });
+
+        // Verificar se atualizou alguma linha
+        if (this && this.changes === 0) {
+            // Se não atualizou, tentar inserir
+            const sqlInsert = isProduction
+                ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+                : `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+            db.run(sqlInsert, [empresa_id, dia, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos], function (err) {
+                if (err) {
+                    console.error('❌ Erro ao inserir horário:', err.message);
+                    return res.json({ success: false, message: 'Erro ao inserir horário: ' + err.message });
+                }
+                res.json({ success: true, message: 'Horário salvo com sucesso!' });
+            });
+        } else {
+            res.json({ success: true, message: 'Horário atualizado com sucesso!' });
+        }
     });
 });
 
@@ -1809,43 +1827,78 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
 app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     const { empresaId, profissionalId, data } = req.body;
 
+    console.log('📝 Buscando horários disponíveis:', { empresaId, profissionalId, data });
+
+    if (!empresaId || !data) {
+        return res.json({ success: false, message: 'Empresa e data são obrigatórios' });
+    }
+
     const [ano, mes, dia] = data.split('-').map(Number);
     const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
     const diaSemana = dataUTC.getUTCDay();
 
-    db.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
-        [empresaId, diaSemana], (err, horario) => {
-            if (err || !horario || horario.aberto !== 1) {
-                return res.json({ success: true, horarios: [] });
+    console.log('📝 Dia da semana:', diaSemana);
+
+    // Buscar horário de funcionamento do dia
+    const sqlHorario = isProduction
+        ? `SELECT * FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = $2`
+        : `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`;
+
+    db.get(sqlHorario, [empresaId, diaSemana], (err, horario) => {
+        if (err) {
+            console.error('❌ Erro ao buscar horário:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!horario || horario.aberto !== 1) {
+            console.log('📝 Dia não disponível:', { horario, aberto: horario?.aberto });
+            return res.json({ success: true, horarios: [] });
+        }
+
+        console.log('📝 Horário encontrado:', horario);
+
+        const horariosDisponiveis = [];
+
+        const inicioMinutos = horaParaMinutos(horario.hora_inicio || '09:00');
+        const fimMinutos = horaParaMinutos(horario.hora_fim || '18:00');
+        const almocoInicio = horaParaMinutos(horario.almoco_inicio || '12:00');
+        const almocoFim = horaParaMinutos(horario.almoco_fim || '13:00');
+        const intervalo = 30;
+
+        for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
+            if (minutos >= almocoInicio && minutos < almocoFim) continue;
+            horariosDisponiveis.push(minutosParaHora(minutos));
+        }
+
+        console.log('📝 Horários gerados:', horariosDisponiveis);
+
+        // Buscar horários já ocupados
+        let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
+        let params = [data, empresaId];
+
+        if (profissionalId && profissionalId !== 'null' && profissionalId !== '') {
+            query += ` AND profissional_id = ?`;
+            params.push(profissionalId);
+        }
+
+        console.log('📝 Query ocupados:', query);
+        console.log('📝 Parâmetros ocupados:', params);
+
+        db.all(query, params, (err, ocupados) => {
+            if (err) {
+                console.error('❌ Erro ao buscar ocupados:', err.message);
+                return res.json({ success: false, message: err.message });
             }
 
-            const horariosDisponiveis = [];
+            const horasOcupadas = new Set(ocupados.map(o => o.hora));
+            console.log('📝 Horas ocupadas:', horasOcupadas);
 
-            const inicioMinutos = horaParaMinutos(horario.hora_inicio || '09:00');
-            const fimMinutos = horaParaMinutos(horario.hora_fim || '18:00');
-            const almocoInicio = horaParaMinutos(horario.almoco_inicio || '12:00');
-            const almocoFim = horaParaMinutos(horario.almoco_fim || '13:00');
-            const intervalo = 30;
+            const disponiveis = horariosDisponiveis.filter(h => !horasOcupadas.has(h));
+            console.log('📝 Horários disponíveis final:', disponiveis);
 
-            for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
-                if (minutos >= almocoInicio && minutos < almocoFim) continue;
-                horariosDisponiveis.push(minutosParaHora(minutos));
-            }
-
-            let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
-            let params = [data, empresaId];
-
-            if (profissionalId && profissionalId !== 'null') {
-                query += ` AND profissional_id = ?`;
-                params.push(profissionalId);
-            }
-
-            db.all(query, params, (err, ocupados) => {
-                const horasOcupadas = new Set(ocupados.map(o => o.hora));
-                const disponiveis = horariosDisponiveis.filter(h => !horasOcupadas.has(h));
-                res.json({ success: true, horarios: disponiveis });
-            });
+            res.json({ success: true, horarios: disponiveis });
         });
+    });
 });
 
 app.post('/api/chatbot/agendar', (req, res) => {
