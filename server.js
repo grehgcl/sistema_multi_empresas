@@ -958,64 +958,84 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('📝 Criando agendamento:', { cliente_id, data, hora, servico_id, servico, valor, profissional_id, empresa_id });
+    console.log('📝 Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, servico, valor, profissional_id, empresa_id }, null, 2));
 
     if (!cliente_id || !data) {
+        console.log('❌ Cliente ou data faltando');
         return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
+    }
+
+    if (!hora) {
+        console.log('❌ Horário faltando');
+        return res.json({ success: false, message: 'Horário é obrigatório' });
     }
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    if (servico_id) {
+    // Função para criar o agendamento
+    function criarAgendamento(servicoNome, servicoValor, servicoId) {
+        const sqlInsert = isProduction
+            ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+               VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
+            : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+               VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+
+        const params = [
+            parseInt(cliente_id),
+            data,
+            hora,
+            servicoId || null,
+            servicoNome || '',
+            parseFloat(servicoValor) || 0,
+            parseInt(empresa_id),
+            profissional_id ? parseInt(profissional_id) : null
+        ];
+
+        console.log('📝 SQL Insert:', sqlInsert);
+        console.log('📝 Parâmetros:', params);
+
+        db.run(sqlInsert, params, function (err) {
+            if (err) {
+                console.error('❌ Erro ao criar agendamento:', err.message);
+                console.error('❌ SQL:', sqlInsert);
+                console.error('❌ Parâmetros:', params);
+                return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
+            }
+
+            let id = this?.lastID || this?.id || null;
+            console.log('✅ Agendamento criado com ID:', id);
+            res.json({ success: true, data: { id: id }, message: 'Agendamento criado com sucesso!' });
+        });
+    }
+
+    // Verificar se tem servico_id
+    if (servico_id && servico_id !== '' && servico_id !== 'null') {
         const sqlServico = isProduction
             ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
             : `SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`;
 
-        db.get(sqlServico, [servico_id, empresa_id], (err, servicoData) => {
+        console.log('📝 Buscando serviço:', { servico_id, empresa_id });
+
+        db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, servicoData) => {
             if (err) {
                 console.error('❌ Erro ao buscar serviço:', err.message);
                 return res.json({ success: false, message: 'Erro ao buscar serviço: ' + err.message });
             }
 
             if (!servicoData) {
+                console.log('❌ Serviço não encontrado:', servico_id);
                 return res.json({ success: false, message: 'Serviço não encontrado' });
             }
 
-            const sqlInsert = isProduction
-                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                   VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
-                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                   VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
-
-            db.run(sqlInsert, [cliente_id, data, hora, servico_id, servicoData.nome, servicoData.valor, empresa_id, profissional_id || null], function (err) {
-                if (err) {
-                    console.error('❌ Erro ao criar agendamento:', err.message);
-                    return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
-                }
-
-                let id = this?.lastID || this?.id || null;
-                console.log('✅ Agendamento criado com ID:', id);
-                res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
-            });
+            console.log('📝 Serviço encontrado:', servicoData);
+            criarAgendamento(servicoData.nome, servicoData.valor, parseInt(servico_id));
         });
     } else {
         // Sem serviço_id (serviço manual)
-        const sqlInsert = isProduction
-            ? `INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
-               VALUES ($1, $2, $3, $4, $5, 'pendente', $6, $7) RETURNING id`
-            : `INSERT INTO agendamentos (cliente_id, data, hora, servico, valor, status, empresa_id, profissional_id) 
-               VALUES (?, ?, ?, ?, ?, 'pendente', ?, ?)`;
-
-        db.run(sqlInsert, [cliente_id, data, hora, servico || '', valor || 0, empresa_id, profissional_id || null], function (err) {
-            if (err) {
-                console.error('❌ Erro ao criar agendamento:', err.message);
-                return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
-            }
-
-            let id = this?.lastID || this?.id || null;
-            console.log('✅ Agendamento criado com ID:', id);
-            res.json({ success: true, data: { id: id }, message: 'Agendamento criado' });
-        });
+        console.log('📝 Criando agendamento sem serviço_id (manual)');
+        const servicoNome = servico || '';
+        const servicoValor = parseFloat(valor) || 0;
+        criarAgendamento(servicoNome, servicoValor, null);
     }
 });
 

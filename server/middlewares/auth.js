@@ -60,14 +60,28 @@ function verificarLimiteProfissionais(req, res, next) {
 
 function verificarAcessoAgendamentos(req, res, next) {
     const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.get(`SELECT plano, trial_expira, assinatura_ativa, assinatura_valida_ate 
-            FROM empresas WHERE id = ?`, [empresaId], (err, empresa) => {
-        if (err) return res.status(500).json({ success: false, message: 'Erro interno' });
+    console.log('🔍 Verificando acesso para empresa:', empresaId);
+
+    const sql = isProduction
+        ? `SELECT plano, trial_expira, assinatura_ativa, assinatura_valida_ate 
+           FROM empresas WHERE id = $1`
+        : `SELECT plano, trial_expira, assinatura_ativa, assinatura_valida_ate 
+           FROM empresas WHERE id = ?`;
+
+    db.get(sql, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao verificar acesso:', err.message);
+            return res.status(500).json({ success: false, message: 'Erro interno ao verificar acesso' });
+        }
 
         if (!empresa) {
+            console.log('❌ Empresa não encontrada:', empresaId);
             return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
         }
+
+        console.log('📝 Dados da empresa:', empresa);
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -79,8 +93,10 @@ function verificarAcessoAgendamentos(req, res, next) {
             const trialExpira = new Date(empresa.trial_expira);
             if (hoje <= trialExpira) {
                 acessoLiberado = true;
+                console.log('✅ Trial ativo até:', trialExpira);
             } else {
                 mensagem = 'Seu período de teste expirou. Faça upgrade para continuar agendando.';
+                console.log('❌ Trial expirado em:', trialExpira);
             }
         } else if (empresa.plano !== 'trial') {
             if (empresa.assinatura_ativa === 1) {
@@ -88,18 +104,23 @@ function verificarAcessoAgendamentos(req, res, next) {
                     const validaAte = new Date(empresa.assinatura_valida_ate);
                     if (hoje <= validaAte) {
                         acessoLiberado = true;
+                        console.log('✅ Assinatura ativa até:', validaAte);
                     } else {
                         mensagem = 'Sua assinatura expirou. Renove para continuar usando o sistema.';
+                        console.log('❌ Assinatura expirada em:', validaAte);
                     }
                 } else {
                     acessoLiberado = true;
+                    console.log('✅ Assinatura ativa sem data de validade');
                 }
             } else {
                 mensagem = 'Sua assinatura está inativa. Entre em contato com o suporte.';
+                console.log('❌ Assinatura inativa');
             }
         }
 
         if (!acessoLiberado) {
+            console.log('❌ Acesso bloqueado:', mensagem);
             return res.status(403).json({
                 success: false,
                 message: mensagem || 'Acesso bloqueado. Verifique seu plano.',
@@ -107,6 +128,7 @@ function verificarAcessoAgendamentos(req, res, next) {
             });
         }
 
+        console.log('✅ Acesso liberado!');
         next();
     });
 }
