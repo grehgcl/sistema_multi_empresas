@@ -587,28 +587,58 @@ app.get('/api/servicos/todos', auth, verificarDono, (req, res) => {
 app.post('/api/servicos', auth, verificarDono, (req, res) => {
     const { nome, descricao, valor, duracao } = req.body;
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!nome || !valor) {
         return res.json({ success: false, message: 'Nome e valor são obrigatórios' });
     }
 
-    db.run(`INSERT INTO servicos (nome, descricao, valor, duracao, empresa_id, ativo) VALUES (?, ?, ?, ?, ?, 1)`,
-        [nome, descricao || '', valor, duracao || 30, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, data: { id: this.lastID }, message: 'Serviço cadastrado' });
-        });
+    const sql = isProduction
+        ? `INSERT INTO servicos (nome, descricao, valor, duracao, empresa_id, ativo) 
+           VALUES ($1, $2, $3, $4, $5, 1) RETURNING id`
+        : `INSERT INTO servicos (nome, descricao, valor, duracao, empresa_id, ativo) 
+           VALUES (?, ?, ?, ?, ?, 1)`;
+
+    db.run(sql, [nome, descricao || '', valor, duracao || 30, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao criar serviço:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
+        let id = this?.lastID || this?.id || null;
+        res.json({ success: true, data: { id: id }, message: 'Serviço cadastrado' });
+    });
 });
 
 app.put('/api/servicos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { nome, descricao, valor, duracao, ativo } = req.body;
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.run(`UPDATE servicos SET nome = COALESCE(?, nome), descricao = COALESCE(?, descricao), valor = COALESCE(?, valor), duracao = COALESCE(?, duracao), ativo = COALESCE(?, ativo) WHERE id = ? AND empresa_id = ?`,
-        [nome, descricao, valor, duracao, ativo, id, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: 'Serviço atualizado' });
-        });
+    const sql = isProduction
+        ? `UPDATE servicos SET 
+           nome = COALESCE($1, nome), 
+           descricao = COALESCE($2, descricao), 
+           valor = COALESCE($3, valor), 
+           duracao = COALESCE($4, duracao), 
+           ativo = COALESCE($5, ativo) 
+           WHERE id = $6 AND empresa_id = $7`
+        : `UPDATE servicos SET 
+           nome = COALESCE(?, nome), 
+           descricao = COALESCE(?, descricao), 
+           valor = COALESCE(?, valor), 
+           duracao = COALESCE(?, duracao), 
+           ativo = COALESCE(?, ativo) 
+           WHERE id = ? AND empresa_id = ?`;
+
+    db.run(sql, [nome, descricao, valor, duracao, ativo, id, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao editar serviço:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, message: 'Serviço atualizado' });
+    });
 });
 
 app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
@@ -616,14 +646,25 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     db.get(`SELECT COUNT(*) as total FROM agendamentos WHERE servico_id = ?`, [id], (err, result) => {
+        if (err) {
+            console.error('❌ Erro ao verificar agendamentos:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
         if (result?.total > 0) {
             db.run(`UPDATE servicos SET ativo = 0 WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err) => {
-                if (err) return res.json({ success: false, message: err.message });
+                if (err) {
+                    console.error('❌ Erro ao desativar serviço:', err.message);
+                    return res.json({ success: false, message: err.message });
+                }
                 res.json({ success: true, message: 'Serviço desativado (possui agendamentos)' });
             });
         } else {
             db.run(`DELETE FROM servicos WHERE id = ? AND empresa_id = ?`, [id, empresa_id], (err) => {
-                if (err) return res.json({ success: false, message: err.message });
+                if (err) {
+                    console.error('❌ Erro ao excluir serviço:', err.message);
+                    return res.json({ success: false, message: err.message });
+                }
                 res.json({ success: true, message: 'Serviço removido' });
             });
         }
@@ -1045,30 +1086,48 @@ app.get('/api/clientes', auth, (req, res) => {
 app.post('/api/clientes', auth, (req, res) => {
     const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
 
-    db.run(`INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`,
-        [nome, telefonePadrao, email, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, data: { id: this.lastID }, message: 'Cliente cadastrado' });
-        });
+    const sql = isProduction
+        ? `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES ($1, $2, $3, $4) RETURNING id`
+        : `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`;
+
+    db.run(sql, [nome, telefonePadrao, email, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao criar cliente:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
+        let id = this?.lastID || this?.id || null;
+        res.json({ success: true, data: { id: id }, message: 'Cliente cadastrado' });
+    });
 });
 
 app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
 
-    db.run(`UPDATE clientes SET nome = COALESCE(?, nome), telefone = COALESCE(?, telefone), email = COALESCE(?, email) WHERE id = ? AND empresa_id = ?`,
-        [nome, telefonePadrao, email, id, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: 'Cliente atualizado com sucesso' });
-        });
+    const sql = isProduction
+        ? `UPDATE clientes SET nome = COALESCE($1, nome), telefone = COALESCE($2, telefone), email = COALESCE($3, email) 
+           WHERE id = $4 AND empresa_id = $5`
+        : `UPDATE clientes SET nome = COALESCE(?, nome), telefone = COALESCE(?, telefone), email = COALESCE(?, email) 
+           WHERE id = ? AND empresa_id = ?`;
+
+    db.run(sql, [nome, telefonePadrao, email, id, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao editar cliente:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, message: 'Cliente atualizado com sucesso' });
+    });
 });
 
 app.delete('/api/clientes/:id', auth, verificarDono, (req, res) => {
@@ -1076,6 +1135,10 @@ app.delete('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     db.run(`DELETE FROM clientes WHERE id = ? AND empresa_id = ?`, [id, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao excluir cliente:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, message: 'Cliente removido' });
     });
 });
@@ -1084,12 +1147,19 @@ app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) =>
     const { id } = req.params;
     const { bloquear } = req.body;
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.run(`UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?`,
-        [bloquear ? 1 : 0, id, empresa_id], function (err) {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, message: bloquear ? 'Cliente bloqueado do chatbot' : 'Cliente desbloqueado do chatbot' });
-        });
+    const sql = isProduction
+        ? `UPDATE clientes SET bloqueado_chatbot = $1 WHERE id = $2 AND empresa_id = $3`
+        : `UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?`;
+
+    db.run(sql, [bloquear ? 1 : 0, id, empresa_id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao bloquear/desbloquear cliente:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, message: bloquear ? 'Cliente bloqueado do chatbot' : 'Cliente desbloqueado do chatbot' });
+    });
 });
 
 // ============================================================
