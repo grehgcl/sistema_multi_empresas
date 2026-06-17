@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "keep-alive": "node keep_alive.js",
     "migrate": "node scripts/migrate.js",
+    "create-superadmin": "node create-superadmin.js",
     "seed": "node scripts/seed.js"
   },
   "dependencies": {
