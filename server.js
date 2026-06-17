@@ -77,13 +77,37 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 app.post('/api/login', (req, res) => {
     const { email, senha } = req.body;
 
-    db.get(`SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
-            FROM profissionais p 
-            LEFT JOIN empresas e ON p.empresa_id = e.id 
-            WHERE p.email = ? AND p.ativo = 1`, [email], (err, profissional) => {
-        if (!err && profissional && bcrypt.compareSync(senha, profissional.senha)) {
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    console.log('🔍 Tentando login:', { email });
+
+    // Query para profissionais (adaptada para PostgreSQL)
+    const sqlProfissional = isProduction
+        ? `SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
+           FROM profissionais p 
+           LEFT JOIN empresas e ON p.empresa_id = e.id 
+           WHERE p.email = $1 AND p.ativo = 1`
+        : `SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
+           FROM profissionais p 
+           LEFT JOIN empresas e ON p.empresa_id = e.id 
+           WHERE p.email = ? AND p.ativo = 1`;
+
+    db.get(sqlProfissional, [email], (err, profissional) => {
+        if (err) {
+            console.error('❌ Erro ao buscar profissional:', err.message);
+            return res.json({ success: false, message: 'Erro ao buscar profissional' });
+        }
+
+        if (profissional && bcrypt.compareSync(senha, profissional.senha)) {
             const token = jwt.sign(
-                { id: profissional.id, email: profissional.email, role: 'profissional', empresa_id: profissional.empresa_id, nome: profissional.nome, comissao_percent: profissional.comissao_percent },
+                {
+                    id: profissional.id,
+                    email: profissional.email,
+                    role: 'profissional',
+                    empresa_id: profissional.empresa_id,
+                    nome: profissional.nome,
+                    comissao_percent: profissional.comissao_percent
+                },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -105,20 +129,34 @@ app.post('/api/login', (req, res) => {
             });
         }
 
-        db.get(`SELECT u.*, e.trial_expira, e.nome as empresa_nome, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
-                FROM usuarios u 
-                LEFT JOIN empresas e ON u.empresa_id = e.id 
-                WHERE u.email = ?`, [email], (err, user) => {
-            if (err || !user) {
+        // Query para usuários (adaptada para PostgreSQL)
+        const sqlUsuario = isProduction
+            ? `SELECT u.*, e.trial_expira, e.nome as empresa_nome, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
+               FROM usuarios u 
+               LEFT JOIN empresas e ON u.empresa_id = e.id 
+               WHERE u.email = $1`
+            : `SELECT u.*, e.trial_expira, e.nome as empresa_nome, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
+               FROM usuarios u 
+               LEFT JOIN empresas e ON u.empresa_id = e.id 
+               WHERE u.email = ?`;
+
+        db.get(sqlUsuario, [email], (err, user) => {
+            if (err) {
+                console.error('❌ Erro ao buscar usuário:', err.message);
+                return res.json({ success: false, message: 'Erro ao buscar usuário' });
+            }
+
+            if (!user) {
+                console.log('❌ Usuário não encontrado:', email);
                 return res.json({ success: false, message: 'Email ou senha incorretos' });
             }
 
             if (!bcrypt.compareSync(senha, user.senha)) {
+                console.log('❌ Senha incorreta para:', email);
                 return res.json({ success: false, message: 'Email ou senha incorretos' });
             }
 
             let diasRestantes = 0;
-            let planoStatus = user.plano;
 
             if (user.role === 'dono') {
                 if (user.plano === 'trial' && user.trial_expira) {
@@ -143,6 +181,8 @@ app.post('/api/login', (req, res) => {
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+
+            console.log('✅ Login bem sucedido:', email);
 
             res.json({
                 success: true,
