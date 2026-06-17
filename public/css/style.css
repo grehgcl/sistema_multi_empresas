@@ -1052,24 +1052,26 @@ body {
     padding: 32px;
 }
 
+/* ===== CORREÇÃO - INPUT GROUP ===== */
 .input-group {
     position: relative;
     margin-bottom: 20px;
 }
 
-.input-group i {
+.input-group .input-icon {
     position: absolute;
     left: 15px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--gray-light);
     font-size: 16px;
-    z-index: 1;
+    z-index: 2;
+    pointer-events: none;
 }
 
 .input-group input {
     width: 100%;
-    padding: 14px 15px 14px 45px;
+    padding: 14px 45px 14px 45px;
     border: 2px solid var(--border);
     border-radius: var(--radius-md);
     font-size: 14px;
@@ -1083,15 +1085,24 @@ body {
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
-.toggle-pwd {
+/* Botão de toggle (olho) */
+.input-group .toggle-pwd {
     position: absolute;
     right: 15px;
     top: 50%;
     transform: translateY(-50%);
     color: var(--gray-light);
     cursor: pointer;
-    font-size: 16px;
-    z-index: 1;
+    font-size: 18px;
+    z-index: 2;
+    transition: color 0.3s;
+    background: none;
+    border: none;
+    padding: 4px;
+}
+
+.input-group .toggle-pwd:hover {
+    color: var(--primary);
 }
 
 .btn-login {

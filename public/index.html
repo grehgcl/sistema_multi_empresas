@@ -377,9 +377,7 @@
         </footer>
     </div>
 
-    <!-- ============================================
-    LOGIN E CADASTRO
-    ============================================ -->
+    <!-- ===== LOGIN ===== -->
     <div id="loginContainer" class="login-wrapper" style="display:none">
         <div class="login-card">
             <div class="card-header">
@@ -389,15 +387,21 @@
                 <button class="btn-back" onclick="mostrarLanding()">← Voltar</button>
             </div>
             <div class="card-body">
+                <!-- Email -->
                 <div class="input-group">
-                    <i class="fas fa-envelope"></i>
+                    <i class="fas fa-envelope input-icon"></i>
                     <input type="email" id="loginEmail" placeholder="seu@email.com">
                 </div>
+
+                <!-- Senha com toggle -->
                 <div class="input-group">
-                    <i class="fas fa-lock"></i>
+                    <i class="fas fa-lock input-icon"></i>
                     <input type="password" id="loginSenha" placeholder="Sua senha">
-                    <i class="fas fa-eye-slash toggle-pwd" onclick="togglePassword()"></i>
+                    <button type="button" class="toggle-pwd" onclick="togglePassword('loginSenha')">
+                        <i class="fas fa-eye-slash"></i>
+                    </button>
                 </div>
+
                 <button class="btn-login" onclick="fazerLogin()">Entrar</button>
                 <div id="loginMessage" class="error-message"></div>
                 <div class="login-footer">
@@ -407,6 +411,7 @@
         </div>
     </div>
 
+    <!-- ===== CADASTRO ===== -->
     <div id="cadastroContainer" class="cadastro-wrapper" style="display:none">
         <div class="cadastro-card">
             <div class="card-header">
@@ -416,22 +421,33 @@
                 <button class="btn-back" onclick="mostrarLanding()">← Voltar</button>
             </div>
             <div class="card-body">
+                <!-- Nome -->
                 <div class="input-group">
-                    <i class="fas fa-user"></i>
+                    <i class="fas fa-user input-icon"></i>
                     <input type="text" id="cadastroNome" placeholder="Seu nome">
                 </div>
+
+                <!-- Email -->
                 <div class="input-group">
-                    <i class="fas fa-envelope"></i>
+                    <i class="fas fa-envelope input-icon"></i>
                     <input type="email" id="cadastroEmail" placeholder="seu@email.com">
                 </div>
+
+                <!-- Senha com toggle -->
                 <div class="input-group">
-                    <i class="fas fa-lock"></i>
+                    <i class="fas fa-lock input-icon"></i>
                     <input type="password" id="cadastroSenha" placeholder="Sua senha">
+                    <button type="button" class="toggle-pwd" onclick="togglePassword('cadastroSenha')">
+                        <i class="fas fa-eye-slash"></i>
+                    </button>
                 </div>
+
+                <!-- Empresa -->
                 <div class="input-group">
-                    <i class="fas fa-building"></i>
+                    <i class="fas fa-building input-icon"></i>
                     <input type="text" id="cadastroEmpresa" placeholder="Nome da sua empresa">
                 </div>
+
                 <button class="btn-login" onclick="fazerCadastro()">Criar conta grátis</button>
                 <div id="cadastroMessage" class="error-message"></div>
                 <div class="login-footer">
@@ -599,22 +615,25 @@
             showToast('🎥 Em breve vídeo demonstrativo!', 'info');
         }
 
+        // ========== TOGGLE PASSWORD ==========
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            const toggleBtn = input.parentElement.querySelector('.toggle-pwd');
+            const icon = toggleBtn.querySelector('i');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'fas fa-eye';
+            } else {
+                input.type = 'password';
+                icon.className = 'fas fa-eye-slash';
+            }
+        }
+
         // ========== UI ==========
         function toggleMobileNav() {
             const menu = document.getElementById('navMenuMobile');
             menu.classList.toggle('active');
-        }
-
-        function togglePassword() {
-            const pwd = document.getElementById('loginSenha');
-            const icon = document.querySelector('.toggle-pwd');
-            if (pwd.type === 'password') {
-                pwd.type = 'text';
-                icon.className = 'fas fa-eye toggle-pwd';
-            } else {
-                pwd.type = 'password';
-                icon.className = 'fas fa-eye-slash toggle-pwd';
-            }
         }
 
         function toggleMobileMenu() {
