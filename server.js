@@ -53,47 +53,102 @@ initDatabase();
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// Criar usuário Super Admin se não existir
+// ============================================================
+// 1. CRIAR SUPER ADMIN
+// ============================================================
 const superAdminSenha = bcrypt.hashSync('super123', 10);
 
-// Verificar se já existe
-db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, (err, existing) => {
+// Verificar se o Super Admin já existe
+const sqlCheckSuper = isProduction
+    ? `SELECT id FROM usuarios WHERE email = 'super@admin.com'`
+    : `SELECT id FROM usuarios WHERE email = 'super@admin.com'`;
+
+db.get(sqlCheckSuper, [], (err, existing) => {
+    if (err) {
+        console.error('❌ Erro ao verificar Super Admin:', err.message);
+        return;
+    }
+
     if (!existing) {
-        const sqlSuperAdmin = isProduction
+        console.log('📝 Criando Super Admin...');
+        const sqlInsertSuper = isProduction
             ? `INSERT INTO usuarios (id, nome, email, senha, role) 
                VALUES (1, 'Super Admin', 'super@admin.com', $1, 'superadmin')`
             : `INSERT INTO usuarios (id, nome, email, senha, role) 
                VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`;
-        db.run(sqlSuperAdmin, [superAdminSenha]);
+
+        db.run(sqlInsertSuper, [superAdminSenha], function (err) {
+            if (err) {
+                console.error('❌ Erro ao criar Super Admin:', err.message);
+            } else {
+                console.log('✅ Super Admin criado: super@admin.com / super123');
+            }
+        });
+    } else {
+        console.log('✅ Super Admin já existe');
     }
 });
 
-// Criar empresa de teste e usuário dono se não existir
+// ============================================================
+// 2. CRIAR EMPRESA DE TESTE E DONO
+// ============================================================
 db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
+    if (err) {
+        console.error('❌ Erro ao verificar empresa teste:', err.message);
+        return;
+    }
+
     if (!empresa) {
+        console.log('📝 Criando empresa de teste...');
         const sqlEmpresa = isProduction
             ? `INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
                VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`
             : `INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
                VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`;
 
-        db.run(sqlEmpresa, [], () => {
+        db.run(sqlEmpresa, [], function (err) {
+            if (err) {
+                console.error('❌ Erro ao criar empresa teste:', err.message);
+                return;
+            }
+
+            console.log('✅ Empresa teste criada');
             inserirHorariosPadrao(1);
 
+            // Criar dono
             const donoSenha = bcrypt.hashSync('123456', 10);
+            const sqlCheckDono = isProduction
+                ? `SELECT id FROM usuarios WHERE email = 'admin@teste.com'`
+                : `SELECT id FROM usuarios WHERE email = 'admin@teste.com'`;
 
-            // Verificar se o usuário dono já existe
-            db.get(`SELECT id FROM usuarios WHERE email = 'admin@teste.com'`, (err, existing) => {
-                if (!existing) {
-                    const sqlDono = isProduction
+            db.get(sqlCheckDono, [], (err, existingDono) => {
+                if (err) {
+                    console.error('❌ Erro ao verificar dono:', err.message);
+                    return;
+                }
+
+                if (!existingDono) {
+                    console.log('📝 Criando dono de teste...');
+                    const sqlInsertDono = isProduction
                         ? `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
                            VALUES (2, 'Admin Teste', 'admin@teste.com', $1, 'dono', 1)`
                         : `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
                            VALUES (2, 'Admin Teste', 'admin@teste.com', ?, 'dono', 1)`;
-                    db.run(sqlDono, [donoSenha]);
+
+                    db.run(sqlInsertDono, [donoSenha], function (err) {
+                        if (err) {
+                            console.error('❌ Erro ao criar dono:', err.message);
+                        } else {
+                            console.log('✅ Dono criado: admin@teste.com / 123456');
+                        }
+                    });
+                } else {
+                    console.log('✅ Dono já existe');
                 }
             });
         });
+    } else {
+        console.log('✅ Empresa teste já existe');
     }
 });
 
