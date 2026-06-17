@@ -54,8 +54,10 @@ initDatabase();
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================================
-// 1. CRIAR SUPER ADMIN
+// 1. CRIAR/ATUALIZAR SUPER ADMIN (FORÇADO)
 // ============================================================
+console.log('📝 Verificando/Criando Super Admin...');
+
 const superAdminSenha = bcrypt.hashSync('super123', 10);
 
 // Verificar se o Super Admin já existe
@@ -66,32 +68,44 @@ const sqlCheckSuper = isProduction
 db.get(sqlCheckSuper, [], (err, existing) => {
     if (err) {
         console.error('❌ Erro ao verificar Super Admin:', err.message);
-        return;
-    }
+    } else if (existing) {
+        // Já existe - atualizar senha
+        console.log('📝 Atualizando senha do Super Admin...');
+        const sqlUpdate = isProduction
+            ? `UPDATE usuarios SET senha = $1 WHERE email = 'super@admin.com'`
+            : `UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`;
 
-    if (!existing) {
+        db.run(sqlUpdate, [superAdminSenha], function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar Super Admin:', err.message);
+            } else {
+                console.log('✅ Super Admin atualizado: super@admin.com / super123');
+            }
+        });
+    } else {
+        // Não existe - criar
         console.log('📝 Criando Super Admin...');
-        const sqlInsertSuper = isProduction
+        const sqlInsert = isProduction
             ? `INSERT INTO usuarios (id, nome, email, senha, role) 
                VALUES (1, 'Super Admin', 'super@admin.com', $1, 'superadmin')`
             : `INSERT INTO usuarios (id, nome, email, senha, role) 
                VALUES (1, 'Super Admin', 'super@admin.com', ?, 'superadmin')`;
 
-        db.run(sqlInsertSuper, [superAdminSenha], function (err) {
+        db.run(sqlInsert, [superAdminSenha], function (err) {
             if (err) {
                 console.error('❌ Erro ao criar Super Admin:', err.message);
             } else {
                 console.log('✅ Super Admin criado: super@admin.com / super123');
             }
         });
-    } else {
-        console.log('✅ Super Admin já existe');
     }
 });
 
 // ============================================================
-// 2. CRIAR EMPRESA DE TESTE E DONO
+// 2. CRIAR/ATUALIZAR EMPRESA DE TESTE E DONO
 // ============================================================
+console.log('📝 Verificando/Criando empresa de teste...');
+
 db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
     if (err) {
         console.error('❌ Erro ao verificar empresa teste:', err.message);
@@ -99,7 +113,7 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
     }
 
     if (!empresa) {
-        console.log('📝 Criando empresa de teste...');
+        // Criar empresa
         const sqlEmpresa = isProduction
             ? `INSERT INTO empresas (id, nome, plano, limite_profissionais, trial_expira) 
                VALUES (1, 'Barbearia Teste', 'trial', 1, datetime('now', '+45 days'))`
@@ -117,6 +131,8 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 
             // Criar dono
             const donoSenha = bcrypt.hashSync('123456', 10);
+
+            // Verificar se dono já existe
             const sqlCheckDono = isProduction
                 ? `SELECT id FROM usuarios WHERE email = 'admin@teste.com'`
                 : `SELECT id FROM usuarios WHERE email = 'admin@teste.com'`;
@@ -128,7 +144,6 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
                 }
 
                 if (!existingDono) {
-                    console.log('📝 Criando dono de teste...');
                     const sqlInsertDono = isProduction
                         ? `INSERT INTO usuarios (id, nome, email, senha, role, empresa_id) 
                            VALUES (2, 'Admin Teste', 'admin@teste.com', $1, 'dono', 1)`
