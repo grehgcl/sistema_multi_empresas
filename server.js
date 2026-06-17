@@ -1406,56 +1406,72 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     const { dia } = req.params;
     const { aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = req.body;
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
     console.log('📝 Atualizando horário:', { empresa_id, dia, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim });
 
-    // Query adaptada para PostgreSQL e SQLite
-    const sql = isProduction
-        ? `UPDATE horarios_funcionamento 
-           SET aberto = COALESCE($1, aberto), 
-               hora_inicio = COALESCE($2, hora_inicio), 
-               hora_fim = COALESCE($3, hora_fim), 
-               almoco_inicio = COALESCE($4, almoco_inicio), 
-               almoco_fim = COALESCE($5, almoco_fim), 
-               intervalo_minutos = COALESCE($6, intervalo_minutos)
-           WHERE empresa_id = $7 AND dia_semana = $8`
-        : `UPDATE horarios_funcionamento 
-           SET aberto = COALESCE(?, aberto), 
-               hora_inicio = COALESCE(?, hora_inicio), 
-               hora_fim = COALESCE(?, hora_fim), 
-               almoco_inicio = COALESCE(?, almoco_inicio), 
-               almoco_fim = COALESCE(?, almoco_fim), 
-               intervalo_minutos = COALESCE(?, intervalo_minutos)
-           WHERE empresa_id = ? AND dia_semana = ?`;
+    // Se os valores forem undefined, usar os valores atuais do banco
+    // Para isso, primeiro buscamos os valores atuais
+    const sqlSelect = isProduction
+        ? `SELECT * FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = $2`
+        : `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`;
 
-    db.run(sql, [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia], function (err) {
+    db.get(sqlSelect, [empresa_id, dia], (err, horarioAtual) => {
         if (err) {
-            console.error('❌ Erro ao atualizar horário:', err.message);
-            console.error('📝 SQL:', sql);
-            console.error('📝 Parâmetros:', [aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id, dia]);
-            return res.json({ success: false, message: 'Erro ao atualizar horário: ' + err.message });
+            console.error('❌ Erro ao buscar horário atual:', err.message);
+            return res.json({ success: false, message: 'Erro ao buscar horário atual' });
         }
 
-        // Verificar se atualizou alguma linha
-        if (this && this.changes === 0) {
-            // Se não atualizou, tentar inserir
-            const sqlInsert = isProduction
-                ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
-                : `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+        // Usar valores atuais se não foram enviados
+        const finalAberto = aberto !== undefined ? aberto : (horarioAtual?.aberto || 1);
+        const finalHoraInicio = hora_inicio || horarioAtual?.hora_inicio || '09:00';
+        const finalHoraFim = hora_fim || horarioAtual?.hora_fim || '18:00';
+        const finalAlmocoInicio = almoco_inicio || horarioAtual?.almoco_inicio || '12:00';
+        const finalAlmocoFim = almoco_fim || horarioAtual?.almoco_fim || '13:00';
+        const finalIntervalo = intervalo_minutos || horarioAtual?.intervalo_minutos || 30;
 
-            db.run(sqlInsert, [empresa_id, dia, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos], function (err) {
-                if (err) {
-                    console.error('❌ Erro ao inserir horário:', err.message);
-                    return res.json({ success: false, message: 'Erro ao inserir horário: ' + err.message });
-                }
-                res.json({ success: true, message: 'Horário salvo com sucesso!' });
-            });
-        } else {
-            res.json({ success: true, message: 'Horário atualizado com sucesso!' });
-        }
+        const sql = isProduction
+            ? `UPDATE horarios_funcionamento 
+               SET aberto = $1, 
+                   hora_inicio = $2, 
+                   hora_fim = $3, 
+                   almoco_inicio = $4, 
+                   almoco_fim = $5, 
+                   intervalo_minutos = $6
+               WHERE empresa_id = $7 AND dia_semana = $8`
+            : `UPDATE horarios_funcionamento 
+               SET aberto = ?, 
+                   hora_inicio = ?, 
+                   hora_fim = ?, 
+                   almoco_inicio = ?, 
+                   almoco_fim = ?, 
+                   intervalo_minutos = ?
+               WHERE empresa_id = ? AND dia_semana = ?`;
+
+        db.run(sql, [finalAberto, finalHoraInicio, finalHoraFim, finalAlmocoInicio, finalAlmocoFim, finalIntervalo, empresa_id, dia], function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar horário:', err.message);
+                return res.json({ success: false, message: 'Erro ao atualizar horário: ' + err.message });
+            }
+
+            // Verificar se atualizou alguma linha
+            if (this && this.changes === 0) {
+                // Se não atualizou, tentar inserir
+                const sqlInsert = isProduction
+                    ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+                    : `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+
+                db.run(sqlInsert, [empresa_id, dia, finalAberto, finalHoraInicio, finalHoraFim, finalAlmocoInicio, finalAlmocoFim, finalIntervalo], function (err) {
+                    if (err) {
+                        console.error('❌ Erro ao inserir horário:', err.message);
+                        return res.json({ success: false, message: 'Erro ao inserir horário: ' + err.message });
+                    }
+                    res.json({ success: true, message: 'Horário salvo com sucesso!' });
+                });
+            } else {
+                res.json({ success: true, message: 'Horário atualizado com sucesso!' });
+            }
+        });
     });
 });
 
@@ -1872,21 +1888,26 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
         console.log('📝 Horários gerados:', horariosDisponiveis);
 
-        // Buscar horários já ocupados
-        let query = `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
-        let params = [data, empresaId];
+        // Buscar horários já ocupados - QUERY CORRIGIDA
+        let queryOcupados = isProduction
+            ? `SELECT hora FROM agendamentos WHERE data = $1 AND status != 'cancelado' AND empresa_id = $2`
+            : `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
+
+        let paramsOcupados = [data, empresaId];
 
         if (profissionalId && profissionalId !== 'null' && profissionalId !== '') {
-            query += ` AND profissional_id = ?`;
-            params.push(profissionalId);
+            queryOcupados += isProduction ? ` AND profissional_id = $3` : ` AND profissional_id = ?`;
+            paramsOcupados.push(profissionalId);
         }
 
-        console.log('📝 Query ocupados:', query);
-        console.log('📝 Parâmetros ocupados:', params);
+        console.log('📝 Query ocupados:', queryOcupados);
+        console.log('📝 Parâmetros ocupados:', paramsOcupados);
 
-        db.all(query, params, (err, ocupados) => {
+        db.all(queryOcupados, paramsOcupados, (err, ocupados) => {
             if (err) {
                 console.error('❌ Erro ao buscar ocupados:', err.message);
+                console.error('📝 Query:', queryOcupados);
+                console.error('📝 Parâmetros:', paramsOcupados);
                 return res.json({ success: false, message: err.message });
             }
 
