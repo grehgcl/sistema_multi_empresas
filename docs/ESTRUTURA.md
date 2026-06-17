@@ -1,7 +1,7 @@
-﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 16/06/2026
+﻿﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 17/06/2026
 
 ├── database/
-│   └── barbearia.db          # SQLite
+│   └── barbearia.db          # SQLite (desenvolvimento local)
 ├── public/
 │   ├── index.html            # Landing Page + Frontend principal
 │   ├── chatbot.html          # Página do Chatbot Inteligente
@@ -26,19 +26,36 @@
 │   ├── ESTRUTURA.md
 │   ├── IA_CONTEXT.md
 │   └── PARA_NOVA_IA.txt
-├── server/                  # NOVA ESTRUTURA MODULAR (16/06/2026)
+├── server/                  # ESTRUTURA MODULAR DO BACKEND
 │   ├── config/
-│   │   └── database.js      # Conexão com banco + criação das tabelas
+│   │   └── database.js      # Conexão com banco + criação das tabelas (SQLite/PostgreSQL)
 │   ├── middlewares/
 │   │   └── auth.js          # Middlewares de autenticação (auth, verificarDono, etc)
 │   └── utils/
 │       ├── constants.js     # Constantes (PLANOS, PLANOS_NOMES, JWT_SECRET)
 │       └── helpers.js       # Funções auxiliares (horaParaMinutos, etc)
-└── server.js                # Backend completo + rotas (APENAS rotas, ~700 linhas)
+├── scripts/                 # Scripts utilitários
+│   ├── migrate.js           # Migração do banco de dados
+│   └── seed.js              # População com dados iniciais
+├── .render/
+│   └── start.sh             # Script de inicialização no Render
+├── keep_alive.js            # Mantém o servidor ativo no Render
+├── render.yaml              # Configuração de deploy no Render
+├── .env.example             # Exemplo de variáveis de ambiente
+├── package.json             # Dependências e scripts
+├── README.md                # Documentação do projeto
+└── server.js                # Backend completo + rotas (~700 linhas)
 
 ## VARIAVEIS GLOBAIS (localStorage)
 - token: JWT do usuario logado
 - usuario: { id, nome, email, role, empresa_id, comissao_percent? }
+
+## VARIAVEIS DE AMBIENTE (.env)
+- NODE_ENV: production / development
+- RENDER: true / false (identifica ambiente Render)
+- DATABASE_URL: URL do PostgreSQL (apenas produção)
+- PORT: 3000 (padrão)
+- JWT_SECRET: Chave secreta para JWT
 
 ## FUNCOES GLOBAIS (no index.html)
 - ativarBotao(id): Marca botão do menu como ativo
@@ -97,7 +114,7 @@
 - Salvamento automático ao alterar valores
 - Agendamentos validam automaticamente os horários
 
-## SISTEMA DE PLANOS (NOVO)
+## SISTEMA DE PLANOS
 - Starter: R$ 24,90/mês - 1 profissional
 - Pro: R$ 49,90/mês - 5 profissionais
 - Business: R$ 99,90/mês - 12 profissionais
@@ -108,7 +125,7 @@
 - Rota de cancelamento de assinatura (/api/cancel-subscription)
 - Ao cancelar, volta para Trial com 7 dias
 
-## SISTEMA DE PAGAMENTOS (NOVO)
+## SISTEMA DE PAGAMENTOS
 - Integração com Mercado Pago (PIX, Cartão, Boleto)
 - Modo de simulação para testes (modoSimulacao = true)
 - Tabela transacoes_pagamento para registrar pagamentos
@@ -116,7 +133,7 @@
 - QR Code para pagamento PIX
 - Suporte a parcelamento no cartão
 
-## CHATBOT INTELIGENTE (NOVO)
+## CHATBOT INTELIGENTE
 - Página pública: /chatbot.html?empresa=ID
 - Conversa natural estilo assistente virtual
 - Verifica cliente por telefone (busca flexível)
@@ -141,7 +158,7 @@
 - Lista de próximos agendamentos
 - Grid de últimos clientes
 
-## LANDING PAGE (NOVO)
+## LANDING PAGE
 - Estrutura separada do sistema de login
 - Seções: Hero, Estatísticas, Problema, Solução, Showcase, Benefícios, Depoimentos, Comparação, Planos
 - Design responsivo com animações AOS
@@ -157,17 +174,18 @@
 - Listagem completa com ações
 - Botão para bloquear/desbloquear chatbot
 - Badges de status (🔓 Liberado / 🔒 Bloqueado)
-- Edição completa de dados
+- Edição completa de clientes
 
-## REFATORAÇÃO DO BACKEND (16/06/2026) - NOVO
+## REFATORAÇÃO DO BACKEND (16/06/2026)
 =========================================
 
 Estrutura modular criada para melhor organização:
 
 ### server/config/database.js
-- Conexão com banco SQLite
+- Conexão com banco SQLite (desenvolvimento) e PostgreSQL (produção)
 - Função initDatabase() para criar todas as tabelas
 - Função inserirHorariosPadrao() para horários iniciais
+- Wrapper para compatibilidade entre SQLite e PostgreSQL
 
 ### server/middlewares/auth.js
 - auth() - Middleware de autenticação JWT
@@ -192,8 +210,54 @@ Estrutura modular criada para melhor organização:
 - Importa as partes fixas dos arquivos acima
 - ~200 linhas a menos que o original
 
+## DEPLOY NO RENDER (17/06/2026)
 =========================================
-## ULTIMA ATUALIZACAO: 16/06/2026
+
+### Banco de Dados Híbrido
+- Local: SQLite (desenvolvimento)
+- Produção: PostgreSQL (Render)
+
+### Scripts de Deploy
+- keep_alive.js: Evita que o servidor durma no Render
+- scripts/migrate.js: Migração do banco de dados
+- scripts/seed.js: População com dados iniciais
+- .render/start.sh: Script de inicialização no Render
+
+### Variáveis de Ambiente no Render
+- NODE_ENV: production
+- RENDER: true
+- DATABASE_URL: URL do PostgreSQL (fornecida pelo Render)
+- PORT: 3000 (padrão)
+- JWT_SECRET: Gerada automaticamente
+
+### Correções para PostgreSQL
+- Todos os placeholders SQL adaptados ($1, $2, ...)
+- COALESCE adaptado para funcionar em ambos os bancos
+- ON CONFLICT substituído por verificações manuais
+- INSERT OR IGNORE substituído por INSERT com verificação
+
+## CORREÇÕES FINAIS (17/06/2026)
+=========================================
+
+### Super Admin
+- Criado sem forçar ID fixo (evita conflito de chave primária)
+- Atualização automática de senha se já existir
+- Busca dinâmica do ID da empresa
+
+### Horários Disponíveis
+- Rota /api/chatbot/horarios-disponiveis com placeholders corretos
+- Query de ocupados adaptada para PostgreSQL
+
+### Criação de Agendamentos
+- Rota POST /api/agendamentos com placeholders corretos
+- Suporte a serviço_id ou serviço manual
+
+### Declaração isProduction
+- Removida declaração duplicada no server.js
+- Variável definida uma única vez no início
+
+=========================================
+## ULTIMA ATUALIZACAO: 17/06/2026
 
 MUDANCAS REALIZADAS:
 - Implementado Chatbot Inteligente com calendário visual
@@ -213,5 +277,11 @@ MUDANCAS REALIZADAS:
 - Criada tabela transacoes_pagamento
 - Adicionada rota de cancelamento de assinatura
 - Corrigido dashboard do profissional
-- **REFATORAÇÃO DO BACKEND: Código modularizado em server/ (16/06/2026)**
+- REFATORAÇÃO: Backend modularizado em server/ (16/06/2026)
+- DEPLOY: Preparação para Render com PostgreSQL (17/06/2026)
+- CORREÇÕES: Todas as queries adaptadas para PostgreSQL e SQLite
+- CORREÇÃO: Super Admin sem forçar ID fixo
+- CORREÇÃO: Horários disponíveis com placeholders corretos
+- CORREÇÃO: Criação de agendamentos com placeholders corretos
+- CORREÇÃO: Removida declaração duplicada de isProduction
 =========================================

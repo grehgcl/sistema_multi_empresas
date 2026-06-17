@@ -1,12 +1,12 @@
 ﻿
 ---
 
-## 📄 **4. `PARA_NOVA_IA.txt` - ATUALIZADO**
+## 📄 **4. `PARA_NOVA_IA.txt`**
 
 ```markdown
 =========================================
   GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 16/06/2026
+  ULTIMA ATUALIZACAO: 17/06/2026
 =========================================
 
 LEIA OS ARQUIVOS NA ORDEM:
@@ -23,7 +23,7 @@ USUARIOS:
   Profissional: (criar pelo dono) - senha definida pelo dono
 
 =========================================
-FUNCIONALIDADES IMPLEMENTADAS (16/06/2026):
+FUNCIONALIDADES IMPLEMENTADAS (17/06/2026):
 =========================================
 
 1. Autenticacao (Super Admin, Dono, Profissional)
@@ -50,7 +50,7 @@ FUNCIONALIDADES IMPLEMENTADAS (16/06/2026):
    - Ver suas comissoes
 
 =========================================
-FUNCIONALIDADES ADICIONADAS (16/06/2026):
+FUNCIONALIDADES ADICIONADAS (17/06/2026):
 =========================================
 
 1. 🤖 CHATBOT INTELIGENTE PARA AGENDAMENTOS:
@@ -118,12 +118,34 @@ FUNCIONALIDADES ADICIONADAS (16/06/2026):
    - Cards de planos
    - Rodapé com informações de contato
 
-9. 🔧 REFATORAÇÃO DO BACKEND (16/06/2026) - NOVO:
+9. 🔧 REFATORAÇÃO DO BACKEND (16/06/2026):
    - Código modularizado em pastas server/
    - server.js agora tem apenas ~700 linhas (só rotas)
    - Criados arquivos: config/database.js, middlewares/auth.js, utils/constants.js, utils/helpers.js
    - Código mais organizado e fácil de manter
    - ~200 linhas a menos no server.js
+
+10. 🌐 DEPLOY NO RENDER E POSTGRESQL (17/06/2026):
+    - Banco de dados híbrido: SQLite (local) / PostgreSQL (produção)
+    - Todos os placeholders SQL adaptados para ambos os bancos
+    - Scripts de deploy: keep_alive.js, migrate.js, seed.js
+    - Configuração via render.yaml
+    - Keep Alive para evitar que o servidor durma
+
+11. 📝 CORREÇÕES PARA POSTGRESQL:
+    - Login adaptado com placeholders $1
+    - Cadastro adaptado com busca do ID da empresa
+    - CRUD de clientes, serviços, profissionais e agendamentos
+    - Financeiro com placeholders corretos
+    - Horários com COALESCE adaptado
+    - Todas as queries com sintaxe compatível
+
+12. 🔧 CORREÇÕES FINAIS (17/06/2026):
+    - Super Admin: criado sem forçar ID fixo (evita conflito de chave primária)
+    - Super Admin: atualização automática de senha se já existir
+    - Horários Disponíveis: query de ocupados com placeholders $1, $2, ...
+    - Criação de Agendamentos: placeholders $1, $2, ... e suporte a serviço manual
+    - isProduction: declarada uma única vez no início do server.js
 
 =========================================
 REGRAS DO CHATBOT:
@@ -157,10 +179,10 @@ REGRAS DO SISTEMA DE PAGAMENTOS:
 5. PIX gera QR Code, Cartão redireciona, Boleto gera link
 
 =========================================
-ESTRUTURA DOS ARQUIVOS ATUALIZADA (16/06/2026):
+ESTRUTURA DOS ARQUIVOS ATUALIZADA (17/06/2026):
 =========================================
 
-server/                      # NOVA ESTRUTURA MODULAR
+server/                      # BACKEND MODULAR
 ├── config/
 │   └── database.js          # Conexão com banco + criação das tabelas
 ├── middlewares/
@@ -168,6 +190,17 @@ server/                      # NOVA ESTRUTURA MODULAR
 └── utils/
     ├── constants.js         # Constantes (planos, JWT_SECRET)
     └── helpers.js           # Funções auxiliares
+
+scripts/                     # SCRIPTS UTILITÁRIOS
+├── migrate.js               # Migração do banco de dados
+└── seed.js                  # População com dados iniciais
+
+.render/
+└── start.sh                 # Script de inicialização no Render
+
+keep_alive.js                # Mantém o servidor ativo no Render
+render.yaml                  # Configuração de deploy no Render
+.env.example                 # Exemplo de variáveis de ambiente
 
 server.js                    # Backend: APENAS as rotas (~700 linhas)
 
@@ -183,7 +216,7 @@ public/
         ├── dashboard.js                # Dono
         ├── dashboard-profissional.js
         ├── clientes.js                 # com bloqueio chatbot
-        ├── agendamentos.js             # Dono
+        ├── agendamentos.js             # Dono (com horários)
         ├── agendamentos-profissional.js
         ├── servicos.js
         ├── financeiro.js
@@ -192,7 +225,7 @@ public/
         └── planos.js                   # upgrade e cancelamento
 
 =========================================
-ULTIMAS CORRECOES (16/06/2026):
+ULTIMAS CORRECOES (17/06/2026):
 =========================================
 1. Implementado chatbot com calendário visual
 2. Adicionado bloqueio de clientes para chatbot
@@ -215,4 +248,15 @@ ULTIMAS CORRECOES (16/06/2026):
 19. Implementado cancelamento com volta ao Trial (7 dias)
 20. REFATORAÇÃO: Backend modularizado (server/config, server/middlewares, server/utils)
 21. Server.js reduzido de ~900 para ~700 linhas
+22. DEPLOY: Preparação para Render com PostgreSQL
+23. CORREÇÕES: Todas as queries adaptadas para PostgreSQL e SQLite
+24. CORREÇÃO: Horários com COALESCE adaptado para ambos os bancos
+25. CORREÇÃO: Login e cadastro com placeholders corretos
+26. CORREÇÃO: CRUD completo adaptado para PostgreSQL
+27. CORREÇÃO: Financeiro com placeholders $1
+28. CORREÇÃO: Agendamentos.js com rota correta para horários disponíveis
+29. CORREÇÃO: Super Admin criado sem forçar ID fixo
+30. CORREÇÃO: Horários disponíveis com placeholders $1, $2, ...
+31. CORREÇÃO: Criação de agendamentos com placeholders $1, $2, ...
+32. CORREÇÃO: Removida declaração duplicada de isProduction
 =========================================
