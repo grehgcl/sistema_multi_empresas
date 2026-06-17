@@ -567,19 +567,36 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
 
 app.get('/api/servicos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
     if (!empresa_id) return res.json({ success: true, data: [] });
 
-    db.all(`SELECT * FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome`, [empresa_id], (err, servicos) => {
-        if (err) return res.json({ success: false, message: err.message });
+    const sql = isProduction
+        ? `SELECT * FROM servicos WHERE empresa_id = $1 AND ativo = 1 ORDER BY nome`
+        : `SELECT * FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome`;
+
+    db.all(sql, [empresa_id], (err, servicos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar serviços:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, data: servicos });
     });
 });
 
 app.get('/api/servicos/todos', auth, verificarDono, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.all(`SELECT * FROM servicos WHERE empresa_id = ? ORDER BY nome`, [empresa_id], (err, servicos) => {
-        if (err) return res.json({ success: false, message: err.message });
+    const sql = isProduction
+        ? `SELECT * FROM servicos WHERE empresa_id = $1 ORDER BY nome`
+        : `SELECT * FROM servicos WHERE empresa_id = ? ORDER BY nome`;
+
+    db.all(sql, [empresa_id], (err, servicos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar todos serviços:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, data: servicos });
     });
 });
@@ -677,12 +694,23 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/profissionais', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
     if (!empresa_id || req.usuario.role === 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
     }
 
-    db.all(`SELECT id, nome, email, comissao_percent, ativo, created_at FROM profissionais WHERE empresa_id = ? ORDER BY nome`, [empresa_id], (err, profissionais) => {
-        if (err) return res.json({ success: false, message: err.message });
+    const sql = isProduction
+        ? `SELECT id, nome, email, comissao_percent, ativo, created_at 
+           FROM profissionais WHERE empresa_id = $1 ORDER BY nome`
+        : `SELECT id, nome, email, comissao_percent, ativo, created_at 
+           FROM profissionais WHERE empresa_id = ? ORDER BY nome`;
+
+    db.all(sql, [empresa_id], (err, profissionais) => {
+        if (err) {
+            console.error('❌ Erro ao buscar profissionais:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, data: profissionais });
     });
 });
@@ -789,19 +817,31 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
     if (!empresa_id) return res.json({ success: true, data: [] });
 
-    let query = `
-        SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN profissionais p ON a.profissional_id = p.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.empresa_id = ?
-        ORDER BY a.data DESC
-    `;
+    const sql = isProduction
+        ? `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN profissionais p ON a.profissional_id = p.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.empresa_id = $1
+           ORDER BY a.data DESC`
+        : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN profissionais p ON a.profissional_id = p.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.empresa_id = ?
+           ORDER BY a.data DESC`;
 
-    db.all(query, [empresa_id], (err, agendamentos) => {
+    db.all(sql, [empresa_id], (err, agendamentos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar agendamentos:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, data: agendamentos });
     });
 });
@@ -1064,23 +1104,30 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/clientes', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresa_id) {
         return res.json({ success: true, data: [] });
     }
 
-    db.all(`SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
-            FROM clientes 
-            WHERE empresa_id = ? 
-            ORDER BY nome`,
-        [empresa_id],
-        (err, clientes) => {
-            if (err) {
-                console.error('Erro ao buscar clientes:', err);
-                return res.json({ success: false, message: err.message });
-            }
-            res.json({ success: true, data: clientes });
-        });
+    // Query adaptada para PostgreSQL e SQLite
+    const sql = isProduction
+        ? `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+           FROM clientes 
+           WHERE empresa_id = $1 
+           ORDER BY nome`
+        : `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+           FROM clientes 
+           WHERE empresa_id = ? 
+           ORDER BY nome`;
+
+    db.all(sql, [empresa_id], (err, clientes) => {
+        if (err) {
+            console.error('❌ Erro ao buscar clientes:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, data: clientes });
+    });
 });
 
 app.post('/api/clientes', auth, (req, res) => {
@@ -1168,9 +1215,17 @@ app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) =>
 
 app.get('/api/horarios', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.all('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? ORDER BY dia_semana', [empresa_id], (err, horarios) => {
-        if (err) return res.json({ success: false, message: err.message });
+    const sql = isProduction
+        ? `SELECT * FROM horarios_funcionamento WHERE empresa_id = $1 ORDER BY dia_semana`
+        : `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? ORDER BY dia_semana`;
+
+    db.all(sql, [empresa_id], (err, horarios) => {
+        if (err) {
+            console.error('❌ Erro ao buscar horários:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
         res.json({ success: true, data: horarios });
     });
 });
@@ -1369,23 +1424,28 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
 
 app.get('/api/empresa/dados', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!empresaId) {
         return res.json({ success: false, message: 'Empresa não identificada' });
     }
 
-    db.get('SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at FROM empresas WHERE id = ?',
-        [empresaId],
-        (err, empresa) => {
-            if (err) {
-                console.error('Erro ao buscar empresa:', err);
-                return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
-            }
-            if (!empresa) {
-                return res.json({ success: false, message: 'Empresa não encontrada' });
-            }
-            res.json({ success: true, data: empresa });
-        });
+    const sql = isProduction
+        ? `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at 
+           FROM empresas WHERE id = $1`
+        : `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at 
+           FROM empresas WHERE id = ?`;
+
+    db.get(sql, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao buscar empresa:', err.message);
+            return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
+        }
+        if (!empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
+        }
+        res.json({ success: true, data: empresa });
+    });
 });
 
 // ============================================================
