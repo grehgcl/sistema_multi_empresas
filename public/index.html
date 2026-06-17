@@ -26,9 +26,13 @@
 </head>
 
 <body>
-    <!-- LANDING PAGE DE VENDAS -->
+
+    <!-- ============================================
+    LANDING PAGE - REDESIGN PROFISSIONAL
+    ============================================ -->
     <div id="landingContainer">
-        <!-- MENU SUPERIOR -->
+
+        <!-- ===== NAVBAR ===== -->
         <nav class="navbar-landing">
             <div class="nav-container">
                 <div class="nav-logo">
@@ -36,35 +40,48 @@
                     <span>See<span>&Agende</span></span>
                 </div>
                 <div class="nav-menu">
-                    <a href="#funcionalidades">Funcionalidades</a>
+                    <a href="#solucao">Solução</a>
+                    <a href="#recursos">Recursos</a>
                     <a href="#planos">Planos</a>
-                    <a href="#depoimentos">Depoimentos</a>
-                    <a href="#contato">Contato</a>
                 </div>
                 <div class="nav-buttons">
                     <button class="btn-outline" onclick="mostrarLoginApp()">Entrar</button>
-                    <button class="btn-primary" onclick="mostrarCadastroApp()">Começar Grátis</button>
+                    <button class="btn-primary" onclick="mostrarCadastroApp()">Teste Grátis</button>
                 </div>
                 <button class="mobile-menu-btn" onclick="toggleMobileNav()">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
+            <!-- Menu Mobile -->
+            <div class="nav-menu-mobile" id="navMenuMobile">
+                <a href="#solucao" onclick="toggleMobileNav()">Solução</a>
+                <a href="#recursos" onclick="toggleMobileNav()">Recursos</a>
+                <a href="#planos" onclick="toggleMobileNav()">Planos</a>
+                <button class="btn-outline mobile-btn" onclick="mostrarLoginApp(); toggleMobileNav()">Entrar</button>
+                <button class="btn-primary mobile-btn" onclick="mostrarCadastroApp(); toggleMobileNav()">Teste
+                    Grátis</button>
+            </div>
         </nav>
 
-        <!-- HERO PRINCIPAL -->
+        <!-- ===== HERO ===== -->
         <section class="hero-section">
             <div class="hero-container">
                 <div class="hero-content" data-aos="fade-right">
-                    <h1>Pare de perder clientes por <span>falta de organização</span></h1>
-                    <p>Agendamentos automáticos, financeiro, comissões e WhatsApp em um único sistema.</p>
+                    <div class="hero-tag">🚀 Sistema completo para sua barbearia</div>
+                    <h1>Gerencie seu negócio com <span>inteligência</span></h1>
+                    <p>Agendamento automático, chatbot 24h, controle financeiro e comissões em um só lugar.</p>
                     <div class="hero-badges">
                         <span><i class="fas fa-check-circle"></i> 45 dias grátis</span>
-                        <span><i class="fas fa-credit-card"></i> Sem cartão de crédito</span>
-                        <span><i class="fas fa-clock"></i> Configuração em menos de 5 minutos</span>
+                        <span><i class="fas fa-check-circle"></i> Sem cartão de crédito</span>
+                        <span><i class="fas fa-check-circle"></i> Configuração em 5 min</span>
                     </div>
                     <div class="hero-buttons">
-                        <button class="btn-hero-primary" onclick="mostrarCadastroApp()">COMEÇAR GRÁTIS</button>
-                        <button class="btn-hero-secondary" onclick="verDemonstracao()">VER DEMONSTRAÇÃO</button>
+                        <button class="btn-hero-primary" onclick="mostrarCadastroApp()">Começar Grátis</button>
+                        <button class="btn-hero-secondary" onclick="verDemonstracao()">Ver Demonstração</button>
+                    </div>
+                    <div class="hero-trust">
+                        <span><i class="fas fa-user-check"></i> +300 negócios atendidos</span>
+                        <span><i class="fas fa-calendar-check"></i> +1.500 agendamentos</span>
                     </div>
                 </div>
                 <div class="hero-image" data-aos="fade-left">
@@ -91,15 +108,13 @@
                         </div>
                         <div class="mockup-chart"></div>
                         <div class="mockup-footer">
-                            <div class="mockup-appointments">
-                                <div class="mockup-appointment">
-                                    <span class="time">14:00</span>
-                                    <span>João - Corte</span>
-                                </div>
-                                <div class="mockup-appointment">
-                                    <span class="time">15:30</span>
-                                    <span>Maria - Progressiva</span>
-                                </div>
+                            <div class="mockup-appointment">
+                                <span class="time">14:00</span>
+                                <span>João - Corte</span>
+                            </div>
+                            <div class="mockup-appointment">
+                                <span class="time">15:30</span>
+                                <span>Maria - Progressiva</span>
                             </div>
                         </div>
                     </div>
@@ -107,7 +122,45 @@
             </div>
         </section>
 
-        <!-- ESTATÍSTICAS -->
+        <!-- ===== SEÇÃO "O QUE RESOLVEMOS" ===== -->
+        <section id="solucao" class="solution-section">
+            <div class="container">
+                <div class="section-header" data-aos="fade-up">
+                    <span class="section-tag">💡 O que resolvemos</span>
+                    <h2 class="section-title">Simplificamos a gestão do seu negócio</h2>
+                    <p class="section-subtitle">Elimine a bagunça da agenda de papel, as faltas de clientes e o cálculo
+                        manual de comissões</p>
+                </div>
+                <div class="solution-grid">
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="0">
+                        <div class="solution-icon"><i class="fas fa-robot"></i></div>
+                        <h3>Chatbot 24h</h3>
+                        <p>Clientes agendam automaticamente mesmo fora do horário de funcionamento. Atendimento 24/7 sem
+                            custo extra.</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="100">
+                        <div class="solution-icon"><i class="fas fa-calendar-alt"></i></div>
+                        <h3>Agenda Inteligente</h3>
+                        <p>Agendamentos organizados em intervalos de 30 minutos. Sem conflitos de horário. Visualize
+                            tudo em um só lugar.</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="200">
+                        <div class="solution-icon"><i class="fas fa-chart-line"></i></div>
+                        <h3>Controle Financeiro</h3>
+                        <p>Faturamento, comissões, ticket médio e lucro líquido calculados automaticamente em tempo
+                            real.</p>
+                    </div>
+                    <div class="solution-card" data-aos="fade-up" data-aos-delay="300">
+                        <div class="solution-icon"><i class="fas fa-users"></i></div>
+                        <h3>Gestão de Clientes</h3>
+                        <p>Histórico completo de atendimentos, fidelização e controle de bloqueios. Tudo organizado para
+                            você.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SEÇÃO DE ESTATÍSTICAS ===== -->
         <section class="stats-section">
             <div class="stats-container">
                 <div class="stat-item" data-aos="zoom-in">
@@ -120,7 +173,7 @@
                 </div>
                 <div class="stat-item" data-aos="zoom-in" data-aos-delay="200">
                     <div class="stat-number">24h</div>
-                    <div class="stat-label">Agendamento Online</div>
+                    <div class="stat-label">Agendamento online</div>
                 </div>
                 <div class="stat-item" data-aos="zoom-in" data-aos-delay="300">
                     <div class="stat-number">99,9%</div>
@@ -129,184 +182,61 @@
             </div>
         </section>
 
-        <!-- SEÇÃO PROBLEMA -->
-        <section class="problem-section">
+        <!-- ===== SEÇÃO RECURSOS ===== -->
+        <section id="recursos" class="features-section">
             <div class="container">
-                <h2 class="section-title" data-aos="fade-up">Seu negócio sofre com isso?</h2>
-                <div class="problem-grid">
-                    <div class="problem-card" data-aos="flip-left">
-                        <i class="fas fa-book"></i>
-                        <h3>❌ Agenda no papel</h3>
-                        <p>Rabiscos, rasuras e risco de perder informações importantes</p>
+                <div class="section-header" data-aos="fade-up">
+                    <span class="section-tag">✨ Recursos poderosos</span>
+                    <h2 class="section-title">Tudo que você precisa para <span>crescer</span></h2>
+                    <p class="section-subtitle">Ferramentas completas para profissionalizar seu atendimento e gestão</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card" data-aos="flip-up">
+                        <div class="feature-icon"><i class="fas fa-bell"></i></div>
+                        <h4>Lembretes automáticos</h4>
+                        <p>Reduza faltas em até 70% com notificações automáticas para seus clientes</p>
                     </div>
-                    <div class="problem-card" data-aos="flip-left" data-aos-delay="100">
-                        <i class="fas fa-clock"></i>
-                        <h3>❌ Clientes esquecem horários</h3>
-                        <p>Faltas de última hora que prejudicam seu faturamento</p>
+                    <div class="feature-card" data-aos="flip-up" data-aos-delay="100">
+                        <div class="feature-icon"><i class="fas fa-percent"></i></div>
+                        <h4>Comissões automáticas</h4>
+                        <p>Cálculo de comissões sem erros, sem planilhas, sem retrabalho</p>
                     </div>
-                    <div class="problem-card" data-aos="flip-left" data-aos-delay="200">
-                        <i class="fas fa-calculator"></i>
-                        <h3>❌ Comissões calculadas manualmente</h3>
-                        <p>Erros e retrabalho no fechamento do mês</p>
+                    <div class="feature-card" data-aos="flip-up" data-aos-delay="200">
+                        <div class="feature-icon"><i class="fas fa-file-alt"></i></div>
+                        <h4>Relatórios completos</h4>
+                        <p>Gráficos e análises para decisões estratégicas baseadas em dados reais</p>
                     </div>
-                    <div class="problem-card" data-aos="flip-left" data-aos-delay="300">
-                        <i class="fas fa-chart-line"></i>
-                        <h3>❌ Controle financeiro confuso</h3>
-                        <p>Sem visibilidade real do lucro do seu negócio</p>
+                    <div class="feature-card" data-aos="flip-up" data-aos-delay="300">
+                        <div class="feature-icon"><i class="fas fa-mobile-alt"></i></div>
+                        <h4>100% responsivo</h4>
+                        <p>Acesse de qualquer dispositivo: computador, tablet ou smartphone</p>
                     </div>
-                    <div class="problem-card" data-aos="flip-left" data-aos-delay="400">
-                        <i class="fab fa-whatsapp"></i>
-                        <h3>❌ Atendimento preso ao WhatsApp</h3>
-                        <p>Perde horas respondendo mensagens repetitivas</p>
+                    <div class="feature-card" data-aos="flip-up" data-aos-delay="400">
+                        <div class="feature-icon"><i class="fas fa-shield-alt"></i></div>
+                        <h4>Segurança de dados</h4>
+                        <p>Seus dados protegidos com criptografia e backups automáticos</p>
+                    </div>
+                    <div class="feature-card" data-aos="flip-up" data-aos-delay="500">
+                        <div class="feature-icon"><i class="fas fa-headset"></i></div>
+                        <h4>Suporte dedicado</h4>
+                        <p>Atendimento rápido pelo WhatsApp para você não ficar na mão</p>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- SEÇÃO SOLUÇÃO -->
-        <section id="funcionalidades" class="solution-section">
+        <!-- ===== SEÇÃO DEPOIMENTOS ===== -->
+        <section class="testimonials-section">
             <div class="container">
-                <h2 class="section-title" data-aos="fade-up">Tudo em um <span>único sistema</span></h2>
-                <div class="solution-grid">
-                    <div class="solution-card" data-aos="fade-up" data-aos-delay="0">
-                        <i class="fas fa-calendar-alt"></i>
-                        <h3>📅 Agenda Inteligente</h3>
-                        <p>Agendamentos com intervalo de 30 minutos, evita conflitos</p>
-                    </div>
-                    <div class="solution-card" data-aos="fade-up" data-aos-delay="100">
-                        <i class="fas fa-robot"></i>
-                        <h3>🤖 Chatbot 24h</h3>
-                        <p>Clientes agendam automaticamente, mesmo fora do horário</p>
-                    </div>
-                    <div class="solution-card" data-aos="fade-up" data-aos-delay="200">
-                        <i class="fas fa-chart-line"></i>
-                        <h3>💰 Financeiro Completo</h3>
-                        <p>Faturamento, comissões e lucro líquido em tempo real</p>
-                    </div>
-                    <div class="solution-card" data-aos="fade-up" data-aos-delay="300">
-                        <i class="fas fa-users"></i>
-                        <h3>👥 Cadastro de Clientes</h3>
-                        <p>Histórico completo, bloqueio de chatbot e fidelização</p>
-                    </div>
-                    <div class="solution-card" data-aos="fade-up" data-aos-delay="400">
-                        <i class="fas fa-chart-pie"></i>
-                        <h3>📈 Relatórios</h3>
-                        <p>Gráficos e análises para decisões estratégicas</p>
-                    </div>
-                    <div class="solution-card" data-aos="fade-up" data-aos-delay="500">
-                        <i class="fas fa-percent"></i>
-                        <h3>💸 Comissões Automáticas</h3>
-                        <p>Cálculo automático, sem erros e sem retrabalho</p>
-                    </div>
+                <div class="section-header" data-aos="fade-up">
+                    <span class="section-tag">💬 Depoimentos</span>
+                    <h2 class="section-title">Quem usa <span>recomenda</span></h2>
                 </div>
-            </div>
-        </section>
-
-        <!-- SEÇÃO MOSTRAR O SISTEMA -->
-        <section class="showcase-section">
-            <div class="container">
-                <h2 class="section-title" data-aos="fade-up">Veja o <span>See&Agende</span> funcionando</h2>
-                <div class="showcase-grid">
-                    <div class="showcase-card" data-aos="flip-up">
-                        <div class="showcase-image">
-                            <i class="fas fa-chart-line"></i>
-                        </div>
-                        <h3>Dashboard</h3>
-                        <p>Visão completa do seu negócio em um só lugar</p>
-                    </div>
-                    <div class="showcase-card" data-aos="flip-up" data-aos-delay="100">
-                        <div class="showcase-image">
-                            <i class="fas fa-calendar-check"></i>
-                        </div>
-                        <h3>Agenda</h3>
-                        <p>Visualize e gerencie todos os agendamentos</p>
-                    </div>
-                    <div class="showcase-card" data-aos="flip-up" data-aos-delay="200">
-                        <div class="showcase-image">
-                            <i class="fas fa-coins"></i>
-                        </div>
-                        <h3>Financeiro</h3>
-                        <p>Controle total de receitas e comissões</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SEÇÃO BENEFÍCIOS -->
-        <section class="benefits-section">
-            <div class="container">
-                <div class="benefits-container">
-                    <div class="benefits-content" data-aos="fade-right">
-                        <h2>Resultados reais<br><span>para o seu negócio</span></h2>
-                        <div class="benefits-list">
-                            <div class="benefit-item">
-                                <i class="fas fa-chart-line"></i>
-                                <div>
-                                    <h4>Aumente seus agendamentos</h4>
-                                    <p>Até 40% mais agendamentos com chatbot 24/7</p>
-                                </div>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="fas fa-bell-slash"></i>
-                                <div>
-                                    <h4>Reduza faltas de clientes</h4>
-                                    <p>Lembretes automáticos reduzem em até 70% as faltas</p>
-                                </div>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="fas fa-users-gear"></i>
-                                <div>
-                                    <h4>Controle sua equipe</h4>
-                                    <p>Comissões automatizadas e metas por profissional</p>
-                                </div>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="fas fa-file-alt"></i>
-                                <div>
-                                    <h4>Receba relatórios automáticos</h4>
-                                    <p>Decisões baseadas em dados reais</p>
-                                </div>
-                            </div>
-                            <div class="benefit-item">
-                                <i class="fas fa-hourglass-half"></i>
-                                <div>
-                                    <h4>Economize horas por semana</h4>
-                                    <p>Automatize tarefas repetitivas e foque no que importa</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="benefits-image" data-aos="fade-left">
-                        <div class="result-mockup">
-                            <div class="result-card">
-                                <i class="fas fa-chart-line"></i>
-                                <div class="result-value">+40%</div>
-                                <div class="result-label">Mais agendamentos</div>
-                            </div>
-                            <div class="result-card">
-                                <i class="fas fa-calendar-check"></i>
-                                <div class="result-value">-70%</div>
-                                <div class="result-label">Menos faltas</div>
-                            </div>
-                            <div class="result-card">
-                                <i class="fas fa-clock"></i>
-                                <div class="result-value">5h/semana</div>
-                                <div class="result-label">Economia de tempo</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SEÇÃO DEPOIMENTOS -->
-        <section id="depoimentos" class="testimonials-section">
-            <div class="container">
-                <h2 class="section-title" data-aos="fade-up">O que nossos clientes dizem</h2>
                 <div class="testimonials-grid">
-                    <div class="testimonial-card" data-aos="fade-up" data-aos-delay="0">
+                    <div class="testimonial-card" data-aos="fade-up">
                         <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p>"Reduzimos em 70% as faltas dos clientes. O chatbot é sensacional!"</p>
+                        <p>"Reduzimos em 70% as faltas dos clientes com os lembretes automáticos. O chatbot é
+                            sensacional!"</p>
                         <div class="testimonial-author">
                             <strong>João Silva</strong>
                             <span>Barbearia Premium</span>
@@ -314,7 +244,8 @@
                     </div>
                     <div class="testimonial-card" data-aos="fade-up" data-aos-delay="100">
                         <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p>"Hoje controlamos toda a comissão da equipe de forma automática."</p>
+                        <p>"Hoje controlamos toda a comissão da equipe de forma automática. Ganhamos horas de trabalho."
+                        </p>
                         <div class="testimonial-author">
                             <strong>Marina Souza</strong>
                             <span>Beauty Studio</span>
@@ -322,7 +253,8 @@
                     </div>
                     <div class="testimonial-card" data-aos="fade-up" data-aos-delay="200">
                         <div class="stars">⭐⭐⭐⭐⭐</div>
-                        <p>"O melhor investimento que fiz para minha barbearia. Recomendo!"</p>
+                        <p>"O melhor investimento que fiz para minha barbearia. Organização total e clientes mais
+                            satisfeitos."</p>
                         <div class="testimonial-author">
                             <strong>Carlos Mendes</strong>
                             <span>Mendes Barbearia</span>
@@ -332,62 +264,27 @@
             </div>
         </section>
 
-        <!-- SEÇÃO COMPARAÇÃO -->
-        <section class="comparison-section">
-            <div class="container">
-                <h2 class="section-title" data-aos="fade-up">Por que escolher o <span>See&Agende</span>?</h2>
-                <div class="comparison-table" data-aos="fade-up">
-                    <div class="comparison-row header">
-                        <div>Funcionalidades</div>
-                        <div>See&Agende</div>
-                        <div>Outros Sistemas</div>
-                    </div>
-                    <div class="comparison-row">
-                        <div>45 dias grátis</div>
-                        <div><i class="fas fa-check-circle"></i> Sim</div>
-                        <div><i class="fas fa-times-circle"></i> Não</div>
-                    </div>
-                    <div class="comparison-row">
-                        <div>Chatbot Automático</div>
-                        <div><i class="fas fa-check-circle"></i> Sim</div>
-                        <div><i class="fas fa-times-circle"></i> Não</div>
-                    </div>
-                    <div class="comparison-row">
-                        <div>Comissões Automáticas</div>
-                        <div><i class="fas fa-check-circle"></i> Sim</div>
-                        <div><i class="fas fa-check-circle"></i> Sim</div>
-                    </div>
-                    <div class="comparison-row">
-                        <div>Suporte WhatsApp</div>
-                        <div><i class="fas fa-check-circle"></i> Sim</div>
-                        <div><i class="fas fa-times-circle"></i> Não</div>
-                    </div>
-                    <div class="comparison-row">
-                        <div>Preço inicial acessível</div>
-                        <div><i class="fas fa-check-circle"></i> R$ 24,90</div>
-                        <div><i class="fas fa-times-circle"></i> R$ 89,90+</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- SEÇÃO PLANOS -->
+        <!-- ===== SEÇÃO PLANOS ===== -->
         <section id="planos" class="pricing-section">
             <div class="container">
-                <h2 class="section-title" data-aos="fade-up">Planos para todos os tamanhos</h2>
+                <div class="section-header" data-aos="fade-up">
+                    <span class="section-tag">💰 Planos</span>
+                    <h2 class="section-title">Escolha o plano <span>ideal para você</span></h2>
+                    <p class="section-subtitle">Comece com 45 dias grátis e depois escolha o plano que mais se adapta ao
+                        seu negócio</p>
+                </div>
                 <div class="pricing-grid">
-                    <div class="pricing-card" data-aos="fade-up" data-aos-delay="0">
+                    <div class="pricing-card" data-aos="fade-up">
                         <div class="pricing-name">Starter</div>
                         <div class="pricing-price">R$ 24,90<span>/mês</span></div>
                         <div class="pricing-users">👥 Até 1 profissional</div>
                         <ul class="pricing-features">
-                            <li><i class="fas fa-check"></i> Chatbot Completo</li>
-                            <li><i class="fas fa-check"></i> Relatórios Básicos</li>
-                            <li><i class="fas fa-check"></i> Suporte por Email</li>
-                            <li><i class="fas fa-check"></i> Gestão de Clientes</li>
-                            <li><i class="fas fa-check"></i> Agenda Inteligente</li>
+                            <li><i class="fas fa-check"></i> Chatbot 24h</li>
+                            <li><i class="fas fa-check"></i> Agenda automática</li>
+                            <li><i class="fas fa-check"></i> Gestão de clientes</li>
+                            <li><i class="fas fa-check"></i> Relatórios básicos</li>
                         </ul>
-                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Começar Grátis</button>
                     </div>
 
                     <div class="pricing-card popular" data-aos="fade-up" data-aos-delay="100">
@@ -396,13 +293,13 @@
                         <div class="pricing-price">R$ 49,90<span>/mês</span></div>
                         <div class="pricing-users">👥 Até 5 profissionais</div>
                         <ul class="pricing-features">
-                            <li><i class="fas fa-check"></i> Chatbot Completo</li>
-                            <li><i class="fas fa-check"></i> Relatórios Avançados</li>
+                            <li><i class="fas fa-check"></i> Chatbot 24h</li>
+                            <li><i class="fas fa-check"></i> Dashboard analítico</li>
+                            <li><i class="fas fa-check"></i> Comissões automáticas</li>
                             <li><i class="fas fa-check"></i> Suporte WhatsApp</li>
-                            <li><i class="fas fa-check"></i> Dashboard Analytics</li>
-                            <li><i class="fas fa-check"></i> Comissões Automáticas</li>
+                            <li><i class="fas fa-check"></i> Relatórios avançados</li>
                         </ul>
-                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Começar Grátis</button>
                     </div>
 
                     <div class="pricing-card" data-aos="fade-up" data-aos-delay="200">
@@ -411,73 +308,67 @@
                         <div class="pricing-users">👥 Até 12 profissionais</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i> Chatbot Premium</li>
-                            <li><i class="fas fa-check"></i> Relatórios Customizáveis</li>
-                            <li><i class="fas fa-check"></i> Suporte Prioritário</li>
-                            <li><i class="fas fa-check"></i> API Básica</li>
-                            <li><i class="fas fa-check"></i> Até 12 Profissionais</li>
+                            <li><i class="fas fa-check"></i> Relatórios customizados</li>
+                            <li><i class="fas fa-check"></i> Suporte prioritário</li>
+                            <li><i class="fas fa-check"></i> API básica</li>
+                            <li><i class="fas fa-check"></i> Treinamento incluso</li>
                         </ul>
-                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
-                    </div>
-
-                    <div class="pricing-card" data-aos="fade-up" data-aos-delay="300">
-                        <div class="pricing-name">Enterprise</div>
-                        <div class="pricing-price">R$ 199,90<span>/mês</span></div>
-                        <div class="pricing-users">👥 Ilimitado</div>
-                        <ul class="pricing-features">
-                            <li><i class="fas fa-check"></i> Tudo do Business</li>
-                            <li><i class="fas fa-check"></i> API Completa</li>
-                            <li><i class="fas fa-check"></i> Suporte Dedicado</li>
-                            <li><i class="fas fa-check"></i> Onboarding Personalizado</li>
-                            <li><i class="fas fa-check"></i> Profissionais Ilimitados</li>
-                        </ul>
-                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Escolher Plano</button>
+                        <button class="btn-pricing" onclick="mostrarCadastroApp()">Começar Grátis</button>
                     </div>
                 </div>
-                <p class="pricing-note">* Todos os planos incluem 45 dias de teste grátis</p>
+                <p class="pricing-note">* Todos os planos incluem <strong>45 dias de teste grátis</strong>. Sem
+                    fidelidade. Cancele quando quiser.</p>
             </div>
         </section>
 
-        <!-- CHAMADA FINAL -->
+        <!-- ===== CTA FINAL ===== -->
         <section class="cta-section">
             <div class="cta-container" data-aos="zoom-in">
-                <h2>Pronto para organizar seu negócio?</h2>
-                <p>Experimente todas as funcionalidades por 45 dias.<br>Sem cartão de crédito. Sem compromisso.</p>
-                <button class="btn-cta" onclick="mostrarCadastroApp()">COMEÇAR AGORA <i
-                        class="fas fa-arrow-right"></i></button>
+                <h2>Pronto para transformar seu negócio?</h2>
+                <p>Junte-se a mais de 300 negócios que já estão organizados com o See&Agende</p>
+                <button class="btn-cta" onclick="mostrarCadastroApp()">
+                    Começar Agora <i class="fas fa-arrow-right"></i>
+                </button>
+                <div class="cta-trust">
+                    <span><i class="fas fa-lock"></i> Sem compromisso</span>
+                    <span><i class="fas fa-credit-card"></i> Sem cartão de crédito</span>
+                    <span><i class="fas fa-clock"></i> 45 dias grátis</span>
+                </div>
             </div>
         </section>
 
-        <!-- RODAPÉ -->
-        <footer class="footer" id="contato">
+        <!-- ===== FOOTER ===== -->
+        <footer class="footer">
             <div class="footer-container">
                 <div class="footer-col">
                     <div class="footer-logo">
                         <i class="fas fa-eye"></i>
                         <span>See<span>&Agende</span></span>
                     </div>
-                    <p>Sistema para barbearias, salões de beleza, estéticas e clínicas</p>
+                    <p>Gestão inteligente para barbearias, salões de beleza, estéticas e clínicas.</p>
                     <div class="footer-social">
                         <a href="#"><i class="fab fa-whatsapp"></i></a>
                         <a href="#"><i class="fab fa-instagram"></i></a>
-                        <a href="#"><i class="fab fa-facebook"></i></a>
+                        <a href="#"><i class="fab fa-youtube"></i></a>
                     </div>
                 </div>
                 <div class="footer-col">
                     <h4>Produto</h4>
-                    <a href="#funcionalidades">Funcionalidades</a>
+                    <a href="#solucao">Solução</a>
+                    <a href="#recursos">Recursos</a>
                     <a href="#planos">Planos</a>
-                    <a href="#depoimentos">Depoimentos</a>
                 </div>
                 <div class="footer-col">
                     <h4>Suporte</h4>
                     <a href="#">Central de Ajuda</a>
-                    <a href="#">Contato</a>
+                    <a href="#">Blog</a>
                     <a href="#">Política de Privacidade</a>
                 </div>
                 <div class="footer-col">
                     <h4>Contato</h4>
                     <p><i class="fas fa-envelope"></i> contato@seeagende.com</p>
                     <p><i class="fab fa-whatsapp"></i> (11) 99999-9999</p>
+                    <p><i class="fas fa-clock"></i> Seg-Sex: 9h às 18h</p>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -486,15 +377,15 @@
         </footer>
     </div>
 
-    <!-- TELAS DE LOGIN E CADASTRO -->
+    <!-- ============================================
+    LOGIN E CADASTRO
+    ============================================ -->
     <div id="loginContainer" class="login-wrapper" style="display:none">
         <div class="login-card">
             <div class="card-header">
-                <div class="logo-icon">
-                    <i class="fas fa-eye"></i>
-                </div>
+                <div class="logo-icon"><i class="fas fa-eye"></i></div>
                 <h2>See&Agende</h2>
-                <p>Acesse sua conta para gerenciar seu negócio</p>
+                <p>Acesse sua conta</p>
                 <button class="btn-back" onclick="mostrarLanding()">← Voltar</button>
             </div>
             <div class="card-body">
@@ -510,7 +401,7 @@
                 <button class="btn-login" onclick="fazerLogin()">Entrar</button>
                 <div id="loginMessage" class="error-message"></div>
                 <div class="login-footer">
-                    <p>Não tem conta? <span onclick="mostrarCadastroApp()">Cadastre-se gratuitamente</span></p>
+                    <p>Não tem conta? <span onclick="mostrarCadastroApp()">Cadastre-se grátis</span></p>
                 </div>
             </div>
         </div>
@@ -519,17 +410,15 @@
     <div id="cadastroContainer" class="cadastro-wrapper" style="display:none">
         <div class="cadastro-card">
             <div class="card-header">
-                <div class="logo-icon">
-                    <i class="fas fa-rocket"></i>
-                </div>
-                <h2>Comece seu teste grátis</h2>
-                <p>45 dias para experimentar todas as funcionalidades</p>
+                <div class="logo-icon"><i class="fas fa-rocket"></i></div>
+                <h2>Teste grátis por 45 dias</h2>
+                <p>Sem cartão de crédito</p>
                 <button class="btn-back" onclick="mostrarLanding()">← Voltar</button>
             </div>
             <div class="card-body">
                 <div class="input-group">
                     <i class="fas fa-user"></i>
-                    <input type="text" id="cadastroNome" placeholder="Seu nome completo">
+                    <input type="text" id="cadastroNome" placeholder="Seu nome">
                 </div>
                 <div class="input-group">
                     <i class="fas fa-envelope"></i>
@@ -552,14 +441,16 @@
         </div>
     </div>
 
-    <!-- APP PRINCIPAL -->
+    <!-- ============================================
+    APP PRINCIPAL
+    ============================================ -->
     <div id="app" class="app">
         <div class="header">
             <h2><i class="fas fa-eye"></i> See&Agende</h2>
             <div>
                 <span id="userBadge"></span>
                 <span id="userName"></span>
-                <button onclick="logout()" style="margin-left:15px;">Sair</button>
+                <button onclick="logout()">Sair</button>
             </div>
         </div>
         <div class="sidebar" id="sidebar"></div>
@@ -569,15 +460,19 @@
         </div>
     </div>
 
-    <!-- MODAIS -->
+    <!-- ============================================
+    MODAIS
+    ============================================ -->
     <div id="modalCliente" class="modal">
         <div class="modal-content">
             <h3>Novo Cliente</h3>
             <input type="text" id="clienteNome" placeholder="Nome">
             <input type="text" id="clienteTelefone" placeholder="Telefone">
             <input type="email" id="clienteEmail" placeholder="Email">
-            <button onclick="salvarCliente()">Salvar</button>
-            <button onclick="fecharModal('modalCliente')">Cancelar</button>
+            <div class="modal-buttons">
+                <button onclick="salvarCliente()">Salvar</button>
+                <button onclick="fecharModal('modalCliente')">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -589,8 +484,10 @@
             <input type="time" id="agendamentoHora">
             <input type="text" id="agendamentoServico" placeholder="Serviço">
             <input type="number" id="agendamentoValor" placeholder="Valor">
-            <button onclick="salvarAgendamento()">Salvar</button>
-            <button onclick="fecharModal('modalAgendamento')">Cancelar</button>
+            <div class="modal-buttons">
+                <button onclick="salvarAgendamento()">Salvar</button>
+                <button onclick="fecharModal('modalAgendamento')">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -603,8 +500,10 @@
                 <option value="basico">Básico</option>
                 <option value="premium">Premium</option>
             </select>
-            <button onclick="salvarEdicaoEmpresa()">Salvar</button>
-            <button onclick="fecharModal('modalEditarEmpresa')">Cancelar</button>
+            <div class="modal-buttons">
+                <button onclick="salvarEdicaoEmpresa()">Salvar</button>
+                <button onclick="fecharModal('modalEditarEmpresa')">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -612,23 +511,24 @@
         <div class="modal-content">
             <h3>💎 Fazer Upgrade</h3>
             <div id="upgradeContent"></div>
-            <div class="modal-buttons" style="margin-top:20px;">
-                <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Cancelar</button>
+            <div class="modal-buttons">
+                <button onclick="fecharModal('modalUpgrade')">Cancelar</button>
             </div>
         </div>
     </div>
 
-    <!-- Menu Mobile -->
-    <button class="menu-mobile-btn" onclick="toggleMobileMenu()" style="display:none;">
+    <!-- Menu Mobile - Botão Flutuante -->
+    <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
         <i class="fas fa-bars"></i>
     </button>
     <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
-    <!-- Scripts -->
+    <!-- ============================================
+    SCRIPTS
+    ============================================ -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="/js/ui.js"></script>
 
-    <!-- Carregar páginas JS -->
     <script src="/js/pages/dashboard.js"></script>
     <script src="/js/pages/dashboard-profissional.js"></script>
     <script src="/js/pages/clientes.js"></script>
@@ -646,6 +546,7 @@
         let token = null;
         let usuario = null;
 
+        // ========== NAVEGAÇÃO ==========
         function mostrarLanding() {
             document.getElementById('landingContainer').style.display = 'block';
             document.getElementById('loginContainer').style.display = 'none';
@@ -686,27 +587,22 @@
             carregarMenu();
 
             if (usuario.role === 'profissional') {
-                if (typeof carregarDashboardProfissional === 'function') {
-                    carregarDashboardProfissional();
-                }
+                if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
             } else if (usuario.role === 'superadmin') {
-                if (typeof carregarDashboardSuperAdmin === 'function') {
-                    carregarDashboardSuperAdmin();
-                }
+                if (typeof carregarDashboardSuperAdmin === 'function') carregarDashboardSuperAdmin();
             } else {
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
-                }
+                if (typeof carregarDashboard === 'function') carregarDashboard();
             }
         }
 
         function verDemonstracao() {
-            showToast('Em breve vídeo demonstrativo!', 'info');
+            showToast('🎥 Em breve vídeo demonstrativo!', 'info');
         }
 
+        // ========== UI ==========
         function toggleMobileNav() {
-            const navMenu = document.querySelector('.nav-menu');
-            navMenu.classList.toggle('active');
+            const menu = document.getElementById('navMenuMobile');
+            menu.classList.toggle('active');
         }
 
         function togglePassword() {
@@ -714,43 +610,55 @@
             const icon = document.querySelector('.toggle-pwd');
             if (pwd.type === 'password') {
                 pwd.type = 'text';
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
+                icon.className = 'fas fa-eye toggle-pwd';
             } else {
                 pwd.type = 'password';
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
+                icon.className = 'fas fa-eye-slash toggle-pwd';
             }
         }
 
+        function toggleMobileMenu() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.querySelector('.sidebar-overlay').classList.toggle('active');
+        }
+
+        // ========== AUTH ==========
         async function fazerLogin() {
             const email = document.getElementById('loginEmail').value;
             const senha = document.getElementById('loginSenha').value;
 
+            if (!email || !senha) {
+                showToast('Preencha todos os campos', 'warning');
+                return;
+            }
+
             showLoading();
 
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, senha })
-            });
-            const data = await res.json();
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, senha })
+                });
+                const data = await res.json();
 
-            hideLoading();
+                hideLoading();
 
-            if (data.success) {
-                token = data.data.token;
-                usuario = data.data.usuario;
-                localStorage.setItem('token', token);
-                localStorage.setItem('usuario', JSON.stringify(usuario));
-
-                // Mostrar app
-                mostrarApp();
-                showToast('Login realizado com sucesso!', 'success');
-            } else {
-                document.getElementById('loginMessage').innerHTML = data.message;
-                document.getElementById('loginMessage').style.display = 'block';
-                showToast(data.message, 'error');
+                if (data.success) {
+                    token = data.data.token;
+                    usuario = data.data.usuario;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('usuario', JSON.stringify(usuario));
+                    mostrarApp();
+                    showToast('Login realizado com sucesso!', 'success');
+                } else {
+                    document.getElementById('loginMessage').innerHTML = data.message;
+                    document.getElementById('loginMessage').style.display = 'block';
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showToast('Erro ao fazer login', 'error');
             }
         }
 
@@ -767,26 +675,31 @@
 
             showLoading();
 
-            const res = await fetch('/api/cadastro', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, senha, empresa_nome })
-            });
-            const data = await res.json();
+            try {
+                const res = await fetch('/api/cadastro', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nome, email, senha, empresa_nome })
+                });
+                const data = await res.json();
 
-            hideLoading();
+                hideLoading();
 
-            if (data.success) {
-                document.getElementById('cadastroMessage').className = 'success-message';
-                document.getElementById('cadastroMessage').innerHTML = data.message;
-                document.getElementById('cadastroMessage').style.display = 'block';
-                showToast(data.message, 'success');
-                setTimeout(() => mostrarLoginApp(), 2000);
-            } else {
-                document.getElementById('cadastroMessage').className = 'error-message';
-                document.getElementById('cadastroMessage').innerHTML = data.message;
-                document.getElementById('cadastroMessage').style.display = 'block';
-                showToast(data.message, 'error');
+                if (data.success) {
+                    document.getElementById('cadastroMessage').className = 'success-message';
+                    document.getElementById('cadastroMessage').innerHTML = data.message;
+                    document.getElementById('cadastroMessage').style.display = 'block';
+                    showToast(data.message, 'success');
+                    setTimeout(() => mostrarLoginApp(), 2000);
+                } else {
+                    document.getElementById('cadastroMessage').className = 'error-message';
+                    document.getElementById('cadastroMessage').innerHTML = data.message;
+                    document.getElementById('cadastroMessage').style.display = 'block';
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showToast('Erro ao cadastrar', 'error');
             }
         }
 
@@ -798,6 +711,11 @@
             mostrarLanding();
         }
 
+        function fecharModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // ========== MENU ==========
         function carregarMenu() {
             const sidebar = document.getElementById('sidebar');
             let botoes = [];
@@ -826,7 +744,9 @@
                 ];
             }
 
-            sidebar.innerHTML = botoes.map(b => `<button onclick="${b.funcao}()" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`).join('');
+            sidebar.innerHTML = botoes.map(b =>
+                `<button onclick="${b.funcao}()" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`
+            ).join('');
         }
 
         function ativarBotao(id) {
@@ -835,30 +755,19 @@
             if (btn) btn.classList.add('active');
         }
 
-        function fecharModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
-        }
-
-        function toggleMobileMenu() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.querySelector('.sidebar-overlay');
-            if (sidebar) sidebar.classList.toggle('open');
-            if (overlay) overlay.classList.toggle('active');
-        }
-
-        // Verificar se já está logado
+        // ========== INIT ==========
         const savedToken = localStorage.getItem('token');
         const savedUsuario = localStorage.getItem('usuario');
 
         if (savedToken && savedUsuario) {
             token = savedToken;
             usuario = JSON.parse(savedUsuario);
-            // Verificar se o token ainda é válido (opcional - fazer uma chamada de verificação)
             mostrarApp();
         } else {
             mostrarLanding();
         }
     </script>
+
 </body>
 
 </html>
