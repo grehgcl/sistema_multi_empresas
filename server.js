@@ -2404,7 +2404,29 @@ app.listen(PORT, HOST, () => {
 // ============================================================
 
 if (process.env.RENDER === 'true') {
-    const { keepAlive } = require('./keep_alive');
-    keepAlive();
-    console.log('🔄 Keep Alive ativado para o Render!');
+    try {
+        const { keepAlive } = require('./keep_alive');
+        keepAlive();
+        console.log('🔄 Keep Alive ativado para o Render!');
+    } catch (error) {
+        console.log('⚠️ Erro ao carregar keep_alive:', error.message);
+        // Fallback: ping simples
+        const http = require('http');
+        setInterval(() => {
+            http.get(`http://localhost:${PORT}`, (res) => {
+                console.log(`💓 Keep Alive ping - Status: ${res.statusCode}`);
+            }).on('error', () => { });
+        }, 4 * 60 * 1000);
+        console.log('🔄 Keep Alive fallback ativado!');
+    }
+}
+
+// Também criar um cron job separado para garantir
+if (process.env.RENDER === 'true') {
+    try {
+        require('./cron');
+        console.log('🔄 Cron job ativado!');
+    } catch (error) {
+        console.log('⚠️ Cron job não encontrado, continuando...');
+    }
 }
