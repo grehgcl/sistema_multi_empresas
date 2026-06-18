@@ -1,4 +1,4 @@
-﻿// pages/dashboard.js - Versão Melhorada com Cards Coloridos
+﻿// pages/dashboard.js - Versão Premium com Banner, Ações Rápidas e Onboarding
 let dashboardData = null;
 let chartInstance = null;
 
@@ -33,7 +33,7 @@ async function carregarDashboard() {
 }
 
 // ============================================
-// DASHBOARD DO DONO - VERSÃO MELHORADA
+// DASHBOARD DO DONO - VERSÃO PREMIUM
 // ============================================
 async function carregarDashboardDono() {
     const token = localStorage.getItem('token');
@@ -158,8 +158,18 @@ async function carregarDashboardDono() {
     const variacaoClasse = variacaoPercentual >= 0 ? 'trend-up' : 'trend-down';
     const variacaoIcone = variacaoPercentual >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
+    // Verificar se é um novo usuário (sem agendamentos e sem clientes)
+    const isNewUser = agendamentos.length === 0 && clientes.length === 0;
+
     // ============================================
-    // HTML DO DASHBOARD - VERSÃO MELHORADA
+    // NOME DO USUÁRIO PARA BOAS-VINDAS
+    // ============================================
+    const usuarioStr = localStorage.getItem('usuario');
+    const usuarioAtual = usuarioStr ? JSON.parse(usuarioStr) : null;
+    const nomeUsuario = usuarioAtual?.nome || 'Usuário';
+
+    // ============================================
+    // HTML DO DASHBOARD - VERSÃO PREMIUM
     // ============================================
     const html = `
         <div class="fade-in">
@@ -172,20 +182,76 @@ async function carregarDashboardDono() {
                 </div>
             ` : ''}
             
-            <div class="dashboard-header">
-                <div>
-                    <h2 class="page-title">📊 Dashboard</h2>
-                    <p class="page-subtitle">
-                        <i class="fas fa-calendar-alt"></i> 
-                        ${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </p>
+            <!-- BANNER DE BOAS-VINDAS -->
+            <div class="welcome-banner">
+                <div class="welcome-content">
+                    <div>
+                        <h2>👋 Olá, ${nomeUsuario}!</h2>
+                        <p>Bem-vindo ao See&Agende. Aqui está o resumo do seu negócio hoje.</p>
+                        <div class="welcome-tips">
+                            <i class="fas fa-lightbulb"></i> 
+                            ${isNewUser ?
+            '💡 Dica: Comece cadastrando seus serviços!' :
+            '💡 Dica: Clique em "Novo Agendamento" para começar'}
+                        </div>
+                    </div>
+                    <div class="welcome-date">
+                        <span class="day">${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
+                        <span class="date">${dataAtual.toLocaleDateString('pt-BR')}</span>
+                    </div>
                 </div>
-                <div class="dashboard-actions">
-                    <button class="btn btn-sm btn-outline" onclick="atualizarDashboard()">
-                        <i class="fas fa-sync"></i> Atualizar
+            </div>
+            
+            <!-- AÇÕES RÁPIDAS -->
+            <div class="quick-actions">
+                <h3>⚡ Ações Rápidas</h3>
+                <div class="quick-actions-grid">
+                    <button class="quick-action" onclick="abrirModalAgendamento()">
+                        <i class="fas fa-plus-circle"></i>
+                        <span>Novo Agendamento</span>
+                    </button>
+                    <button class="quick-action" onclick="abrirModalCliente()">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Novo Cliente</span>
+                    </button>
+                    <button class="quick-action" onclick="carregarAgendamentos()">
+                        <i class="fas fa-calendar-day"></i>
+                        <span>Ver Agenda</span>
+                    </button>
+                    <button class="quick-action" onclick="carregarFinanceiro()">
+                        <i class="fas fa-chart-simple"></i>
+                        <span>Ver Financeiro</span>
                     </button>
                 </div>
             </div>
+            
+            <!-- ONBOARDING PARA NOVOS USUÁRIOS -->
+            ${isNewUser ? `
+                <div class="onboarding-card">
+                    <div class="onboarding-content">
+                        <i class="fas fa-rocket"></i>
+                        <h3>🚀 Comece aqui!</h3>
+                        <p>Parece que você ainda não tem agendamentos. Vamos te ajudar a começar:</p>
+                        <div class="onboarding-steps">
+                            <div class="step">
+                                <span class="step-number">1</span>
+                                <span>Cadastre seus <strong>serviços</strong></span>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">2</span>
+                                <span>Adicione seus <strong>profissionais</strong></span>
+                            </div>
+                            <div class="step">
+                                <span class="step-number">3</span>
+                                <span>Crie seu primeiro <strong>agendamento</strong></span>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="carregarServicos()">
+                            <i class="fas fa-arrow-right"></i> Começar Agora
+                        </button>
+                    </div>
+                </div>
+            ` : ''}
             
             <!-- Cards Principais - Linha 1 -->
             <div class="card-grid">
@@ -746,8 +812,12 @@ function formatarMoeda(valor) {
 
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
-    const data = new Date(dataStr + 'T00:00:00');
-    return data.toLocaleDateString('pt-BR');
+    try {
+        const data = new Date(dataStr + 'T00:00:00');
+        return data.toLocaleDateString('pt-BR');
+    } catch {
+        return dataStr;
+    }
 }
 
 function escapeHtml(text) {
@@ -786,6 +856,23 @@ window.estenderTrial = async function (empresaId) {
         showToast('Erro ao estender trial', 'error');
     }
     hideLoading();
+};
+
+// Funções para abrir modais (usadas nas ações rápidas)
+window.abrirModalAgendamento = function () {
+    if (typeof abrirModalAgendamentoDono === 'function') {
+        abrirModalAgendamentoDono();
+    } else {
+        showToast('Função não disponível', 'warning');
+    }
+};
+
+window.abrirModalCliente = function () {
+    if (typeof abrirModalCliente === 'function') {
+        abrirModalCliente();
+    } else {
+        showToast('Função não disponível', 'warning');
+    }
 };
 
 // Exportar funções globais

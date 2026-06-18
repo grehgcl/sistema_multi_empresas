@@ -3912,3 +3912,266 @@ body {
         transform: none;
     }
 }
+
+/* ============================================
+   DASHBOARD - MELHORIAS PREMIUM
+   ============================================ */
+
+/* Welcome Banner */
+.welcome-banner {
+    background: var(--gradient);
+    border-radius: var(--radius-lg);
+    padding: 24px 32px;
+    margin-bottom: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.welcome-banner::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+}
+
+.welcome-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.welcome-content h2 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.welcome-content p {
+    opacity: 0.85;
+    margin: 4px 0 0;
+    font-size: 15px;
+}
+
+.welcome-tips {
+    margin-top: 8px;
+    padding: 6px 16px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: var(--radius-full);
+    display: inline-block;
+    font-size: 13px;
+}
+
+.welcome-tips i {
+    margin-right: 6px;
+}
+
+.welcome-date {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.welcome-date .day {
+    display: block;
+    font-size: 18px;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.welcome-date .date {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+/* Quick Actions */
+.quick-actions {
+    background: white;
+    border-radius: var(--radius-lg);
+    padding: 20px 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+    border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.quick-actions h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 16px;
+}
+
+.quick-actions h3 i {
+    color: var(--primary);
+    margin-right: 8px;
+}
+
+.quick-actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.quick-action {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 16px;
+    background: var(--gray-50);
+    border: 2px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-dark);
+    text-decoration: none;
+}
+
+.quick-action i {
+    font-size: 24px;
+    color: var(--primary);
+    transition: var(--transition);
+}
+
+.quick-action:hover {
+    border-color: var(--primary);
+    background: white;
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+}
+
+.quick-action:hover i {
+    transform: scale(1.1);
+}
+
+.quick-action:active {
+    transform: scale(0.96);
+}
+
+/* Onboarding Card */
+.onboarding-card {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    margin-bottom: 24px;
+    text-align: center;
+    border: 2px dashed var(--warning);
+}
+
+.onboarding-content i {
+    font-size: 48px;
+    color: var(--warning);
+    margin-bottom: 12px;
+}
+
+.onboarding-content h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 8px;
+}
+
+.onboarding-content p {
+    color: var(--gray-dark);
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+.onboarding-steps {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+}
+
+.step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    color: var(--gray-dark);
+}
+
+.step-number {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--warning);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .welcome-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .welcome-date {
+        text-align: center;
+    }
+
+    .welcome-banner {
+        padding: 20px;
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .onboarding-steps {
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .step {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .onboarding-card {
+        padding: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-action {
+        flex-direction: row;
+        padding: 12px 16px;
+        justify-content: center;
+    }
+
+    .welcome-content h2 {
+        font-size: 20px;
+    }
+
+    .welcome-tips {
+        font-size: 12px;
+        padding: 4px 12px;
+    }
+}

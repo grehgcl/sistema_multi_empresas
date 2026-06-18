@@ -1,23 +1,29 @@
-﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 17/06/2026
+﻿﻿
+---
+
+## 📁 **2. ESTRUTURA.md**
+
+```markdown
+# ESTRUTURA DO PROJETO - Atualizada em 18/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite (desenvolvimento local)
 ├── public/
-│   ├── index.html            # Landing Page + Frontend principal
+│   ├── index.html            # Landing Page + Frontend principal (tela dividida)
 │   ├── chatbot.html          # Página do Chatbot Inteligente
 │   ├── css/
-│   │   ├── style.css         # Estilos premium principais
+│   │   ├── style.css         # Estilos premium principais (organizado)
 │   │   └── chatbot.css       # Estilos específicos do chatbot
 │   └── js/
 │       ├── ui.js             # UI Global (toasts, loading, modal)
 │       └── pages/
-│           ├── dashboard.js              # Dashboard Dono (completo)
+│           ├── dashboard.js              # Dashboard Dono (cards melhorados)
 │           ├── dashboard-profissional.js # Dashboard Profissional
-│           ├── clientes.js               # CRUD Clientes + Bloqueio Chatbot
-│           ├── agendamentos.js           # CRUD Agendamentos (Dono)
+│           ├── clientes.js               # CRUD Clientes + WhatsApp + Cards
+│           ├── agendamentos.js           # CRUD Agendamentos + Cards Mobile
 │           ├── agendamentos-profissional.js # Agendamentos (Profissional)
-│           ├── servicos.js               # CRUD Servicos (Dono)
-│           ├── financeiro.js             # Financeiro (cards por profissional)
+│           ├── servicos.js               # CRUD Servicos + Cards Mobile
+│           ├── financeiro.js             # Financeiro + Cards Mobile
 │           ├── empresas.js               # Gestao empresas (Super Admin)
 │           ├── configuracoes.js          # Configuracoes + Chatbot
 │           └── planos.js                 # Página de Planos e Upgrade
@@ -28,18 +34,19 @@
 │   └── PARA_NOVA_IA.txt
 ├── server/                  # ESTRUTURA MODULAR DO BACKEND
 │   ├── config/
-│   │   └── database.js      # Conexão com banco + criação das tabelas (SQLite/PostgreSQL)
+│   │   └── database.js      # Conexão com banco + criação das tabelas
 │   ├── middlewares/
-│   │   └── auth.js          # Middlewares de autenticação (auth, verificarDono, etc)
+│   │   └── auth.js          # Middlewares de autenticação
 │   └── utils/
 │       ├── constants.js     # Constantes (PLANOS, PLANOS_NOMES, JWT_SECRET)
-│       └── helpers.js       # Funções auxiliares (horaParaMinutos, etc)
+│       └── helpers.js       # Funções auxiliares
 ├── scripts/                 # Scripts utilitários
 │   ├── migrate.js           # Migração do banco de dados
 │   └── seed.js              # População com dados iniciais
 ├── .render/
 │   └── start.sh             # Script de inicialização no Render
 ├── keep_alive.js            # Mantém o servidor ativo no Render
+├── cron.js                  # Job alternativo para manter servidor ativo
 ├── render.yaml              # Configuração de deploy no Render
 ├── .env.example             # Exemplo de variáveis de ambiente
 ├── package.json             # Dependências e scripts
@@ -56,6 +63,7 @@
 - DATABASE_URL: URL do PostgreSQL (apenas produção)
 - PORT: 3000 (padrão)
 - JWT_SECRET: Chave secreta para JWT
+- RENDER_EXTERNAL_URL: URL pública do serviço (para keep alive)
 
 ## FUNCOES GLOBAIS (no index.html)
 - ativarBotao(id): Marca botão do menu como ativo
@@ -84,7 +92,7 @@
 - Agendamentos (CRUD com filtros, edicao, horarios 30/30min)
 - Servicos (CRUD completo)
 - Financeiro (cards por profissional + totais)
-- Clientes (CRUD + bloqueio chatbot)
+- Clientes (CRUD + bloqueio chatbot + WhatsApp)
 - Configuracoes (Profissionais + Horarios + Chatbot)
 - Planos (Visualizar planos e fazer upgrade)
 
@@ -158,12 +166,11 @@
 - Lista de próximos agendamentos
 - Grid de últimos clientes
 
-## LANDING PAGE
-- Estrutura separada do sistema de login
-- Seções: Hero, Estatísticas, Problema, Solução, Showcase, Benefícios, Depoimentos, Comparação, Planos
-- Design responsivo com animações AOS
-- Mockups do dashboard em CSS puro
-- Botões de CTA para cadastro
+## LANDING PAGE (TELA DIVIDIDA)
+- Split screen: marketing (esquerda) + login/cadastro (direita)
+- Versículo bíblico (Provérbios 16:3) no lado marketing
+- Design responsivo que empilha no mobile
+- Sem scroll desnecessário, tudo em uma tela
 
 ## CONFIGURACOES (TABS)
 1. 👥 Profissionais - CRUD completo + limite por plano
@@ -175,11 +182,10 @@
 - Botão para bloquear/desbloquear chatbot
 - Badges de status (🔓 Liberado / 🔒 Bloqueado)
 - Edição completa de clientes
+- Botão WhatsApp para chamar cliente diretamente
 
-## REFATORAÇÃO DO BACKEND (16/06/2026)
+## REFATORACAO DO BACKEND (16/06/2026)
 =========================================
-
-Estrutura modular criada para melhor organização:
 
 ### server/config/database.js
 - Conexão com banco SQLite (desenvolvimento) e PostgreSQL (produção)
@@ -219,6 +225,7 @@ Estrutura modular criada para melhor organização:
 
 ### Scripts de Deploy
 - keep_alive.js: Evita que o servidor durma no Render
+- cron.js: Job alternativo para manter servidor ativo
 - scripts/migrate.js: Migração do banco de dados
 - scripts/seed.js: População com dados iniciais
 - .render/start.sh: Script de inicialização no Render
@@ -229,6 +236,7 @@ Estrutura modular criada para melhor organização:
 - DATABASE_URL: URL do PostgreSQL (fornecida pelo Render)
 - PORT: 3000 (padrão)
 - JWT_SECRET: Gerada automaticamente
+- RENDER_EXTERNAL_URL: URL pública do serviço
 
 ### Correções para PostgreSQL
 - Todos os placeholders SQL adaptados ($1, $2, ...)
@@ -236,78 +244,47 @@ Estrutura modular criada para melhor organização:
 - ON CONFLICT substituído por verificações manuais
 - INSERT OR IGNORE substituído por INSERT com verificação
 
-## CORREÇÕES FINAIS (17/06/2026)
+## MELHORIAS UI/UX (18/06/2026)
 =========================================
 
-### Super Admin
-- Criado sem forçar ID fixo (evita conflito de chave primária)
-- Atualização automática de senha se já existir
-- Busca dinâmica do ID da empresa
+### Cards Mobile para todas as páginas
+- Agendamentos: cards com avatar do cliente e ações em botões
+- Serviços: cards com status e toggle ativar/desativar
+- Financeiro: cards de profissionais com avatar e comissão
+- Clientes: cards com avatar, WhatsApp e ações
 
-### Horários Disponíveis
-- Rota /api/chatbot/horarios-disponiveis com placeholders corretos
-- Query de ocupados adaptada para PostgreSQL
+### Botão WhatsApp nos Clientes
+- Link direto para WhatsApp do cliente
+- Ícone do WhatsApp com hover effect
+- Desabilitado se cliente não tem telefone
 
-### Criação de Agendamentos
-- Rota POST /api/agendamentos com placeholders corretos
-- Suporte a serviço_id ou serviço manual
+### Menu Mobile Corrigido
+- Sidebar fecha ao clicar nas abas
+- Overlay com backdrop blur
+- Botão hambúrguer no canto inferior direito
+- Transição suave ao abrir/fechar
 
-### Declaração isProduction
-- Removida declaração duplicada no server.js
-- Variável definida uma única vez no início
+### Fontes Maiores no Mobile
+- Todos os textos aumentados em ~15-20%
+- Botões e inputs maiores para melhor toque
+- Cards com fontes legíveis
 
-## REDESIGN LANDING PAGE E UI/UX (17/06/2026)
-=========================================
+### CSS Organizado
+- Código dividido em 36 seções numeradas
+- Facilita manutenção e localização de estilos
+- Variáveis CSS centralizadas
 
-### Landing Page Redesign
-- Navbar com 3 links: Solução, Recursos, Planos
-- Hero com tag, título forte, 2 CTAs e prova social
-- Nova seção 'O que resolvemos' com 4 cards
-- Seção de Estatísticas com números de impacto
-- Seção 'Recursos poderosos' com 6 cards
-- Seção de Depoimentos com 3 cards
-- Planos com mais descrição e features
-- CTA com badges de confiança
+### Versículo Bíblico
+- Provérbios 16:3 adicionado na landing page
+- Ícone de Bíblia (fa-bible) no versículo
+- Versículo também no rodapé
 
-### Correções UI/UX
-- Padronização de botões (todos com border-radius: 9999px)
-- Cards com hover effects consistentes
-- Dashboard com cards premium e métricas
-- Responsividade melhorada para todos os dispositivos
-- Menu mobile com todos os links e botões
-- Animações AOS em todas as seções
-- Posição do olho (toggle password) corrigida nos campos de senha
-- Input group com ícones posicionados corretamente
+### Keep Alive Melhorado
+- Ping externo e interno (fallback)
+- Intervalo reduzido para 4 minutos
+- Cron job separado para redundância
+- Logs com timestamp para monitoramento
 
 =========================================
-## ULTIMA ATUALIZACAO: 17/06/2026
-
-MUDANCAS REALIZADAS:
-- Implementado Chatbot Inteligente com calendário visual
-- Adicionado bloqueio de clientes para chatbot
-- Criada página pública /chatbot.html
-- Adicionada rota de busca de cliente por telefone
-- Criado sistema de limite de 20 dias entre agendamentos
-- Dono adicionado como opção de profissional no chatbot
-- Link do chatbot disponível nas configurações
-- QR Code para compartilhamento fácil
-- Criada Landing Page de vendas completa
-- Implementado sistema de planos de assinatura
-- Adicionados planos: Starter, Pro, Business, Enterprise
-- Criado sistema de upgrade com middleware
-- Implementado sistema de pagamentos (Mercado Pago)
-- Adicionado modo de simulação para testes
-- Criada tabela transacoes_pagamento
-- Adicionada rota de cancelamento de assinatura
-- Corrigido dashboard do profissional
-- REFATORAÇÃO: Backend modularizado em server/ (16/06/2026)
-- DEPLOY: Preparação para Render com PostgreSQL (17/06/2026)
-- CORREÇÕES: Todas as queries adaptadas para PostgreSQL e SQLite
-- CORREÇÃO: Super Admin sem forçar ID fixo
-- CORREÇÃO: Horários disponíveis com placeholders corretos
-- CORREÇÃO: Criação de agendamentos com placeholders corretos
-- CORREÇÃO: Removida declaração duplicada de isProduction
-- REDESIGN: Landing page profissional com novas seções
-- CORREÇÃO: Toggle password (olho) posicionado corretamente
-- CORREÇÃO: Input group com ícones alinhados
+## ULTIMA ATUALIZACAO: 18/06/2026
 =========================================

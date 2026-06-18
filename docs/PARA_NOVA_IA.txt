@@ -1,12 +1,12 @@
 ﻿
 ---
 
-## 📄 **4. PARA_NOVA_IA.txt**
+## 📁 **4. PARA_NOVA_IA.txt**
 
 ```markdown
 =========================================
   GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 17/06/2026
+  ULTIMA ATUALIZACAO: 18/06/2026
 =========================================
 
 LEIA OS ARQUIVOS NA ORDEM:
@@ -23,7 +23,7 @@ USUARIOS:
   Profissional: (criar pelo dono) - senha definida pelo dono
 
 =========================================
-FUNCIONALIDADES IMPLEMENTADAS (17/06/2026):
+FUNCIONALIDADES IMPLEMENTADAS (18/06/2026):
 =========================================
 
 1. Autenticacao (Super Admin, Dono, Profissional)
@@ -50,7 +50,7 @@ FUNCIONALIDADES IMPLEMENTADAS (17/06/2026):
    - Ver suas comissoes
 
 =========================================
-FUNCIONALIDADES ADICIONADAS (17/06/2026):
+FUNCIONALIDADES ADICIONADAS (18/06/2026):
 =========================================
 
 1. 🤖 CHATBOT INTELIGENTE PARA AGENDAMENTOS:
@@ -78,6 +78,7 @@ FUNCIONALIDADES ADICIONADAS (17/06/2026):
    - Botão para bloquear/desbloquear chatbot por cliente
    - Badges de status (Liberado/Bloqueado)
    - Edição completa de clientes
+   - Botão WhatsApp para chamar cliente
 
 5. 🔗 CONFIGURAÇÕES DO CHATBOT:
    - Aba exclusiva nas configurações do dono
@@ -105,61 +106,42 @@ FUNCIONALIDADES ADICIONADAS (17/06/2026):
    - QR Code para pagamento PIX
    - Suporte a parcelamento no cartão
 
-8. 🚀 LANDING PAGE DE VENDAS:
-   - Estrutura separada do sistema de login
-   - Menu superior com navegação
-   - Seção Hero com CTA principal
-   - Estatísticas de credibilidade
-   - Seção Problema x Solução
-   - Showcase do sistema em CSS puro
-   - Benefícios e resultados
-   - Depoimentos de clientes
-   - Tabela comparativa
-   - Cards de planos
-   - Rodapé com informações de contato
+8. 🚀 LANDING PAGE TELA DIVIDIDA:
+   - Split screen: marketing (esquerda) + login/cadastro (direita)
+   - Versículo bíblico (Provérbios 16:3) no lado marketing
+   - Design responsivo que empilha no mobile
+   - Sem scroll desnecessário, tudo em uma tela
 
 9. 🔧 REFATORAÇÃO DO BACKEND (16/06/2026):
    - Código modularizado em pastas server/
    - server.js agora tem apenas ~700 linhas (só rotas)
    - Criados arquivos: config/database.js, middlewares/auth.js, utils/constants.js, utils/helpers.js
    - Código mais organizado e fácil de manter
-   - ~200 linhas a menos no server.js
 
 10. 🌐 DEPLOY NO RENDER E POSTGRESQL (17/06/2026):
     - Banco de dados híbrido: SQLite (local) / PostgreSQL (produção)
     - Todos os placeholders SQL adaptados para ambos os bancos
     - Scripts de deploy: keep_alive.js, migrate.js, seed.js
     - Configuração via render.yaml
-    - Keep Alive para evitar que o servidor durma
+    - Keep Alive melhorado com ping externo/interno
 
-11. 📝 CORREÇÕES PARA POSTGRESQL:
-    - Login adaptado com placeholders $1
-    - Cadastro adaptado com busca do ID da empresa
-    - CRUD de clientes, serviços, profissionais e agendamentos
-    - Financeiro com placeholders corretos
-    - Horários com COALESCE adaptado
-    - Todas as queries com sintaxe compatível
+11. 📝 CARDS MOBILE PARA TODAS AS PÁGINAS (18/06/2026):
+    - Agendamentos: cards com avatar e ações em botões
+    - Serviços: cards com status e toggle ativar/desativar
+    - Financeiro: cards de profissionais com avatar e comissão
+    - Clientes: cards com avatar, WhatsApp e ações
 
-12. 🔧 CORREÇÕES FINAIS (17/06/2026):
-    - Super Admin: criado sem forçar ID fixo (evita conflito de chave primária)
-    - Super Admin: atualização automática de senha se já existir
-    - Horários Disponíveis: query de ocupados com placeholders $1, $2, ...
-    - Criação de Agendamentos: placeholders $1, $2, ... e suporte a serviço manual
-    - isProduction: declarada uma única vez no início do server.js
+12. 🔧 CORREÇÕES UI/UX (18/06/2026):
+    - Menu mobile fecha ao clicar nas abas
+    - Fontes maiores no mobile (~15-20% maior)
+    - CSS organizado em 36 seções numeradas
+    - Botão WhatsApp nos clientes
+    - Keep alive melhorado com ping externo/interno
 
-13. 🎨 REDESIGN LANDING PAGE E UI/UX (17/06/2026):
-    - Landing page redesenhada com seções: Solução, Recursos, Depoimentos
-    - Navbar com 3 links: Solução, Recursos, Planos
-    - Hero com tag, 2 CTAs e prova social
-    - Seção de Estatísticas com números de impacto
-    - Seção 'Recursos poderosos' com 6 cards
-    - CTA com badges de confiança
-    - Padronização de botões (border-radius: 9999px)
-    - Responsividade melhorada para todos os dispositivos
-    - Menu mobile com todos os links e botões
-    - Animações AOS em todas as seções
-    - Posição do olho (toggle password) corrigida nos campos de senha
-    - Input group com ícones posicionados corretamente
+13. 📖 VERSÍCULO BÍBLICO (18/06/2026):
+    - Provérbios 16:3 na landing page
+    - Ícone de Bíblia (fa-bible)
+    - Versículo também no rodapé
 
 =========================================
 REGRAS DO CHATBOT:
@@ -193,7 +175,7 @@ REGRAS DO SISTEMA DE PAGAMENTOS:
 5. PIX gera QR Code, Cartão redireciona, Boleto gera link
 
 =========================================
-ESTRUTURA DOS ARQUIVOS ATUALIZADA (17/06/2026):
+ESTRUTURA DOS ARQUIVOS ATUALIZADA (18/06/2026):
 =========================================
 
 server/                      # BACKEND MODULAR
@@ -212,34 +194,35 @@ scripts/                     # SCRIPTS UTILITÁRIOS
 .render/
 └── start.sh                 # Script de inicialização no Render
 
-keep_alive.js                # Mantém o servidor ativo no Render
+keep_alive.js                # Mantém o servidor ativo (versão melhorada)
+cron.js                      # Job alternativo para manter servidor ativo
 render.yaml                  # Configuração de deploy no Render
 .env.example                 # Exemplo de variáveis de ambiente
 
 server.js                    # Backend: APENAS as rotas (~700 linhas)
 
 public/
-├── index.html               # landing page + frontend principal
+├── index.html               # landing page (tela dividida) + frontend
 ├── chatbot.html             # página do chatbot
 ├── css/
-│   ├── style.css            # estilos da landing page + app
+│   ├── style.css            # estilos organizados em 36 seções
 │   └── chatbot.css          # estilos do chatbot
 └── js/
     ├── ui.js                # UI global
     └── pages/
-        ├── dashboard.js                # Dono
+        ├── dashboard.js                # Dono (cards melhorados)
         ├── dashboard-profissional.js
-        ├── clientes.js                 # com bloqueio chatbot
-        ├── agendamentos.js             # Dono (com horários)
+        ├── clientes.js                 # com WhatsApp + cards
+        ├── agendamentos.js             # Dono (com cards mobile)
         ├── agendamentos-profissional.js
-        ├── servicos.js
-        ├── financeiro.js
+        ├── servicos.js                 # com cards mobile
+        ├── financeiro.js               # com cards mobile
         ├── empresas.js                 # Super Admin
         ├── configuracoes.js            # com aba chatbot
         └── planos.js                   # upgrade e cancelamento
 
 =========================================
-ULTIMAS CORRECOES (17/06/2026):
+ULTIMAS CORRECOES (18/06/2026):
 =========================================
 1. Implementado chatbot com calendário visual
 2. Adicionado bloqueio de clientes para chatbot
@@ -260,21 +243,18 @@ ULTIMAS CORRECOES (17/06/2026):
 17. Corrigido CSS da tela de login/cadastro
 18. Adicionado menu hambúrguer responsivo
 19. Implementado cancelamento com volta ao Trial (7 dias)
-20. REFATORAÇÃO: Backend modularizado (server/config, server/middlewares, server/utils)
+20. REFATORAÇÃO: Backend modularizado
 21. Server.js reduzido de ~900 para ~700 linhas
 22. DEPLOY: Preparação para Render com PostgreSQL
 23. CORREÇÕES: Todas as queries adaptadas para PostgreSQL e SQLite
-24. CORREÇÃO: Horários com COALESCE adaptado para ambos os bancos
-25. CORREÇÃO: Login e cadastro com placeholders corretos
-26. CORREÇÃO: CRUD completo adaptado para PostgreSQL
-27. CORREÇÃO: Financeiro com placeholders $1
-28. CORREÇÃO: Agendamentos.js com rota correta para horários disponíveis
-29. CORREÇÃO: Super Admin criado sem forçar ID fixo
-30. CORREÇÃO: Horários disponíveis com placeholders $1, $2, ...
-31. CORREÇÃO: Criação de agendamentos com placeholders $1, $2, ...
-32. CORREÇÃO: Removida declaração duplicada de isProduction
-33. REDESIGN: Landing page profissional com novas seções
-34. CORREÇÃO: Toggle password (olho) posicionado corretamente
-35. CORREÇÃO: Input group com ícones alinhados
-36. CORREÇÃO: Botões padronizados com border-radius: 9999px
+24. CORREÇÃO: Super Admin criado sem forçar ID fixo
+25. REDESIGN: Landing page com tela dividida
+26. CORREÇÃO: Menu mobile fecha ao clicar nas abas
+27. CORREÇÃO: Fontes maiores no mobile
+28. NOVO: Cards mobile para agendamentos, serviços, financeiro, clientes
+29. NOVO: Botão WhatsApp nos clientes
+30. NOVO: Versículo bíblico Provérbios 16:3
+31. MELHORIA: CSS organizado em 36 seções numeradas
+32. MELHORIA: Keep alive com ping externo e interno
+33. MELHORIA: Cron job para redundância no keep alive
 =========================================
