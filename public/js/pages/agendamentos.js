@@ -1,4 +1,4 @@
-﻿// Página de Agendamentos do DONO - COM FILTROS, EDIÇÃO E HORÁRIOS DISPONÍVEIS
+﻿// pages/agendamentos.js - Versão Completa com Filtros, Edição e Horários Disponíveis
 let profissionaisList = [];
 let clientesList = [];
 let servicosList = [];
@@ -51,56 +51,96 @@ async function carregarAgendamentos() {
 
     let html = `
         <div class="fade-in">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
-                <h2 class="page-title">📅 Agendamentos</h2>
-                <button class="btn btn-primary" onclick="abrirModalAgendamentoDono()">+ Novo Agendamento</button>
-            </div>
-            
-            <div class="card" style="margin-bottom: 20px;">
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;">
-                    <div>
-                        <label>Data Início</label>
-                        <input type="date" id="filtroDataInicio" class="form-control" style="width: auto;">
-                    </div>
-                    <div>
-                        <label>Data Fim</label>
-                        <input type="date" id="filtroDataFim" class="form-control" style="width: auto;">
-                    </div>
-                    <div>
-                        <label>Status</label>
-                        <select id="filtroStatus" class="form-control" style="width: auto;">
-                            <option value="todos">Todos</option>
-                            <option value="agendado">Agendado</option>
-                            <option value="pendente">Pendente</option>
-                            <option value="concluido">Concluído</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Profissional</label>
-                        <select id="filtroProfissional" class="form-control" style="width: auto;">
-                            <option value="todos">Todos</option>
-                            ${profissionaisOptions}
-                        </select>
-                    </div>
-                    <div>
-                        <button class="btn btn-primary" onclick="aplicarFiltrosAgendamentos()">🔍 Filtrar</button>
-                        <button class="btn btn-secondary" onclick="limparFiltrosAgendamentos()">🗑 Limpar</button>
-                    </div>
+            <!-- Header -->
+            <div class="dashboard-header">
+                <div>
+                    <h2 class="page-title">📅 Agendamentos</h2>
+                    <p class="page-subtitle">
+                        <i class="fas fa-clock"></i> 
+                        Gerencie todos os agendamentos da sua barbearia
+                    </p>
+                </div>
+                <div class="dashboard-actions">
+                    <button class="btn btn-primary" onclick="abrirModalAgendamentoDono()">
+                        <i class="fas fa-plus"></i> Novo Agendamento
+                    </button>
                 </div>
             </div>
-            
+
+            <!-- Filtros Melhorados -->
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> Data Início</label>
+                    <input type="date" id="filtroDataInicio" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-calendar-alt"></i> Data Fim</label>
+                    <input type="date" id="filtroDataFim" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-filter"></i> Status</label>
+                    <select id="filtroStatus" class="filter-select">
+                        <option value="todos">Todos</option>
+                        <option value="agendado">📋 Agendado</option>
+                        <option value="pendente">⏳ Pendente</option>
+                        <option value="concluido">✅ Concluído</option>
+                        <option value="cancelado">❌ Cancelado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-user"></i> Profissional</label>
+                    <select id="filtroProfissional" class="filter-select">
+                        <option value="todos">Todos</option>
+                        ${profissionaisOptions}
+                    </select>
+                </div>
+                <div class="filter-actions">
+                    <button class="btn btn-primary btn-sm" onclick="aplicarFiltrosAgendamentos()">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <button class="btn btn-outline btn-sm" onclick="limparFiltrosAgendamentos()">
+                        <i class="fas fa-undo"></i> Limpar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Estatísticas Rápidas -->
+            <div class="agendamento-stats" id="agendamentoStats">
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="totalAgendamentos">0</span>
+                    <span class="stat-mini-label">Total</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="agendadosCount">0</span>
+                    <span class="stat-mini-label">📋 Agendados</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="pendentesCount">0</span>
+                    <span class="stat-mini-label">⏳ Pendentes</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="concluidosCount">0</span>
+                    <span class="stat-mini-label">✅ Concluídos</span>
+                </div>
+                <div class="stat-mini">
+                    <span class="stat-mini-value" id="canceladosCount">0</span>
+                    <span class="stat-mini-label">❌ Cancelados</span>
+                </div>
+            </div>
+
+            <!-- Tabela -->
             <div class="card">
                 <div class="table-responsive">
-                    <table class="data-table">
+                    <table class="data-table" id="tabelaAgendamentos">
                         <thead>
                             <tr>
-                                <th>Data/Hora</th>
-                                <th>Cliente</th>
-                                <th>Profissional</th>
-                                <th>Serviço</th>
-                                <th>Valor</th>
-                                <th>Status</th>
-                                <th>Ações</th>
+                                <th>📅 Data/Hora</th>
+                                <th>👤 Cliente</th>
+                                <th>👨‍💼 Profissional</th>
+                                <th>✂️ Serviço</th>
+                                <th>💰 Valor</th>
+                                <th>📊 Status</th>
+                                <th>⚡ Ações</th>
                             </tr>
                         </thead>
                         <tbody id="listaAgendamentos"></tbody>
@@ -115,6 +155,98 @@ async function carregarAgendamentos() {
     hideLoading();
 }
 
+// ============================================
+// FUNÇÃO PARA ATUALIZAR ESTATÍSTICAS
+// ============================================
+
+function atualizarEstatisticasAgendamentos(agendamentos) {
+    const total = agendamentos.length;
+    const agendados = agendamentos.filter(a => a.status === 'agendado').length;
+    const pendentes = agendamentos.filter(a => a.status === 'pendente').length;
+    const concluidos = agendamentos.filter(a => a.status === 'concluido').length;
+    const cancelados = agendamentos.filter(a => a.status === 'cancelado').length;
+
+    const totalEl = document.getElementById('totalAgendamentos');
+    const agendadosEl = document.getElementById('agendadosCount');
+    const pendentesEl = document.getElementById('pendentesCount');
+    const concluidosEl = document.getElementById('concluidosCount');
+    const canceladosEl = document.getElementById('canceladosCount');
+
+    if (totalEl) totalEl.textContent = total;
+    if (agendadosEl) agendadosEl.textContent = agendados;
+    if (pendentesEl) pendentesEl.textContent = pendentes;
+    if (concluidosEl) concluidosEl.textContent = concluidos;
+    if (canceladosEl) canceladosEl.textContent = cancelados;
+}
+
+// ============================================
+// FUNÇÃO PARA RENDERIZAR LINHA DA TABELA
+// ============================================
+
+function renderizarLinhaAgendamento(item) {
+    const statusMap = {
+        'concluido': { class: 'concluido', label: '✅ Concluído' },
+        'pendente': { class: 'pendente', label: '⏳ Pendente' },
+        'agendado': { class: 'agendado', label: '📋 Agendado' },
+        'cancelado': { class: 'cancelado', label: '❌ Cancelado' }
+    };
+
+    const statusInfo = statusMap[item.status] || statusMap['pendente'];
+    const dataFormatada = item.data ? formatarDataBr(item.data) : '-';
+    const horaFormatada = item.hora || '-';
+    const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
+
+    return `
+        <tr>
+            <td>
+                <div class="cell-data-hora">
+                    <span class="data">${dataFormatada}</span>
+                    <span class="hora">${horaFormatada}</span>
+                </div>
+            </td>
+            <td>
+                <div class="cell-cliente">
+                    <span class="cliente-nome">${escapeHtml(item.cliente_nome || item.cliente_id || 'N/A')}</span>
+                </div>
+            </td>
+            <td>
+                <span class="profissional-nome">${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
+            </td>
+            <td>
+                <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
+            </td>
+            <td>
+                <span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span>
+            </td>
+            <td>
+                <span class="status-badge ${statusInfo.class}">
+                    <span class="dot"></span>
+                    ${statusInfo.label}
+                </span>
+            </td>
+            <td>
+                <div class="actions-cell">
+                    ${podeEditar ? `
+                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${item.id})" title="Editar">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${item.id})" title="Concluir">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    ` : ''}
+                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${item.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// ============================================
+// CARREGAR LISTA COM FILTROS - VERSÃO MOBILE FRIENDLY
+// ============================================
+
 async function carregarListaAgendamentosComFiltro() {
     try {
         const token = localStorage.getItem('token');
@@ -123,49 +255,65 @@ async function carregarListaAgendamentosComFiltro() {
         });
         const data = await res.json();
 
-        // VERIFICAÇÃO DE SEGURANÇA - Garantir que data.data é um array
         let agendamentos = [];
         if (data.success && Array.isArray(data.data)) {
             agendamentos = data.data;
         } else {
-            console.warn('⚠ Nenhum agendamento encontrado ou formato inválido');
+            console.warn('⚠ Nenhum agendamento encontrado');
             agendamentos = [];
         }
 
-        // Filtrar pelos valores selecionados
+        // Aplicar filtros
+        const dataInicio = document.getElementById('filtroDataInicio')?.value;
+        const dataFim = document.getElementById('filtroDataFim')?.value;
         const statusFiltro = document.getElementById('filtroStatus')?.value || 'todos';
         const profissionalFiltro = document.getElementById('filtroProfissional')?.value || 'todos';
 
         let listaFiltrada = agendamentos;
 
+        if (dataInicio) {
+            listaFiltrada = listaFiltrada.filter(a => a.data >= dataInicio);
+        }
+        if (dataFim) {
+            listaFiltrada = listaFiltrada.filter(a => a.data <= dataFim);
+        }
         if (statusFiltro !== 'todos') {
             listaFiltrada = listaFiltrada.filter(a => a.status === statusFiltro);
         }
-
         if (profissionalFiltro !== 'todos') {
             listaFiltrada = listaFiltrada.filter(a => a.profissional_id == profissionalFiltro);
         }
 
-        // ORDENAÇÃO - só executa se houver itens
-        if (listaFiltrada.length > 0) {
-            listaFiltrada.sort((a, b) => {
-                if (a.data < b.data) return 1;
-                if (a.data > b.data) return -1;
-                return 0;
-            });
-        }
+        listaFiltrada.sort((a, b) => {
+            if (a.data < b.data) return 1;
+            if (a.data > b.data) return -1;
+            return 0;
+        });
+
+        atualizarEstatisticasAgendamentos(agendamentos);
 
         const tbody = document.getElementById('listaAgendamentos');
-        if (!tbody) {
-            console.warn('⚠ Elemento listaAgendamentos não encontrado');
-            return;
-        }
+        if (!tbody) return;
+
+        // ============================================
+        // VERIFICAR SE É MOBILE (largura < 768px)
+        // ============================================
+        const isMobile = window.innerWidth < 768;
 
         if (listaFiltrada.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="text-center text-muted py-3">
-                        ${agendamentos.length === 0 ? '📋 Nenhum agendamento encontrado' : '🔍 Nenhum agendamento com os filtros selecionados'}
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <i class="fas fa-calendar-plus"></i>
+                            <h4>${agendamentos.length === 0 ? 'Nenhum agendamento encontrado' : 'Nenhum resultado com os filtros selecionados'}</h4>
+                            <p>${agendamentos.length === 0 ? 'Comece criando seu primeiro agendamento!' : 'Tente ajustar os filtros para encontrar o que procura'}</p>
+                            ${agendamentos.length === 0 ? `
+                                <button class="btn btn-primary btn-sm" onclick="abrirModalAgendamentoDono()">
+                                    <i class="fas fa-plus"></i> Novo Agendamento
+                                </button>
+                            ` : ''}
+                        </div>
                     </td>
                 </tr>
             `;
@@ -173,31 +321,81 @@ async function carregarListaAgendamentosComFiltro() {
         }
 
         let html = '';
-        for (let item of listaFiltrada) {
-            const statusBadge = item.status === 'concluido'
-                ? '<span class="badge badge-success">✅ Concluído</span>'
-                : (item.status === 'pendente' || item.status === 'agendado')
-                    ? '<span class="badge badge-warning">⏳ Pendente</span>'
-                    : '<span class="badge badge-secondary">❌ Cancelado</span>';
 
-            const dataFormatada = item.data ? formatarData(item.data) : '-';
-            const horaFormatada = item.hora || '-';
+        if (isMobile) {
+            // ============================================
+            // VERSÃO MOBILE - CARDS
+            // ============================================
+            for (let item of listaFiltrada) {
+                const statusMap = {
+                    'concluido': { class: 'concluido', label: '✅ Concluído' },
+                    'pendente': { class: 'pendente', label: '⏳ Pendente' },
+                    'agendado': { class: 'agendado', label: '📋 Agendado' },
+                    'cancelado': { class: 'cancelado', label: '❌ Cancelado' }
+                };
+                const statusInfo = statusMap[item.status] || statusMap['pendente'];
+                const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
-            html += `
-                <tr>
-                    <td>${dataFormatada} ${horaFormatada}</td>
-                    <td>${item.cliente_nome || item.cliente_id || 'N/A'}</td>
-                    <td>${item.profissional_nome || 'Não atribuído'}</td>
-                    <td>${item.servico_nome || item.servico || '-'}</td>
-                    <td>R$ ${(item.valor || 0).toFixed(2)}</td>
-                    <td>${statusBadge}</td>
-                    <td>
-                        ${(item.status === 'pendente' || item.status === 'agendado') ? `<button class="btn-icon" onclick="editarAgendamento(${item.id})">✏</button>` : ''}
-                        ${(item.status === 'pendente' || item.status === 'agendado') ? `<button class="btn-icon" onclick="concluirAgendamento(${item.id})">✅</button>` : ''}
-                        <button class="btn-icon" onclick="excluirAgendamento(${item.id})">🗑</button>
-                    </td>
-                </tr>
-            `;
+                html += `
+                    <tr>
+                        <td colspan="7" style="padding: 8px 0; border-bottom: none;">
+                            <div class="agendamento-card-mobile">
+                                <div class="card-header-mobile">
+                                    <div class="cliente-info-mobile">
+                                        <span class="cliente-avatar-mobile">${item.cliente_nome ? item.cliente_nome.charAt(0).toUpperCase() : '?'}</span>
+                                        <div>
+                                            <span class="cliente-nome-mobile">${escapeHtml(item.cliente_nome || 'N/A')}</span>
+                                            <span class="servico-mobile">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge ${statusInfo.class}">
+                                        <span class="dot"></span>
+                                        ${statusInfo.label}
+                                    </span>
+                                </div>
+                                <div class="card-body-mobile">
+                                    <div class="info-row">
+                                        <span class="info-label">📅 Data</span>
+                                        <span class="info-value">${formatarDataBr(item.data)}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">⏰ Horário</span>
+                                        <span class="info-value">${item.hora || '-'}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">👨‍💼 Profissional</span>
+                                        <span class="info-value">${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
+                                    </div>
+                                    <div class="info-row">
+                                        <span class="info-label">💰 Valor</span>
+                                        <span class="info-value valor-mobile">R$ ${(item.valor || 0).toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                <div class="card-actions-mobile">
+                                    ${podeEditar ? `
+                                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${item.id})" title="Editar">
+                                            <i class="fas fa-pen"></i> Editar
+                                        </button>
+                                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${item.id})" title="Concluir">
+                                            <i class="fas fa-check"></i> Concluir
+                                        </button>
+                                    ` : ''}
+                                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${item.id})" title="Excluir">
+                                        <i class="fas fa-trash"></i> Excluir
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        } else {
+            // ============================================
+            // VERSÃO DESKTOP - TABELA
+            // ============================================
+            for (let item of listaFiltrada) {
+                html += renderizarLinhaAgendamento(item);
+            }
         }
 
         tbody.innerHTML = html;
@@ -208,8 +406,113 @@ async function carregarListaAgendamentosComFiltro() {
     }
 }
 
-// Função auxiliar para formatar data
-function formatarData(dataStr) {
+// ============================================
+// FUNÇÃO PARA RENDERIZAR LINHA DA TABELA (DESKTOP)
+// ============================================
+
+function renderizarLinhaAgendamento(item) {
+    const statusMap = {
+        'concluido': { class: 'concluido', label: '✅ Concluído' },
+        'pendente': { class: 'pendente', label: '⏳ Pendente' },
+        'agendado': { class: 'agendado', label: '📋 Agendado' },
+        'cancelado': { class: 'cancelado', label: '❌ Cancelado' }
+    };
+
+    const statusInfo = statusMap[item.status] || statusMap['pendente'];
+    const dataFormatada = item.data ? formatarDataBr(item.data) : '-';
+    const horaFormatada = item.hora || '-';
+    const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
+
+    return `
+        <tr>
+            <td>
+                <div class="cell-data-hora">
+                    <span class="data">${dataFormatada}</span>
+                    <span class="hora">${horaFormatada}</span>
+                </div>
+            </td>
+            <td>
+                <div class="cell-cliente">
+                    <span class="cliente-nome">${escapeHtml(item.cliente_nome || item.cliente_id || 'N/A')}</span>
+                </div>
+            </td>
+            <td>
+                <span class="profissional-nome">${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
+            </td>
+            <td>
+                <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
+            </td>
+            <td>
+                <span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span>
+            </td>
+            <td>
+                <span class="status-badge ${statusInfo.class}">
+                    <span class="dot"></span>
+                    ${statusInfo.label}
+                </span>
+            </td>
+            <td>
+                <div class="actions-cell">
+                    ${podeEditar ? `
+                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${item.id})" title="Editar">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${item.id})" title="Concluir">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    ` : ''}
+                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${item.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `;
+}
+
+// ============================================
+// ATUALIZAR AO REDIMENSIONAR A TELA
+// ============================================
+
+// Adicionar listener para quando a tela mudar de tamanho
+let resizeTimeout;
+window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(function() {
+        // Recarregar a lista se estiver na página de agendamentos
+        if (document.getElementById('listaAgendamentos')) {
+            carregarListaAgendamentosComFiltro();
+        }
+    }, 300);
+});
+
+// ============================================
+// FILTROS
+// ============================================
+
+function aplicarFiltrosAgendamentos() {
+    carregarListaAgendamentosComFiltro();
+}
+
+function limparFiltrosAgendamentos() {
+    const dataInicio = document.getElementById("filtroDataInicio");
+    const dataFim = document.getElementById("filtroDataFim");
+    const status = document.getElementById("filtroStatus");
+    const profissional = document.getElementById("filtroProfissional");
+
+    if (dataInicio) dataInicio.value = "";
+    if (dataFim) dataFim.value = "";
+    if (status) status.value = "todos";
+    if (profissional) profissional.value = "todos";
+
+    carregarListaAgendamentosComFiltro();
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
         const data = new Date(dataStr + 'T00:00:00');
@@ -219,19 +522,17 @@ function formatarData(dataStr) {
     }
 }
 
-function aplicarFiltrosAgendamentos() {
-    carregarListaAgendamentosComFiltro();
+function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-function limparFiltrosAgendamentos() {
-    if (document.getElementById("filtroDataInicio")) document.getElementById("filtroDataInicio").value = "";
-    if (document.getElementById("filtroDataFim")) document.getElementById("filtroDataFim").value = "";
-    if (document.getElementById("filtroStatus")) document.getElementById("filtroStatus").value = "todos";
-    if (document.getElementById("filtroProfissional")) document.getElementById("filtroProfissional").value = "todos";
-    carregarListaAgendamentosComFiltro();
-}
+// ============================================
+// NOVO CLIENTE VIA MODAL
+// ============================================
 
-// Função para abrir modal de novo cliente
 function abrirModalNovoCliente() {
     const modalHtml = `
         <div id="modalNovoCliente" class="modal" style="display: flex;">
@@ -283,7 +584,6 @@ async function salvarNovoCliente(event) {
     }
 
     showLoading();
-
     const token = localStorage.getItem("token");
 
     try {
@@ -301,7 +601,6 @@ async function salvarNovoCliente(event) {
         if (result.success) {
             showToast("Cliente cadastrado com sucesso!", "success");
 
-            // Recarregar a lista de clientes
             const clientesRes = await fetch("/api/clientes", {
                 headers: { "Authorization": "Bearer " + token }
             });
@@ -309,8 +608,6 @@ async function salvarNovoCliente(event) {
             if (clientesResult.success) clientesList = clientesResult.data || [];
 
             fecharModalNovoCliente();
-
-            // Reabrir o modal de agendamento com a lista atualizada
             fecharModalAgendamentoDono();
             abrirModalAgendamentoDono();
         } else {
@@ -323,6 +620,10 @@ async function salvarNovoCliente(event) {
 
     hideLoading();
 }
+
+// ============================================
+// HORÁRIOS DISPONÍVEIS
+// ============================================
 
 async function carregarHorariosDisponiveisDono() {
     const data = document.getElementById("dataAgendamentoDono").value;
@@ -338,7 +639,6 @@ async function carregarHorariosDisponiveisDono() {
 
     const token = localStorage.getItem("token");
     try {
-        // Usar a rota correta do backend
         const res = await fetch("/api/chatbot/horarios-disponiveis", {
             method: "POST",
             headers: {
@@ -353,7 +653,6 @@ async function carregarHorariosDisponiveisDono() {
         });
 
         const result = await res.json();
-        console.log("📝 Resposta horários:", result);
 
         if (result.success) {
             let horarios = [];
@@ -361,8 +660,6 @@ async function carregarHorariosDisponiveisDono() {
                 horarios = result.horarios;
             } else if (Array.isArray(result.data)) {
                 horarios = result.data;
-            } else {
-                horarios = [];
             }
 
             if (horarios.length > 0) {
@@ -383,13 +680,14 @@ async function carregarHorariosDisponiveisDono() {
     }
 }
 
+// ============================================
+// ABRIR MODAL NOVO AGENDAMENTO
+// ============================================
+
 async function abrirModalAgendamentoDono() {
-    // Garantir que clientesList é um array
     const clientes = Array.isArray(clientesList) ? clientesList : [];
     const servicos = Array.isArray(servicosList) ? servicosList : [];
     const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
-
-    console.log("Abrindo modal - Clientes:", clientes.length);
 
     let clientesOptions = '<option value="">Selecione...</option>';
     if (clientes.length > 0) {
@@ -420,7 +718,7 @@ async function abrirModalAgendamentoDono() {
         <div id="modalAgendamentoDono" class="modal" style="display: flex;">
             <div class="modal-content" style="max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
                 <h3>➕ Novo Agendamento</h3>
-                
+
                 <div class="form-group">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
                         <label>Cliente *</label>
@@ -433,12 +731,12 @@ async function abrirModalAgendamentoDono() {
                     </select>
                     <small class="text-muted">Não encontrou o cliente? Clique em "+ Novo Cliente"</small>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Data *</label>
                     <input type="date" id="dataAgendamentoDono" class="form-control" onchange="carregarHorariosDisponiveisDono()">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Horário *</label>
                     <select id="horaAgendamentoDono" class="form-control">
@@ -446,7 +744,7 @@ async function abrirModalAgendamentoDono() {
                     </select>
                     <small class="text-muted">Horários disponíveis de 30 em 30 minutos</small>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Serviço</label>
                     <select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()">
@@ -454,12 +752,12 @@ async function abrirModalAgendamentoDono() {
                     </select>
                     <input type="text" id="servicoDescricaoDono" class="form-control" style="margin-top: 10px;" placeholder="Ou digite o serviço manualmente">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Valor (R$)</label>
                     <input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Profissional</label>
                     <select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono()">
@@ -467,7 +765,7 @@ async function abrirModalAgendamentoDono() {
                     </select>
                     <small class="text-muted">Se não escolher, o agendamento ficará sem profissional</small>
                 </div>
-                
+
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                     <button type="button" class="btn btn-secondary" onclick="fecharModalAgendamentoDono()">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="salvarAgendamentoDono()">Salvar</button>
@@ -499,6 +797,10 @@ function atualizarValorPorServicoDono() {
     }
 }
 
+// ============================================
+// SALVAR AGENDAMENTO
+// ============================================
+
 async function salvarAgendamentoDono() {
     const cliente_id = document.getElementById("clienteIdDono").value;
     const data = document.getElementById("dataAgendamentoDono").value;
@@ -513,7 +815,7 @@ async function salvarAgendamentoDono() {
         return;
     }
 
-    if (!hora) {
+    if (!hora || hora === '') {
         showToast("Selecione um horário", "warning");
         return;
     }
@@ -529,14 +831,11 @@ async function salvarAgendamentoDono() {
         profissional_id: profissional_id ? parseInt(profissional_id) : null
     };
 
-    // Se tiver serviço_id e for um número válido
     if (servico_id && servico_id !== '') {
         body.servico_id = parseInt(servico_id);
     } else if (servico_descricao && servico_descricao.trim() !== '') {
         body.servico = servico_descricao.trim();
     }
-
-    console.log('📝 Enviando agendamento:', body);
 
     try {
         const res = await fetch("/api/agendamentos", {
@@ -549,7 +848,6 @@ async function salvarAgendamentoDono() {
         });
 
         const result = await res.json();
-        console.log('📝 Resposta:', result);
 
         if (result.success) {
             showToast("Agendamento criado com sucesso!", "success");
@@ -565,6 +863,10 @@ async function salvarAgendamentoDono() {
 
     hideLoading();
 }
+
+// ============================================
+// CONCLUIR AGENDAMENTO
+// ============================================
 
 async function concluirAgendamento(id) {
     if (!confirm("Concluir este agendamento?")) return;
@@ -599,6 +901,10 @@ async function concluirAgendamento(id) {
     hideLoading();
 }
 
+// ============================================
+// EXCLUIR AGENDAMENTO
+// ============================================
+
 async function excluirAgendamento(id) {
     if (!confirm("Excluir este agendamento?")) return;
 
@@ -626,14 +932,10 @@ async function excluirAgendamento(id) {
     hideLoading();
 }
 
-function escapeHtml(text) {
-    if (!text) return "";
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-}
+// ============================================
+// EDITAR AGENDAMENTO
+// ============================================
 
-// Funções de edição
 async function editarAgendamento(id) {
     const token = localStorage.getItem("token");
     const res = await fetch("/api/agendamentos", {
@@ -681,24 +983,24 @@ async function editarAgendamento(id) {
             <div id="modalEditarAgendamentoDono" class="modal" style="display: flex;">
                 <div class="modal-content" style="max-width: 500px; width: 90%;">
                     <h3>✏ Editar Agendamento</h3>
-                    
+
                     <div class="form-group">
                         <label>Cliente *</label>
                         <select id="editClienteIdDono" class="form-control">
                             ${clientesOptions}
                         </select>
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Data *</label>
                         <input type="date" id="editDataAgendamentoDono" class="form-control" value="${agendamento.data}">
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Hora</label>
                         <input type="time" id="editHoraAgendamentoDono" class="form-control" value="${agendamento.hora || ''}">
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Serviço</label>
                         <select id="editServicoIdDono" class="form-control" onchange="atualizarValorPorServicoEditDono()">
@@ -706,19 +1008,19 @@ async function editarAgendamento(id) {
                         </select>
                         <input type="text" id="editServicoDescricaoDono" class="form-control" style="margin-top: 10px;" value="${agendamento.servico || ''}" placeholder="Ou digite o serviço manualmente">
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Valor (R$)</label>
                         <input type="number" id="editValorAgendamentoDono" class="form-control" step="0.01" value="${agendamento.valor || 0}">
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Profissional</label>
                         <select id="editProfissionalIdDono" class="form-control">
                             ${profissionaisOptions}
                         </select>
                     </div>
-                    
+
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                         <button class="btn btn-secondary" onclick="fecharModalEditarAgendamentoDono()">Cancelar</button>
                         <button class="btn btn-primary" onclick="salvarEdicaoAgendamentoDono(${id})">Salvar</button>
@@ -776,10 +1078,10 @@ async function salvarEdicaoAgendamentoDono(id) {
         profissional_id: profissional_id ? parseInt(profissional_id) : null
     };
 
-    if (servico_id) {
+    if (servico_id && servico_id !== '') {
         body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao) {
-        body.servico = servico_descricao;
+    } else if (servico_descricao && servico_descricao.trim() !== '') {
+        body.servico = servico_descricao.trim();
     }
 
     try {
@@ -809,7 +1111,10 @@ async function salvarEdicaoAgendamentoDono(id) {
     hideLoading();
 }
 
-// Exportar funções
+// ============================================
+// EXPORTAR FUNÇÕES GLOBAIS
+// ============================================
+
 window.carregarAgendamentos = carregarAgendamentos;
 window.abrirModalAgendamentoDono = abrirModalAgendamentoDono;
 window.fecharModalAgendamentoDono = fecharModalAgendamentoDono;
