@@ -1,7 +1,7 @@
 ﻿
 ---
 
-## 📄 **4. `PARA_NOVA_IA.txt`**
+## 📄 **4. PARA_NOVA_IA.txt**
 
 ```markdown
 =========================================
@@ -147,6 +147,20 @@ FUNCIONALIDADES ADICIONADAS (17/06/2026):
     - Criação de Agendamentos: placeholders $1, $2, ... e suporte a serviço manual
     - isProduction: declarada uma única vez no início do server.js
 
+13. 🎨 REDESIGN LANDING PAGE E UI/UX (17/06/2026):
+    - Landing page redesenhada com seções: Solução, Recursos, Depoimentos
+    - Navbar com 3 links: Solução, Recursos, Planos
+    - Hero com tag, 2 CTAs e prova social
+    - Seção de Estatísticas com números de impacto
+    - Seção 'Recursos poderosos' com 6 cards
+    - CTA com badges de confiança
+    - Padronização de botões (border-radius: 9999px)
+    - Responsividade melhorada para todos os dispositivos
+    - Menu mobile com todos os links e botões
+    - Animações AOS em todas as seções
+    - Posição do olho (toggle password) corrigida nos campos de senha
+    - Input group com ícones posicionados corretamente
+
 =========================================
 REGRAS DO CHATBOT:
 =========================================
@@ -259,4 +273,8 @@ ULTIMAS CORRECOES (17/06/2026):
 30. CORREÇÃO: Horários disponíveis com placeholders $1, $2, ...
 31. CORREÇÃO: Criação de agendamentos com placeholders $1, $2, ...
 32. CORREÇÃO: Removida declaração duplicada de isProduction
+33. REDESIGN: Landing page profissional com novas seções
+34. CORREÇÃO: Toggle password (olho) posicionado corretamente
+35. CORREÇÃO: Input group com ícones alinhados
+36. CORREÇÃO: Botões padronizados com border-radius: 9999px
 =========================================

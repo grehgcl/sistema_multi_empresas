@@ -466,14 +466,17 @@ function handleNavClick(e) {
 function gerarCalendario(data, diasDisponiveis) {
     const ano = data.getFullYear();
     const mes = data.getMonth();
-
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
     const diasNoMes = ultimoDia.getDate();
     const primeiroDiaSemana = primeiroDia.getDay();
 
+    // NOVO: Pega hoje sem horas
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
     const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-    const diasSemana = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+    const diasSemana = ['D', 'S', 'T', 'Q', 'S', 'S'];
 
     let html = '<div class="calendario-container">';
     html += '<div class="calendario-header">';
@@ -495,13 +498,17 @@ function gerarCalendario(data, diasDisponiveis) {
     }
 
     for (let dia = 1; dia <= diasNoMes; dia++) {
+        const dataAtual = new Date(ano, mes, dia);
         const dataStr = ano + '-' + (mes + 1).toString().padStart(2, '0') + '-' + dia.toString().padStart(2, '0');
-        const isDisponivel = diasDisponiveis.includes(dataStr);
+
+        // NOVO: Checa se é passado
+        const isPassado = dataAtual < hoje;
+        const isDisponivel = diasDisponiveis.includes(dataStr) && !isPassado;
         const isHoje = dataStr === new Date().toISOString().split('T')[0];
 
         let classe = 'calendario-dia';
         if (isDisponivel) classe += ' calendario-data-disponivel';
-        if (!isDisponivel) classe += ' indisponivel';
+        if (!isDisponivel || isPassado) classe += ' indisponivel';
         if (isHoje) classe += ' hoje';
 
         html += '<div class="' + classe + '" data-data="' + dataStr + '" title="' + (isDisponivel ? 'Disponível' : 'Indisponível') + '">' + dia + '</div>';
@@ -610,10 +617,41 @@ Deseja confirmar o agendamento?
 
 async function processarConfirmacao(mensagem) {
     if (mensagem.toLowerCase() === 'sim' || mensagem.toLowerCase() === 'confirmar') {
+        // REVALIDA HORÁRIO ANTES DE GRAVAR
+        mostrarTyping();
+        const aindaLivre = await verificarHorarioAindaDisponivel();
+        esconderTyping();
+
+        if (!aindaLivre) {
+            mostrarMensagemBot('😔 Puts, alguém acabou de agendar esse horário enquanto você confirmava.\n\nMas relaxa, vamos escolher outro:');
+            conversationState.step = 'hora';
+            await carregarHorariosDisponiveis();
+            return;
+        }
+
         await confirmarAgendamento();
     } else {
         mostrarMensagemBot('❌ Agendamento cancelado. Se quiser tentar novamente, recarregue a página.');
         resetarConversa();
+    }
+}
+
+// NOVA FUNÇÃO: Verifica se horário ainda tá livre
+async function verificarHorarioAindaDisponivel() {
+    try {
+        const res = await fetch('/api/chatbot/horarios-disponiveis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                empresaId: conversationState.empresaId,
+                profissionalId: conversationState.profissionalId,
+                data: conversationState.data
+            })
+        });
+        const data = await res.json();
+        return data.success && data.horarios.includes(conversationState.hora);
+    } catch {
+        return false;
     }
 }
 

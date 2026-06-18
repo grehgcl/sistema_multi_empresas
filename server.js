@@ -995,7 +995,6 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
-
     if (!empresa_id) return res.json({ success: true, data: [] });
 
     const sql = isProduction
@@ -1004,15 +1003,15 @@ app.get('/api/agendamentos', auth, (req, res) => {
            LEFT JOIN clientes c ON a.cliente_id = c.id
            LEFT JOIN profissionais p ON a.profissional_id = p.id
            LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = $1
-           ORDER BY a.data DESC`
+           WHERE a.empresa_id = $1 AND a.status IN ('agendado', 'pendente', 'concluido')
+           ORDER BY a.data DESC, a.hora ASC`
         : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
            FROM agendamentos a
            LEFT JOIN clientes c ON a.cliente_id = c.id
            LEFT JOIN profissionais p ON a.profissional_id = p.id
            LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = ?
-           ORDER BY a.data DESC`;
+           WHERE a.empresa_id =? AND a.status IN ('agendado', 'pendente', 'concluido')
+           ORDER BY a.data DESC, a.hora ASC`;
 
     db.all(sql, [empresa_id], (err, agendamentos) => {
         if (err) {
@@ -2020,74 +2019,195 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     });
 });
 
-app.post('/api/chatbot/agendar', (req, res) => {
+// ============================================================
+// CHATBOT - AGENDAR COM TRANSAÇÃO ANTI-DUPLICAÇÃO
+// ============================================================
+app.post('/api/chatbot/agendar', async (req, res) => {
     const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
 
-    db.get(`SELECT bloqueado_chatbot FROM clientes WHERE id = ?`, [clienteId], (err, cliente) => {
-        if (err) {
-            return res.json({ success: false, message: err.message });
+    if (!clienteId || !servicoId || !data || !hora || !empresaId) {
+        return res.json({ success: false, message: 'Dados incompletos para agendamento' });
+    }
+
+    // Usa pool direto no PostgreSQL pra transação, SQLite usa db.run
+    const client = isProduction ? await db.pool.connect() : null;
+
+    try {
+        // 1. INICIA TRANSAÇÃO - SQLite: IMMEDIATE trava na hora, PostgreSQL: BEGIN
+        if (isProduction) {
+            await client.query('BEGIN');
+        } else {
+            await new Promise((resolve, reject) => {
+                db.run('BEGIN IMMEDIATE', (err) => err ? reject(err) : resolve());
+            });
         }
 
-        if (cliente && cliente.bloqueado_chatbot === 1) {
-            return res.json({ success: false, message: 'Você está bloqueado para agendamentos via chatbot. Entre em contato com a barbearia.' });
-        }
+        // 2. CHECA SE HORÁRIO AINDA TÁ LIVRE - COM LOCK
+        const sqlCheck = isProduction
+            ? `SELECT id FROM agendamentos
+               WHERE empresa_id = $1 AND profissional_id = $2 AND data = $3 AND hora = $4 AND status = 'agendado'
+               FOR UPDATE`
+            : `SELECT id FROM agendamentos
+               WHERE empresa_id =? AND profissional_id =? AND data =? AND hora =? AND status = 'agendado'`;
 
-        const dataLimite = new Date();
-        dataLimite.setDate(dataLimite.getDate() - 20);
-        const dataLimiteStr = dataLimite.toISOString().split('T')[0];
-
-        db.get(`SELECT id FROM agendamentos 
-                WHERE cliente_id = ? AND data >= ? AND status != 'cancelado' 
-                LIMIT 1`,
-            [clienteId, dataLimiteStr], (err, agendamentoRecente) => {
-                if (agendamentoRecente) {
-                    return res.json({ success: false, message: 'Você já possui um agendamento nos últimos 20 dias. Aguarde para fazer outro.' });
-                }
-
-                db.get('SELECT nome, valor FROM servicos WHERE id = ?', [servicoId], (err, servico) => {
-                    if (err || !servico) {
-                        return res.json({ success: false, message: 'Serviço não encontrado' });
-                    }
-
-                    let profissionalNome = 'Não atribuído';
-                    let profissionalIdReal = null;
-
-                    if (profissionalId && profissionalId !== 'null' && !profissionalId.toString().startsWith('dono_')) {
-                        profissionalIdReal = profissionalId;
-                        db.get('SELECT nome FROM profissionais WHERE id = ?', [profissionalId], (err, profissional) => {
-                            if (profissional) profissionalNome = profissional.nome;
-                        });
-                    }
-
-                    db.get(`SELECT id FROM agendamentos 
-                            WHERE data = ? AND hora = ? AND profissional_id = ? AND status != 'cancelado'`,
-                        [data, hora, profissionalIdReal], (err, existente) => {
-                            if (existente) {
-                                return res.json({ success: false, message: 'Este horário já foi reservado' });
-                            }
-
-                            db.run(`INSERT INTO agendamentos 
-                                    (cliente_id, servico_id, servico, valor, data, hora, profissional_id, status, empresa_id) 
-                                    VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?)`,
-                                [clienteId, servicoId, servico.nome, servico.valor, data, hora, profissionalIdReal, empresaId],
-                                function (err) {
-                                    if (err) {
-                                        return res.json({ success: false, message: err.message });
-                                    }
-
-                                    res.json({
-                                        success: true,
-                                        message: `Seu agendamento foi confirmado para ${data} às ${hora}`,
-                                        profissionalNome: profissionalNome,
-                                        servicoNome: servico.nome,
-                                        valor: servico.valor,
-                                        agendamentoId: this.lastID
-                                    });
-                                });
-                        });
+        const ocupado = isProduction
+            ? await client.query(sqlCheck, [empresaId, profissionalId, data, hora])
+            : await new Promise((resolve, reject) => {
+                db.get(sqlCheck, [empresaId, profissionalId, data, hora], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
                 });
             });
-    });
+
+        if ((isProduction && ocupado.rows.length > 0) || (!isProduction && ocupado)) {
+            if (isProduction) await client.query('ROLLBACK');
+            else await new Promise((r) => db.run('ROLLBACK', r));
+            if (client) client.release();
+            return res.json({
+                success: false,
+                message: 'Ops! Esse horário acabou de ser ocupado. Escolha outro por favor.'
+            });
+        }
+
+        // 3. VERIFICA REGRA DOS 20 DIAS
+        const sql20dias = isProduction
+            ? `SELECT id FROM agendamentos
+               WHERE cliente_id = $1 AND empresa_id = $2
+               AND data >= CURRENT_DATE - INTERVAL '20 days' AND status = 'agendado' LIMIT 1`
+            : `SELECT id FROM agendamentos
+               WHERE cliente_id =? AND empresa_id =?
+               AND data >= date('now', '-20 days') AND status = 'agendado' LIMIT 1`;
+
+        const agendamentoRecente = isProduction
+            ? await client.query(sql20dias, [clienteId, empresaId])
+            : await new Promise((resolve, reject) => {
+                db.get(sql20dias, [clienteId, empresaId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+
+        if ((isProduction && agendamentoRecente.rows.length > 0) || (!isProduction && agendamentoRecente)) {
+            if (isProduction) await client.query('ROLLBACK');
+            else await new Promise((r) => db.run('ROLLBACK', r));
+            if (client) client.release();
+            return res.json({
+                success: false,
+                message: 'Você já tem um agendamento nos últimos 20 dias. Só pode agendar novamente após esse período.'
+            });
+        }
+
+        // 4. VERIFICA SE CLIENTE TÁ BLOQUEADO
+        const sqlCliente = isProduction
+            ? `SELECT bloqueado_chatbot FROM clientes WHERE id = $1`
+            : `SELECT bloqueado_chatbot FROM clientes WHERE id =?`;
+
+        const cliente = isProduction
+            ? await client.query(sqlCliente, [clienteId])
+            : await new Promise((resolve, reject) => {
+                db.get(sqlCliente, [clienteId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+
+        const clienteData = isProduction ? cliente.rows[0] : cliente;
+        if (clienteData?.bloqueado_chatbot === 1) {
+            if (isProduction) await client.query('ROLLBACK');
+            else await new Promise((r) => db.run('ROLLBACK', r));
+            if (client) client.release();
+            return res.json({
+                success: false,
+                message: 'Seu acesso ao agendamento online está bloqueado. Entre em contato com a barbearia.'
+            });
+        }
+
+        // 5. BUSCA DADOS DO SERVIÇO
+        const sqlServico = isProduction
+            ? `SELECT nome, valor, duracao FROM servicos WHERE id = $1 AND empresa_id = $2`
+            : `SELECT nome, valor, duracao FROM servicos WHERE id =? AND empresa_id =?`;
+
+        const servico = isProduction
+            ? await client.query(sqlServico, [servicoId, empresaId])
+            : await new Promise((resolve, reject) => {
+                db.get(sqlServico, [servicoId, empresaId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+
+        const servicoData = isProduction ? servico.rows[0] : servico;
+        if (!servicoData) {
+            if (isProduction) await client.query('ROLLBACK');
+            else await new Promise((r) => db.run('ROLLBACK', r));
+            if (client) client.release();
+            return res.json({ success: false, message: 'Serviço não encontrado' });
+        }
+
+        // 6. INSERE AGENDAMENTO
+        const sqlInsert = isProduction
+            ? `INSERT INTO agendamentos
+               (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, 'agendado', $8) RETURNING id`
+            : `INSERT INTO agendamentos
+               (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
+               VALUES (?,?,?,?,?,?,?, 'agendado',?)`;
+
+        const result = isProduction
+            ? await client.query(sqlInsert, [
+                clienteId, servicoId, servicoData.nome, servicoData.valor,
+                profissionalId || null, data, hora, empresaId
+            ])
+            : await new Promise((resolve, reject) => {
+                db.run(sqlInsert, [
+                    clienteId, servicoId, servicoData.nome, servicoData.valor,
+                    profissionalId || null, data, hora, empresaId
+                ], function (err) {
+                    if (err) reject(err);
+                    else resolve({ lastID: this.lastID });
+                });
+            });
+
+        // 7. COMMIT
+        if (isProduction) await client.query('COMMIT');
+        else await new Promise((r) => db.run('COMMIT', r));
+
+        // 8. BUSCA NOME DO PROFISSIONAL PRA RESPOSTA
+        const sqlProf = isProduction
+            ? `SELECT nome FROM profissionais WHERE id = $1`
+            : `SELECT nome FROM profissionais WHERE id =?`;
+
+        const profissional = isProduction
+            ? await client.query(sqlProf, [profissionalId])
+            : await new Promise((resolve, reject) => {
+                db.get(sqlProf, [profissionalId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+
+        const profData = isProduction ? profissional.rows[0] : profissional;
+        const agendamentoId = isProduction ? result.rows[0].id : result.lastID;
+
+        if (client) client.release();
+
+        res.json({
+            success: true,
+            agendamentoId: agendamentoId,
+            profissionalNome: profData?.nome || 'Profissional',
+            servicoNome: servicoData.nome,
+            valor: servicoData.valor
+        });
+
+    } catch (error) {
+        // ROLLBACK em caso de erro
+        if (isProduction && client) await client.query('ROLLBACK');
+        else await new Promise((r) => db.run('ROLLBACK', r));
+
+        if (client) client.release();
+        console.error('❌ Erro ao agendar:', error);
+        res.json({ success: false, message: 'Erro interno. Tente novamente.' });
+    }
 });
 
 app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
@@ -2266,6 +2386,7 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 // ============================================================
 
 const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
+
 
 app.listen(PORT, HOST, () => {
     console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);

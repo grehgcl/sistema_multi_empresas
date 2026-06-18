@@ -1,4 +1,4 @@
-﻿﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 17/06/2026
+﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 17/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite (desenvolvimento local)
@@ -256,6 +256,29 @@ Estrutura modular criada para melhor organização:
 - Removida declaração duplicada no server.js
 - Variável definida uma única vez no início
 
+## REDESIGN LANDING PAGE E UI/UX (17/06/2026)
+=========================================
+
+### Landing Page Redesign
+- Navbar com 3 links: Solução, Recursos, Planos
+- Hero com tag, título forte, 2 CTAs e prova social
+- Nova seção 'O que resolvemos' com 4 cards
+- Seção de Estatísticas com números de impacto
+- Seção 'Recursos poderosos' com 6 cards
+- Seção de Depoimentos com 3 cards
+- Planos com mais descrição e features
+- CTA com badges de confiança
+
+### Correções UI/UX
+- Padronização de botões (todos com border-radius: 9999px)
+- Cards com hover effects consistentes
+- Dashboard com cards premium e métricas
+- Responsividade melhorada para todos os dispositivos
+- Menu mobile com todos os links e botões
+- Animações AOS em todas as seções
+- Posição do olho (toggle password) corrigida nos campos de senha
+- Input group com ícones posicionados corretamente
+
 =========================================
 ## ULTIMA ATUALIZACAO: 17/06/2026
 
@@ -284,4 +307,7 @@ MUDANCAS REALIZADAS:
 - CORREÇÃO: Horários disponíveis com placeholders corretos
 - CORREÇÃO: Criação de agendamentos com placeholders corretos
 - CORREÇÃO: Removida declaração duplicada de isProduction
+- REDESIGN: Landing page profissional com novas seções
+- CORREÇÃO: Toggle password (olho) posicionado corretamente
+- CORREÇÃO: Input group com ícones alinhados
 =========================================

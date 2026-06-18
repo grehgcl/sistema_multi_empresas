@@ -70,6 +70,7 @@ async function carregarAgendamentos() {
                         <label>Status</label>
                         <select id="filtroStatus" class="form-control" style="width: auto;">
                             <option value="todos">Todos</option>
+                            <option value="agendado">Agendado</option>
                             <option value="pendente">Pendente</option>
                             <option value="concluido">Concluído</option>
                         </select>
@@ -83,7 +84,7 @@ async function carregarAgendamentos() {
                     </div>
                     <div>
                         <button class="btn btn-primary" onclick="aplicarFiltrosAgendamentos()">🔍 Filtrar</button>
-                        <button class="btn btn-secondary" onclick="limparFiltrosAgendamentos()">🗑️ Limpar</button>
+                        <button class="btn btn-secondary" onclick="limparFiltrosAgendamentos()">🗑 Limpar</button>
                     </div>
                 </div>
             </div>
@@ -127,7 +128,7 @@ async function carregarListaAgendamentosComFiltro() {
         if (data.success && Array.isArray(data.data)) {
             agendamentos = data.data;
         } else {
-            console.warn('⚠️ Nenhum agendamento encontrado ou formato inválido');
+            console.warn('⚠ Nenhum agendamento encontrado ou formato inválido');
             agendamentos = [];
         }
 
@@ -156,7 +157,7 @@ async function carregarListaAgendamentosComFiltro() {
 
         const tbody = document.getElementById('listaAgendamentos');
         if (!tbody) {
-            console.warn('⚠️ Elemento listaAgendamentos não encontrado');
+            console.warn('⚠ Elemento listaAgendamentos não encontrado');
             return;
         }
 
@@ -175,7 +176,7 @@ async function carregarListaAgendamentosComFiltro() {
         for (let item of listaFiltrada) {
             const statusBadge = item.status === 'concluido'
                 ? '<span class="badge badge-success">✅ Concluído</span>'
-                : item.status === 'pendente'
+                : (item.status === 'pendente' || item.status === 'agendado')
                     ? '<span class="badge badge-warning">⏳ Pendente</span>'
                     : '<span class="badge badge-secondary">❌ Cancelado</span>';
 
@@ -191,9 +192,9 @@ async function carregarListaAgendamentosComFiltro() {
                     <td>R$ ${(item.valor || 0).toFixed(2)}</td>
                     <td>${statusBadge}</td>
                     <td>
-                        ${item.status === 'pendente' ? `<button class="btn-icon" onclick="editarAgendamento(${item.id})">✏️</button>` : ''}
-                        ${item.status === 'pendente' ? `<button class="btn-icon" onclick="concluirAgendamento(${item.id})">✅</button>` : ''}
-                        <button class="btn-icon" onclick="excluirAgendamento(${item.id})">🗑️</button>
+                        ${(item.status === 'pendente' || item.status === 'agendado') ? `<button class="btn-icon" onclick="editarAgendamento(${item.id})">✏</button>` : ''}
+                        ${(item.status === 'pendente' || item.status === 'agendado') ? `<button class="btn-icon" onclick="concluirAgendamento(${item.id})">✅</button>` : ''}
+                        <button class="btn-icon" onclick="excluirAgendamento(${item.id})">🗑</button>
                     </td>
                 </tr>
             `;
@@ -679,7 +680,7 @@ async function editarAgendamento(id) {
         const modalHtml = `
             <div id="modalEditarAgendamentoDono" class="modal" style="display: flex;">
                 <div class="modal-content" style="max-width: 500px; width: 90%;">
-                    <h3>✏️ Editar Agendamento</h3>
+                    <h3>✏ Editar Agendamento</h3>
                     
                     <div class="form-group">
                         <label>Cliente *</label>
