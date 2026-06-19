@@ -2094,7 +2094,7 @@ app.post('/api/chatbot/cliente/criar', (req, res) => {
 });
 
 // ============================================
-// ROTA: /api/chatbot/datas-disponiveis-mes - CORRIGIDA DEFINITIVAMENTE
+// ROTA: /api/chatbot/datas-disponiveis-mes - CORRIGIDA (POSTGRESQL)
 // ============================================
 app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     const { empresaId, mes, ano, profissionalId } = req.body;
@@ -2105,20 +2105,29 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     console.log(`📅 Buscando datas para ${mesSolicitado}/${anoSolicitado} - Profissional: ${profissionalId || 'todos'}`);
 
     // ============================================
-    // BUSCAR TODOS OS AGENDAMENTOS DO MÊS (para saber quais dias têm vagas)
+    // BUSCAR TODOS OS AGENDAMENTOS DO MÊS
     // ============================================
-    let sqlAgendamentos = `
-        SELECT data, profissional_id, hora 
-        FROM agendamentos 
-        WHERE empresa_id = ? 
-        AND status != 'cancelado'
-        AND data LIKE ? 
-    `;
-    let params = [empresaId, `${anoSolicitado}-${String(mesSolicitado).padStart(2, '0')}%`];
+    let sqlAgendamentos = isProduction
+        ? `SELECT data, profissional_id, hora 
+           FROM agendamentos 
+           WHERE empresa_id = $1 
+           AND status != 'cancelado'
+           AND EXTRACT(YEAR FROM data) = $2 
+           AND EXTRACT(MONTH FROM data) = $3`
+        : `SELECT data, profissional_id, hora 
+           FROM agendamentos 
+           WHERE empresa_id = ? 
+           AND status != 'cancelado'
+           AND strftime('%Y', data) = ? 
+           AND strftime('%m', data) = ?`;
 
-    // Se tiver profissional específico, filtrar por ele
+    let params = isProduction
+        ? [empresaId, anoSolicitado.toString(), mesSolicitado.toString().padStart(2, '0')]
+        : [empresaId, anoSolicitado.toString(), mesSolicitado.toString().padStart(2, '0')];
+
+    // Se tiver profissional específico
     if (profissionalId && profissionalId !== 'null' && profissionalId !== 'dono_' && !profissionalId.includes('dono')) {
-        sqlAgendamentos += ` AND profissional_id = ?`;
+        sqlAgendamentos += isProduction ? ` AND profissional_id = $4` : ` AND profissional_id = ?`;
         params.push(parseInt(profissionalId));
     }
 
@@ -2129,24 +2138,21 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
         }
 
         // ============================================
-        // MAPEAR DIAS OCUPADOS (agrupar por dia)
+        // MAPEAR HORÁRIOS OCUPADOS POR DIA
         // ============================================
-        const diasOcupados = {};
         const horariosPorDia = {};
-
         for (let ag of agendamentos) {
-            if (!diasOcupados[ag.data]) {
-                diasOcupados[ag.data] = [];
-                horariosPorDia[ag.data] = [];
+            const dataStr = ag.data;
+            if (!horariosPorDia[dataStr]) {
+                horariosPorDia[dataStr] = [];
             }
             if (ag.hora) {
-                horariosPorDia[ag.data].push(ag.hora);
+                horariosPorDia[dataStr].push(ag.hora);
             }
-            diasOcupados[ag.data].push(ag);
         }
 
         // ============================================
-        // BUSCAR HORÁRIOS DE FUNCIONAMENTO DA EMPRESA
+        // BUSCAR HORÁRIOS DE FUNCIONAMENTO
         // ============================================
         db.all(
             `SELECT dia_semana, hora_inicio, hora_fim, almoco_inicio, almoco_fim 
@@ -2159,8 +2165,13 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                     return res.json({ success: false, message: err.message });
                 }
 
+                const horariosFuncMap = {};
+                for (let h of horariosFuncionamento) {
+                    horariosFuncMap[h.dia_semana] = h;
+                }
+
                 // ============================================
-                // GERAR TODAS AS DATAS DO MÊS
+                // GERAR DATAS DISPONÍVEIS
                 // ============================================
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
@@ -2169,15 +2180,12 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                 const diasNoMes = ultimoDia.getDate();
 
                 const datasDisponiveis = [];
-                const horariosFuncMap = {};
-
-                for (let h of horariosFuncionamento) {
-                    horariosFuncMap[h.dia_semana] = h;
-                }
 
                 for (let dia = 1; dia <= diasNoMes; dia++) {
                     const dataAtual = new Date(anoSolicitado, mesSolicitado - 1, dia);
                     const diaSemana = dataAtual.getDay();
+
+                    // Formatar data como YYYY-MM-DD
                     const dataStr = `${anoSolicitado}-${String(mesSolicitado).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 
                     // PULAR DATAS PASSADAS
@@ -2187,13 +2195,9 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                     if (!horariosFuncMap[diaSemana]) continue;
 
                     const horarioDia = horariosFuncMap[diaSemana];
-
-                    // ============================================
-                    // VERIFICAR SE TEM PELO MENOS 1 HORÁRIO LIVRE NO DIA
-                    // ============================================
                     const horariosOcupados = horariosPorDia[dataStr] || [];
 
-                    // Gerar todos os horários do dia (30 em 30 min)
+                    // Gerar horários do dia
                     const todosHorarios = gerarHorariosDoDia(
                         horarioDia.hora_inicio,
                         horarioDia.hora_fim,
@@ -2201,7 +2205,7 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                         horarioDia.almoco_fim
                     );
 
-                    // Verificar se tem algum horário livre
+                    // Verificar se tem horário livre
                     const temHorarioLivre = todosHorarios.some(h => !horariosOcupados.includes(h));
 
                     if (temHorarioLivre) {

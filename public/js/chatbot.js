@@ -729,7 +729,7 @@ async function perguntarData() {
 }
 
 // ============================================
-// CARREGAR DATAS DISPONÍVEIS - CORRIGIDO
+// CARREGAR DATAS DISPONÍVEIS - COM FALLBACK
 // ============================================
 async function carregarDatasDisponiveis(mes, ano) {
     const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
@@ -738,39 +738,52 @@ async function carregarDatasDisponiveis(mes, ano) {
     try {
         console.log(`🔍 Buscando datas para ${mesAtual}/${anoAtual}`);
 
-        // ============================================
-        // PASSAR O PROFISSIONAL ID PARA FILTRAR
-        // ============================================
-        const body = {
-            empresaId: empresaId,
-            mes: mesAtual,
-            ano: anoAtual
-        };
-
-        // Se tiver profissional selecionado, passar para filtrar
-        if (agendamentoAtual.profissional_id && agendamentoAtual.profissional_id !== 'dono_') {
-            body.profissionalId = agendamentoAtual.profissional_id;
-        }
-
         const res = await fetch('/api/chatbot/datas-disponiveis-mes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
+            body: JSON.stringify({
+                empresaId: empresaId,
+                mes: mesAtual,
+                ano: anoAtual
+            })
         });
         const data = await res.json();
         console.log('📦 Resposta datas:', data);
 
         if (data.success && data.diasDisponiveis && data.diasDisponiveis.length > 0) {
             datasDisponiveis = data.diasDisponiveis;
-            console.log(`✅ ${datasDisponiveis.length} datas disponíveis em ${mesAtual}/${anoAtual}`);
+            console.log(`✅ ${datasDisponiveis.length} datas disponíveis`);
         } else {
-            console.warn(`⚠ Nenhuma data disponível em ${mesAtual}/${anoAtual}`);
-            datasDisponiveis = [];
+            console.warn('⚠ Nenhuma data da API, usando fallback...');
+            // FALLBACK: gerar datas manualmente
+            datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
+            console.log(`📦 ${datasDisponiveis.length} datas de fallback`);
         }
     } catch (error) {
         console.error('❌ Erro ao carregar datas:', error);
-        datasDisponiveis = [];
+        // FALLBACK em caso de erro
+        datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
+        console.log(`📦 ${datasDisponiveis.length} datas de fallback (erro)`);
     }
+}
+
+// ============================================
+// GERAR DATAS FALLBACK
+// ============================================
+function gerarDatasFallback(mes, ano) {
+    const datas = [];
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    // Gerar datas para os próximos 15 dias
+    for (let i = 1; i <= 15; i++) {
+        const data = new Date(hoje);
+        data.setDate(data.getDate() + i);
+        const dataStr = data.toISOString().split('T')[0];
+        datas.push(dataStr);
+    }
+
+    return datas;
 }
 
 // ============================================
