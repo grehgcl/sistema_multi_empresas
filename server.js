@@ -2311,17 +2311,67 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 // CHATBOT - AGENDAR COM TRANSAÇÃO ANTI-DUPLICAÇÃO
 // ============================================================
 app.post('/api/chatbot/agendar', async (req, res) => {
-    const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
+    const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
 
-    if (!clienteId || !servicoId || !data || !hora || !empresaId) {
-        return res.json({ success: false, message: 'Dados incompletos para agendamento' });
+    // ============================================
+    // LOG DETALHADO PARA DEBUG
+    // ============================================
+    console.log('📝 RECEBIDO NO BODY:');
+    console.log('  - clienteId:', clienteId, 'Tipo:', typeof clienteId);
+    console.log('  - servicoId:', servicoId, 'Tipo:', typeof servicoId);
+    console.log('  - profissionalId:', profissionalId, 'Tipo:', typeof profissionalId);
+    console.log('  - data:', data, 'Tipo:', typeof data);
+    console.log('  - hora:', hora, 'Tipo:', typeof hora);
+    console.log('  - empresaId:', empresaId, 'Tipo:', typeof empresaId);
+    console.log('  - valor:', valor, 'Tipo:', typeof valor);
+    console.log('  - servicoNome:', servicoNome, 'Tipo:', typeof servicoNome);
+    console.log('  - BODY COMPLETO:', req.body);
+
+    // ============================================
+    // VALIDAÇÃO DETALHADA
+    // ============================================
+    if (!clienteId) {
+        console.log('❌ clienteId faltando ou inválido');
+        return res.json({ success: false, message: 'Cliente não identificado' });
+    }
+    if (!servicoId) {
+        console.log('❌ servicoId faltando ou inválido');
+        return res.json({ success: false, message: 'Serviço não identificado' });
+    }
+    if (!data) {
+        console.log('❌ data faltando ou inválida');
+        return res.json({ success: false, message: 'Data não informada' });
+    }
+    if (!hora) {
+        console.log('❌ hora faltando ou inválida');
+        return res.json({ success: false, message: 'Horário não informado' });
+    }
+    if (!empresaId) {
+        console.log('❌ empresaId faltando ou inválido');
+        return res.json({ success: false, message: 'Empresa não identificada' });
     }
 
-    // Usa pool direto no PostgreSQL pra transação, SQLite usa db.run
+    // Converter IDs para números
+    const clienteIdNum = parseInt(clienteId);
+    const servicoIdNum = parseInt(servicoId);
+    const empresaIdNum = parseInt(empresaId);
+    const profissionalIdNum = profissionalId ? parseInt(profissionalId) : null;
+    const valorNum = parseFloat(valor) || 0;
+
+    console.log('📝 DADOS CONVERTIDOS:');
+    console.log('  - clienteIdNum:', clienteIdNum);
+    console.log('  - servicoIdNum:', servicoIdNum);
+    console.log('  - profissionalIdNum:', profissionalIdNum);
+    console.log('  - empresaIdNum:', empresaIdNum);
+    console.log('  - valorNum:', valorNum);
+
+    // ============================================
+    // USAR POOL DIRETO NO POSTGRESQL, SQLITE USA DB.RUN
+    // ============================================
     const client = isProduction ? await db.pool.connect() : null;
 
     try {
-        // 1. INICIA TRANSAÇÃO - SQLite: IMMEDIATE trava na hora, PostgreSQL: BEGIN
+        // 1. INICIA TRANSAÇÃO
         if (isProduction) {
             await client.query('BEGIN');
         } else {
@@ -2330,7 +2380,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             });
         }
 
-        // 2. CHECA SE HORÁRIO AINDA TÁ LIVRE - COM LOCK
+        // 2. CHECA SE HORÁRIO AINDA TÁ LIVRE
         const sqlCheck = isProduction
             ? `SELECT id FROM agendamentos
                WHERE empresa_id = $1 AND profissional_id = $2 AND data = $3 AND hora = $4 AND status = 'agendado'
@@ -2338,10 +2388,14 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             : `SELECT id FROM agendamentos
                WHERE empresa_id =? AND profissional_id =? AND data =? AND hora =? AND status = 'agendado'`;
 
+        const paramsCheck = isProduction
+            ? [empresaIdNum, profissionalIdNum, data, hora]
+            : [empresaIdNum, profissionalIdNum, data, hora];
+
         const ocupado = isProduction
-            ? await client.query(sqlCheck, [empresaId, profissionalId, data, hora])
+            ? await client.query(sqlCheck, paramsCheck)
             : await new Promise((resolve, reject) => {
-                db.get(sqlCheck, [empresaId, profissionalId, data, hora], (err, row) => {
+                db.get(sqlCheck, paramsCheck, (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
                 });
@@ -2366,10 +2420,12 @@ app.post('/api/chatbot/agendar', async (req, res) => {
                WHERE cliente_id =? AND empresa_id =?
                AND data >= date('now', '-20 days') AND status = 'agendado' LIMIT 1`;
 
+        const params20dias = [clienteIdNum, empresaIdNum];
+
         const agendamentoRecente = isProduction
-            ? await client.query(sql20dias, [clienteId, empresaId])
+            ? await client.query(sql20dias, params20dias)
             : await new Promise((resolve, reject) => {
-                db.get(sql20dias, [clienteId, empresaId], (err, row) => {
+                db.get(sql20dias, params20dias, (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
                 });
@@ -2391,9 +2447,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             : `SELECT bloqueado_chatbot FROM clientes WHERE id =?`;
 
         const cliente = isProduction
-            ? await client.query(sqlCliente, [clienteId])
+            ? await client.query(sqlCliente, [clienteIdNum])
             : await new Promise((resolve, reject) => {
-                db.get(sqlCliente, [clienteId], (err, row) => {
+                db.get(sqlCliente, [clienteIdNum], (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
                 });
@@ -2416,9 +2472,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             : `SELECT nome, valor, duracao FROM servicos WHERE id =? AND empresa_id =?`;
 
         const servico = isProduction
-            ? await client.query(sqlServico, [servicoId, empresaId])
+            ? await client.query(sqlServico, [servicoIdNum, empresaIdNum])
             : await new Promise((resolve, reject) => {
-                db.get(sqlServico, [servicoId, empresaId], (err, row) => {
+                db.get(sqlServico, [servicoIdNum, empresaIdNum], (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
                 });
@@ -2441,16 +2497,16 @@ app.post('/api/chatbot/agendar', async (req, res) => {
                (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
                VALUES (?,?,?,?,?,?,?, 'agendado',?)`;
 
+        const paramsInsert = isProduction
+            ? [clienteIdNum, servicoIdNum, servicoData.nome, servicoData.valor, profissionalIdNum, data, hora, empresaIdNum]
+            : [clienteIdNum, servicoIdNum, servicoData.nome, servicoData.valor, profissionalIdNum, data, hora, empresaIdNum];
+
+        console.log('📝 INSERT PARAMS:', paramsInsert);
+
         const result = isProduction
-            ? await client.query(sqlInsert, [
-                clienteId, servicoId, servicoData.nome, servicoData.valor,
-                profissionalId || null, data, hora, empresaId
-            ])
+            ? await client.query(sqlInsert, paramsInsert)
             : await new Promise((resolve, reject) => {
-                db.run(sqlInsert, [
-                    clienteId, servicoId, servicoData.nome, servicoData.valor,
-                    profissionalId || null, data, hora, empresaId
-                ], function (err) {
+                db.run(sqlInsert, paramsInsert, function (err) {
                     if (err) reject(err);
                     else resolve({ lastID: this.lastID });
                 });
@@ -2466,9 +2522,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             : `SELECT nome FROM profissionais WHERE id =?`;
 
         const profissional = isProduction
-            ? await client.query(sqlProf, [profissionalId])
+            ? await client.query(sqlProf, [profissionalIdNum])
             : await new Promise((resolve, reject) => {
-                db.get(sqlProf, [profissionalId], (err, row) => {
+                db.get(sqlProf, [profissionalIdNum], (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
                 });
@@ -2489,11 +2545,14 @@ app.post('/api/chatbot/agendar', async (req, res) => {
 
     } catch (error) {
         // ROLLBACK em caso de erro
-        if (isProduction && client) await client.query('ROLLBACK');
-        else await new Promise((r) => db.run('ROLLBACK', r));
+        console.error('❌ Erro na transação:', error);
+        if (isProduction && client) {
+            try { await client.query('ROLLBACK'); } catch (e) { console.error('Erro no rollback:', e); }
+        } else {
+            await new Promise((r) => db.run('ROLLBACK', r));
+        }
 
         if (client) client.release();
-        console.error('❌ Erro ao agendar:', error);
         res.json({ success: false, message: 'Erro interno. Tente novamente.' });
     }
 });

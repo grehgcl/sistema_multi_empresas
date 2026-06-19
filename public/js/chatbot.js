@@ -1127,8 +1127,44 @@ async function verificarEConfirmar() {
 // ============================================
 async function finalizarAgendamento() {
     try {
+        console.log('🔍 INICIANDO FINALIZAR AGENDAMENTO');
+        console.log('  - clienteAtual:', clienteAtual);
+        console.log('  - agendamentoAtual:', agendamentoAtual);
+        console.log('  - empresaId:', empresaId);
+
         // ============================================
-        // VERIFICAR SE O PROFISSIONAL É O DONO OU UM ID VÁLIDO
+        // VALIDAR DADOS OBRIGATÓRIOS
+        // ============================================
+        if (!clienteAtual || !clienteAtual.id) {
+            adicionarMensagem('❌ Erro: Cliente não identificado. Tente novamente.', 'bot');
+            estado = 'inicio';
+            return;
+        }
+
+        if (!agendamentoAtual.servico_id) {
+            adicionarMensagem('❌ Erro: Serviço não identificado. Tente novamente.', 'bot');
+            estado = 'inicio';
+            return;
+        }
+
+        if (!agendamentoAtual.data || !agendamentoAtual.hora) {
+            adicionarMensagem('❌ Erro: Data ou horário não selecionados. Tente novamente.', 'bot');
+            estado = 'inicio';
+            return;
+        }
+
+        // ============================================
+        // GARANTIR QUE EMPRESA_ID EXISTE
+        // ============================================
+        let empresaIdFinal = empresaId;
+        if (!empresaIdFinal) {
+            const params = new URLSearchParams(window.location.search);
+            empresaIdFinal = params.get('empresa') || '1';
+            console.log('🏢 empresaId recuperado da URL:', empresaIdFinal);
+        }
+
+        // ============================================
+        // VERIFICAR PROFISSIONAL
         // ============================================
         let profissionalId = agendamentoAtual.profissional_id;
 
@@ -1143,25 +1179,33 @@ async function finalizarAgendamento() {
             profissionalId = null;
         }
 
+        // ============================================
+        // MONTAR BODY
+        // ============================================
         const body = {
-            clienteId: clienteAtual.id,
-            servicoId: agendamentoAtual.servico_id,
-            profissionalId: profissionalId, // PODE SER null
+            clienteId: parseInt(clienteAtual.id),
+            servicoId: parseInt(agendamentoAtual.servico_id),
+            profissionalId: profissionalId ? parseInt(profissionalId) : null,
             data: agendamentoAtual.data,
             hora: agendamentoAtual.hora,
-            empresaId: empresaId,
-            valor: agendamentoAtual.valor,
-            servicoNome: agendamentoAtual.servico_nome
+            empresaId: parseInt(empresaIdFinal),
+            valor: parseFloat(agendamentoAtual.valor) || 0,
+            servicoNome: agendamentoAtual.servico_nome || ''
         };
 
-        console.log('📤 Enviando agendamento:', body);
+        console.log('📤 Enviando agendamento:', JSON.stringify(body, null, 2));
 
+        // ============================================
+        // ENVIAR REQUISIÇÃO
+        // ============================================
         const res = await fetch('/api/chatbot/agendar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+
         const result = await res.json();
+        console.log('📥 Resposta do servidor:', result);
 
         if (result.success) {
             const dataFormatada = formatarDataBr(agendamentoAtual.data);
@@ -1188,7 +1232,7 @@ async function finalizarAgendamento() {
             estado = 'inicio';
         }
     } catch (error) {
-        console.error('Erro ao finalizar agendamento:', error);
+        console.error('❌ Erro ao finalizar agendamento:', error);
         adicionarMensagem('❌ Erro ao confirmar agendamento. Tente novamente.', 'bot');
         estado = 'inicio';
     }
