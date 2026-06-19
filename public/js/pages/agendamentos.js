@@ -80,12 +80,12 @@ async function carregarAgendamentos() {
                 <div class="filter-group">
                     <label><i class="fas fa-filter"></i> Status</label>
                     <select id="filtroStatus" class="filter-select">
-                        <option value="todos">Todos</option>
-                        <option value="agendado">📋 Agendado</option>
-                        <option value="pendente">⏳ Pendente</option>
-                        <option value="concluido">✅ Concluído</option>
-                        <option value="cancelado">❌ Cancelado</option>
-                    </select>
+    <option value="todos">Todos</option>
+    <option value="agendado">📋 Agendado</option>
+    <option value="pendente">⏳ Pendente</option>
+    <option value="concluido">✅ Concluído</option>
+    <option value="cancelado">❌ Cancelado</option>
+</select>
                 </div>
                 <div class="filter-group">
                     <label><i class="fas fa-user"></i> Profissional</label>
@@ -509,14 +509,29 @@ function limparFiltrosAgendamentos() {
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FUNÇÃO FORMATAR DATA - CORRIGIDA (POSTGRESQL COMPATÍVEL)
 // ============================================
-
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        const data = new Date(dataStr + 'T00:00:00');
-        return data.toLocaleDateString('pt-BR');
+        // Se for uma string no formato ISO (YYYY-MM-DD)
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                const ano = parseInt(partes[0]);
+                const mes = parseInt(partes[1]) - 1;
+                const dia = parseInt(partes[2]);
+                // Criar data com UTC para evitar problemas de timezone
+                const data = new Date(Date.UTC(ano, mes, dia));
+                return data.toLocaleDateString('pt-BR');
+            }
+        }
+        // Tentar criar data normalmente
+        const data = new Date(dataStr);
+        if (!isNaN(data.getTime())) {
+            return data.toLocaleDateString('pt-BR');
+        }
+        return dataStr;
     } catch {
         return dataStr;
     }

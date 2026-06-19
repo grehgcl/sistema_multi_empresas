@@ -45,6 +45,27 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// ============================================================
+// FUNÇÃO AUXILIAR: GERAR HORÁRIOS DO DIA
+// ============================================================
+function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
+    const horarios = [];
+    if (!horaInicio || !horaFim) return horarios;
+
+    const inicioMin = horaParaMinutos(horaInicio);
+    const fimMin = horaParaMinutos(horaFim);
+    const almocoInicioMin = horaParaMinutos(almocoInicio || '12:00');
+    const almocoFimMin = horaParaMinutos(almocoFim || '13:00');
+    const intervalo = 30;
+
+    for (let minutos = inicioMin; minutos < fimMin; minutos += intervalo) {
+        if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
+            continue;
+        }
+        horarios.push(minutosParaHora(minutos));
+    }
+    return horarios;
+}
 
 // ============================================================
 // INICIALIZAÇÃO DO BANCO E USUÁRIOS PADRÃO
@@ -993,24 +1014,40 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 // AGENDAMENTOS
 // ============================================================
 
+// ============================================
+// ROTA: /api/agendamentos - CORRIGIDA (POSTGRESQL)
+// ============================================
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     if (!empresa_id) return res.json({ success: true, data: [] });
 
+    // ============================================
+    // FORMATAR DATA COMO STRING PARA EVITAR PROBLEMAS
+    // ============================================
     const sql = isProduction
-        ? `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
+        ? `SELECT a.*, 
+           to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+           c.nome as cliente_nome, 
+           p.nome as profissional_nome, 
+           s.nome as servico_nome
            FROM agendamentos a
            LEFT JOIN clientes c ON a.cliente_id = c.id
            LEFT JOIN profissionais p ON a.profissional_id = p.id
            LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = $1 AND a.status IN ('agendado', 'pendente', 'concluido')
+           WHERE a.empresa_id = $1 
+           AND (a.status IN ('agendado', 'pendente', 'concluido') OR a.status IS NULL OR a.status = '')
            ORDER BY a.data DESC, a.hora ASC`
-        : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
+        : `SELECT a.*, 
+           date(a.data) as data_formatada,
+           c.nome as cliente_nome, 
+           p.nome as profissional_nome, 
+           s.nome as servico_nome
            FROM agendamentos a
            LEFT JOIN clientes c ON a.cliente_id = c.id
            LEFT JOIN profissionais p ON a.profissional_id = p.id
            LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id =? AND a.status IN ('agendado', 'pendente', 'concluido')
+           WHERE a.empresa_id = ? 
+           AND (a.status IN ('agendado', 'pendente', 'concluido') OR a.status IS NULL OR a.status = '')
            ORDER BY a.data DESC, a.hora ASC`;
 
     db.all(sql, [empresa_id], (err, agendamentos) => {
@@ -1018,7 +1055,17 @@ app.get('/api/agendamentos', auth, (req, res) => {
             console.error('❌ Erro ao buscar agendamentos:', err.message);
             return res.json({ success: false, message: err.message });
         }
-        res.json({ success: true, data: agendamentos });
+
+        // ============================================
+        // GARANTIR QUE DATA ESTEJA NO FORMATO CORRETO
+        // ============================================
+        const dadosFormatados = agendamentos.map(a => ({
+            ...a,
+            data: a.data_formatada || a.data,
+            data_formatada: undefined // remover campo extra
+        }));
+
+        res.json({ success: true, data: dadosFormatados });
     });
 });
 
@@ -1236,50 +1283,59 @@ app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
     });
 });
 
+// ============================================
+// ROTA: /api/agendamentos/:id/concluir - CORRIGIDA
+// ============================================
+
 app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
     const { id } = req.params;
-    const empresa_id = req.usuario.empresa_id;
+    const empresaId = req.usuario.empresa_id;
 
-    const sqlSelect = isProduction
-        ? `SELECT a.*, p.comissao_percent FROM agendamentos a LEFT JOIN profissionais p ON a.profissional_id = p.id WHERE a.id = $1 AND a.empresa_id = $2`
-        : `SELECT a.*, p.comissao_percent FROM agendamentos a LEFT JOIN profissionais p ON a.profissional_id = p.id WHERE a.id = ? AND a.empresa_id = ?`;
-
-    db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
-        if (err || !agendamento) {
-            return res.json({ success: false, message: 'Agendamento não encontrado' });
-        }
-
-        if (agendamento.status === 'concluido') {
-            return res.json({ success: false, message: 'Agendamento já foi concluído' });
-        }
-
-        let comissao = 0;
-        let mensagemComissao = '';
-
-        if (agendamento.profissional_id) {
-            const comissaoPercent = agendamento.comissao_percent || 30;
-            comissao = (agendamento.valor || 0) * (comissaoPercent / 100);
-            mensagemComissao = ` Comissão do profissional: R$ ${comissao.toFixed(2)}`;
-        } else {
-            mensagemComissao = ' Sem comissão (serviço sem profissional)';
-        }
-
-        const sqlUpdate = isProduction
-            ? `UPDATE agendamentos SET status = 'concluido', comissao = $1 WHERE id = $2 AND empresa_id = $3`
-            : `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ? AND empresa_id = ?`;
-
-        db.run(sqlUpdate, [comissao, id, empresa_id], (err) => {
+    // Buscar o agendamento com o profissional
+    db.get(
+        `SELECT a.*, p.comissao_percent 
+         FROM agendamentos a
+         LEFT JOIN profissionais p ON a.profissional_id = p.id
+         WHERE a.id = ? AND a.empresa_id = ?`,
+        [id, empresaId],
+        (err, agendamento) => {
             if (err) {
                 return res.json({ success: false, message: err.message });
             }
+            if (!agendamento) {
+                return res.json({ success: false, message: 'Agendamento não encontrado' });
+            }
 
-            res.json({
-                success: true,
-                message: `Agendamento concluído!${mensagemComissao}`,
-                data: { comissao: comissao }
-            });
-        });
-    });
+            let comissao = 0;
+
+            // ============================================
+            // SÓ CALCULAR COMISSÃO SE TIVER PROFISSIONAL
+            // ============================================
+            if (agendamento.profissional_id) {
+                const valor = parseFloat(agendamento.valor) || 0;
+                const percentual = parseFloat(agendamento.comissao_percent) || 30;
+                comissao = valor * (percentual / 100);
+            }
+
+            // Atualizar status e comissão
+            db.run(
+                `UPDATE agendamentos 
+                 SET status = 'concluido', comissao = ? 
+                 WHERE id = ? AND empresa_id = ?`,
+                [comissao, id, empresaId],
+                function (err) {
+                    if (err) {
+                        return res.json({ success: false, message: err.message });
+                    }
+                    res.json({
+                        success: true,
+                        message: 'Agendamento concluído com sucesso!',
+                        comissao: comissao
+                    });
+                }
+            );
+        }
+    );
 });
 
 app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
@@ -1572,47 +1628,18 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================================
-// FINANCEIRO
-// ============================================================
+// ============================================
+// ROTA: /api/financeiro - CORRIGIDA DEFINITIVAMENTE
+// ============================================
 
 app.get('/api/financeiro', auth, (req, res) => {
-    const empresa_id = req.usuario.empresa_id;
     const role = req.usuario.role;
+    const empresa_id = req.usuario.empresa_id;
 
-    if (role === 'superadmin') {
-        db.all(`
-            SELECT a.*, c.nome as cliente_nome, e.nome as empresa_nome, p.nome as profissional_nome, s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN empresas e ON a.empresa_id = e.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.status = 'concluido'
-            ORDER BY a.data DESC
-        `, (err, comissoes) => {
-            if (err) {
-                console.error('❌ Erro no financeiro superadmin:', err.message);
-                return res.json({ success: false, message: err.message });
-            }
-
-            const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
-            const faturamentoBruto = comissoes.reduce((s, c) => s + (c.valor || 0), 0);
-
-            res.json({
-                success: true,
-                data: {
-                    comissoes: comissoes,
-                    totais: {
-                        total_comissoes: totalComissoes,
-                        total_servicos: comissoes.length,
-                        faturamento_bruto: faturamentoBruto,
-                        faturamento_liquido: faturamentoBruto - totalComissoes
-                    }
-                }
-            });
-        });
-    } else if (role === 'profissional') {
+    // ============================================
+    // PROFISSIONAL
+    // ============================================
+    if (role === 'profissional') {
         const profissional_id = req.usuario.id;
 
         const sql = isProduction
@@ -1635,7 +1662,7 @@ app.get('/api/financeiro', auth, (req, res) => {
                 return res.json({ success: false, message: err.message });
             }
 
-            const totalComissoes = comissoes.reduce((s, c) => s + (c.comissao || 0), 0);
+            const totalComissoes = comissoes.reduce((s, c) => s + (parseFloat(c.comissao) || 0), 0);
 
             res.json({
                 success: true,
@@ -1648,71 +1675,235 @@ app.get('/api/financeiro', auth, (req, res) => {
                 }
             });
         });
-    } else {
-        // Dono
-        const sql = isProduction
-            ? `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, p.id as profissional_id, s.nome as servico_nome
-               FROM agendamentos a
-               LEFT JOIN clientes c ON a.cliente_id = c.id
-               LEFT JOIN profissionais p ON a.profissional_id = p.id
-               LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.empresa_id = $1 AND a.status = 'concluido'
-               ORDER BY a.data DESC`
-            : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, p.id as profissional_id, s.nome as servico_nome
-               FROM agendamentos a
-               LEFT JOIN clientes c ON a.cliente_id = c.id
-               LEFT JOIN profissionais p ON a.profissional_id = p.id
-               LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.empresa_id = ? AND a.status = 'concluido'
-               ORDER BY a.data DESC`;
+        return;
+    }
 
-        db.all(sql, [empresa_id], (err, agendamentos) => {
+    // ============================================
+    // SUPER ADMIN
+    // ============================================
+    if (role === 'superadmin') {
+        const sql = isProduction
+            ? `SELECT 
+                a.id,
+                a.data,
+                a.valor,
+                a.servico,
+                a.comissao,
+                a.profissional_id,
+                a.cliente_id,
+                a.empresa_id,
+                c.nome as cliente_nome,
+                p.nome as profissional_nome,
+                s.nome as servico_nome,
+                e.nome as empresa_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            LEFT JOIN empresas e ON a.empresa_id = e.id
+            WHERE a.status = 'concluido'
+            ORDER BY a.data DESC`
+            : `SELECT 
+                a.id,
+                a.data,
+                a.valor,
+                a.servico,
+                a.comissao,
+                a.profissional_id,
+                a.cliente_id,
+                a.empresa_id,
+                c.nome as cliente_nome,
+                p.nome as profissional_nome,
+                s.nome as servico_nome,
+                e.nome as empresa_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            LEFT JOIN empresas e ON a.empresa_id = e.id
+            WHERE a.status = 'concluido'
+            ORDER BY a.data DESC`;
+
+        db.all(sql, [], (err, comissoes) => {
             if (err) {
-                console.error('❌ Erro no financeiro dono:', err.message);
+                console.error('❌ Erro no financeiro superadmin:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
             let faturamentoBruto = 0;
             let totalComissoes = 0;
-            let comissoesPorProfissional = {};
+            let totalServicos = comissoes.length;
+            const comissoesPorEmpresa = {};
 
-            agendamentos.forEach(a => {
-                faturamentoBruto += (a.valor || 0);
-                totalComissoes += (a.comissao || 0);
+            for (let item of comissoes) {
+                const valor = parseFloat(item.valor) || 0;
+                faturamentoBruto += valor;
 
-                if (a.profissional_id && a.profissional_nome) {
-                    if (!comissoesPorProfissional[a.profissional_id]) {
-                        comissoesPorProfissional[a.profissional_id] = {
-                            id: a.profissional_id,
-                            nome: a.profissional_nome,
+                // SÓ CALCULAR COMISSÃO SE TIVER PROFISSIONAL
+                if (item.profissional_id) {
+                    const comissao = parseFloat(item.comissao) || 0;
+                    totalComissoes += comissao;
+
+                    const empId = item.empresa_id;
+                    const empNome = item.empresa_nome || 'Empresa';
+
+                    if (!comissoesPorEmpresa[empId]) {
+                        comissoesPorEmpresa[empId] = {
+                            id: empId,
+                            nome: empNome,
+                            total_comissao: 0,
+                            total_servicos: 0,
+                            faturamento: 0
+                        };
+                    }
+                    comissoesPorEmpresa[empId].total_comissao += comissao;
+                    comissoesPorEmpresa[empId].total_servicos += 1;
+                    comissoesPorEmpresa[empId].faturamento += valor;
+                }
+            }
+
+            const faturamentoLiquido = faturamentoBruto - totalComissoes;
+
+            res.json({
+                success: true,
+                data: {
+                    totais: {
+                        faturamento_bruto: faturamentoBruto,
+                        total_comissoes: totalComissoes,
+                        faturamento_liquido: faturamentoLiquido,
+                        total_servicos: totalServicos
+                    },
+                    comissoes: comissoes,
+                    comissoes_por_empresa: Object.values(comissoesPorEmpresa)
+                }
+            });
+        });
+        return;
+    }
+
+    // ============================================
+    // DONO - CORRIGIDO DEFINITIVAMENTE
+    // ============================================
+    if (role === 'dono') {
+        const sql = isProduction
+            ? `SELECT 
+                a.id,
+                a.data,
+                a.valor,
+                a.servico,
+                a.comissao,
+                a.profissional_id,
+                a.cliente_id,
+                c.nome as cliente_nome,
+                p.nome as profissional_nome,
+                s.nome as servico_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.empresa_id = $1 
+            AND a.status = 'concluido'
+            ORDER BY a.data DESC`
+            : `SELECT 
+                a.id,
+                a.data,
+                a.valor,
+                a.servico,
+                a.comissao,
+                a.profissional_id,
+                a.cliente_id,
+                c.nome as cliente_nome,
+                p.nome as profissional_nome,
+                s.nome as servico_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.empresa_id = ? 
+            AND a.status = 'concluido'
+            ORDER BY a.data DESC`;
+
+        db.all(sql, [empresa_id], (err, comissoes) => {
+            if (err) {
+                console.error('❌ Erro no financeiro dono:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
+
+            // ============================================
+            // CALCULAR TOTAIS - CORRIGIDO
+            // SÓ CALCULA COMISSÃO SE TIVER PROFISSIONAL
+            // E ZERA A COMISSÃO NO OBJETO RETORNADO
+            // ============================================
+            let faturamentoBruto = 0;
+            let totalComissoes = 0;
+            let totalServicos = comissoes.length;
+
+            const comissoesPorProfissional = {};
+
+            // ============================================
+            // PERCORRER OS ITENS E CORRIGIR A COMISSÃO
+            // ============================================
+            for (let item of comissoes) {
+                const valor = parseFloat(item.valor) || 0;
+                faturamentoBruto += valor;
+
+                // ============================================
+                // SE NÃO TIVER PROFISSIONAL, ZERA A COMISSÃO
+                // ============================================
+                if (!item.profissional_id) {
+                    item.comissao = 0; // ZERA NO OBJETO
+                } else {
+                    // Se tem profissional, garante que a comissão está correta
+                    const comissao = parseFloat(item.comissao) || 0;
+                    totalComissoes += comissao;
+
+                    // Agrupar por profissional
+                    const profId = item.profissional_id;
+                    const profNome = item.profissional_nome || 'Profissional';
+
+                    if (!comissoesPorProfissional[profId]) {
+                        comissoesPorProfissional[profId] = {
+                            id: profId,
+                            nome: profNome,
                             total_comissao: 0,
                             total_servicos: 0
                         };
                     }
-                    comissoesPorProfissional[a.profissional_id].total_comissao += (a.comissao || 0);
-                    comissoesPorProfissional[a.profissional_id].total_servicos += 1;
+                    comissoesPorProfissional[profId].total_comissao += comissao;
+                    comissoesPorProfissional[profId].total_servicos += 1;
                 }
-            });
+            }
 
             const faturamentoLiquido = faturamentoBruto - totalComissoes;
+
+            // Converter para array e ordenar
             const comissoesPorProfissionalArray = Object.values(comissoesPorProfissional);
             comissoesPorProfissionalArray.sort((a, b) => b.total_comissao - a.total_comissao);
 
             res.json({
                 success: true,
                 data: {
-                    comissoes: agendamentos,
-                    comissoes_por_profissional: comissoesPorProfissionalArray,
                     totais: {
-                        total_comissoes: totalComissoes,
-                        total_servicos: agendamentos.length,
                         faturamento_bruto: faturamentoBruto,
-                        faturamento_liquido: faturamentoLiquido
-                    }
+                        total_comissoes: totalComissoes,
+                        faturamento_liquido: faturamentoLiquido,
+                        total_servicos: totalServicos
+                    },
+                    comissoes: comissoes, // AGORA COM COMISSÃO ZERADA SE NÃO TIVER PROFISSIONAL
+                    comissoes_por_profissional: comissoesPorProfissionalArray
                 }
             });
         });
+        return;
     }
+
+    // ============================================
+    // SE NENHUMA ROLE FOR ENCONTRADA
+    // ============================================
+    res.status(403).json({
+        success: false,
+        message: 'Acesso negado'
+    });
 });
 
 app.get('/api/profissional/financeiro', auth, (req, res) => {
@@ -1902,120 +2093,213 @@ app.post('/api/chatbot/cliente/criar', (req, res) => {
         });
 });
 
+// ============================================
+// ROTA: /api/chatbot/datas-disponiveis-mes - CORRIGIDA DEFINITIVAMENTE
+// ============================================
 app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
-    const { empresaId, mes, ano } = req.body;
+    const { empresaId, mes, ano, profissionalId } = req.body;
 
-    const datasDisponiveis = [];
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const mesSolicitado = parseInt(mes) || new Date().getMonth() + 1;
+    const anoSolicitado = parseInt(ano) || new Date().getFullYear();
 
-    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+    console.log(`📅 Buscando datas para ${mesSolicitado}/${anoSolicitado} - Profissional: ${profissionalId || 'todos'}`);
 
-    const verificacoes = [];
+    // ============================================
+    // BUSCAR TODOS OS AGENDAMENTOS DO MÊS (para saber quais dias têm vagas)
+    // ============================================
+    let sqlAgendamentos = `
+        SELECT data, profissional_id, hora 
+        FROM agendamentos 
+        WHERE empresa_id = ? 
+        AND status != 'cancelado'
+        AND data LIKE ? 
+    `;
+    let params = [empresaId, `${anoSolicitado}-${String(mesSolicitado).padStart(2, '0')}%`];
 
-    for (let dia = 1; dia <= ultimoDia; dia++) {
-        const data = new Date(ano, mes, dia);
-        const dataStr = `${ano}-${(mes + 1).toString().padStart(2, '0')}-${dia.toString().padStart(2, '0')}`;
-
-        if (data < hoje) continue;
-
-        const diaSemana = data.getDay();
-
-        verificacoes.push(new Promise((resolve) => {
-            db.get('SELECT aberto FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
-                [empresaId, diaSemana], (err, horario) => {
-                    if (!err && horario && horario.aberto === 1) {
-                        datasDisponiveis.push(dataStr);
-                    }
-                    resolve();
-                });
-        }));
+    // Se tiver profissional específico, filtrar por ele
+    if (profissionalId && profissionalId !== 'null' && profissionalId !== 'dono_' && !profissionalId.includes('dono')) {
+        sqlAgendamentos += ` AND profissional_id = ?`;
+        params.push(parseInt(profissionalId));
     }
 
-    Promise.all(verificacoes).then(() => {
-        res.json({ success: true, diasDisponiveis: datasDisponiveis });
-    });
-});
-
-app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
-    const { empresaId, profissionalId, data } = req.body;
-
-    console.log('📝 Buscando horários disponíveis:', { empresaId, profissionalId, data });
-
-    if (!empresaId || !data) {
-        return res.json({ success: false, message: 'Empresa e data são obrigatórios' });
-    }
-
-    const [ano, mes, dia] = data.split('-').map(Number);
-    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
-    const diaSemana = dataUTC.getUTCDay();
-
-    console.log('📝 Dia da semana:', diaSemana);
-
-    // Buscar horário de funcionamento do dia
-    const sqlHorario = isProduction
-        ? `SELECT * FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = $2`
-        : `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`;
-
-    db.get(sqlHorario, [empresaId, diaSemana], (err, horario) => {
+    db.all(sqlAgendamentos, params, (err, agendamentos) => {
         if (err) {
-            console.error('❌ Erro ao buscar horário:', err.message);
+            console.error('❌ Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        if (!horario || horario.aberto !== 1) {
-            console.log('📝 Dia não disponível:', { horario, aberto: horario?.aberto });
-            return res.json({ success: true, horarios: [] });
-        }
+        // ============================================
+        // MAPEAR DIAS OCUPADOS (agrupar por dia)
+        // ============================================
+        const diasOcupados = {};
+        const horariosPorDia = {};
 
-        console.log('📝 Horário encontrado:', horario);
-
-        const horariosDisponiveis = [];
-
-        const inicioMinutos = horaParaMinutos(horario.hora_inicio || '09:00');
-        const fimMinutos = horaParaMinutos(horario.hora_fim || '18:00');
-        const almocoInicio = horaParaMinutos(horario.almoco_inicio || '12:00');
-        const almocoFim = horaParaMinutos(horario.almoco_fim || '13:00');
-        const intervalo = 30;
-
-        for (let minutos = inicioMinutos; minutos < fimMinutos; minutos += intervalo) {
-            if (minutos >= almocoInicio && minutos < almocoFim) continue;
-            horariosDisponiveis.push(minutosParaHora(minutos));
-        }
-
-        console.log('📝 Horários gerados:', horariosDisponiveis);
-
-        // Buscar horários já ocupados - QUERY CORRIGIDA
-        let queryOcupados = isProduction
-            ? `SELECT hora FROM agendamentos WHERE data = $1 AND status != 'cancelado' AND empresa_id = $2`
-            : `SELECT hora FROM agendamentos WHERE data = ? AND status != 'cancelado' AND empresa_id = ?`;
-
-        let paramsOcupados = [data, empresaId];
-
-        if (profissionalId && profissionalId !== 'null' && profissionalId !== '') {
-            queryOcupados += isProduction ? ` AND profissional_id = $3` : ` AND profissional_id = ?`;
-            paramsOcupados.push(profissionalId);
-        }
-
-        console.log('📝 Query ocupados:', queryOcupados);
-        console.log('📝 Parâmetros ocupados:', paramsOcupados);
-
-        db.all(queryOcupados, paramsOcupados, (err, ocupados) => {
-            if (err) {
-                console.error('❌ Erro ao buscar ocupados:', err.message);
-                console.error('📝 Query:', queryOcupados);
-                console.error('📝 Parâmetros:', paramsOcupados);
-                return res.json({ success: false, message: err.message });
+        for (let ag of agendamentos) {
+            if (!diasOcupados[ag.data]) {
+                diasOcupados[ag.data] = [];
+                horariosPorDia[ag.data] = [];
             }
+            if (ag.hora) {
+                horariosPorDia[ag.data].push(ag.hora);
+            }
+            diasOcupados[ag.data].push(ag);
+        }
 
-            const horasOcupadas = new Set(ocupados.map(o => o.hora));
-            console.log('📝 Horas ocupadas:', horasOcupadas);
+        // ============================================
+        // BUSCAR HORÁRIOS DE FUNCIONAMENTO DA EMPRESA
+        // ============================================
+        db.all(
+            `SELECT dia_semana, hora_inicio, hora_fim, almoco_inicio, almoco_fim 
+             FROM horarios_funcionamento 
+             WHERE empresa_id = ? AND aberto = 1`,
+            [empresaId],
+            (err, horariosFuncionamento) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar horários de funcionamento:', err);
+                    return res.json({ success: false, message: err.message });
+                }
 
-            const disponiveis = horariosDisponiveis.filter(h => !horasOcupadas.has(h));
-            console.log('📝 Horários disponíveis final:', disponiveis);
+                // ============================================
+                // GERAR TODAS AS DATAS DO MÊS
+                // ============================================
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const primeiroDia = new Date(anoSolicitado, mesSolicitado - 1, 1);
+                const ultimoDia = new Date(anoSolicitado, mesSolicitado, 0);
+                const diasNoMes = ultimoDia.getDate();
 
-            res.json({ success: true, horarios: disponiveis });
-        });
+                const datasDisponiveis = [];
+                const horariosFuncMap = {};
+
+                for (let h of horariosFuncionamento) {
+                    horariosFuncMap[h.dia_semana] = h;
+                }
+
+                for (let dia = 1; dia <= diasNoMes; dia++) {
+                    const dataAtual = new Date(anoSolicitado, mesSolicitado - 1, dia);
+                    const diaSemana = dataAtual.getDay();
+                    const dataStr = `${anoSolicitado}-${String(mesSolicitado).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+                    // PULAR DATAS PASSADAS
+                    if (dataAtual < hoje) continue;
+
+                    // PULAR DIAS QUE NÃO FUNCIONAM
+                    if (!horariosFuncMap[diaSemana]) continue;
+
+                    const horarioDia = horariosFuncMap[diaSemana];
+
+                    // ============================================
+                    // VERIFICAR SE TEM PELO MENOS 1 HORÁRIO LIVRE NO DIA
+                    // ============================================
+                    const horariosOcupados = horariosPorDia[dataStr] || [];
+
+                    // Gerar todos os horários do dia (30 em 30 min)
+                    const todosHorarios = gerarHorariosDoDia(
+                        horarioDia.hora_inicio,
+                        horarioDia.hora_fim,
+                        horarioDia.almoco_inicio,
+                        horarioDia.almoco_fim
+                    );
+
+                    // Verificar se tem algum horário livre
+                    const temHorarioLivre = todosHorarios.some(h => !horariosOcupados.includes(h));
+
+                    if (temHorarioLivre) {
+                        datasDisponiveis.push(dataStr);
+                    }
+                }
+
+                console.log(`✅ ${datasDisponiveis.length} datas disponíveis em ${mesSolicitado}/${anoSolicitado}`);
+
+                res.json({
+                    success: true,
+                    diasDisponiveis: datasDisponiveis,
+                    mes: mesSolicitado,
+                    ano: anoSolicitado
+                });
+            }
+        );
+    });
+});
+
+
+// ============================================
+// ROTA: /api/chatbot/horarios-disponiveis - CORRIGIDA
+// ============================================
+app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
+    const { empresaId, profissionalId, data } = req.body;
+
+    console.log(`🔍 Buscando horários para ${data} - Profissional: ${profissionalId || 'todos'}`);
+
+    // ============================================
+    // BUSCAR AGENDAMENTOS DO DIA (do profissional específico)
+    // ============================================
+    let sqlAgendamentos = `
+        SELECT hora 
+        FROM agendamentos 
+        WHERE empresa_id = ? 
+        AND data = ? 
+        AND status != 'cancelado'
+    `;
+    let params = [empresaId, data];
+
+    if (profissionalId && profissionalId !== 'null' && profissionalId !== 'dono_' && !profissionalId.includes('dono')) {
+        sqlAgendamentos += ` AND profissional_id = ?`;
+        params.push(parseInt(profissionalId));
+    }
+
+    db.all(sqlAgendamentos, params, (err, agendamentos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar agendamentos:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        const horariosOcupados = agendamentos.map(a => a.hora).filter(h => h);
+
+        // ============================================
+        // BUSCAR HORÁRIOS DE FUNCIONAMENTO
+        // ============================================
+        const dataObj = new Date(data + 'T00:00:00');
+        const diaSemana = dataObj.getDay();
+
+        db.get(
+            `SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim 
+             FROM horarios_funcionamento 
+             WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1`,
+            [empresaId, diaSemana],
+            (err, horario) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar horário de funcionamento:', err);
+                    return res.json({ success: false, message: err.message });
+                }
+
+                if (!horario) {
+                    return res.json({ success: true, horarios: [] });
+                }
+
+                // ============================================
+                // GERAR TODOS OS HORÁRIOS DO DIA
+                // ============================================
+                const todosHorarios = gerarHorariosDoDia(
+                    horario.hora_inicio,
+                    horario.hora_fim,
+                    horario.almoco_inicio,
+                    horario.almoco_fim
+                );
+
+                // ============================================
+                // FILTRAR HORÁRIOS LIVRES
+                // ============================================
+                const horariosLivres = todosHorarios.filter(h => !horariosOcupados.includes(h));
+
+                console.log(`✅ ${horariosLivres.length} horários disponíveis para ${data}`);
+
+                res.json({
+                    success: true,
+                    horarios: horariosLivres
+                });
+            }
+        );
     });
 });
 
