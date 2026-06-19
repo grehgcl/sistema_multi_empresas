@@ -476,9 +476,9 @@ function renderizarLinhaAgendamento(item) {
 
 // Adicionar listener para quando a tela mudar de tamanho
 let resizeTimeout;
-window.addEventListener('resize', function() {
+window.addEventListener('resize', function () {
     clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(function() {
+    resizeTimeout = setTimeout(function () {
         // Recarregar a lista se estiver na página de agendamentos
         if (document.getElementById('listaAgendamentos')) {
             carregarListaAgendamentosComFiltro();
@@ -1132,3 +1132,73 @@ window.carregarHorariosDisponiveisDono = carregarHorariosDisponiveisDono;
 window.abrirModalNovoCliente = abrirModalNovoCliente;
 window.fecharModalNovoCliente = fecharModalNovoCliente;
 window.salvarNovoCliente = salvarNovoCliente;
+
+// ============================================
+// CORREÇÃO: AÇÃO RÁPIDA - NOVO AGENDAMENTO
+// ============================================
+
+window.abrirModalAgendamento = async function () {
+    console.log('🔄 Abrindo modal de agendamento via ação rápida...');
+
+    const token = localStorage.getItem('token');
+
+    // Carregar clientes
+    try {
+        const res = await fetch('/api/clientes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+            clientesList = data.data;
+            console.log(`✅ ${clientesList.length} clientes carregados`);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar clientes:', error);
+    }
+
+    // Carregar profissionais
+    try {
+        const res = await fetch('/api/profissionais', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+            profissionaisList = data.data;
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar profissionais:', error);
+    }
+
+    // Carregar serviços
+    try {
+        const res = await fetch('/api/servicos', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+            servicosList = data.data;
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar serviços:', error);
+    }
+
+    // Abrir o modal
+    if (typeof abrirModalAgendamentoDono === 'function') {
+        abrirModalAgendamentoDono();
+    } else {
+        showToast('Erro ao abrir modal de agendamento', 'error');
+    }
+};
+
+window.abrirModalCliente = function () {
+    if (typeof window.abrirModalCliente === 'function') {
+        window.abrirModalCliente();
+    } else {
+        showToast('Carregando página de clientes...', 'info');
+        if (typeof carregarClientes === 'function') {
+            carregarClientes();
+        }
+    }
+};
+
+console.log('✅ Ações rápidas corrigidas!');
