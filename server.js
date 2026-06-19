@@ -1629,7 +1629,7 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// ROTA: /api/financeiro - CORRIGIDA DEFINITIVAMENTE
+// ROTA: /api/financeiro - CORRIGIDA (POSTGRESQL)
 // ============================================
 
 app.get('/api/financeiro', auth, (req, res) => {
@@ -1643,13 +1643,19 @@ app.get('/api/financeiro', auth, (req, res) => {
         const profissional_id = req.usuario.id;
 
         const sql = isProduction
-            ? `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+            ? `SELECT a.*, 
+               to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+               c.nome as cliente_nome, 
+               s.nome as servico_nome
                FROM agendamentos a
                LEFT JOIN clientes c ON a.cliente_id = c.id
                LEFT JOIN servicos s ON a.servico_id = s.id
                WHERE a.profissional_id = $1 AND a.status = 'concluido'
                ORDER BY a.data DESC`
-            : `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+            : `SELECT a.*, 
+               date(a.data) as data_formatada,
+               c.nome as cliente_nome, 
+               s.nome as servico_nome
                FROM agendamentos a
                LEFT JOIN clientes c ON a.cliente_id = c.id
                LEFT JOIN servicos s ON a.servico_id = s.id
@@ -1662,15 +1668,22 @@ app.get('/api/financeiro', auth, (req, res) => {
                 return res.json({ success: false, message: err.message });
             }
 
-            const totalComissoes = comissoes.reduce((s, c) => s + (parseFloat(c.comissao) || 0), 0);
+            // Formatando a data para cada item
+            const dadosFormatados = comissoes.map(a => ({
+                ...a,
+                data: a.data_formatada || a.data,
+                data_formatada: undefined
+            }));
+
+            const totalComissoes = dadosFormatados.reduce((s, c) => s + (parseFloat(c.comissao) || 0), 0);
 
             res.json({
                 success: true,
                 data: {
-                    comissoes: comissoes,
+                    comissoes: dadosFormatados,
                     totais: {
                         total_comissoes: totalComissoes,
-                        total_servicos: comissoes.length
+                        total_servicos: dadosFormatados.length
                     }
                 }
             });
@@ -1679,13 +1692,121 @@ app.get('/api/financeiro', auth, (req, res) => {
     }
 
     // ============================================
-    // SUPER ADMIN
+    // DONO - CORRIGIDO
+    // ============================================
+    if (role === 'dono') {
+        const sql = isProduction
+            ? `SELECT 
+                a.id,
+                to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+                a.valor,
+                a.servico,
+                a.comissao,
+                a.profissional_id,
+                a.cliente_id,
+                c.nome as cliente_nome,
+                p.nome as profissional_nome,
+                s.nome as servico_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.empresa_id = $1 
+            AND a.status = 'concluido'
+            ORDER BY a.data DESC`
+            : `SELECT 
+                a.id,
+                date(a.data) as data_formatada,
+                a.valor,
+                a.servico,
+                a.comissao,
+                a.profissional_id,
+                a.cliente_id,
+                c.nome as cliente_nome,
+                p.nome as profissional_nome,
+                s.nome as servico_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.empresa_id = ? 
+            AND a.status = 'concluido'
+            ORDER BY a.data DESC`;
+
+        db.all(sql, [empresa_id], (err, comissoes) => {
+            if (err) {
+                console.error('❌ Erro no financeiro dono:', err.message);
+                return res.json({ success: false, message: err.message });
+            }
+
+            // ============================================
+            // CALCULAR TOTAIS E FORMATAR DATAS
+            // ============================================
+            let faturamentoBruto = 0;
+            let totalComissoes = 0;
+            let totalServicos = comissoes.length;
+            const comissoesPorProfissional = {};
+
+            for (let item of comissoes) {
+                // CORRIGIR A DATA
+                const dataFinal = item.data_formatada || item.data;
+                item.data = dataFinal;
+                delete item.data_formatada;
+
+                const valor = parseFloat(item.valor) || 0;
+                faturamentoBruto += valor;
+
+                if (!item.profissional_id) {
+                    item.comissao = 0;
+                } else {
+                    const comissao = parseFloat(item.comissao) || 0;
+                    totalComissoes += comissao;
+
+                    const profId = item.profissional_id;
+                    const profNome = item.profissional_nome || 'Profissional';
+
+                    if (!comissoesPorProfissional[profId]) {
+                        comissoesPorProfissional[profId] = {
+                            id: profId,
+                            nome: profNome,
+                            total_comissao: 0,
+                            total_servicos: 0
+                        };
+                    }
+                    comissoesPorProfissional[profId].total_comissao += comissao;
+                    comissoesPorProfissional[profId].total_servicos += 1;
+                }
+            }
+
+            const faturamentoLiquido = faturamentoBruto - totalComissoes;
+            const comissoesPorProfissionalArray = Object.values(comissoesPorProfissional);
+            comissoesPorProfissionalArray.sort((a, b) => b.total_comissao - a.total_comissao);
+
+            res.json({
+                success: true,
+                data: {
+                    totais: {
+                        faturamento_bruto: faturamentoBruto,
+                        total_comissoes: totalComissoes,
+                        faturamento_liquido: faturamentoLiquido,
+                        total_servicos: totalServicos
+                    },
+                    comissoes: comissoes,
+                    comissoes_por_profissional: comissoesPorProfissionalArray
+                }
+            });
+        });
+        return;
+    }
+
+    // ============================================
+    // SUPER ADMIN - CORRIGIDO
     // ============================================
     if (role === 'superadmin') {
         const sql = isProduction
             ? `SELECT 
                 a.id,
-                a.data,
+                to_char(a.data, 'YYYY-MM-DD') as data_formatada,
                 a.valor,
                 a.servico,
                 a.comissao,
@@ -1705,7 +1826,7 @@ app.get('/api/financeiro', auth, (req, res) => {
             ORDER BY a.data DESC`
             : `SELECT 
                 a.id,
-                a.data,
+                date(a.data) as data_formatada,
                 a.valor,
                 a.servico,
                 a.comissao,
@@ -1730,16 +1851,22 @@ app.get('/api/financeiro', auth, (req, res) => {
                 return res.json({ success: false, message: err.message });
             }
 
+            // FORMATAR DATAS
+            const dadosFormatados = comissoes.map(a => ({
+                ...a,
+                data: a.data_formatada || a.data,
+                data_formatada: undefined
+            }));
+
             let faturamentoBruto = 0;
             let totalComissoes = 0;
-            let totalServicos = comissoes.length;
+            let totalServicos = dadosFormatados.length;
             const comissoesPorEmpresa = {};
 
-            for (let item of comissoes) {
+            for (let item of dadosFormatados) {
                 const valor = parseFloat(item.valor) || 0;
                 faturamentoBruto += valor;
 
-                // SÓ CALCULAR COMISSÃO SE TIVER PROFISSIONAL
                 if (item.profissional_id) {
                     const comissao = parseFloat(item.comissao) || 0;
                     totalComissoes += comissao;
@@ -1773,7 +1900,7 @@ app.get('/api/financeiro', auth, (req, res) => {
                         faturamento_liquido: faturamentoLiquido,
                         total_servicos: totalServicos
                     },
-                    comissoes: comissoes,
+                    comissoes: dadosFormatados,
                     comissoes_por_empresa: Object.values(comissoesPorEmpresa)
                 }
             });
@@ -1781,125 +1908,6 @@ app.get('/api/financeiro', auth, (req, res) => {
         return;
     }
 
-    // ============================================
-    // DONO - CORRIGIDO DEFINITIVAMENTE
-    // ============================================
-    if (role === 'dono') {
-        const sql = isProduction
-            ? `SELECT 
-                a.id,
-                a.data,
-                a.valor,
-                a.servico,
-                a.comissao,
-                a.profissional_id,
-                a.cliente_id,
-                c.nome as cliente_nome,
-                p.nome as profissional_nome,
-                s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.empresa_id = $1 
-            AND a.status = 'concluido'
-            ORDER BY a.data DESC`
-            : `SELECT 
-                a.id,
-                a.data,
-                a.valor,
-                a.servico,
-                a.comissao,
-                a.profissional_id,
-                a.cliente_id,
-                c.nome as cliente_nome,
-                p.nome as profissional_nome,
-                s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.empresa_id = ? 
-            AND a.status = 'concluido'
-            ORDER BY a.data DESC`;
-
-        db.all(sql, [empresa_id], (err, comissoes) => {
-            if (err) {
-                console.error('❌ Erro no financeiro dono:', err.message);
-                return res.json({ success: false, message: err.message });
-            }
-
-            // ============================================
-            // CALCULAR TOTAIS - CORRIGIDO
-            // SÓ CALCULA COMISSÃO SE TIVER PROFISSIONAL
-            // E ZERA A COMISSÃO NO OBJETO RETORNADO
-            // ============================================
-            let faturamentoBruto = 0;
-            let totalComissoes = 0;
-            let totalServicos = comissoes.length;
-
-            const comissoesPorProfissional = {};
-
-            // ============================================
-            // PERCORRER OS ITENS E CORRIGIR A COMISSÃO
-            // ============================================
-            for (let item of comissoes) {
-                const valor = parseFloat(item.valor) || 0;
-                faturamentoBruto += valor;
-
-                // ============================================
-                // SE NÃO TIVER PROFISSIONAL, ZERA A COMISSÃO
-                // ============================================
-                if (!item.profissional_id) {
-                    item.comissao = 0; // ZERA NO OBJETO
-                } else {
-                    // Se tem profissional, garante que a comissão está correta
-                    const comissao = parseFloat(item.comissao) || 0;
-                    totalComissoes += comissao;
-
-                    // Agrupar por profissional
-                    const profId = item.profissional_id;
-                    const profNome = item.profissional_nome || 'Profissional';
-
-                    if (!comissoesPorProfissional[profId]) {
-                        comissoesPorProfissional[profId] = {
-                            id: profId,
-                            nome: profNome,
-                            total_comissao: 0,
-                            total_servicos: 0
-                        };
-                    }
-                    comissoesPorProfissional[profId].total_comissao += comissao;
-                    comissoesPorProfissional[profId].total_servicos += 1;
-                }
-            }
-
-            const faturamentoLiquido = faturamentoBruto - totalComissoes;
-
-            // Converter para array e ordenar
-            const comissoesPorProfissionalArray = Object.values(comissoesPorProfissional);
-            comissoesPorProfissionalArray.sort((a, b) => b.total_comissao - a.total_comissao);
-
-            res.json({
-                success: true,
-                data: {
-                    totais: {
-                        faturamento_bruto: faturamentoBruto,
-                        total_comissoes: totalComissoes,
-                        faturamento_liquido: faturamentoLiquido,
-                        total_servicos: totalServicos
-                    },
-                    comissoes: comissoes, // AGORA COM COMISSÃO ZERADA SE NÃO TIVER PROFISSIONAL
-                    comissoes_por_profissional: comissoesPorProfissionalArray
-                }
-            });
-        });
-        return;
-    }
-
-    // ============================================
-    // SE NENHUMA ROLE FOR ENCONTRADA
-    // ============================================
     res.status(403).json({
         success: false,
         message: 'Acesso negado'

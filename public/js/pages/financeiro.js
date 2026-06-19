@@ -135,9 +135,6 @@ function renderizarFinanceiro(data, usuario) {
             `;
 
             if (isMobile) {
-                // ============================================
-                // VERSÃO MOBILE - CARDS DE PROFISSIONAIS
-                // ============================================
                 html += `<div class="profissionais-cards-mobile">`;
                 for (let prof of data.comissoes_por_profissional) {
                     html += `
@@ -155,9 +152,6 @@ function renderizarFinanceiro(data, usuario) {
                 }
                 html += `</div>`;
             } else {
-                // ============================================
-                // VERSÃO DESKTOP - TABELA DE PROFISSIONAIS
-                // ============================================
                 html += `
                     <div class="table-responsive">
                         <table class="data-table">
@@ -235,15 +229,18 @@ function renderizarFinanceiro(data, usuario) {
         `;
     } else if (isMobile) {
         // ============================================
-        // VERSÃO MOBILE - CARDS DE HISTÓRICO
+        // VERSÃO MOBILE - CARDS DE HISTÓRICO (CORRIGIDA)
         // ============================================
         html += `<div class="historico-cards-mobile">`;
         for (let item of comissoes) {
-            const profissionalDisplay = item.profissional_nome || 'Sem profissional';
-            const comissaoDisplay = item.comissao && item.comissao > 0 ?
-                `R$ ${(item.comissao || 0).toFixed(2)}` :
-                '<span style="color: var(--gray);">R$ 0,00</span>';
             const temProfissional = item.profissional_id ? true : false;
+            const profissionalDisplay = item.profissional_nome || 'Sem profissional';
+
+            // CORREÇÃO: SÓ MOSTRA COMISSÃO SE TIVER PROFISSIONAL
+            let comissaoDisplay = '<span style="color: var(--gray);">R$ 0,00</span>';
+            if (temProfissional) {
+                comissaoDisplay = `R$ ${(item.comissao || 0).toFixed(2)}`;
+            }
 
             html += `
                 <div class="historico-card-mobile">
@@ -274,7 +271,7 @@ function renderizarFinanceiro(data, usuario) {
         html += `</div>`;
     } else {
         // ============================================
-        // VERSÃO DESKTOP - TABELA DE HISTÓRICO
+        // VERSÃO DESKTOP - TABELA DE HISTÓRICO (CORRIGIDA)
         // ============================================
         html += `
             <div class="table-responsive">
@@ -291,11 +288,17 @@ function renderizarFinanceiro(data, usuario) {
                     </thead>
                     <tbody>
                         ${comissoes.map(item => {
-            const profissionalDisplay = item.profissional_nome || 'Sem profissional';
-            const comissaoDisplay = item.comissao && item.comissao > 0 ?
-                `R$ ${(item.comissao || 0).toFixed(2)}` :
-                '<span style="color: var(--gray);">R$ 0,00</span>';
+            // ============================================
+            // CORREÇÃO: SÓ MOSTRA COMISSÃO SE TIVER PROFISSIONAL
+            // ============================================
             const temProfissional = item.profissional_id ? true : false;
+            const profissionalDisplay = item.profissional_nome || 'Sem profissional';
+
+            // Se NÃO tem profissional, comissão é ZERO
+            let comissaoDisplay = '<span style="color: var(--gray);">R$ 0,00</span>';
+            if (temProfissional) {
+                comissaoDisplay = `<span class="valor">R$ ${(item.comissao || 0).toFixed(2)}</span>`;
+            }
 
             return `
                                 <tr>
@@ -304,7 +307,7 @@ function renderizarFinanceiro(data, usuario) {
                                     <td>${escapeHtml(item.servico_nome || item.servico || 'N/A')}</td>
                                     <td><span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span></td>
                                     <td class="${!temProfissional ? 'text-muted' : ''}">${escapeHtml(profissionalDisplay)}</td>
-                                    <td><span class="${temProfissional ? 'valor' : 'text-muted'}">${comissaoDisplay}</span></td>
+                                    <td>${comissaoDisplay}</td>
                                 </tr>
                             `;
         }).join('')}
@@ -320,14 +323,31 @@ function renderizarFinanceiro(data, usuario) {
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FUNÇÃO FORMATAR DATA - CORRIGIDA (POSTGRESQL)
 // ============================================
-
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        const data = new Date(dataStr + 'T00:00:00');
-        return data.toLocaleDateString('pt-BR');
+        // Se for uma string no formato ISO (YYYY-MM-DD)
+        if (typeof dataStr === 'string') {
+            // Tentar extrair a data do formato ISO
+            const match = dataStr.match(/(\d{4})-(\d{2})-(\d{2})/);
+            if (match) {
+                const ano = parseInt(match[1]);
+                const mes = parseInt(match[2]) - 1;
+                const dia = parseInt(match[3]);
+                // Criar data com UTC para evitar problemas de timezone
+                const data = new Date(Date.UTC(ano, mes, dia));
+                return data.toLocaleDateString('pt-BR');
+            }
+
+            // Tentar parsear normalmente
+            const data = new Date(dataStr);
+            if (!isNaN(data.getTime())) {
+                return data.toLocaleDateString('pt-BR');
+            }
+        }
+        return dataStr;
     } catch {
         return dataStr;
     }
@@ -349,7 +369,6 @@ window.addEventListener('resize', function () {
     clearTimeout(resizeTimeoutFinanceiro);
     resizeTimeoutFinanceiro = setTimeout(function () {
         if (document.querySelector('.financeiro-container') || document.getElementById('content')) {
-            // Recarregar se estiver na página de financeiro
             const content = document.getElementById('content');
             if (content && content.innerHTML.includes('💰 Financeiro')) {
                 const usuario = JSON.parse(localStorage.getItem('usuario'));
