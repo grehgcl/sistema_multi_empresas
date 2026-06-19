@@ -1205,14 +1205,37 @@ window.abrirModalAgendamento = async function () {
     }
 };
 
+// ============================================
+// CORREÇÃO: AÇÃO RÁPIDA - ABRIR MODAL CLIENTE
+// ============================================
+
 window.abrirModalCliente = function () {
-    if (typeof window.abrirModalCliente === 'function') {
-        window.abrirModalCliente();
+    console.log('🔄 Abrindo modal de cliente...');
+
+    // Verificar se a função original existe (a do clientes.js)
+    if (typeof window.abrirModalClienteOriginal === 'function') {
+        window.abrirModalClienteOriginal();
+        return;
+    }
+
+    // Tentar encontrar a função de abrir modal do clientes.js
+    if (typeof abrirModalCliente === 'function' && abrirModalCliente !== window.abrirModalCliente) {
+        abrirModalCliente();
+        return;
+    }
+
+    // Fallback: carregar a página de clientes
+    showToast('Carregando página de clientes...', 'info');
+    if (typeof carregarClientes === 'function') {
+        carregarClientes();
+        // Tentar abrir o modal depois que carregar
+        setTimeout(() => {
+            if (typeof abrirModalCliente === 'function' && abrirModalCliente !== window.abrirModalCliente) {
+                abrirModalCliente();
+            }
+        }, 500);
     } else {
-        showToast('Carregando página de clientes...', 'info');
-        if (typeof carregarClientes === 'function') {
-            carregarClientes();
-        }
+        showToast('Função não disponível', 'warning');
     }
 };
 
