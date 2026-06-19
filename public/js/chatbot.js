@@ -1123,7 +1123,7 @@ async function verificarEConfirmar() {
 }
 
 // ============================================
-// FINALIZAR AGENDAMENTO - CORRIGIDO
+// FINALIZAR AGENDAMENTO - CORRIGIDO (BUSCA CLIENTE NO RENDER)
 // ============================================
 async function finalizarAgendamento() {
     try {
@@ -1133,9 +1133,63 @@ async function finalizarAgendamento() {
         console.log('  - empresaId:', empresaId);
 
         // ============================================
+        // SE O CLIENTE NÃO ESTIVER DEFINIDO, TENTAR BUSCAR NOVAMENTE
+        // ============================================
+        if (!clienteAtual || !clienteAtual.id) {
+            console.log('⚠️ Cliente não identificado, tentando buscar...');
+
+            // Tentar buscar o cliente pelo telefone
+            if (telefoneCliente) {
+                console.log('🔍 Buscando cliente pelo telefone:', telefoneCliente);
+                try {
+                    const res = await fetch('/api/chatbot/cliente/buscar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            telefone: telefoneCliente,
+                            empresaId: empresaId
+                        })
+                    });
+                    const data = await res.json();
+                    console.log('📦 Resposta da busca:', data);
+
+                    if (data.success && data.cliente) {
+                        clienteAtual = data.cliente;
+                        console.log('✅ Cliente encontrado novamente:', clienteAtual);
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao buscar cliente:', error);
+                }
+            }
+
+            // Se ainda não tiver cliente, tentar buscar pelo nome
+            if (!clienteAtual || !clienteAtual.id) {
+                // Tentar buscar pelo nome
+                try {
+                    const res = await fetch('/api/clientes', {
+                        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+                    });
+                    const data = await res.json();
+                    if (data.success && data.data) {
+                        const encontrado = data.data.find(c =>
+                            c.nome.toLowerCase() === nomeCliente?.toLowerCase()
+                        );
+                        if (encontrado) {
+                            clienteAtual = encontrado;
+                            console.log('✅ Cliente encontrado pelo nome:', clienteAtual);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao buscar cliente pelo nome:', error);
+                }
+            }
+        }
+
+        // ============================================
         // VALIDAR DADOS OBRIGATÓRIOS
         // ============================================
         if (!clienteAtual || !clienteAtual.id) {
+            console.log('❌ Cliente ainda não identificado após tentativas');
             adicionarMensagem('❌ Erro: Cliente não identificado. Tente novamente.', 'bot');
             estado = 'inicio';
             return;
@@ -1168,13 +1222,11 @@ async function finalizarAgendamento() {
         // ============================================
         let profissionalId = agendamentoAtual.profissional_id;
 
-        // Se for o dono (string começando com 'dono_'), enviar como null
         if (profissionalId && typeof profissionalId === 'string' && profissionalId.includes('dono')) {
             profissionalId = null;
             console.log('👨‍💼 Profissional é o Dono, enviando como null');
         }
 
-        // Se for "Qualquer profissional", enviar como null
         if (agendamentoAtual.profissional_nome === 'Qualquer profissional') {
             profissionalId = null;
         }
@@ -1195,9 +1247,6 @@ async function finalizarAgendamento() {
 
         console.log('📤 Enviando agendamento:', JSON.stringify(body, null, 2));
 
-        // ============================================
-        // ENVIAR REQUISIÇÃO
-        // ============================================
         const res = await fetch('/api/chatbot/agendar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
