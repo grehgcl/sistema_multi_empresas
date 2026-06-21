@@ -1,46 +1,122 @@
-// ============================================
-// UI FUNCTIONS - BARBEARIA PRO v2.0
+﻿// ============================================
+// UI FUNCTIONS - SEE&AGENDE v6.0
 // ============================================
 
-// Inicializar UI quando o DOM carregar
-document.addEventListener('DOMContentLoaded', function () {
-    initResponsiveSidebar();
-});
+// ============================================
+// TOAST NOTIFICATION
+// ============================================
+function showToast(message, type = 'info', duration = 4000) {
+    const icons = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle'
+    };
 
-// Sidebar Responsiva com Swipe
+    const toast = document.createElement('div');
+    toast.className = `toast-notification toast-${type}`;
+    toast.innerHTML = `
+        <i class="fas ${icons[type] || 'fa-info-circle'}"></i>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    if (window.innerWidth <= 768) {
+        toast.style.top = 'auto';
+        toast.style.bottom = '80px';
+        toast.style.right = '10px';
+        toast.style.left = '10px';
+        toast.style.width = 'auto';
+        toast.style.textAlign = 'center';
+        toast.style.justifyContent = 'center';
+    }
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100px)';
+        toast.style.transition = 'all 0.4s ease';
+        setTimeout(() => toast.remove(), 400);
+    }, duration);
+}
+
+// ============================================
+// LOADING SPINNER
+// ============================================
+function showLoading() {
+    let spinner = document.getElementById('globalSpinner');
+    if (!spinner) {
+        spinner = document.createElement('div');
+        spinner.id = 'globalSpinner';
+        spinner.className = 'loading-spinner';
+        document.body.appendChild(spinner);
+    }
+    spinner.style.display = 'block';
+}
+
+function hideLoading() {
+    const spinner = document.getElementById('globalSpinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
+}
+
+// ============================================
+// MODAL PERSONALIZADO
+// ============================================
+function showModal(title, content, onConfirm = null) {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content glass">
+            <span class="close" onclick="this.closest('.modal').remove()">&times;</span>
+            <h3>${title}</h3>
+            <div style="margin: 20px 0;">${content}</div>
+            <div class="modal-buttons">
+                <button class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                <button class="btn-3d btn-confirm">Confirmar</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    if (onConfirm) {
+        modal.querySelector('.btn-confirm').onclick = () => {
+            onConfirm();
+            modal.remove();
+        };
+    }
+
+    modal.onclick = (e) => {
+        if (e.target === modal) modal.remove();
+    };
+}
+
+// ============================================
+// SIDEBAR RESPONSIVA COM SWIPE
+// ============================================
 function initResponsiveSidebar() {
-    // Criar botão menu mobile
-    const menuBtn = document.createElement('button');
-    menuBtn.innerHTML = '<i class="fas fa-bars"></i>';
-    menuBtn.className = 'menu-mobile-btn';
-    document.body.appendChild(menuBtn);
-
-    // Criar overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'sidebar-overlay';
-    document.body.appendChild(overlay);
-
-    const sidebar = document.querySelector('.sidebar');
+    const sidebar = document.getElementById('sidebar');
+    const menuBtn = document.querySelector('.menu-mobile-btn');
+    const overlay = document.querySelector('.sidebar-overlay');
     let touchStartX = 0;
     let touchEndX = 0;
 
+    if (!menuBtn || !sidebar) return;
+
     function openSidebar() {
         sidebar.classList.add('open');
-        overlay.classList.add('active');
+        if (overlay) overlay.classList.add('active');
         document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
     }
 
     function closeSidebar() {
         sidebar.classList.remove('open');
-        overlay.classList.remove('active');
+        if (overlay) overlay.classList.remove('active');
         document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.width = '';
     }
 
-    // Detectar swipe para fechar
     sidebar.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
     });
@@ -61,20 +137,18 @@ function initResponsiveSidebar() {
         }
     };
 
-    overlay.onclick = closeSidebar;
-
-    // Fechar sidebar ao clicar em link no mobile
-    if (sidebar) {
-        sidebar.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', function () {
-                if (window.innerWidth <= 768) {
-                    closeSidebar();
-                }
-            });
-        });
+    if (overlay) {
+        overlay.onclick = closeSidebar;
     }
 
-    // Fechar ao redimensionar para desktop
+    sidebar.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+        });
+    });
+
     window.addEventListener('resize', function () {
         if (window.innerWidth > 768) {
             closeSidebar();
@@ -82,88 +156,20 @@ function initResponsiveSidebar() {
     });
 }
 
-// Toast Notification melhorado
-function showToast(message, type = 'success') {
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
+// ============================================
+// INICIAR UI
+// ============================================
+document.addEventListener('DOMContentLoaded', function () {
+    initResponsiveSidebar();
+});
 
-    const toast = document.createElement('div');
-    toast.className = `toast-notification toast-${type}`;
-    toast.innerHTML = `<i class="fas ${icons[type]}"></i> <span>${message}</span>`;
-    document.body.appendChild(toast);
-
-    // Ajuste para mobile
-    if (window.innerWidth <= 768) {
-        toast.style.top = 'auto';
-        toast.style.bottom = '80px';
-        toast.style.right = '10px';
-        toast.style.left = '10px';
-        toast.style.width = 'auto';
-        toast.style.textAlign = 'center';
-        toast.style.justifyContent = 'center';
-    }
-
-    setTimeout(() => {
-        toast.style.animation = 'slideOutRight 0.3s ease-out';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-// Loading Spinner
-function showLoading() {
-    let spinner = document.getElementById('globalSpinner');
-    if (!spinner) {
-        spinner = document.createElement('div');
-        spinner.id = 'globalSpinner';
-        spinner.className = 'loading-spinner';
-        document.body.appendChild(spinner);
-    }
-    spinner.style.display = 'block';
-}
-
-function hideLoading() {
-    const spinner = document.getElementById('globalSpinner');
-    if (spinner) {
-        spinner.style.display = 'none';
-    }
-}
-
-// Modal helper melhorado
-function showModal(title, content, onConfirm = null) {
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.style.display = 'flex';
-    modal.innerHTML = `
-        <div class="modal-content">
-            <h3>${title}</h3>
-            <div style="margin: 20px 0;">${content}</div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button onclick="this.closest('.modal').remove()">Cancelar</button>
-                <button class="btn-confirm" style="background: linear-gradient(135deg, #48bb78, #38a169);">Confirmar</button>
-            </div>
-        </div>
-    `;
-
-    document.body.appendChild(modal);
-
-    if (onConfirm) {
-        modal.querySelector('.btn-confirm').onclick = () => {
-            onConfirm();
-            modal.remove();
-        };
-    }
-
-    modal.onclick = (e) => {
-        if (e.target === modal) modal.remove();
-    };
-}
-
-// Funções globais para acesso em todas as páginas
+// ============================================
+// EXPORTAR FUNÇÕES GLOBAIS
+// ============================================
 window.showToast = showToast;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.showModal = showModal;
+window.initResponsiveSidebar = initResponsiveSidebar;
+
+console.log('✅ UI.js carregado com sucesso - v6.0');

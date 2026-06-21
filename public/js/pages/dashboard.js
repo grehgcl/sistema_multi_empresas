@@ -858,25 +858,100 @@ window.estenderTrial = async function (empresaId) {
     hideLoading();
 };
 
-// Funções para abrir modais (usadas nas ações rápidas)
-window.abrirModalAgendamento = function () {
-    if (typeof abrirModalAgendamentoDono === 'function') {
-        abrirModalAgendamentoDono();
-    } else {
-        showToast('Função não disponível', 'warning');
-    }
-};
+// ============================================
+// AÇÕES RÁPIDAS - USANDO A FUNÇÃO DO AGENDAMENTOS.JS
+// ============================================
 
-window.abrirModalCliente = function () {
+// Ação: Novo Agendamento - chama diretamente a função do agendamentos.js
+function abrirModalAgendamento() {
+    console.log('🔄 Abrindo modal de agendamento via ação rápida...');
+
+    // Verificar se as listas estão carregadas
+    if (typeof clientesList === 'undefined' || clientesList.length === 0) {
+        // Carregar dados antes de abrir o modal
+        carregarDadosAgendamento().then(() => {
+            if (typeof abrirModalAgendamentoDono === 'function') {
+                abrirModalAgendamentoDono();
+            } else {
+                showToast('Função de agendamento não disponível', 'warning');
+            }
+        });
+    } else {
+        if (typeof abrirModalAgendamentoDono === 'function') {
+            abrirModalAgendamentoDono();
+        } else {
+            showToast('Função de agendamento não disponível', 'warning');
+        }
+    }
+}
+
+// Função auxiliar para carregar dados
+async function carregarDadosAgendamento() {
+    const token = localStorage.getItem('token');
+    try {
+        const [clientesRes, servicosRes, profissionaisRes] = await Promise.all([
+            fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
+
+        const clientesData = await clientesRes.json();
+        const servicosData = await servicosRes.json();
+        const profissionaisData = await profissionaisRes.json();
+
+        if (clientesData.success) clientesList = clientesData.data || [];
+        if (servicosData.success) servicosList = servicosData.data || [];
+        if (profissionaisData.success) profissionaisList = profissionaisData.data || [];
+
+        console.log('✅ Dados carregados para ação rápida:', {
+            clientes: clientesList.length,
+            servicos: servicosList.length,
+            profissionais: profissionaisList.length
+        });
+    } catch (error) {
+        console.error('❌ Erro ao carregar dados:', error);
+    }
+}
+
+// Ação: Novo Cliente - usa o mesmo modal de clientes
+function abrirModalCliente() {
+    console.log('🔄 Abrindo modal de cliente via ação rápida...');
+
+    // Verificar se a função existe no clientes.js
+    if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalCliente) {
+        window.abrirModalCliente();
+        return;
+    }
+
+    // Fallback: tentar usar a função do clientes.js
     if (typeof abrirModalCliente === 'function') {
         abrirModalCliente();
+        return;
+    }
+
+    // Fallback 2: carregar a página de clientes e abrir o modal
+    showToast('Carregando clientes...', 'info');
+    if (typeof carregarClientes === 'function') {
+        carregarClientes();
+        setTimeout(() => {
+            if (typeof abrirModalCliente === 'function') {
+                abrirModalCliente();
+            }
+        }, 500);
     } else {
         showToast('Função não disponível', 'warning');
     }
-};
+}
 
-// Exportar funções globais
+// ============================================
+// EXPORTAR FUNÇÕES GLOBAIS
+// ============================================
 window.carregarDashboard = carregarDashboard;
 window.carregarDashboardSuperAdmin = carregarDashboardSuperAdmin;
 window.carregarDashboardProfissional = carregarDashboardProfissional;
 window.atualizarDashboard = window.atualizarDashboard;
+window.abrirModalAgendamento = abrirModalAgendamento;
+window.abrirModalCliente = abrirModalCliente;
+window.estenderTrial = window.estenderTrial;
+
+console.log('✅ dashboard.js carregado com ações rápidas corrigidas!');

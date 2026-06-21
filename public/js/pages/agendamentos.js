@@ -57,7 +57,7 @@ async function carregarAgendamentos() {
                     <h2 class="page-title">📅 Agendamentos</h2>
                     <p class="page-subtitle">
                         <i class="fas fa-clock"></i> 
-                        Gerencie todos os agendamentos da sua barbearia
+                        Gerencie todos os agendamentos da sua empresa.
                     </p>
                 </div>
                 <div class="dashboard-actions">

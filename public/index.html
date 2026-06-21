@@ -8,73 +8,44 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <title>See&Agende - Gestão para Salões, Barbearias e Estéticas</title>
-
-    <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-
-    <!-- CSS Principal -->
     <link rel="stylesheet" href="/css/style.css">
-
-    <!-- AOS Animation -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
-
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
 
-    <!-- ============================================
-    LANDING PAGE - TELA DIVIDIDA
-    ============================================ -->
     <div id="landingContainer" class="landing-split">
-
-        <!-- ===== LADO ESQUERDO - MARKETING ===== -->
         <div class="landing-left">
             <div class="landing-content">
-
-                <!-- Logo -->
                 <div class="landing-logo">
                     <i class="fas fa-eye"></i>
                     <span>See<span>&Agende</span></span>
                 </div>
-
-                <!-- Versículo -->
                 <div class="landing-verse">
                     <i class="fas fa-bible"></i>
                     <span>"Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos."</span>
                     <small>— Provérbios 16:3</small>
                 </div>
-
-                <!-- Título -->
                 <h1>Gerencie seu negócio com <span>inteligência</span></h1>
                 <p>Agendamento automático, chatbot 24h, controle financeiro e comissões em um só lugar.</p>
-
-                <!-- Badges -->
                 <div class="landing-badges">
                     <span><i class="fas fa-check-circle"></i> 45 dias grátis</span>
                     <span><i class="fas fa-check-circle"></i> Sem cartão de crédito</span>
                     <span><i class="fas fa-check-circle"></i> Configuração em 5 min</span>
                 </div>
-
-                <!-- Stats -->
                 <div class="landing-stats">
                     <div><strong>+1.500</strong> agendamentos</div>
                     <div><strong>+300</strong> negócios</div>
                     <div><strong>24h</strong> atendimento</div>
                 </div>
-
-                <!-- Footer -->
                 <div class="landing-footer">
                     <p>© 2026 See&Agende. Todos os direitos reservados.</p>
                 </div>
             </div>
         </div>
-
-        <!-- ===== LADO DIREITO - LOGIN/CADASTRO ===== -->
         <div class="landing-right">
-
-            <!-- ====== LOGIN ====== -->
             <div id="loginContainer" class="auth-container active">
                 <div class="auth-box">
                     <div class="auth-header">
@@ -82,12 +53,10 @@
                         <h2>Bem-vindo de volta</h2>
                         <p>Acesse sua conta para continuar</p>
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-envelope input-icon"></i>
                         <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-lock input-icon"></i>
                         <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="current-password">
@@ -95,7 +64,6 @@
                             <i class="fas fa-eye-slash"></i>
                         </button>
                     </div>
-
                     <div class="auth-options">
                         <label class="remember-me">
                             <input type="checkbox" id="rememberMe">
@@ -105,24 +73,17 @@
                             onclick="showToast('Entre em contato com o suporte para recuperar sua senha.', 'info')">Esqueceu
                             a senha?</a>
                     </div>
-
                     <button class="btn-login" onclick="fazerLogin()">
                         <i class="fas fa-sign-in-alt"></i> Entrar
                     </button>
                     <div id="loginMessage" class="error-message"></div>
-
-                    <div class="auth-divider">
-                        <span>ou</span>
-                    </div>
-
+                    <div class="auth-divider"><span>ou</span></div>
                     <div class="auth-footer">
                         <p>Não tem conta? <span onclick="mostrarCadastro()">Cadastre-se grátis <i
                                     class="fas fa-arrow-right"></i></span></p>
                     </div>
                 </div>
             </div>
-
-            <!-- ====== CADASTRO ====== -->
             <div id="cadastroContainer" class="auth-container" style="display:none">
                 <div class="auth-box">
                     <div class="auth-header">
@@ -130,17 +91,14 @@
                         <h2>Teste grátis por 45 dias</h2>
                         <p>Sem cartão de crédito. Comece agora!</p>
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-user input-icon"></i>
                         <input type="text" id="cadastroNome" placeholder="Seu nome completo" autocomplete="name">
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-envelope input-icon"></i>
                         <input type="email" id="cadastroEmail" placeholder="seu@email.com" autocomplete="email">
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-lock input-icon"></i>
                         <input type="password" id="cadastroSenha" placeholder="Crie uma senha (mínimo 6 caracteres)"
@@ -149,18 +107,15 @@
                             <i class="fas fa-eye-slash"></i>
                         </button>
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-building input-icon"></i>
                         <input type="text" id="cadastroEmpresa" placeholder="Nome da sua empresa"
                             autocomplete="organization">
                     </div>
-
                     <div class="input-group">
                         <i class="fas fa-phone input-icon"></i>
                         <input type="text" id="cadastroTelefone" placeholder="(41) 99999-9999 (opcional)">
                     </div>
-
                     <div class="auth-terms">
                         <label>
                             <input type="checkbox" id="acceptTerms" checked>
@@ -171,16 +126,11 @@
                                     de Privacidade</a></span>
                         </label>
                     </div>
-
                     <button class="btn-login" onclick="fazerCadastro()">
                         <i class="fas fa-rocket"></i> Criar conta grátis
                     </button>
                     <div id="cadastroMessage" class="error-message"></div>
-
-                    <div class="auth-divider">
-                        <span>ou</span>
-                    </div>
-
+                    <div class="auth-divider"><span>ou</span></div>
                     <div class="auth-footer">
                         <p>Já tem conta? <span onclick="mostrarLogin()">Faça login <i
                                     class="fas fa-arrow-right"></i></span></p>
@@ -190,11 +140,8 @@
         </div>
     </div>
 
-    <!-- ============================================
-    APP PRINCIPAL
-    ============================================ -->
     <div id="app" class="app" style="display:none">
-        <div class="header">
+        <div class="header header-glass">
             <h2><i class="fas fa-eye"></i> See&Agende</h2>
             <div>
                 <span id="userBadge"></span>
@@ -202,110 +149,51 @@
                 <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </div>
-        <div class="sidebar" id="sidebar"></div>
+        <div class="sidebar sidebar-glass" id="sidebar"></div>
         <div class="main">
             <div id="trialInfo" class="trial-info" style="display:none"></div>
             <div id="content"></div>
         </div>
     </div>
 
-    <!-- ============================================
-    MODAL CLIENTE - CORRIGIDO
-    ============================================ -->
+    <!-- MODAL CLIENTE -->
     <div id="modalCliente" class="modal">
-        <div class="modal-content">
+        <div class="modal-content glass">
             <span class="close" onclick="fecharModalCliente()">&times;</span>
             <h3 id="modalClienteTitle">Novo Cliente</h3>
             <form id="formCliente">
                 <input type="hidden" id="clienteId">
-
                 <div class="form-group">
                     <label>Nome *</label>
                     <input type="text" id="clienteNome" class="form-control" placeholder="Nome completo" required>
                 </div>
-
                 <div class="form-group">
                     <label>Telefone</label>
                     <input type="text" id="clienteTelefone" class="form-control" placeholder="(41) 99999-9999">
                 </div>
-
                 <div class="form-group">
                     <label>Email</label>
                     <input type="email" id="clienteEmail" class="form-control" placeholder="email@exemplo.com">
                 </div>
-
                 <div class="modal-buttons">
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="submit" class="btn-3d">Salvar</button>
                     <button type="button" onclick="fecharModalCliente()" class="btn-secondary">Cancelar</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- ============================================
-    MODAL AGENDAMENTO
-    ============================================ -->
-    <div id="modalAgendamento" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="fecharModal('modalAgendamento')">&times;</span>
-            <h3 id="modalAgendamentoTitle">Novo Agendamento</h3>
-            <form id="formAgendamento">
-                <input type="hidden" id="agendamentoId">
-
-                <div class="form-group">
-                    <label>Cliente *</label>
-                    <select id="agendamentoCliente" class="form-control" required></select>
-                </div>
-
-                <div class="form-group">
-                    <label>Data *</label>
-                    <input type="date" id="agendamentoData" class="form-control" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Hora *</label>
-                    <input type="time" id="agendamentoHora" class="form-control" required>
-                </div>
-
-                <div class="form-group">
-                    <label>Serviço</label>
-                    <select id="agendamentoServico" class="form-control"></select>
-                </div>
-
-                <div class="form-group">
-                    <label>Profissional</label>
-                    <select id="agendamentoProfissional" class="form-control"></select>
-                </div>
-
-                <div class="form-group">
-                    <label>Valor (R$)</label>
-                    <input type="number" id="agendamentoValor" class="form-control" placeholder="0,00" step="0.01">
-                </div>
-
-                <div class="modal-buttons">
-                    <button type="submit" class="btn-primary">Salvar</button>
-                    <button type="button" onclick="fecharModal('modalAgendamento')"
-                        class="btn-secondary">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- ============================================
-    MODAL EMPRESA (SUPER ADMIN)
-    ============================================ -->
+    <!-- MODAL EMPRESA -->
     <div id="modalEditarEmpresa" class="modal">
-        <div class="modal-content">
+        <div class="modal-content glass">
             <span class="close" onclick="fecharModal('modalEditarEmpresa')">&times;</span>
             <h3>Editar Empresa</h3>
             <form id="formEmpresa">
                 <input type="hidden" id="editEmpresaId">
-
                 <div class="form-group">
                     <label>Nome da Empresa *</label>
                     <input type="text" id="editEmpresaNome" class="form-control" placeholder="Nome" required>
                 </div>
-
                 <div class="form-group">
                     <label>Plano</label>
                     <select id="editEmpresaPlano" class="form-control">
@@ -316,9 +204,8 @@
                         <option value="Enterprise">Enterprise</option>
                     </select>
                 </div>
-
                 <div class="modal-buttons">
-                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="submit" class="btn-3d">Salvar</button>
                     <button type="button" onclick="fecharModal('modalEditarEmpresa')"
                         class="btn-secondary">Cancelar</button>
                 </div>
@@ -326,11 +213,9 @@
         </div>
     </div>
 
-    <!-- ============================================
-    MODAL UPGRADE
-    ============================================ -->
+    <!-- MODAL UPGRADE -->
     <div id="modalUpgrade" class="modal">
-        <div class="modal-content">
+        <div class="modal-content glass">
             <span class="close" onclick="fecharModal('modalUpgrade')">&times;</span>
             <h3>💎 Fazer Upgrade</h3>
             <div id="upgradeContent"></div>
@@ -340,18 +225,16 @@
         </div>
     </div>
 
-    <!-- Menu Mobile - Botão Flutuante -->
     <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
         <i class="fas fa-bars"></i>
     </button>
     <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
-    <!-- ============================================
-    SCRIPTS
-    ============================================ -->
+    <canvas id="particlesCanvas"
+        style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;"></canvas>
+
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
     <script src="/js/ui.js"></script>
-
     <script src="/js/pages/dashboard.js"></script>
     <script src="/js/pages/dashboard-profissional.js"></script>
     <script src="/js/pages/clientes.js"></script>
@@ -363,41 +246,127 @@
     <script src="/js/pages/servicos.js"></script>
     <script src="/js/pages/planos.js"></script>
 
-    <!-- ============================================
-    SCRIPT PRINCIPAL
-    ============================================ -->
     <script>
         AOS.init({ duration: 800, once: true });
 
         let token = null;
         let usuario = null;
 
+        // ========== PARTÍCULAS ANIMADAS ==========
+        (function () {
+            const canvas = document.getElementById('particlesCanvas');
+            const ctx = canvas.getContext('2d');
+            let width, height;
+            let particles = [];
+            let animationId = null;
+            let isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.size = Math.random() * 2 + 0.5;
+                    this.speedX = (Math.random() - 0.5) * 0.5;
+                    this.speedY = (Math.random() - 0.5) * 0.5;
+                    this.opacity = Math.random() * 0.5 + 0.1;
+                }
+                update() {
+                    this.x += this.speedX;
+                    this.y += this.speedY;
+                    if (this.x < 0 || this.x > width) this.speedX *= -1;
+                    if (this.y < 0 || this.y > height) this.speedY *= -1;
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = isDark ? 'rgba(255,255,255,' + this.opacity + ')' : 'rgba(102,126,234,' + this.opacity + ')';
+                    ctx.fill();
+                }
+            }
+
+            function initParticles() {
+                const count = Math.min(80, Math.floor((width * height) / 15000));
+                particles = [];
+                for (let i = 0; i < count; i++) {
+                    particles.push(new Particle());
+                }
+            }
+            initParticles();
+
+            function drawLines() {
+                for (let i = 0; i < particles.length; i++) {
+                    for (let j = i + 1; j < particles.length; j++) {
+                        const dx = particles[i].x - particles[j].x;
+                        const dy = particles[i].y - particles[j].y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        if (distance < 150) {
+                            const opacity = (1 - distance / 150) * 0.15;
+                            ctx.beginPath();
+                            ctx.moveTo(particles[i].x, particles[i].y);
+                            ctx.lineTo(particles[j].x, particles[j].y);
+                            ctx.strokeStyle = isDark ? 'rgba(255,255,255,' + opacity + ')' : 'rgba(102,126,234,' + opacity + ')';
+                            ctx.lineWidth = 0.5;
+                            ctx.stroke();
+                        }
+                    }
+                }
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+                particles.forEach(p => { p.update(); p.draw(); });
+                drawLines();
+                animationId = requestAnimationFrame(animate);
+            }
+
+            if (!document.hidden) { animate(); }
+
+            document.addEventListener('visibilitychange', function () {
+                if (document.hidden) {
+                    if (animationId) { cancelAnimationFrame(animationId); animationId = null; }
+                } else {
+                    if (!animationId) { animate(); }
+                }
+            });
+
+            const observer = new MutationObserver(() => {
+                const isDarkNow = document.documentElement.getAttribute('data-theme') === 'dark';
+                if (isDarkNow !== isDark) {
+                    isDark = isDarkNow;
+                    initParticles();
+                }
+            });
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        })();
+
         // ========== NAVEGAÇÃO ==========
         function mostrarLanding() {
             document.getElementById('landingContainer').style.display = 'flex';
             document.getElementById('app').style.display = 'none';
         }
-
         function mostrarLogin() {
             document.getElementById('loginContainer').style.display = 'block';
             document.getElementById('cadastroContainer').style.display = 'none';
             document.getElementById('loginMessage').style.display = 'none';
             document.getElementById('cadastroMessage').style.display = 'none';
         }
-
         function mostrarCadastro() {
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('cadastroContainer').style.display = 'block';
             document.getElementById('loginMessage').style.display = 'none';
             document.getElementById('cadastroMessage').style.display = 'none';
         }
-
         function mostrarApp() {
             document.getElementById('landingContainer').style.display = 'none';
             document.getElementById('app').style.display = 'block';
-
             document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
-
             if (usuario.role === 'superadmin') {
                 document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
             } else if (usuario.role === 'profissional') {
@@ -405,9 +374,7 @@
             } else {
                 document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 DONO</span>';
             }
-
             carregarMenu();
-
             if (usuario.role === 'profissional') {
                 if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
             } else if (usuario.role === 'superadmin') {
@@ -422,7 +389,6 @@
             const input = document.getElementById(inputId);
             const toggleBtn = input.parentElement.querySelector('.toggle-pwd');
             const icon = toggleBtn.querySelector('i');
-
             if (input.type === 'password') {
                 input.type = 'text';
                 icon.className = 'fas fa-eye';
@@ -456,14 +422,33 @@
                 showToast('Modal não encontrado', 'error');
             }
         }
-
         function fecharModalCliente() {
             const modal = document.getElementById('modalCliente');
             if (modal) modal.style.display = 'none';
         }
 
-        // ========== MODAL AGENDAMENTO ==========
-        function abrirModalAgendamento() {
+        // ============================================
+        // CORREÇÃO: AÇÕES RÁPIDAS - CHAMAM AS FUNÇÕES DO AGENDAMENTOS.JS
+        // ============================================
+
+        // Ação Rápida: Novo Agendamento - chama a função do agendamentos.js
+        function abrirModalAgendamentoRapido() {
+            console.log('🔄 Ação rápida: Novo Agendamento');
+
+            // Verificar se a função existe no agendamentos.js
+            if (typeof window.abrirModalAgendamentoDono === 'function') {
+                // Garantir que os dados estão carregados
+                if (typeof window.carregarDadosAgendamento === 'function') {
+                    window.carregarDadosAgendamento().then(() => {
+                        window.abrirModalAgendamentoDono();
+                    });
+                } else {
+                    window.abrirModalAgendamentoDono();
+                }
+                return;
+            }
+
+            // Fallback: usar o modal do index
             const modal = document.getElementById('modalAgendamento');
             if (modal) {
                 modal.style.display = 'block';
@@ -476,53 +461,62 @@
             }
         }
 
-        function fecharModalAgendamento() {
-            const modal = document.getElementById('modalAgendamento');
-            if (modal) modal.style.display = 'none';
+        // Ação Rápida: Novo Cliente - chama a função do clientes.js
+        function abrirModalClienteRapido() {
+            console.log('🔄 Ação rápida: Novo Cliente');
+
+            // Verificar se a função existe no clientes.js
+            if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalClienteRapido) {
+                window.abrirModalCliente();
+                return;
+            }
+
+            // Fallback: usar o modal do index
+            abrirModalCliente();
         }
 
-        async function carregarSelectsAgendamento() {
+        // ========== MODAL AGENDAMENTO (FALLBACK) ==========
+        function carregarSelectsAgendamento() {
             try {
                 const token = localStorage.getItem('token');
+                const resClientes = fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } });
+                const resServicos = fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } });
+                const resProfissionais = fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } });
 
-                // Carregar clientes
-                const resClientes = await fetch('/api/clientes', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                const clientesData = await resClientes.json();
-                if (clientesData.success) {
-                    const select = document.getElementById('agendamentoCliente');
-                    select.innerHTML = '<option value="">Selecione um cliente</option>';
-                    clientesData.data.forEach(c => {
-                        select.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
-                    });
-                }
+                Promise.all([resClientes, resServicos, resProfissionais])
+                    .then(async ([clientesRes, servicosRes, profissionaisRes]) => {
+                        const clientesData = await clientesRes.json();
+                        const servicosData = await servicosRes.json();
+                        const profissionaisData = await profissionaisRes.json();
 
-                // Carregar serviços
-                const resServicos = await fetch('/api/servicos', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                const servicosData = await resServicos.json();
-                if (servicosData.success) {
-                    const select = document.getElementById('agendamentoServico');
-                    select.innerHTML = '<option value="">Selecione um serviço</option>';
-                    servicosData.data.forEach(s => {
-                        select.innerHTML += `<option value="${s.id}">${s.nome} - R$ ${s.valor}</option>`;
+                        if (clientesData.success) {
+                            const select = document.getElementById('agendamentoCliente');
+                            if (select) {
+                                select.innerHTML = '<option value="">Selecione um cliente</option>';
+                                clientesData.data.forEach(c => {
+                                    select.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+                                });
+                            }
+                        }
+                        if (servicosData.success) {
+                            const select = document.getElementById('agendamentoServico');
+                            if (select) {
+                                select.innerHTML = '<option value="">Selecione um serviço</option>';
+                                servicosData.data.forEach(s => {
+                                    select.innerHTML += `<option value="${s.id}">${s.nome} - R$ ${s.valor}</option>`;
+                                });
+                            }
+                        }
+                        if (profissionaisData.success) {
+                            const select = document.getElementById('agendamentoProfissional');
+                            if (select) {
+                                select.innerHTML = '<option value="">Selecione um profissional</option>';
+                                profissionaisData.data.forEach(p => {
+                                    select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                                });
+                            }
+                        }
                     });
-                }
-
-                // Carregar profissionais
-                const resProfissionais = await fetch('/api/profissionais', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                const profissionaisData = await resProfissionais.json();
-                if (profissionaisData.success) {
-                    const select = document.getElementById('agendamentoProfissional');
-                    select.innerHTML = '<option value="">Selecione um profissional</option>';
-                    profissionaisData.data.forEach(p => {
-                        select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
-                    });
-                }
             } catch (error) {
                 console.error('Erro ao carregar selects:', error);
             }
@@ -532,14 +526,8 @@
         async function fazerLogin() {
             const email = document.getElementById('loginEmail').value;
             const senha = document.getElementById('loginSenha').value;
-
-            if (!email || !senha) {
-                showToast('Preencha todos os campos', 'warning');
-                return;
-            }
-
+            if (!email || !senha) { showToast('Preencha todos os campos', 'warning'); return; }
             showLoading();
-
             try {
                 const res = await fetch('/api/login', {
                     method: 'POST',
@@ -547,22 +535,17 @@
                     body: JSON.stringify({ email, senha })
                 });
                 const data = await res.json();
-
                 hideLoading();
-
                 if (data.success) {
                     token = data.data.token;
                     usuario = data.data.usuario;
                     localStorage.setItem('token', token);
                     localStorage.setItem('usuario', JSON.stringify(usuario));
-
-                    // Salvar email se "Lembrar-me" estiver marcado
                     if (document.getElementById('rememberMe').checked) {
                         localStorage.setItem('rememberEmail', email);
                     } else {
                         localStorage.removeItem('rememberEmail');
                     }
-
                     mostrarApp();
                     showToast('Login realizado com sucesso!', 'success');
                 } else {
@@ -583,40 +566,20 @@
             const empresa_nome = document.getElementById('cadastroEmpresa').value;
             const telefone = document.getElementById('cadastroTelefone').value;
             const acceptTerms = document.getElementById('acceptTerms').checked;
-
             if (!nome || !email || !senha || !empresa_nome) {
-                showToast('Preencha todos os campos obrigatórios', 'warning');
-                return;
+                showToast('Preencha todos os campos obrigatórios', 'warning'); return;
             }
-
-            if (senha.length < 6) {
-                showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
-                return;
-            }
-
-            if (!acceptTerms) {
-                showToast('Aceite os Termos de Uso para continuar', 'warning');
-                return;
-            }
-
+            if (senha.length < 6) { showToast('A senha deve ter pelo menos 6 caracteres', 'warning'); return; }
+            if (!acceptTerms) { showToast('Aceite os Termos de Uso para continuar', 'warning'); return; }
             showLoading();
-
             try {
                 const res = await fetch('/api/cadastro', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        nome,
-                        email,
-                        senha,
-                        empresa_nome,
-                        telefone
-                    })
+                    body: JSON.stringify({ nome, email, senha, empresa_nome, telefone })
                 });
                 const data = await res.json();
-
                 hideLoading();
-
                 if (data.success) {
                     document.getElementById('cadastroMessage').className = 'success-message';
                     document.getElementById('cadastroMessage').innerHTML = '✅ ' + data.message;
@@ -648,7 +611,6 @@
         function carregarMenu() {
             const sidebar = document.getElementById('sidebar');
             let botoes = [];
-
             if (usuario.role === 'superadmin') {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardSuperAdmin' },
@@ -672,10 +634,7 @@
                     { id: 'planos', nome: '💎 Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
                 ];
             }
-
-            sidebar.innerHTML = botoes.map(b =>
-                `<button onclick="${b.funcao}()" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`
-            ).join('');
+            sidebar.innerHTML = botoes.map(b => `<button onclick="${b.funcao}()" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`).join('');
         }
 
         function ativarBotao(id) {
@@ -711,26 +670,18 @@
             }
         });
 
-        // ============================================
-        // CORREÇÃO: CONECTAR O FORMULÁRIO DE CLIENTE
-        // ============================================
+        // ========== CORREÇÃO: CONECTAR O FORMULÁRIO DE CLIENTE ==========
         document.addEventListener('DOMContentLoaded', function () {
             console.log('🔧 Configurando formulário de cliente...');
-
             const form = document.getElementById('formCliente');
             if (form) {
                 console.log('✅ Formulário de cliente encontrado!');
-
-                // Remover eventos antigos
                 const newForm = form.cloneNode(true);
                 form.parentNode.replaceChild(newForm, form);
-
-                // Adicionar evento de submit
                 newForm.addEventListener('submit', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     console.log('🔄 Formulário de cliente submetido!');
-
                     if (typeof window.salvarCliente === 'function') {
                         window.salvarCliente();
                     } else {
@@ -738,7 +689,6 @@
                         showToast('Erro: função salvarCliente não encontrada', 'error');
                     }
                 });
-
                 console.log('✅ Evento de submit conectado com sucesso!');
             } else {
                 console.error('❌ Formulário com id="formCliente" não encontrado!');
@@ -748,13 +698,17 @@
         // ========== INIT ==========
         const savedToken = localStorage.getItem('token');
         const savedUsuario = localStorage.getItem('usuario');
-
-        // Recuperar email salvo
         const savedEmail = localStorage.getItem('rememberEmail');
         if (savedEmail) {
             document.getElementById('loginEmail').value = savedEmail;
             document.getElementById('rememberMe').checked = true;
         }
+
+        // ========== TEMA ESCURO POR PADRÃO ==========
+        // Se não houver tema salvo, usar escuro como padrão
+        const temaSalvo = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', temaSalvo);
+        localStorage.setItem('theme', temaSalvo);
 
         if (savedToken && savedUsuario) {
             token = savedToken;
