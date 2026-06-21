@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  wppconnect:
+    image: wppconnect-server/wppconnect-server:latest
+    container_name: wppconnect
+    ports:
+      - "3000:3000"
+    environment:
+      - API_KEY=minha_chave_wpp_2024
+    volumes:
+      - wppconnect_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  wppconnect_data:

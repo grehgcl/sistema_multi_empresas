@@ -77,27 +77,47 @@
             <!-- ====== LOGIN ====== -->
             <div id="loginContainer" class="auth-container active">
                 <div class="auth-box">
-                    <h2>Bem-vindo de volta</h2>
-                    <p>Acesse sua conta para continuar</p>
+                    <div class="auth-header">
+                        <i class="fas fa-eye auth-icon"></i>
+                        <h2>Bem-vindo de volta</h2>
+                        <p>Acesse sua conta para continuar</p>
+                    </div>
 
                     <div class="input-group">
                         <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="loginEmail" placeholder="seu@email.com">
+                        <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
                     </div>
 
                     <div class="input-group">
                         <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="loginSenha" placeholder="Sua senha">
+                        <input type="password" id="loginSenha" placeholder="Sua senha" autocomplete="current-password">
                         <button type="button" class="toggle-pwd" onclick="togglePassword('loginSenha')">
                             <i class="fas fa-eye-slash"></i>
                         </button>
                     </div>
 
-                    <button class="btn-login" onclick="fazerLogin()">Entrar</button>
+                    <div class="auth-options">
+                        <label class="remember-me">
+                            <input type="checkbox" id="rememberMe">
+                            <span>Lembrar-me</span>
+                        </label>
+                        <a href="#" class="forgot-password"
+                            onclick="showToast('Entre em contato com o suporte para recuperar sua senha.', 'info')">Esqueceu
+                            a senha?</a>
+                    </div>
+
+                    <button class="btn-login" onclick="fazerLogin()">
+                        <i class="fas fa-sign-in-alt"></i> Entrar
+                    </button>
                     <div id="loginMessage" class="error-message"></div>
 
+                    <div class="auth-divider">
+                        <span>ou</span>
+                    </div>
+
                     <div class="auth-footer">
-                        <p>Não tem conta? <span onclick="mostrarCadastro()">Cadastre-se grátis</span></p>
+                        <p>Não tem conta? <span onclick="mostrarCadastro()">Cadastre-se grátis <i
+                                    class="fas fa-arrow-right"></i></span></p>
                     </div>
                 </div>
             </div>
@@ -105,22 +125,26 @@
             <!-- ====== CADASTRO ====== -->
             <div id="cadastroContainer" class="auth-container" style="display:none">
                 <div class="auth-box">
-                    <h2>Teste grátis por 45 dias</h2>
-                    <p>Sem cartão de crédito</p>
+                    <div class="auth-header">
+                        <i class="fas fa-rocket auth-icon"></i>
+                        <h2>Teste grátis por 45 dias</h2>
+                        <p>Sem cartão de crédito. Comece agora!</p>
+                    </div>
 
                     <div class="input-group">
                         <i class="fas fa-user input-icon"></i>
-                        <input type="text" id="cadastroNome" placeholder="Seu nome">
+                        <input type="text" id="cadastroNome" placeholder="Seu nome completo" autocomplete="name">
                     </div>
 
                     <div class="input-group">
                         <i class="fas fa-envelope input-icon"></i>
-                        <input type="email" id="cadastroEmail" placeholder="seu@email.com">
+                        <input type="email" id="cadastroEmail" placeholder="seu@email.com" autocomplete="email">
                     </div>
 
                     <div class="input-group">
                         <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="cadastroSenha" placeholder="Sua senha">
+                        <input type="password" id="cadastroSenha" placeholder="Crie uma senha (mínimo 6 caracteres)"
+                            autocomplete="new-password">
                         <button type="button" class="toggle-pwd" onclick="togglePassword('cadastroSenha')">
                             <i class="fas fa-eye-slash"></i>
                         </button>
@@ -128,14 +152,38 @@
 
                     <div class="input-group">
                         <i class="fas fa-building input-icon"></i>
-                        <input type="text" id="cadastroEmpresa" placeholder="Nome da sua empresa">
+                        <input type="text" id="cadastroEmpresa" placeholder="Nome da sua empresa"
+                            autocomplete="organization">
                     </div>
 
-                    <button class="btn-login" onclick="fazerCadastro()">Criar conta grátis</button>
+                    <div class="input-group">
+                        <i class="fas fa-phone input-icon"></i>
+                        <input type="text" id="cadastroTelefone" placeholder="(41) 99999-9999 (opcional)">
+                    </div>
+
+                    <div class="auth-terms">
+                        <label>
+                            <input type="checkbox" id="acceptTerms" checked>
+                            <span>Aceito os <a href="#"
+                                    onclick="showToast('Termos de uso disponíveis em breve.', 'info')">Termos de Uso</a>
+                                e <a href="#"
+                                    onclick="showToast('Política de privacidade disponível em breve.', 'info')">Política
+                                    de Privacidade</a></span>
+                        </label>
+                    </div>
+
+                    <button class="btn-login" onclick="fazerCadastro()">
+                        <i class="fas fa-rocket"></i> Criar conta grátis
+                    </button>
                     <div id="cadastroMessage" class="error-message"></div>
 
+                    <div class="auth-divider">
+                        <span>ou</span>
+                    </div>
+
                     <div class="auth-footer">
-                        <p>Já tem conta? <span onclick="mostrarLogin()">Faça login</span></p>
+                        <p>Já tem conta? <span onclick="mostrarLogin()">Faça login <i
+                                    class="fas fa-arrow-right"></i></span></p>
                     </div>
                 </div>
             </div>
@@ -151,7 +199,7 @@
             <div>
                 <span id="userBadge"></span>
                 <span id="userName"></span>
-                <button onclick="logout()">Sair</button>
+                <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </div>
         <div class="sidebar" id="sidebar"></div>
@@ -162,58 +210,132 @@
     </div>
 
     <!-- ============================================
-    MODAIS
+    MODAL CLIENTE - CORRIGIDO
     ============================================ -->
     <div id="modalCliente" class="modal">
         <div class="modal-content">
-            <h3>Novo Cliente</h3>
-            <input type="text" id="clienteNome" placeholder="Nome">
-            <input type="text" id="clienteTelefone" placeholder="Telefone">
-            <input type="email" id="clienteEmail" placeholder="Email">
-            <div class="modal-buttons">
-                <button onclick="salvarCliente()">Salvar</button>
-                <button onclick="fecharModal('modalCliente')">Cancelar</button>
-            </div>
+            <span class="close" onclick="fecharModalCliente()">&times;</span>
+            <h3 id="modalClienteTitle">Novo Cliente</h3>
+            <form id="formCliente">
+                <input type="hidden" id="clienteId">
+
+                <div class="form-group">
+                    <label>Nome *</label>
+                    <input type="text" id="clienteNome" class="form-control" placeholder="Nome completo" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Telefone</label>
+                    <input type="text" id="clienteTelefone" class="form-control" placeholder="(41) 99999-9999">
+                </div>
+
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="clienteEmail" class="form-control" placeholder="email@exemplo.com">
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" onclick="fecharModalCliente()" class="btn-secondary">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 
+    <!-- ============================================
+    MODAL AGENDAMENTO
+    ============================================ -->
     <div id="modalAgendamento" class="modal">
         <div class="modal-content">
-            <h3>Novo Agendamento</h3>
-            <select id="agendamentoCliente"></select>
-            <input type="date" id="agendamentoData">
-            <input type="time" id="agendamentoHora">
-            <input type="text" id="agendamentoServico" placeholder="Serviço">
-            <input type="number" id="agendamentoValor" placeholder="Valor">
-            <div class="modal-buttons">
-                <button onclick="salvarAgendamento()">Salvar</button>
-                <button onclick="fecharModal('modalAgendamento')">Cancelar</button>
-            </div>
+            <span class="close" onclick="fecharModal('modalAgendamento')">&times;</span>
+            <h3 id="modalAgendamentoTitle">Novo Agendamento</h3>
+            <form id="formAgendamento">
+                <input type="hidden" id="agendamentoId">
+
+                <div class="form-group">
+                    <label>Cliente *</label>
+                    <select id="agendamentoCliente" class="form-control" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Data *</label>
+                    <input type="date" id="agendamentoData" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Hora *</label>
+                    <input type="time" id="agendamentoHora" class="form-control" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Serviço</label>
+                    <select id="agendamentoServico" class="form-control"></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Profissional</label>
+                    <select id="agendamentoProfissional" class="form-control"></select>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor (R$)</label>
+                    <input type="number" id="agendamentoValor" class="form-control" placeholder="0,00" step="0.01">
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" onclick="fecharModal('modalAgendamento')"
+                        class="btn-secondary">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 
+    <!-- ============================================
+    MODAL EMPRESA (SUPER ADMIN)
+    ============================================ -->
     <div id="modalEditarEmpresa" class="modal">
         <div class="modal-content">
+            <span class="close" onclick="fecharModal('modalEditarEmpresa')">&times;</span>
             <h3>Editar Empresa</h3>
-            <input type="text" id="editEmpresaNome" placeholder="Nome">
-            <select id="editEmpresaPlano">
-                <option value="trial">Trial</option>
-                <option value="basico">Básico</option>
-                <option value="premium">Premium</option>
-            </select>
-            <div class="modal-buttons">
-                <button onclick="salvarEdicaoEmpresa()">Salvar</button>
-                <button onclick="fecharModal('modalEditarEmpresa')">Cancelar</button>
-            </div>
+            <form id="formEmpresa">
+                <input type="hidden" id="editEmpresaId">
+
+                <div class="form-group">
+                    <label>Nome da Empresa *</label>
+                    <input type="text" id="editEmpresaNome" class="form-control" placeholder="Nome" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Plano</label>
+                    <select id="editEmpresaPlano" class="form-control">
+                        <option value="trial">Trial</option>
+                        <option value="Starter">Starter</option>
+                        <option value="Pro">Pro</option>
+                        <option value="Business">Business</option>
+                        <option value="Enterprise">Enterprise</option>
+                    </select>
+                </div>
+
+                <div class="modal-buttons">
+                    <button type="submit" class="btn-primary">Salvar</button>
+                    <button type="button" onclick="fecharModal('modalEditarEmpresa')"
+                        class="btn-secondary">Cancelar</button>
+                </div>
+            </form>
         </div>
     </div>
 
+    <!-- ============================================
+    MODAL UPGRADE
+    ============================================ -->
     <div id="modalUpgrade" class="modal">
         <div class="modal-content">
+            <span class="close" onclick="fecharModal('modalUpgrade')">&times;</span>
             <h3>💎 Fazer Upgrade</h3>
             <div id="upgradeContent"></div>
             <div class="modal-buttons">
-                <button onclick="fecharModal('modalUpgrade')">Cancelar</button>
+                <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
@@ -241,6 +363,9 @@
     <script src="/js/pages/servicos.js"></script>
     <script src="/js/pages/planos.js"></script>
 
+    <!-- ============================================
+    SCRIPT PRINCIPAL
+    ============================================ -->
     <script>
         AOS.init({ duration: 800, once: true });
 
@@ -256,11 +381,15 @@
         function mostrarLogin() {
             document.getElementById('loginContainer').style.display = 'block';
             document.getElementById('cadastroContainer').style.display = 'none';
+            document.getElementById('loginMessage').style.display = 'none';
+            document.getElementById('cadastroMessage').style.display = 'none';
         }
 
         function mostrarCadastro() {
             document.getElementById('loginContainer').style.display = 'none';
             document.getElementById('cadastroContainer').style.display = 'block';
+            document.getElementById('loginMessage').style.display = 'none';
+            document.getElementById('cadastroMessage').style.display = 'none';
         }
 
         function mostrarApp() {
@@ -303,10 +432,100 @@
             }
         }
 
-        // ========== UI ==========
+        // ========== TOGGLE MOBILE MENU ==========
         function toggleMobileMenu() {
             document.getElementById('sidebar').classList.toggle('open');
             document.querySelector('.sidebar-overlay').classList.toggle('active');
+        }
+
+        // ========== FECHAR MODAL ==========
+        function fecharModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ========== MODAL CLIENTE ==========
+        function abrirModalCliente() {
+            const modal = document.getElementById('modalCliente');
+            if (modal) {
+                modal.style.display = 'block';
+                document.getElementById('formCliente').reset();
+                document.getElementById('clienteId').value = '';
+                document.getElementById('modalClienteTitle').textContent = 'Novo Cliente';
+            } else {
+                showToast('Modal não encontrado', 'error');
+            }
+        }
+
+        function fecharModalCliente() {
+            const modal = document.getElementById('modalCliente');
+            if (modal) modal.style.display = 'none';
+        }
+
+        // ========== MODAL AGENDAMENTO ==========
+        function abrirModalAgendamento() {
+            const modal = document.getElementById('modalAgendamento');
+            if (modal) {
+                modal.style.display = 'block';
+                document.getElementById('formAgendamento').reset();
+                document.getElementById('agendamentoId').value = '';
+                document.getElementById('modalAgendamentoTitle').textContent = 'Novo Agendamento';
+                carregarSelectsAgendamento();
+            } else {
+                showToast('Modal não encontrado', 'error');
+            }
+        }
+
+        function fecharModalAgendamento() {
+            const modal = document.getElementById('modalAgendamento');
+            if (modal) modal.style.display = 'none';
+        }
+
+        async function carregarSelectsAgendamento() {
+            try {
+                const token = localStorage.getItem('token');
+
+                // Carregar clientes
+                const resClientes = await fetch('/api/clientes', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const clientesData = await resClientes.json();
+                if (clientesData.success) {
+                    const select = document.getElementById('agendamentoCliente');
+                    select.innerHTML = '<option value="">Selecione um cliente</option>';
+                    clientesData.data.forEach(c => {
+                        select.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
+                    });
+                }
+
+                // Carregar serviços
+                const resServicos = await fetch('/api/servicos', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const servicosData = await resServicos.json();
+                if (servicosData.success) {
+                    const select = document.getElementById('agendamentoServico');
+                    select.innerHTML = '<option value="">Selecione um serviço</option>';
+                    servicosData.data.forEach(s => {
+                        select.innerHTML += `<option value="${s.id}">${s.nome} - R$ ${s.valor}</option>`;
+                    });
+                }
+
+                // Carregar profissionais
+                const resProfissionais = await fetch('/api/profissionais', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const profissionaisData = await resProfissionais.json();
+                if (profissionaisData.success) {
+                    const select = document.getElementById('agendamentoProfissional');
+                    select.innerHTML = '<option value="">Selecione um profissional</option>';
+                    profissionaisData.data.forEach(p => {
+                        select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar selects:', error);
+            }
         }
 
         // ========== AUTH ==========
@@ -336,6 +555,14 @@
                     usuario = data.data.usuario;
                     localStorage.setItem('token', token);
                     localStorage.setItem('usuario', JSON.stringify(usuario));
+
+                    // Salvar email se "Lembrar-me" estiver marcado
+                    if (document.getElementById('rememberMe').checked) {
+                        localStorage.setItem('rememberEmail', email);
+                    } else {
+                        localStorage.removeItem('rememberEmail');
+                    }
+
                     mostrarApp();
                     showToast('Login realizado com sucesso!', 'success');
                 } else {
@@ -354,9 +581,21 @@
             const email = document.getElementById('cadastroEmail').value;
             const senha = document.getElementById('cadastroSenha').value;
             const empresa_nome = document.getElementById('cadastroEmpresa').value;
+            const telefone = document.getElementById('cadastroTelefone').value;
+            const acceptTerms = document.getElementById('acceptTerms').checked;
 
             if (!nome || !email || !senha || !empresa_nome) {
-                showToast('Preencha todos os campos', 'warning');
+                showToast('Preencha todos os campos obrigatórios', 'warning');
+                return;
+            }
+
+            if (senha.length < 6) {
+                showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
+                return;
+            }
+
+            if (!acceptTerms) {
+                showToast('Aceite os Termos de Uso para continuar', 'warning');
                 return;
             }
 
@@ -366,7 +605,13 @@
                 const res = await fetch('/api/cadastro', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nome, email, senha, empresa_nome })
+                    body: JSON.stringify({
+                        nome,
+                        email,
+                        senha,
+                        empresa_nome,
+                        telefone
+                    })
                 });
                 const data = await res.json();
 
@@ -374,10 +619,10 @@
 
                 if (data.success) {
                     document.getElementById('cadastroMessage').className = 'success-message';
-                    document.getElementById('cadastroMessage').innerHTML = data.message;
+                    document.getElementById('cadastroMessage').innerHTML = '✅ ' + data.message;
                     document.getElementById('cadastroMessage').style.display = 'block';
                     showToast(data.message, 'success');
-                    setTimeout(() => mostrarLogin(), 2000);
+                    setTimeout(() => mostrarLogin(), 3000);
                 } else {
                     document.getElementById('cadastroMessage').className = 'error-message';
                     document.getElementById('cadastroMessage').innerHTML = data.message;
@@ -396,10 +641,7 @@
             usuario = null;
             showToast('Logout realizado com sucesso!', 'info');
             mostrarLanding();
-        }
-
-        function fecharModal(modalId) {
-            document.getElementById(modalId).style.display = 'none';
+            mostrarLogin();
         }
 
         // ========== MENU ==========
@@ -442,9 +684,77 @@
             if (btn) btn.classList.add('active');
         }
 
+        // ========== FECHAR MODAL AO CLICAR FORA ==========
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
+
+        // ========== ENTER KEY ==========
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter') {
+                if (document.getElementById('loginContainer').style.display !== 'none') {
+                    fazerLogin();
+                } else if (document.getElementById('cadastroContainer').style.display !== 'none') {
+                    fazerCadastro();
+                }
+            }
+        });
+
+        // ========== FECHAR MODAIS COM ESC ==========
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                document.querySelectorAll('.modal').forEach(modal => {
+                    modal.style.display = 'none';
+                });
+            }
+        });
+
+        // ============================================
+        // CORREÇÃO: CONECTAR O FORMULÁRIO DE CLIENTE
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🔧 Configurando formulário de cliente...');
+
+            const form = document.getElementById('formCliente');
+            if (form) {
+                console.log('✅ Formulário de cliente encontrado!');
+
+                // Remover eventos antigos
+                const newForm = form.cloneNode(true);
+                form.parentNode.replaceChild(newForm, form);
+
+                // Adicionar evento de submit
+                newForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔄 Formulário de cliente submetido!');
+
+                    if (typeof window.salvarCliente === 'function') {
+                        window.salvarCliente();
+                    } else {
+                        console.error('❌ salvarCliente não está disponível!');
+                        showToast('Erro: função salvarCliente não encontrada', 'error');
+                    }
+                });
+
+                console.log('✅ Evento de submit conectado com sucesso!');
+            } else {
+                console.error('❌ Formulário com id="formCliente" não encontrado!');
+            }
+        });
+
         // ========== INIT ==========
         const savedToken = localStorage.getItem('token');
         const savedUsuario = localStorage.getItem('usuario');
+
+        // Recuperar email salvo
+        const savedEmail = localStorage.getItem('rememberEmail');
+        if (savedEmail) {
+            document.getElementById('loginEmail').value = savedEmail;
+            document.getElementById('rememberMe').checked = true;
+        }
 
         if (savedToken && savedUsuario) {
             token = savedToken;

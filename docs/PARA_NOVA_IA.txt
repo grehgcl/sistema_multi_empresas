@@ -258,3 +258,115 @@ ULTIMAS CORRECOES (18/06/2026):
 32. MELHORIA: Keep alive com ping externo e interno
 33. MELHORIA: Cron job para redundância no keep alive
 =========================================
+
+
+---
+
+## 📄 PARA_NOVA_IA.txt (ATUALIZADO)
+
+```markdown
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 20/06/2026
+=========================================
+
+LEIA OS ARQUIVOS NA ORDEM:
+1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
+2. docs/IA_CONTEXT.md - Contexto completo
+3. docs/ESTRUTURA.md - Onde fica cada coisa
+4. docs/DEV_GUIDE.md - Como desenvolver
+
+COMANDO: npm start
+
+USUARIOS:
+  Super Admin: super@admin.com / super123
+  Dono: admin@teste.com / 123456
+  Profissional: (criar pelo dono) - senha definida pelo dono
+
+=========================================
+✅ O QUE JÁ FOI FEITO (20/06/2026)
+=========================================
+
+### SISTEMA DE NOTIFICAÇÕES WHATSAPP (NOVO!)
+1. ✅ Serviço WhatsApp criado (server/services/whatsapp.js)
+2. ✅ Job de lembretes criado (server/jobs/lembretes.js)
+3. ✅ Migração do banco (lembrete_enviado + telefone)
+4. ✅ Notificação ao criar agendamento
+5. ✅ Notificação ao concluir agendamento
+6. ✅ Notificação ao cancelar agendamento
+7. ✅ Lembrete automático 24h antes (job às 09:00)
+8. ✅ Modo LOG funcionando (exibe mensagens no console)
+9. ✅ Integração com Evolution API (em teste)
+10. ✅ Chatbot mantido intacto
+
+### EVOLUTION API (EM TESTE)
+1. ✅ Container Docker rodando
+2. ✅ MySQL configurado (porta 3307)
+3. ✅ Migrations aplicadas com sucesso
+4. ✅ Dashboard acessível (http://localhost:8080/manager)
+5. ❌ Instância "seeagende" NÃO criada (erro "Invalid integration")
+6. ❌ QR Code NÃO escaneado
+
+=========================================
+⏳ O QUE FALTA FAZER
+=========================================
+
+### 1. CONFIGURAR EVOLUTION API (Prioridade Média)
+- [ ] Criar instância "seeagende" no Evolution Manager
+- [ ] Escanear QR Code com WhatsApp
+- [ ] Testar envio real de mensagens
+
+### 2. ESCOLHER E CONFIGURAR PROVEDOR (Prioridade Baixa)
+- [ ] Opção A: Corrigir Evolution API
+- [ ] Opção B: Configurar WATI (conta gratuita 14 dias)
+- [ ] Opção C: Testar OpenWA (alternativa gratuita)
+
+### 3. TESTES ADICIONAIS
+- [ ] Testar job de lembretes com agendamento real
+- [ ] Verificar se o lembrete_enviado está sendo atualizado
+- [ ] Testar com números de telefone reais
+
+=========================================
+🔧 COMANDOS ÚTEIS
+=========================================
+
+# Ver containers Docker
+docker ps
+
+# Ver logs da Evolution API
+docker logs evolution-api --tail 50
+
+# Reiniciar Evolution API
+docker restart evolution-api
+
+# Testar modo LOG
+npm start
+
+# Rodar job manualmente
+node -e "const job = require('./server/jobs/lembretes'); job.enviarLembretes();"
+
+=========================================
+📋 STATUS DO WHATSAPP
+=========================================
+
+| Funcionalidade | Status |
+|----------------|--------|
+| Código WhatsApp | ✅ Pronto |
+| Modo LOG | ✅ Funcionando |
+| Job de lembretes | ✅ Rodando |
+| Evolution API | ⚠️ Em teste |
+| Envio real | ⏳ Pendente |
+
+=========================================
+ULTIMA ATUALIZACAO: 20/06/2026
+=========================================
+
+📋 RESUMO: ONDE PARAMOS
+Área	Status	Detalhe
+Código WhatsApp	✅ COMPLETO	server/services/whatsapp.js pronto
+Job de Lembretes	✅ COMPLETO	server/jobs/lembretes.js pronto
+Rotas Modificadas	✅ COMPLETO	server.js atualizado
+Migração Banco	✅ COMPLETO	Colunas adicionadas
+Modo LOG	✅ FUNCIONANDO	Mensagens aparecem no console
+Evolution API	⚠️ EM TESTE	Container rodando, mas instância não criada
+Chatbot	✅ INTACTO	Nenhuma modificação

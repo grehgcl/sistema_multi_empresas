@@ -288,3 +288,94 @@
 =========================================
 ## ULTIMA ATUALIZACAO: 18/06/2026
 =========================================
+
+
+---
+
+## 📄 ESTRUTURA.md (ATUALIZADO)
+
+```markdown
+# ESTRUTURA DO PROJETO - Atualizada em 20/06/2026
+
+├── database/
+│   └── barbearia.db          # SQLite (desenvolvimento local)
+├── public/
+│   ├── index.html            # Landing Page + Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
+│   ├── css/
+│   │   ├── style.css         # Estilos premium principais
+│   │   └── chatbot.css       # Estilos específicos do chatbot
+│   └── js/
+│       ├── ui.js             # UI Global (toasts, loading, modal)
+│       └── pages/
+│           ├── dashboard.js
+│           ├── dashboard-profissional.js
+│           ├── clientes.js
+│           ├── agendamentos.js
+│           ├── agendamentos-profissional.js
+│           ├── servicos.js
+│           ├── financeiro.js
+│           ├── empresas.js
+│           ├── configuracoes.js
+│           └── planos.js
+├── docs/
+│   ├── DEV_GUIDE.md
+│   ├── ESTRUTURA.md
+│   ├── IA_CONTEXT.md
+│   └── PARA_NOVA_IA.txt
+├── server/
+│   ├── config/
+│   │   └── database.js
+│   ├── middlewares/
+│   │   └── auth.js
+│   ├── services/             # NOVO!
+│   │   └── whatsapp.js       # Serviço de notificações WhatsApp
+│   ├── jobs/                 # NOVO!
+│   │   └── lembretes.js      # Job automático de lembretes
+│   └── utils/
+│       ├── constants.js
+│       └── helpers.js
+├── scripts/
+│   ├── migrate.js
+│   ├── seed.js
+│   └── migrate-whatsapp.js   # NOVO! Migração WhatsApp
+├── .render/
+│   └── start.sh
+├── keep_alive.js
+├── cron.js
+├── render.yaml
+├── .env.example
+├── package.json
+├── README.md
+└── server.js                 # Backend com rotas WhatsApp integradas
+
+## NOVAS VARIAVEIS DE AMBIENTE (.env)
+```env
+# WhatsApp Config
+WHATSAPP_ENABLED=true         # Ativa/Desativa WhatsApp
+WHATSAPP_PROVIDER=log         # log | wati | evolution
+
+# Evolution API
+EVOLUTION_API_URL=http://localhost:8080
+EVOLUTION_API_KEY=sua_chave_aqui
+EVOLUTION_INSTANCE=seeagende
+
+NOVAS FUNCOES (whatsapp.js)
+send(phone, message, options): Envia mensagem
+
+enviarConfirmacao(agendamento): Confirmação de agendamento
+
+enviarLembrete(agendamento): Lembrete 24h antes
+
+enviarNovoAgendamentoProfissional(agendamento): Notifica profissional
+
+enviarCancelamento(agendamento): Notifica cancelamento
+
+NOVAS COLUNAS NO BANCO
+agendamentos.lembrete_enviado (INTEGER DEFAULT 0)
+
+profissionais.telefone (TEXT)
+
+=========================================
+ULTIMA ATUALIZACAO: 20/06/2026
+=========================================

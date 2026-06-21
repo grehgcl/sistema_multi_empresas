@@ -17,6 +17,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+require('dotenv').config();
 
 // ============================================================
 // IMPORTS DAS PARTES EXTRATÍDAS
@@ -37,6 +38,11 @@ const {
     getDiaSemanaFromDate,
     gerarSenhaTemporaria
 } = require('./server/utils/helpers');
+
+// ============================================================
+// NOVO: IMPORT DO SERVIÇO WHATSAPP
+// ============================================================
+const whatsappService = require('./server/services/whatsapp');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -865,9 +871,9 @@ app.get('/api/profissionais', auth, (req, res) => {
     }
 
     const sql = isProduction
-        ? `SELECT id, nome, email, comissao_percent, ativo, created_at 
+        ? `SELECT id, nome, email, comissao_percent, ativo, created_at, telefone
            FROM profissionais WHERE empresa_id = $1 ORDER BY nome`
-        : `SELECT id, nome, email, comissao_percent, ativo, created_at 
+        : `SELECT id, nome, email, comissao_percent, ativo, created_at, telefone
            FROM profissionais WHERE empresa_id = ? ORDER BY nome`;
 
     db.all(sql, [empresa_id], (err, profissionais) => {
@@ -880,7 +886,7 @@ app.get('/api/profissionais', auth, (req, res) => {
 });
 
 app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais, (req, res) => {
-    const { nome, email, comissao_percent, senha } = req.body;
+    const { nome, email, comissao_percent, senha, telefone } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
     if (!nome || !email) {
@@ -898,12 +904,14 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
     const senhaHash = bcrypt.hashSync(senhaFinal, 10);
 
     const sql = isProduction
-        ? `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo) 
-           VALUES ($1, $2, $3, $4, $5, 1) RETURNING id`
-        : `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo) 
-           VALUES (?, ?, ?, ?, ?, 1)`;
+        ? `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo, telefone) 
+           VALUES ($1, $2, $3, $4, $5, 1, $6) RETURNING id`
+        : `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo, telefone) 
+           VALUES (?, ?, ?, ?, ?, 1, ?)`;
 
-    db.run(sql, [nome, email, senhaHash, comissao_percent || 30, empresa_id], function (err) {
+    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+
+    db.run(sql, [nome, email, senhaHash, comissao_percent || 30, empresa_id, telefonePadrao], function (err) {
         if (err) {
             if (err.message.includes('UNIQUE')) {
                 return res.json({ success: false, message: 'Email já cadastrado' });
@@ -922,18 +930,19 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
 
 app.put('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
-    const { nome, email, comissao_percent, ativo, senha } = req.body;
+    const { nome, email, comissao_percent, ativo, senha, telefone } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
     let query = isProduction
-        ? `UPDATE profissionais SET nome = COALESCE($1, nome), email = COALESCE($2, email), comissao_percent = COALESCE($3, comissao_percent), ativo = COALESCE($4, ativo)`
-        : `UPDATE profissionais SET nome = COALESCE(?, nome), email = COALESCE(?, email), comissao_percent = COALESCE(?, comissao_percent), ativo = COALESCE(?, ativo)`;
+        ? `UPDATE profissionais SET nome = COALESCE($1, nome), email = COALESCE($2, email), comissao_percent = COALESCE($3, comissao_percent), ativo = COALESCE($4, ativo), telefone = COALESCE($5, telefone)`
+        : `UPDATE profissionais SET nome = COALESCE(?, nome), email = COALESCE(?, email), comissao_percent = COALESCE(?, comissao_percent), ativo = COALESCE(?, ativo), telefone = COALESCE(?, telefone)`;
 
-    let params = [nome, email, comissao_percent, ativo];
+    const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+    let params = [nome, email, comissao_percent, ativo, telefonePadrao];
 
     if (senha && senha.trim() !== '') {
         const senhaHash = bcrypt.hashSync(senha, 10);
-        query += isProduction ? `, senha = $5` : `, senha = ?`;
+        query += isProduction ? `, senha = $6` : `, senha = ?`;
         params.push(senhaHash);
     }
 
@@ -1069,11 +1078,14 @@ app.get('/api/agendamentos', auth, (req, res) => {
     });
 });
 
-app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
-    const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
+// ============================================
+// ROTA: CRIAR AGENDAMENTO (COM NOTIFICAÇÃO WHATSAPP)
+// ============================================
+app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, async (req, res) => {
+    const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('📝 Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, servico, valor, profissional_id, empresa_id }, null, 2));
+    console.log('📝 Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
 
     if (!cliente_id || !data) {
         console.log('❌ Cliente ou data faltando');
@@ -1085,10 +1097,8 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
         return res.json({ success: false, message: 'Horário é obrigatório' });
     }
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
     // Função para criar o agendamento
-    function criarAgendamento(servicoNome, servicoValor, servicoId) {
+    async function criarAgendamento(servicoNome, servicoValor, servicoId) {
         const sqlInsert = isProduction
             ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
                VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
@@ -1109,16 +1119,80 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
         console.log('📝 SQL Insert:', sqlInsert);
         console.log('📝 Parâmetros:', params);
 
-        db.run(sqlInsert, params, function (err) {
+        db.run(sqlInsert, params, async function (err) {
             if (err) {
                 console.error('❌ Erro ao criar agendamento:', err.message);
-                console.error('❌ SQL:', sqlInsert);
-                console.error('❌ Parâmetros:', params);
                 return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
             }
 
             let id = this?.lastID || this?.id || null;
             console.log('✅ Agendamento criado com ID:', id);
+
+            // ============================================
+            // ENVIA NOTIFICAÇÕES WHATSAPP
+            // ============================================
+            try {
+                // Buscar cliente
+                const cliente = await new Promise((resolve, reject) => {
+                    db.get('SELECT * FROM clientes WHERE id = ?', [parseInt(cliente_id)], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+
+                // Buscar serviço
+                const servico = await new Promise((resolve, reject) => {
+                    db.get('SELECT * FROM servicos WHERE id = ?', [servicoId || null], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row || { nome: servicoNome, valor: servicoValor });
+                    });
+                });
+
+                // Buscar profissional
+                let profissional = null;
+                if (profissional_id) {
+                    profissional = await new Promise((resolve, reject) => {
+                        db.get('SELECT * FROM profissionais WHERE id = ?', [parseInt(profissional_id)], (err, row) => {
+                            if (err) reject(err);
+                            else resolve(row);
+                        });
+                    });
+                }
+
+                // Buscar empresa
+                const empresa = await new Promise((resolve, reject) => {
+                    db.get('SELECT * FROM empresas WHERE id = ?', [parseInt(empresa_id)], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+
+                const dadosNotificacao = {
+                    cliente: { nome: cliente?.nome || 'Cliente', telefone: cliente?.telefone || null },
+                    servico: { nome: servico?.nome || servicoNome, valor: servico?.valor || servicoValor },
+                    profissional: profissional ? { nome: profissional.nome, telefone: profissional.telefone || null } : null,
+                    data: data,
+                    hora: hora,
+                    empresa: { nome: empresa?.nome || 'Barbearia', endereco: empresa?.endereco || '' },
+                };
+
+                // Envia confirmação para o cliente (se tiver telefone)
+                if (dadosNotificacao.cliente.telefone) {
+                    await whatsappService.enviarConfirmacao(dadosNotificacao);
+                    console.log(`📱 WhatsApp: Confirmação enviada para ${dadosNotificacao.cliente.telefone}`);
+                }
+
+                // Envia notificação para o profissional (se tiver telefone)
+                if (profissional?.telefone) {
+                    await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao);
+                    console.log(`📱 WhatsApp: Notificação enviada para profissional ${profissional.telefone}`);
+                }
+
+            } catch (whatsappError) {
+                console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
+                // Não bloqueia a criação do agendamento
+            }
+
             res.json({ success: true, data: { id: id }, message: 'Agendamento criado com sucesso!' });
         });
     }
@@ -1148,8 +1222,8 @@ app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, (req, res) => {
     } else {
         // Sem serviço_id (serviço manual)
         console.log('📝 Criando agendamento sem serviço_id (manual)');
-        const servicoNome = servico || '';
-        const servicoValor = parseFloat(valor) || 0;
+        const servicoNome = req.body.servico || '';
+        const servicoValor = parseFloat(req.body.valor) || 0;
         criarAgendamento(servicoNome, servicoValor, null);
     }
 });
@@ -1284,21 +1358,23 @@ app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: /api/agendamentos/:id/concluir - CORRIGIDA
+// ROTA: /api/agendamentos/:id/concluir - COM WHATSAPP
 // ============================================
 
-app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
+app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 
     // Buscar o agendamento com o profissional
     db.get(
-        `SELECT a.*, p.comissao_percent 
+        `SELECT a.*, p.comissao_percent, p.nome as profissional_nome, c.nome as cliente_nome, c.telefone, s.nome as servico_nome
          FROM agendamentos a
          LEFT JOIN profissionais p ON a.profissional_id = p.id
+         LEFT JOIN clientes c ON a.cliente_id = c.id
+         LEFT JOIN servicos s ON a.servico_id = s.id
          WHERE a.id = ? AND a.empresa_id = ?`,
         [id, empresaId],
-        (err, agendamento) => {
+        async (err, agendamento) => {
             if (err) {
                 return res.json({ success: false, message: err.message });
             }
@@ -1308,9 +1384,7 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
 
             let comissao = 0;
 
-            // ============================================
             // SÓ CALCULAR COMISSÃO SE TIVER PROFISSIONAL
-            // ============================================
             if (agendamento.profissional_id) {
                 const valor = parseFloat(agendamento.valor) || 0;
                 const percentual = parseFloat(agendamento.comissao_percent) || 30;
@@ -1323,10 +1397,30 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
                  SET status = 'concluido', comissao = ? 
                  WHERE id = ? AND empresa_id = ?`,
                 [comissao, id, empresaId],
-                function (err) {
+                async function (err) {
                     if (err) {
                         return res.json({ success: false, message: err.message });
                     }
+
+                    // ============================================
+                    // ENVIA AGRADECIMENTO PARA O CLIENTE
+                    // ============================================
+                    if (agendamento.telefone) {
+                        try {
+                            await whatsappService.send(
+                                agendamento.telefone,
+                                `✨ *Atendimento Concluído!*\n\n` +
+                                `Olá *${agendamento.cliente_nome || 'Cliente'}*! Seu atendimento foi concluído com sucesso. ✅\n\n` +
+                                `Agradecemos pela preferência! 🙏\n\n` +
+                                `Já pensou em agendar seu próximo corte? Agende pelo nosso chatbot! 🤖\n\n` +
+                                `_Esta é uma mensagem automática._`
+                            );
+                            console.log(`📱 WhatsApp: Agradecimento enviado para ${agendamento.telefone}`);
+                        } catch (whatsappError) {
+                            console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
+                        }
+                    }
+
                     res.json({
                         success: true,
                         message: 'Agendamento concluído com sucesso!',
@@ -1336,6 +1430,70 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, (req, res) => {
             );
         }
     );
+});
+
+// ============================================
+// ROTA: CANCELAR AGENDAMENTO (COM WHATSAPP)
+// ============================================
+app.put('/api/agendamentos/:id/cancelar', auth, verificarDono, async (req, res) => {
+    const { id } = req.params;
+    const empresa_id = req.usuario.empresa_id;
+
+    try {
+        const agendamento = await new Promise((resolve, reject) => {
+            db.get(
+                `SELECT a.*, c.nome as cliente_nome, c.telefone, s.nome as servico_nome 
+                 FROM agendamentos a
+                 LEFT JOIN clientes c ON a.cliente_id = c.id
+                 LEFT JOIN servicos s ON a.servico_id = s.id
+                 WHERE a.id = ? AND a.empresa_id = ?`,
+                [id, empresa_id],
+                (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                }
+            );
+        });
+
+        if (!agendamento) {
+            return res.status(404).json({ success: false, message: 'Agendamento não encontrado' });
+        }
+
+        await new Promise((resolve, reject) => {
+            db.run(
+                `UPDATE agendamentos SET status = 'cancelado' WHERE id = ?`,
+                [id],
+                (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                }
+            );
+        });
+
+        // ============================================
+        // NOTIFICA CANCELAMENTO
+        // ============================================
+        if (agendamento.telefone) {
+            try {
+                await whatsappService.enviarCancelamento({
+                    cliente: { nome: agendamento.cliente_nome || 'Cliente' },
+                    servico: { nome: agendamento.servico_nome || 'Serviço' },
+                    data: agendamento.data,
+                    hora: agendamento.hora,
+                    empresa: { nome: 'Barbearia' }
+                });
+                console.log(`📱 WhatsApp: Cancelamento notificado para ${agendamento.telefone}`);
+            } catch (whatsappError) {
+                console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
+            }
+        }
+
+        res.json({ success: true, message: 'Agendamento cancelado' });
+
+    } catch (error) {
+        console.error('Erro ao cancelar agendamento:', error);
+        res.status(500).json({ success: false, message: 'Erro ao cancelar agendamento' });
+    }
 });
 
 app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
@@ -1983,7 +2141,7 @@ app.get('/api/empresa/dados', auth, (req, res) => {
 });
 
 // ============================================================
-// ROTAS DO CHATBOT (PÚBLICAS) - Mantidas com ? porque são públicas
+// ROTAS DO CHATBOT (PÚBLICAS) - MANTIDAS INTACTAS
 // ============================================================
 
 app.get('/api/chatbot/empresa/:id', (req, res) => {
@@ -2102,7 +2260,7 @@ app.post('/api/chatbot/cliente/criar', (req, res) => {
 });
 
 // ============================================
-// ROTA: /api/chatbot/datas-disponiveis-mes - CORRIGIDA (POSTGRESQL)
+// ROTA: /api/chatbot/datas-disponiveis-mes - CORRIGIDA
 // ============================================
 app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     const { empresaId, mes, ano, profissionalId } = req.body;
@@ -2111,6 +2269,25 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     const anoSolicitado = parseInt(ano) || new Date().getFullYear();
 
     console.log(`📅 Buscando datas para ${mesSolicitado}/${anoSolicitado} - Profissional: ${profissionalId || 'todos'}`);
+
+    // ============================================
+    // VALIDAR E NORMALIZAR O profissionalId
+    // ============================================
+    let profissionalIdNum = null;
+
+    if (profissionalId &&
+        profissionalId !== 'null' &&
+        profissionalId !== 'undefined' &&
+        profissionalId !== '') {
+
+        if (typeof profissionalId === 'string') {
+            if (!isNaN(profissionalId) && !profissionalId.includes('dono')) {
+                profissionalIdNum = parseInt(profissionalId);
+            }
+        } else if (typeof profissionalId === 'number') {
+            profissionalIdNum = profissionalId;
+        }
+    }
 
     // ============================================
     // BUSCAR TODOS OS AGENDAMENTOS DO MÊS
@@ -2133,10 +2310,10 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
         ? [empresaId, anoSolicitado.toString(), mesSolicitado.toString().padStart(2, '0')]
         : [empresaId, anoSolicitado.toString(), mesSolicitado.toString().padStart(2, '0')];
 
-    // Se tiver profissional específico
-    if (profissionalId && profissionalId !== 'null' && profissionalId !== 'dono_' && !profissionalId.includes('dono')) {
+    // Se tiver profissional específico (apenas se for número válido)
+    if (profissionalIdNum && profissionalIdNum > 0) {
         sqlAgendamentos += isProduction ? ` AND profissional_id = $4` : ` AND profissional_id = ?`;
-        params.push(parseInt(profissionalId));
+        params.push(profissionalIdNum);
     }
 
     db.all(sqlAgendamentos, params, (err, agendamentos) => {
@@ -2193,19 +2370,14 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                     const dataAtual = new Date(anoSolicitado, mesSolicitado - 1, dia);
                     const diaSemana = dataAtual.getDay();
 
-                    // Formatar data como YYYY-MM-DD
                     const dataStr = `${anoSolicitado}-${String(mesSolicitado).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
 
-                    // PULAR DATAS PASSADAS
                     if (dataAtual < hoje) continue;
-
-                    // PULAR DIAS QUE NÃO FUNCIONAM
                     if (!horariosFuncMap[diaSemana]) continue;
 
                     const horarioDia = horariosFuncMap[diaSemana];
                     const horariosOcupados = horariosPorDia[dataStr] || [];
 
-                    // Gerar horários do dia
                     const todosHorarios = gerarHorariosDoDia(
                         horarioDia.hora_inicio,
                         horarioDia.hora_fim,
@@ -2213,7 +2385,6 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                         horarioDia.almoco_fim
                     );
 
-                    // Verificar se tem horário livre
                     const temHorarioLivre = todosHorarios.some(h => !horariosOcupados.includes(h));
 
                     if (temHorarioLivre) {
@@ -2234,7 +2405,6 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     });
 });
 
-
 // ============================================
 // ROTA: /api/chatbot/horarios-disponiveis - CORRIGIDA
 // ============================================
@@ -2244,7 +2414,31 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     console.log(`🔍 Buscando horários para ${data} - Profissional: ${profissionalId || 'todos'}`);
 
     // ============================================
-    // BUSCAR AGENDAMENTOS DO DIA (do profissional específico)
+    // VALIDAR E NORMALIZAR O profissionalId
+    // ============================================
+    let profissionalIdNum = null;
+
+    // Verificar se profissionalId existe e não é 'null', 'undefined' ou string vazia
+    if (profissionalId &&
+        profissionalId !== 'null' &&
+        profissionalId !== 'undefined' &&
+        profissionalId !== '') {
+
+        // Se for string, tentar converter para número
+        if (typeof profissionalId === 'string') {
+            // Verificar se é um número (ex: "1", "2", etc)
+            if (!isNaN(profissionalId) && !profissionalId.includes('dono')) {
+                profissionalIdNum = parseInt(profissionalId);
+            }
+        } else if (typeof profissionalId === 'number') {
+            profissionalIdNum = profissionalId;
+        }
+    }
+
+    console.log(`📝 profissionalId normalizado: ${profissionalIdNum}`);
+
+    // ============================================
+    // BUSCAR AGENDAMENTOS DO DIA
     // ============================================
     let sqlAgendamentos = `
         SELECT hora 
@@ -2255,9 +2449,10 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     `;
     let params = [empresaId, data];
 
-    if (profissionalId && profissionalId !== 'null' && profissionalId !== 'dono_' && !profissionalId.includes('dono')) {
+    // Se tiver profissional específico (apenas se for número válido)
+    if (profissionalIdNum && profissionalIdNum > 0) {
         sqlAgendamentos += ` AND profissional_id = ?`;
-        params.push(parseInt(profissionalId));
+        params.push(profissionalIdNum);
     }
 
     db.all(sqlAgendamentos, params, (err, agendamentos) => {
@@ -2737,11 +2932,44 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 });
 
 // ============================================================
+// JOBS E SERVIÇOS
+// ============================================================
+
+// Inicia o job de lembretes WhatsApp
+const lembreteJob = require('./server/jobs/lembretes');
+
+if (process.env.WHATSAPP_ENABLED === 'true') {
+    lembreteJob.start();
+    console.log('✅ Job de lembretes WhatsApp iniciado');
+} else {
+    console.log('ℹ️ WhatsApp desabilitado (WHATSAPP_ENABLED=false)');
+}
+
+// ============================================================
+// INICIAR WPPCONNECT LOCAL (SE HABILITADO) - CORRIGIDO
+// ============================================================
+if (process.env.WHATSAPP_ENABLED === 'true' && process.env.WHATSAPP_PROVIDER === 'wppconnect') {
+    try {
+        const { getClient } = require('./server/services/wppconnect-local');
+        // Inicia em background sem bloquear o servidor
+        setTimeout(async () => {
+            try {
+                await getClient();
+                console.log('✅ WhatsApp WPPConnect iniciado com sucesso!');
+            } catch (err) {
+                console.error('❌ Erro ao iniciar WPPConnect:', err.message);
+            }
+        }, 2000);
+    } catch (error) {
+        console.error('❌ Erro ao carregar wppconnect-local:', error.message);
+    }
+}
+
+// ============================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================================
 
 const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
-
 
 app.listen(PORT, HOST, () => {
     console.log(`🚀 Servidor rodando em http://${HOST}:${PORT}`);
@@ -2752,6 +2980,7 @@ app.listen(PORT, HOST, () => {
     console.log(`   Pro: R$ 49,90/mês - 5 profissionais`);
     console.log(`   Business: R$ 99,90/mês - 12 profissionais`);
     console.log(`   Enterprise: R$ 199,90/mês - Profissionais ilimitados`);
+    console.log(`\n📱 WhatsApp: ${process.env.WHATSAPP_ENABLED === 'true' ? '✅ ATIVADO' : '❌ DESABILITADO'}`);
 });
 
 // ============================================================
