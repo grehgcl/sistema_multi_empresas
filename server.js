@@ -335,7 +335,6 @@ app.post('/api/cadastro', (req, res) => {
 
     console.log('📝 Tentando cadastrar:', { nome, email, empresa_nome });
 
-    // Verificar se email já existe
     const sqlCheck = isProduction
         ? 'SELECT id FROM usuarios WHERE email = $1'
         : 'SELECT id FROM usuarios WHERE email = ?';
@@ -350,28 +349,20 @@ app.post('/api/cadastro', (req, res) => {
             return res.json({ success: false, message: 'Email já cadastrado' });
         }
 
-        // Calcular data de expiração do trial (45 dias)
-        const trialExpira = new Date();
-        trialExpira.setDate(trialExpira.getDate() + 45);
-        const trialData = trialExpira.toISOString().split('T')[0];
-
-        // Criar empresa
+        // 🔥 CRIAR EMPRESA COM 45 DIAS DE TRIAL
         const sqlEmpresa = isProduction
             ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
-               VALUES ($1, 'trial', 1, $2, 1) RETURNING id`
+               VALUES ($1, 'trial', 1, (CURRENT_TIMESTAMP + INTERVAL '45 days'), 1) RETURNING id`
             : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
-               VALUES (?, 'trial', 1, ?, 1)`;
+               VALUES (?, 'trial', 1, datetime('now', '+45 days'), 1)`;
 
-        console.log('📝 SQL Empresa:', sqlEmpresa);
-        console.log('📝 Parâmetros Empresa:', [empresa_nome, trialData]);
-
-        db.run(sqlEmpresa, [empresa_nome, trialData], function (err) {
+        db.run(sqlEmpresa, [empresa_nome], function (err) {
             if (err) {
                 console.error('❌ Erro ao criar empresa:', err.message);
                 return res.json({ success: false, message: 'Erro ao criar empresa: ' + err.message });
             }
 
-            // Buscar o ID da empresa criada
+            // 🔥 BUSCAR O ID DA EMPRESA CRIADA
             const sqlFind = isProduction
                 ? 'SELECT id FROM empresas WHERE nome = $1 ORDER BY id DESC LIMIT 1'
                 : 'SELECT id FROM empresas WHERE nome = ? ORDER BY id DESC LIMIT 1';
@@ -385,7 +376,7 @@ app.post('/api/cadastro', (req, res) => {
                 const empresa_id = row.id;
                 console.log('✅ Empresa criada com ID:', empresa_id);
 
-                // Criar usuário
+                // 🔥 CRIAR USUÁRIO DONO
                 const senhaHash = bcrypt.hashSync(senha, 10);
                 const sqlUsuario = isProduction
                     ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
@@ -399,24 +390,115 @@ app.post('/api/cadastro', (req, res) => {
                         return res.json({ success: false, message: 'Erro ao criar usuário: ' + err.message });
                     }
 
-                    // Inserir horários padrão
-                    try {
-                        inserirHorariosPadrao(empresa_id);
-                        console.log('✅ Horários padrão criados');
-                    } catch (err) {
-                        console.error('⚠️ Erro ao criar horários:', err.message);
+                    console.log('✅ Usuário criado com sucesso!');
+
+                    // 🔥🔥🔥 INSERIR HORÁRIOS PADRÃO - CORRIGIDO 🔥🔥🔥
+                    console.log('📝 Inserindo horários padrão para empresa:', empresa_id);
+
+                    const diasSemana = [0, 1, 2, 3, 4, 5, 6];
+                    let horariosInseridos = 0;
+                    let erroHorarios = false;
+
+                    for (const dia of diasSemana) {
+                        const sqlHorario = isProduction
+                            ? `INSERT OR REPLACE INTO horarios_funcionamento 
+                               (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                               VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)`
+                            : `INSERT OR REPLACE INTO horarios_funcionamento 
+                               (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                               VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
+
+                        db.run(sqlHorario, [empresa_id, dia], function (err) {
+                            if (err) {
+                                console.error(`❌ Erro ao inserir horário dia ${dia}:`, err.message);
+                                erroHorarios = true;
+                            } else {
+                                horariosInseridos++;
+                                console.log(`✅ Horário dia ${dia} inserido (${horariosInseridos}/7)`);
+                            }
+
+                            // 🔥 QUANDO TODOS OS 7 DIAS FOREM PROCESSADOS
+                            if (horariosInseridos === 7 || erroHorarios) {
+                                console.log(`📊 Total de horários inseridos: ${horariosInseridos}/7`);
+
+                                if (horariosInseridos === 7) {
+                                    console.log('✅ TODOS os horários foram inseridos com sucesso!');
+                                } else {
+                                    console.warn('⚠️ Alguns horários falharam. Tentando método alternativo...');
+
+                                    // 🔥 MÉTODO ALTERNATIVO: Inserir um por um com verificação
+                                    for (const diaAlt of diasSemana) {
+                                        const sqlCheck = isProduction
+                                            ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = $2`
+                                            : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`;
+
+                                        db.get(sqlCheck, [empresa_id, diaAlt], (err, result) => {
+                                            if (!err && result && result.total === 0) {
+                                                const sqlInsertAlt = isProduction
+                                                    ? `INSERT INTO horarios_funcionamento 
+                                                       (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                                       VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)`
+                                                    : `INSERT INTO horarios_funcionamento 
+                                                       (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                                       VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
+
+                                                db.run(sqlInsertAlt, [empresa_id, diaAlt], (err) => {
+                                                    if (err) {
+                                                        console.error(`❌ Erro ao inserir horário dia ${diaAlt} (método alternativo):`, err.message);
+                                                    } else {
+                                                        console.log(`✅ Horário dia ${diaAlt} inserido (método alternativo)`);
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                }
+
+                                // 🔥 RESPOSTA FINAL
+                                res.json({
+                                    success: true,
+                                    message: 'Cadastro realizado! Você tem 45 dias de teste.',
+                                    data: {
+                                        empresa_id: empresa_id,
+                                        horarios_inseridos: horariosInseridos
+                                    }
+                                });
+                            }
+                        });
                     }
 
-                    res.json({
-                        success: true,
-                        message: 'Cadastro realizado! Você tem 45 dias de teste.'
-                    });
+                    // 🔥 TIMEOUT DE SEGURANÇA (caso os callbacks não sejam chamados)
+                    setTimeout(() => {
+                        console.log('⏰ Timeout: Verificando horários...');
+                        const sqlCheckAll = isProduction
+                            ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
+                            : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
+
+                        db.get(sqlCheckAll, [empresa_id], (err, result) => {
+                            if (!err && result && result.total > 0) {
+                                console.log(`✅ ${result.total} horários encontrados após timeout`);
+                            } else {
+                                console.warn('⚠️ Nenhum horário encontrado após timeout. Inserindo manualmente...');
+                                // Inserir manualmente todos os dias
+                                for (const diaManual of [0, 1, 2, 3, 4, 5, 6]) {
+                                    const sqlManual = isProduction
+                                        ? `INSERT OR IGNORE INTO horarios_funcionamento 
+                                           (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                           VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)`
+                                        : `INSERT OR IGNORE INTO horarios_funcionamento 
+                                           (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                           VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
+
+                                    db.run(sqlManual, [empresa_id, diaManual]);
+                                }
+                            }
+                        });
+                    }, 3000);
                 });
             });
         });
     });
 });
-
 // ============================================================
 // ROTAS DE PLANOS
 // ============================================================

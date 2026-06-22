@@ -379,3 +379,112 @@ profissionais.telefone (TEXT)
 =========================================
 ULTIMA ATUALIZACAO: 20/06/2026
 =========================================
+
+
+---
+
+### **2. docs/ESTRUTURA.md**
+
+```markdown
+# ESTRUTURA DO PROJETO - Atualizada em 21/06/2026
+
+├── database/
+│   └── barbearia.db          # SQLite (desenvolvimento local)
+├── public/
+│   ├── index.html            # Landing Page + Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
+│   ├── css/
+│   │   ├── style.css         # Estilos premium com tema escuro
+│   │   └── chatbot.css       # Estilos específicos do chatbot
+│   └── js/
+│       ├── ui.js             # UI Global (toasts, loading, modal)
+│       └── pages/
+│           ├── dashboard.js              # Dashboard com ações rápidas
+│           ├── dashboard-profissional.js # Dashboard Profissional
+│           ├── clientes.js               # CRUD Clientes + WhatsApp
+│           ├── agendamentos.js           # CRUD Agendamentos
+│           ├── agendamentos-profissional.js # Agendamentos (Profissional)
+│           ├── servicos.js               # CRUD Servicos
+│           ├── financeiro.js             # Financeiro
+│           ├── empresas.js               # Gestao empresas (Super Admin)
+│           ├── configuracoes.js          # Configuracoes + Tema
+│           └── planos.js                 # Página de Planos e Upgrade
+├── docs/                    # Documentacao
+│   ├── DEV_GUIDE.md
+│   ├── ESTRUTURA.md
+│   ├── IA_CONTEXT.md
+│   └── PARA_NOVA_IA.txt
+├── server/
+│   ├── config/
+│   │   └── database.js      # Conexão com banco
+│   ├── middlewares/
+│   │   └── auth.js          # Middlewares de autenticação
+│   ├── services/
+│   │   └── whatsapp.js      # Serviço de notificações WhatsApp
+│   ├── jobs/
+│   │   └── lembretes.js     # Job automático de lembretes
+│   └── utils/
+│       ├── constants.js     # Constantes (PLANOS, JWT_SECRET)
+│       └── helpers.js       # Funções auxiliares
+├── scripts/
+│   ├── migrate.js           # Migração do banco
+│   └── seed.js              # População com dados iniciais
+├── .render/
+│   └── start.sh             # Script de inicialização no Render
+├── keep_alive.js            # Mantém o servidor ativo
+├── cron.js                  # Job alternativo para manter servidor ativo
+├── render.yaml              # Configuração de deploy no Render
+├── .env.example             # Exemplo de variáveis de ambiente
+├── package.json             # Dependências e scripts
+├── README.md                # Documentação do projeto
+└── server.js                # Backend completo + rotas
+
+## TEMA ESCURO (NOVO!)
+- O sistema inicia com tema escuro por padrão
+- Toggle disponível nas Configurações > Tema
+- Estilo Instagram com transições suaves
+- Salvo automaticamente no localStorage
+
+## VARIAVEIS GLOBAIS (localStorage)
+- token: JWT do usuario logado
+- usuario: { id, nome, email, role, empresa_id, comissao_percent? }
+- theme: 'dark' | 'light' - tema atual do sistema
+
+## VARIAVEIS DE AMBIENTE (.env)
+- NODE_ENV: production / development
+- RENDER: true / false (identifica ambiente Render)
+- DATABASE_URL: URL do PostgreSQL (apenas produção)
+- PORT: 3000 (padrão)
+- JWT_SECRET: Chave secreta para JWT
+- RENDER_EXTERNAL_URL: URL pública do serviço
+
+## FUNCOES GLOBAIS UI (ui.js)
+- showToast(msg, type): Exibe notificacao toast
+- showLoading(): Mostra loading spinner
+- hideLoading(): Esconde loading spinner
+- showModal(title, content, callback): Modal customizado
+
+## FLUXO DE TELAS POR ROLE
+
+### Super Admin
+- Dashboard (stats globais)
+- Empresas (listar, editar, estender trial)
+- Financeiro Global (todas comissoes)
+
+### Dono
+- Dashboard (stats da empresa, gráficos, métricas)
+- Agendamentos (CRUD com filtros, edicao, horarios 30/30min)
+- Servicos (CRUD completo)
+- Financeiro (cards por profissional + totais)
+- Clientes (CRUD + bloqueio chatbot + WhatsApp)
+- Configuracoes (Profissionais + Horarios + Chatbot + Tema)
+- Planos (Visualizar planos e fazer upgrade)
+
+### Profissional
+- Dashboard (suas comissoes e pendentes)
+- Meus Agendamentos (listar, criar, editar, concluir)
+- Minhas Comissoes (suas comissoes)
+
+=========================================
+ULTIMA ATUALIZACAO: 21/06/2026
+=========================================

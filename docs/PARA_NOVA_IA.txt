@@ -370,3 +370,129 @@ Migração Banco	✅ COMPLETO	Colunas adicionadas
 Modo LOG	✅ FUNCIONANDO	Mensagens aparecem no console
 Evolution API	⚠️ EM TESTE	Container rodando, mas instância não criada
 Chatbot	✅ INTACTO	Nenhuma modificação
+
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 21/06/2026
+=========================================
+
+LEIA OS ARQUIVOS NA ORDEM:
+1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
+2. docs/IA_CONTEXT.md - Contexto completo
+3. docs/ESTRUTURA.md - Onde fica cada coisa
+4. docs/DEV_GUIDE.md - Como desenvolver
+
+COMANDO: npm start
+
+USUARIOS:
+  Super Admin: super@admin.com / super123
+  Dono: admin@teste.com / 123456
+  Profissional: (criar pelo dono) - senha definida pelo dono
+
+=========================================
+✅ IMPLEMENTADO (21/06/2026)
+=========================================
+
+### 1. TEMA ESCURO POR PADRÃO 🌙
+- Sistema inicia com tema escuro estilo Instagram
+- Transição suave entre temas
+- Salvo no localStorage
+- Aba "Tema" nas configurações
+
+### 2. AÇÕES RÁPIDAS CORRIGIDAS ⚡
+- "Novo Agendamento" usa o mesmo modal da página de agendamentos
+- "Novo Cliente" usa o mesmo modal da página de clientes
+- Consistência visual em todo o sistema
+
+### 3. SISTEMA DE NOTIFICAÇÕES WHATSAPP 📱
+- Confirmação de agendamento
+- Lembrete 24h antes (job às 09:00)
+- Agradecimento após conclusão
+- Notificação de cancelamento
+- Modo LOG funcionando
+
+### 4. CORREÇÕES DO CHATBOT 🤖
+- Corrigido erro `profissionalId.includes is not a function`
+- Validação de horários melhorada
+- Calendário visual funcionando
+
+=========================================
+🔄 O QUE JÁ EXISTE
+=========================================
+
+1. Autenticacao (Super Admin, Dono, Profissional)
+2. CRUD Clientes (apenas Dono)
+3. CRUD Agendamentos (Dono e Profissional)
+4. Sistema de Comissoes (configurável, padrao 30%)
+5. Financeiro com:
+   - Faturamento Bruto
+   - Comissoes a Pagar
+   - Faturamento Liquido
+   - Cards por profissional
+6. Super Admin: gestao de empresas
+7. Sistema de Profissionais
+8. Sistema de Servicos
+9. Chatbot Inteligente
+10. Sistema de Planos de Assinatura
+11. Sistema de Pagamentos (Mercado Pago)
+12. Landing Page tela dividida
+13. Dashboard com métricas
+14. Configurações (Profissionais, Horários, Chatbot, Tema)
+15. Tema escuro por padrão
+
+=========================================
+📋 ESTRUTURA DOS ARQUIVOS
+=========================================
+
+server/
+├── config/
+│   └── database.js
+├── middlewares/
+│   └── auth.js
+├── services/
+│   └── whatsapp.js
+├── jobs/
+│   └── lembretes.js
+└── utils/
+    ├── constants.js
+    └── helpers.js
+
+public/
+├── index.html
+├── chatbot.html
+├── css/
+│   ├── style.css
+│   └── chatbot.css
+└── js/
+    ├── ui.js
+    └── pages/
+        ├── dashboard.js
+        ├── dashboard-profissional.js
+        ├── clientes.js
+        ├── agendamentos.js
+        ├── agendamentos-profissional.js
+        ├── servicos.js
+        ├── financeiro.js
+        ├── empresas.js
+        ├── configuracoes.js
+        └── planos.js
+
+=========================================
+🔧 COMANDOS ÚTEIS
+=========================================
+
+# Iniciar servidor
+npm start
+
+# Ver logs do servidor
+npm start
+
+# Limpar cache do navegador
+Ctrl + Shift + R
+
+# Acessar sistema
+http://localhost:3000
+
+=========================================
+ULTIMA ATUALIZACAO: 21/06/2026
+=========================================
