@@ -1,10 +1,14 @@
 // ============================================
-// MIDDLEWARES - NÃO MEXER!
+// MIDDLEWARES - COMPLETO COM LIMITE DE AGENDAMENTOS
 // ============================================
 
 const jwt = require('jsonwebtoken');
 const { JWT_SECRET } = require('../utils/constants');
 const { db } = require('../config/database');
+
+// ============================================
+// 1. AUTENTICAÇÃO
+// ============================================
 
 function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
@@ -20,12 +24,20 @@ function auth(req, res, next) {
     }
 }
 
+// ============================================
+// 2. VERIFICAR SUPER ADMIN
+// ============================================
+
 function verificarSuperAdmin(req, res, next) {
     if (req.usuario.role !== 'superadmin') {
         return res.status(403).json({ success: false, message: 'Acesso negado. Apenas Super Admin.' });
     }
     next();
 }
+
+// ============================================
+// 3. VERIFICAR DONO
+// ============================================
 
 function verificarDono(req, res, next) {
     if (req.usuario.role !== 'dono') {
@@ -34,29 +46,50 @@ function verificarDono(req, res, next) {
     next();
 }
 
+// ============================================
+// 4. VERIFICAR LIMITE DE PROFISSIONAIS
+// ============================================
+
 function verificarLimiteProfissionais(req, res, next) {
     const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.get(`SELECT plano, limite_profissionais, 
+    console.log(`🔍 Verificando limite de profissionais para empresa ${empresaId}`);
+
+    const sql = isProduction
+        ? `SELECT plano, limite_profissionais, 
+            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = $1 AND ativo = 1) as total_profs 
+            FROM empresas WHERE id = $1`
+        : `SELECT plano, limite_profissionais, 
             (SELECT COUNT(*) FROM profissionais WHERE empresa_id = ? AND ativo = 1) as total_profs 
-            FROM empresas WHERE id = ?`,
-        [empresaId, empresaId], (err, empresa) => {
-            if (err) return res.status(500).json({ success: false, message: 'Erro interno' });
+            FROM empresas WHERE id = ?`;
 
-            if (!empresa) {
-                return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
-            }
+    db.get(sql, [empresaId, empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao verificar limite:', err);
+            return res.status(500).json({ success: false, message: 'Erro interno' });
+        }
 
-            if (empresa.total_profs >= empresa.limite_profissionais) {
-                return res.status(403).json({
-                    success: false,
-                    message: `Seu plano (${empresa.plano}) permite apenas ${empresa.limite_profissionais} profissional(is). Faça upgrade para adicionar mais.`,
-                    needs_upgrade: true
-                });
-            }
-            next();
-        });
+        if (!empresa) {
+            return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        console.log(`📊 Profissionais: ${empresa.total_profs}/${empresa.limite_profissionais}`);
+
+        if (empresa.total_profs >= empresa.limite_profissionais) {
+            return res.status(403).json({
+                success: false,
+                message: `Seu plano (${empresa.plano}) permite apenas ${empresa.limite_profissionais} profissional(is). Faça upgrade para adicionar mais.`,
+                needs_upgrade: true
+            });
+        }
+        next();
+    });
 }
+
+// ============================================
+// 5. VERIFICAR ACESSO A AGENDAMENTOS (TRIAL/ASSINATURA)
+// ============================================
 
 function verificarAcessoAgendamentos(req, res, next) {
     const empresaId = req.usuario.empresa_id;
@@ -133,10 +166,152 @@ function verificarAcessoAgendamentos(req, res, next) {
     });
 }
 
+// ============================================
+// 6. VERIFICAR LIMITE DE AGENDAMENTOS (100/MÊS PARA STARTER)
+// ============================================
+
+function verificarLimiteAgendamentos(req, res, next) {
+    const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const LIMITE_MAXIMO = 100;
+
+    console.log(`🔍 Verificando limite de agendamentos para empresa ${empresaId}`);
+
+    const sql = isProduction
+        ? `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = $1`
+        : `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = ?`;
+
+    db.get(sql, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao buscar empresa:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao verificar limite de agendamentos'
+            });
+        }
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        // Verificar se é Starter ou Trial
+        const planoLower = (empresa.plano || '').toLowerCase();
+        const temLimite = (planoLower === 'starter' || planoLower === 'trial');
+
+        if (temLimite) {
+            const mesAtual = new Date().toISOString().slice(0, 7);
+
+            // Se mudou de mês, resetar contador
+            if (empresa.mes_referencia !== mesAtual) {
+                const sqlUpdate = isProduction
+                    ? `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = $1 WHERE id = $2`
+                    : `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = ? WHERE id = ?`;
+
+                db.run(sqlUpdate, [mesAtual, empresaId], (err) => {
+                    if (err) {
+                        console.error('❌ Erro ao resetar contador:', err);
+                    } else {
+                        console.log(`✅ Contador resetado para empresa ${empresaId} (novo mês: ${mesAtual})`);
+                        empresa.agendamentos_mes = 0;
+                    }
+                });
+            }
+
+            const agendamentosAtuais = empresa.agendamentos_mes || 0;
+
+            if (agendamentosAtuais >= LIMITE_MAXIMO) {
+                console.log(`❌ Limite de agendamentos atingido: ${agendamentosAtuais}/${LIMITE_MAXIMO}`);
+                return res.status(403).json({
+                    success: false,
+                    message: `Limite de ${LIMITE_MAXIMO} agendamentos/mês do plano Starter foi atingido. Faça upgrade para o plano Pro para agendamentos ilimitados.`,
+                    needs_upgrade: true,
+                    limit_reached: true,
+                    current: agendamentosAtuais,
+                    max: LIMITE_MAXIMO
+                });
+            }
+
+            console.log(`✅ Agendamentos deste mês: ${agendamentosAtuais}/${LIMITE_MAXIMO}`);
+        } else {
+            console.log(`✅ Plano ${empresa.plano} - agendamentos ilimitados`);
+        }
+
+        next();
+    });
+}
+
+// ============================================
+// 7. INCREMENTAR CONTADOR DE AGENDAMENTOS
+// ============================================
+
+function incrementarContadorAgendamentos(empresaId, callback) {
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const mesAtual = new Date().toISOString().slice(0, 7);
+
+    console.log(`📝 Incrementando contador para empresa ${empresaId} - Mês: ${mesAtual}`);
+
+    // Primeiro verifica se o mês mudou
+    const sqlCheck = isProduction
+        ? `SELECT mes_referencia FROM empresas WHERE id = $1`
+        : `SELECT mes_referencia FROM empresas WHERE id = ?`;
+
+    db.get(sqlCheck, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao verificar mês:', err);
+            if (callback) callback(err);
+            return;
+        }
+
+        // Se mudou de mês, resetar antes de incrementar
+        if (empresa && empresa.mes_referencia !== mesAtual) {
+            const sqlReset = isProduction
+                ? `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = $1 WHERE id = $2`
+                : `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = ? WHERE id = ?`;
+
+            db.run(sqlReset, [mesAtual, empresaId], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao resetar contador:', err);
+                    if (callback) callback(err);
+                    return;
+                }
+                console.log(`✅ Contador resetado para empresa ${empresaId}`);
+                incrementar();
+            });
+        } else {
+            incrementar();
+        }
+
+        function incrementar() {
+            const sqlUpdate = isProduction
+                ? `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = $1 WHERE id = $2`
+                : `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = ? WHERE id = ?`;
+
+            db.run(sqlUpdate, [mesAtual, empresaId], function (err) {
+                if (err) {
+                    console.error('❌ Erro ao incrementar contador:', err);
+                    if (callback) callback(err);
+                    return;
+                }
+                console.log(`✅ Contador incrementado para empresa ${empresaId}`);
+                if (callback) callback(null, this.changes);
+            });
+        }
+    });
+}
+
+// ============================================
+// EXPORTAR TODAS AS FUNÇÕES
+// ============================================
+
 module.exports = {
     auth,
     verificarSuperAdmin,
     verificarDono,
     verificarLimiteProfissionais,
-    verificarAcessoAgendamentos
+    verificarAcessoAgendamentos,
+    verificarLimiteAgendamentos,      // 🔥 NOVO
+    incrementarContadorAgendamentos   // 🔥 NOVO
 };

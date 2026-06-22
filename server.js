@@ -29,7 +29,9 @@ const {
     verificarSuperAdmin,
     verificarDono,
     verificarLimiteProfissionais,
-    verificarAcessoAgendamentos
+    verificarAcessoAgendamentos,
+    verificarLimiteAgendamentos,      // 🔥 ADICIONAR
+    incrementarContadorAgendamentos,   // 🔥 ADICIONAR
 } = require('./server/middlewares/auth');
 const { PLANOS, PLANOS_NOMES, JWT_SECRET } = require('./server/utils/constants');
 const {
@@ -1150,154 +1152,168 @@ app.get('/api/agendamentos', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO (COM NOTIFICAÇÃO WHATSAPP)
+// ROTA: CRIAR AGENDAMENTO (COM NOTIFICAÇÃO WHATSAPP E LIMITE)
 // ============================================
-app.post('/api/agendamentos', auth, verificarAcessoAgendamentos, async (req, res) => {
-    const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
-    const empresa_id = req.usuario.empresa_id;
+app.post('/api/agendamentos',
+    auth,
+    verificarAcessoAgendamentos,
+    verificarLimiteAgendamentos,  // 🔥 NOVO MIDDLEWARE DE LIMITE
+    async (req, res) => {
+        const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
+        const empresa_id = req.usuario.empresa_id;
 
-    console.log('📝 Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
+        console.log('📝 Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
 
-    if (!cliente_id || !data) {
-        console.log('❌ Cliente ou data faltando');
-        return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
-    }
+        if (!cliente_id || !data) {
+            console.log('❌ Cliente ou data faltando');
+            return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
+        }
 
-    if (!hora) {
-        console.log('❌ Horário faltando');
-        return res.json({ success: false, message: 'Horário é obrigatório' });
-    }
+        if (!hora) {
+            console.log('❌ Horário faltando');
+            return res.json({ success: false, message: 'Horário é obrigatório' });
+        }
 
-    // Função para criar o agendamento
-    async function criarAgendamento(servicoNome, servicoValor, servicoId) {
-        const sqlInsert = isProduction
-            ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-               VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
-            : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-               VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+        // Função para criar o agendamento
+        async function criarAgendamento(servicoNome, servicoValor, servicoId) {
+            const sqlInsert = isProduction
+                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                   VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
+                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
+                   VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
 
-        const params = [
-            parseInt(cliente_id),
-            data,
-            hora,
-            servicoId || null,
-            servicoNome || '',
-            parseFloat(servicoValor) || 0,
-            parseInt(empresa_id),
-            profissional_id ? parseInt(profissional_id) : null
-        ];
+            const params = [
+                parseInt(cliente_id),
+                data,
+                hora,
+                servicoId || null,
+                servicoNome || '',
+                parseFloat(servicoValor) || 0,
+                parseInt(empresa_id),
+                profissional_id ? parseInt(profissional_id) : null
+            ];
 
-        console.log('📝 SQL Insert:', sqlInsert);
-        console.log('📝 Parâmetros:', params);
+            console.log('📝 SQL Insert:', sqlInsert);
+            console.log('📝 Parâmetros:', params);
 
-        db.run(sqlInsert, params, async function (err) {
-            if (err) {
-                console.error('❌ Erro ao criar agendamento:', err.message);
-                return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
-            }
+            db.run(sqlInsert, params, async function (err) {
+                if (err) {
+                    console.error('❌ Erro ao criar agendamento:', err.message);
+                    return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
+                }
 
-            let id = this?.lastID || this?.id || null;
-            console.log('✅ Agendamento criado com ID:', id);
+                let id = this?.lastID || this?.id || null;
+                console.log('✅ Agendamento criado com ID:', id);
 
-            // ============================================
-            // ENVIA NOTIFICAÇÕES WHATSAPP
-            // ============================================
-            try {
-                // Buscar cliente
-                const cliente = await new Promise((resolve, reject) => {
-                    db.get('SELECT * FROM clientes WHERE id = ?', [parseInt(cliente_id)], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
+                // 🔥 INCREMENTAR CONTADOR DE AGENDAMENTOS DO MÊS
+                incrementarContadorAgendamentos(empresa_id, (err) => {
+                    if (err) {
+                        console.error('⚠️ Erro ao incrementar contador:', err);
+                    } else {
+                        console.log('✅ Contador de agendamentos incrementado');
+                    }
                 });
 
-                // Buscar serviço
-                const servico = await new Promise((resolve, reject) => {
-                    db.get('SELECT * FROM servicos WHERE id = ?', [servicoId || null], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row || { nome: servicoNome, valor: servicoValor });
-                    });
-                });
-
-                // Buscar profissional
-                let profissional = null;
-                if (profissional_id) {
-                    profissional = await new Promise((resolve, reject) => {
-                        db.get('SELECT * FROM profissionais WHERE id = ?', [parseInt(profissional_id)], (err, row) => {
+                // ============================================
+                // ENVIA NOTIFICAÇÕES WHATSAPP
+                // ============================================
+                try {
+                    // Buscar cliente
+                    const cliente = await new Promise((resolve, reject) => {
+                        db.get('SELECT * FROM clientes WHERE id = ?', [parseInt(cliente_id)], (err, row) => {
                             if (err) reject(err);
                             else resolve(row);
                         });
                     });
-                }
 
-                // Buscar empresa
-                const empresa = await new Promise((resolve, reject) => {
-                    db.get('SELECT * FROM empresas WHERE id = ?', [parseInt(empresa_id)], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
+                    // Buscar serviço
+                    const servico = await new Promise((resolve, reject) => {
+                        db.get('SELECT * FROM servicos WHERE id = ?', [servicoId || null], (err, row) => {
+                            if (err) reject(err);
+                            else resolve(row || { nome: servicoNome, valor: servicoValor });
+                        });
                     });
-                });
 
-                const dadosNotificacao = {
-                    cliente: { nome: cliente?.nome || 'Cliente', telefone: cliente?.telefone || null },
-                    servico: { nome: servico?.nome || servicoNome, valor: servico?.valor || servicoValor },
-                    profissional: profissional ? { nome: profissional.nome, telefone: profissional.telefone || null } : null,
-                    data: data,
-                    hora: hora,
-                    empresa: { nome: empresa?.nome || 'Barbearia', endereco: empresa?.endereco || '' },
-                };
+                    // Buscar profissional
+                    let profissional = null;
+                    if (profissional_id) {
+                        profissional = await new Promise((resolve, reject) => {
+                            db.get('SELECT * FROM profissionais WHERE id = ?', [parseInt(profissional_id)], (err, row) => {
+                                if (err) reject(err);
+                                else resolve(row);
+                            });
+                        });
+                    }
 
-                // Envia confirmação para o cliente (se tiver telefone)
-                if (dadosNotificacao.cliente.telefone) {
-                    await whatsappService.enviarConfirmacao(dadosNotificacao);
-                    console.log(`📱 WhatsApp: Confirmação enviada para ${dadosNotificacao.cliente.telefone}`);
+                    // Buscar empresa
+                    const empresa = await new Promise((resolve, reject) => {
+                        db.get('SELECT * FROM empresas WHERE id = ?', [parseInt(empresa_id)], (err, row) => {
+                            if (err) reject(err);
+                            else resolve(row);
+                        });
+                    });
+
+                    const dadosNotificacao = {
+                        cliente: { nome: cliente?.nome || 'Cliente', telefone: cliente?.telefone || null },
+                        servico: { nome: servico?.nome || servicoNome, valor: servico?.valor || servicoValor },
+                        profissional: profissional ? { nome: profissional.nome, telefone: profissional.telefone || null } : null,
+                        data: data,
+                        hora: hora,
+                        empresa: { nome: empresa?.nome || 'Barbearia', endereco: empresa?.endereco || '' },
+                    };
+
+                    // Envia confirmação para o cliente (se tiver telefone)
+                    if (dadosNotificacao.cliente.telefone) {
+                        await whatsappService.enviarConfirmacao(dadosNotificacao);
+                        console.log(`📱 WhatsApp: Confirmação enviada para ${dadosNotificacao.cliente.telefone}`);
+                    }
+
+                    // Envia notificação para o profissional (se tiver telefone)
+                    if (profissional?.telefone) {
+                        await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao);
+                        console.log(`📱 WhatsApp: Notificação enviada para profissional ${profissional.telefone}`);
+                    }
+
+                } catch (whatsappError) {
+                    console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
+                    // Não bloqueia a criação do agendamento
                 }
 
-                // Envia notificação para o profissional (se tiver telefone)
-                if (profissional?.telefone) {
-                    await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao);
-                    console.log(`📱 WhatsApp: Notificação enviada para profissional ${profissional.telefone}`);
+                res.json({ success: true, data: { id: id }, message: 'Agendamento criado com sucesso!' });
+            });
+        }
+
+        // Verificar se tem servico_id
+        if (servico_id && servico_id !== '' && servico_id !== 'null') {
+            const sqlServico = isProduction
+                ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
+                : `SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`;
+
+            console.log('📝 Buscando serviço:', { servico_id, empresa_id });
+
+            db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, servicoData) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar serviço:', err.message);
+                    return res.json({ success: false, message: 'Erro ao buscar serviço: ' + err.message });
                 }
 
-            } catch (whatsappError) {
-                console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
-                // Não bloqueia a criação do agendamento
-            }
+                if (!servicoData) {
+                    console.log('❌ Serviço não encontrado:', servico_id);
+                    return res.json({ success: false, message: 'Serviço não encontrado' });
+                }
 
-            res.json({ success: true, data: { id: id }, message: 'Agendamento criado com sucesso!' });
-        });
+                console.log('📝 Serviço encontrado:', servicoData);
+                criarAgendamento(servicoData.nome, servicoData.valor, parseInt(servico_id));
+            });
+        } else {
+            // Sem serviço_id (serviço manual)
+            console.log('📝 Criando agendamento sem serviço_id (manual)');
+            const servicoNome = req.body.servico || '';
+            const servicoValor = parseFloat(req.body.valor) || 0;
+            criarAgendamento(servicoNome, servicoValor, null);
+        }
     }
-
-    // Verificar se tem servico_id
-    if (servico_id && servico_id !== '' && servico_id !== 'null') {
-        const sqlServico = isProduction
-            ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
-            : `SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`;
-
-        console.log('📝 Buscando serviço:', { servico_id, empresa_id });
-
-        db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, servicoData) => {
-            if (err) {
-                console.error('❌ Erro ao buscar serviço:', err.message);
-                return res.json({ success: false, message: 'Erro ao buscar serviço: ' + err.message });
-            }
-
-            if (!servicoData) {
-                console.log('❌ Serviço não encontrado:', servico_id);
-                return res.json({ success: false, message: 'Serviço não encontrado' });
-            }
-
-            console.log('📝 Serviço encontrado:', servicoData);
-            criarAgendamento(servicoData.nome, servicoData.valor, parseInt(servico_id));
-        });
-    } else {
-        // Sem serviço_id (serviço manual)
-        console.log('📝 Criando agendamento sem serviço_id (manual)');
-        const servicoNome = req.body.servico || '';
-        const servicoValor = parseFloat(req.body.valor) || 0;
-        criarAgendamento(servicoNome, servicoValor, null);
-    }
-});
+);
 
 app.get('/api/profissional/agendamentos', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
@@ -2214,6 +2230,17 @@ app.get('/api/empresa/dados', auth, (req, res) => {
 // ============================================================
 // ROTAS DO CHATBOT (PÚBLICAS) - MANTIDAS INTACTAS
 // ============================================================
+// ============================================================
+// ROTA: LINK DO CHATBOT (PROTEGIDA - APENAS DONO)
+// ============================================================
+app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
+    const { empresaId } = req.params;
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const link = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
+
+    console.log(`🔗 Link do chatbot gerado para empresa ${empresaId}: ${link}`);
+    res.json({ success: true, link });
+});
 
 app.get('/api/chatbot/empresa/:id', (req, res) => {
     const { id } = req.params;
@@ -2582,261 +2609,156 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 });
 
 // ============================================================
-// CHATBOT - AGENDAR COM TRANSAÇÃO ANTI-DUPLICAÇÃO
+// CHATBOT - AGENDAR (COM LIMITE DE 100/MÊS)
 // ============================================================
 app.post('/api/chatbot/agendar', async (req, res) => {
-    const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
-
-    // ============================================
-    // LOG DETALHADO PARA DEBUG
-    // ============================================
-    console.log('📝 RECEBIDO NO BODY:');
-    console.log('  - clienteId:', clienteId, 'Tipo:', typeof clienteId);
-    console.log('  - servicoId:', servicoId, 'Tipo:', typeof servicoId);
-    console.log('  - profissionalId:', profissionalId, 'Tipo:', typeof profissionalId);
-    console.log('  - data:', data, 'Tipo:', typeof data);
-    console.log('  - hora:', hora, 'Tipo:', typeof hora);
-    console.log('  - empresaId:', empresaId, 'Tipo:', typeof empresaId);
-    console.log('  - valor:', valor, 'Tipo:', typeof valor);
-    console.log('  - servicoNome:', servicoNome, 'Tipo:', typeof servicoNome);
-    console.log('  - BODY COMPLETO:', req.body);
-
-    // ============================================
-    // VALIDAÇÃO DETALHADA
-    // ============================================
-    if (!clienteId) {
-        console.log('❌ clienteId faltando ou inválido');
-        return res.json({ success: false, message: 'Cliente não identificado' });
-    }
-    if (!servicoId) {
-        console.log('❌ servicoId faltando ou inválido');
-        return res.json({ success: false, message: 'Serviço não identificado' });
-    }
-    if (!data) {
-        console.log('❌ data faltando ou inválida');
-        return res.json({ success: false, message: 'Data não informada' });
-    }
-    if (!hora) {
-        console.log('❌ hora faltando ou inválida');
-        return res.json({ success: false, message: 'Horário não informado' });
-    }
-    if (!empresaId) {
-        console.log('❌ empresaId faltando ou inválido');
-        return res.json({ success: false, message: 'Empresa não identificada' });
-    }
-
-    // Converter IDs para números
-    const clienteIdNum = parseInt(clienteId);
-    const servicoIdNum = parseInt(servicoId);
-    const empresaIdNum = parseInt(empresaId);
-    const profissionalIdNum = profissionalId ? parseInt(profissionalId) : null;
-    const valorNum = parseFloat(valor) || 0;
-
-    console.log('📝 DADOS CONVERTIDOS:');
-    console.log('  - clienteIdNum:', clienteIdNum);
-    console.log('  - servicoIdNum:', servicoIdNum);
-    console.log('  - profissionalIdNum:', profissionalIdNum);
-    console.log('  - empresaIdNum:', empresaIdNum);
-    console.log('  - valorNum:', valorNum);
-
-    // ============================================
-    // USAR POOL DIRETO NO POSTGRESQL, SQLITE USA DB.RUN
-    // ============================================
-    const client = isProduction ? await db.pool.connect() : null;
-
     try {
-        // 1. INICIA TRANSAÇÃO
-        if (isProduction) {
-            await client.query('BEGIN');
-        } else {
-            await new Promise((resolve, reject) => {
-                db.run('BEGIN IMMEDIATE', (err) => err ? reject(err) : resolve());
-            });
+        const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
+
+        console.log('📝 CHATBOT - Agendamento:', { clienteId, servicoId, profissionalId, data, hora, empresaId });
+
+        if (!clienteId || !servicoId || !data || !hora || !empresaId) {
+            return res.json({ success: false, message: 'Dados incompletos' });
         }
 
-        // 2. CHECA SE HORÁRIO AINDA TÁ LIVRE
+        const clienteIdNum = parseInt(clienteId);
+        const servicoIdNum = parseInt(servicoId);
+        const empresaIdNum = parseInt(empresaId);
+        const profissionalIdNum = profissionalId ? parseInt(profissionalId) : null;
+
+        // 1. VERIFICAR LIMITE
+        const empresa = await new Promise((resolve) => {
+            const sql = isProduction
+                ? `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = $1`
+                : `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = ?`;
+            db.get(sql, [empresaIdNum], (err, row) => resolve(row));
+        });
+
+        if (!empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        const planoLower = (empresa.plano || '').toLowerCase();
+        const temLimite = (planoLower === 'starter' || planoLower === 'trial');
+
+        if (temLimite) {
+            const LIMITE_MAXIMO = 100;
+            const mesAtual = new Date().toISOString().slice(0, 7);
+
+            if (empresa.mes_referencia !== mesAtual) {
+                const sqlUpdate = isProduction
+                    ? `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = $1 WHERE id = $2`
+                    : `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = ? WHERE id = ?`;
+                db.run(sqlUpdate, [mesAtual, empresaIdNum]);
+                empresa.agendamentos_mes = 0;
+            }
+
+            const total = empresa.agendamentos_mes || 0;
+            if (total >= LIMITE_MAXIMO) {
+                return res.json({
+                    success: false,
+                    message: `Limite de ${LIMITE_MAXIMO} agendamentos/mês atingido.`,
+                    limit_reached: true
+                });
+            }
+        }
+
+        // 2. VERIFICAR HORÁRIO
         const sqlCheck = isProduction
-            ? `SELECT id FROM agendamentos
-               WHERE empresa_id = $1 AND profissional_id = $2 AND data = $3 AND hora = $4 AND status = 'agendado'
-               FOR UPDATE`
-            : `SELECT id FROM agendamentos
-               WHERE empresa_id =? AND profissional_id =? AND data =? AND hora =? AND status = 'agendado'`;
+            ? `SELECT id FROM agendamentos WHERE empresa_id = $1 AND data = $2 AND hora = $3 AND status != 'cancelado'`
+            : `SELECT id FROM agendamentos WHERE empresa_id = ? AND data = ? AND hora = ? AND status != 'cancelado'`;
 
-        const paramsCheck = isProduction
-            ? [empresaIdNum, profissionalIdNum, data, hora]
-            : [empresaIdNum, profissionalIdNum, data, hora];
+        const ocupado = await new Promise((resolve) => {
+            db.get(sqlCheck, [empresaIdNum, data, hora], (err, row) => resolve(row));
+        });
 
-        const ocupado = isProduction
-            ? await client.query(sqlCheck, paramsCheck)
-            : await new Promise((resolve, reject) => {
-                db.get(sqlCheck, paramsCheck, (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-
-        if ((isProduction && ocupado.rows.length > 0) || (!isProduction && ocupado)) {
-            if (isProduction) await client.query('ROLLBACK');
-            else await new Promise((r) => db.run('ROLLBACK', r));
-            if (client) client.release();
-            return res.json({
-                success: false,
-                message: 'Ops! Esse horário acabou de ser ocupado. Escolha outro por favor.'
-            });
+        if (ocupado) {
+            return res.json({ success: false, message: 'Horário indisponível' });
         }
 
-        // 3. VERIFICA REGRA DOS 20 DIAS
+        // 3. VERIFICAR 20 DIAS
         const sql20dias = isProduction
-            ? `SELECT id FROM agendamentos
-               WHERE cliente_id = $1 AND empresa_id = $2
-               AND data >= CURRENT_DATE - INTERVAL '20 days' AND status = 'agendado' LIMIT 1`
-            : `SELECT id FROM agendamentos
-               WHERE cliente_id =? AND empresa_id =?
-               AND data >= date('now', '-20 days') AND status = 'agendado' LIMIT 1`;
+            ? `SELECT id FROM agendamentos WHERE cliente_id = $1 AND empresa_id = $2 AND data >= CURRENT_DATE - INTERVAL '20 days' AND status != 'cancelado' LIMIT 1`
+            : `SELECT id FROM agendamentos WHERE cliente_id = ? AND empresa_id = ? AND data >= date('now', '-20 days') AND status != 'cancelado' LIMIT 1`;
 
-        const params20dias = [clienteIdNum, empresaIdNum];
+        const recente = await new Promise((resolve) => {
+            db.get(sql20dias, [clienteIdNum, empresaIdNum], (err, row) => resolve(row));
+        });
 
-        const agendamentoRecente = isProduction
-            ? await client.query(sql20dias, params20dias)
-            : await new Promise((resolve, reject) => {
-                db.get(sql20dias, params20dias, (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-
-        if ((isProduction && agendamentoRecente.rows.length > 0) || (!isProduction && agendamentoRecente)) {
-            if (isProduction) await client.query('ROLLBACK');
-            else await new Promise((r) => db.run('ROLLBACK', r));
-            if (client) client.release();
-            return res.json({
-                success: false,
-                message: 'Você já tem um agendamento nos últimos 20 dias. Só pode agendar novamente após esse período.'
-            });
+        if (recente) {
+            return res.json({ success: false, message: 'Você já tem agendamento nos últimos 20 dias' });
         }
 
-        // 4. VERIFICA SE CLIENTE TÁ BLOQUEADO
+        // 4. VERIFICAR CLIENTE BLOQUEADO
         const sqlCliente = isProduction
             ? `SELECT bloqueado_chatbot FROM clientes WHERE id = $1`
-            : `SELECT bloqueado_chatbot FROM clientes WHERE id =?`;
+            : `SELECT bloqueado_chatbot FROM clientes WHERE id = ?`;
 
-        const cliente = isProduction
-            ? await client.query(sqlCliente, [clienteIdNum])
-            : await new Promise((resolve, reject) => {
-                db.get(sqlCliente, [clienteIdNum], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
+        const cliente = await new Promise((resolve) => {
+            db.get(sqlCliente, [clienteIdNum], (err, row) => resolve(row));
+        });
 
-        const clienteData = isProduction ? cliente.rows[0] : cliente;
-        if (clienteData?.bloqueado_chatbot === 1) {
-            if (isProduction) await client.query('ROLLBACK');
-            else await new Promise((r) => db.run('ROLLBACK', r));
-            if (client) client.release();
-            return res.json({
-                success: false,
-                message: 'Seu acesso ao agendamento online está bloqueado. Entre em contato com a barbearia.'
-            });
+        if (cliente?.bloqueado_chatbot === 1) {
+            return res.json({ success: false, message: 'Cliente bloqueado' });
         }
 
-        // 5. BUSCA DADOS DO SERVIÇO
+        // 5. BUSCAR SERVIÇO
         const sqlServico = isProduction
-            ? `SELECT nome, valor, duracao FROM servicos WHERE id = $1 AND empresa_id = $2`
-            : `SELECT nome, valor, duracao FROM servicos WHERE id =? AND empresa_id =?`;
+            ? `SELECT nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = 1`
+            : `SELECT nome, valor FROM servicos WHERE id = ? AND empresa_id = ? AND ativo = 1`;
 
-        const servico = isProduction
-            ? await client.query(sqlServico, [servicoIdNum, empresaIdNum])
-            : await new Promise((resolve, reject) => {
-                db.get(sqlServico, [servicoIdNum, empresaIdNum], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
+        const servico = await new Promise((resolve) => {
+            db.get(sqlServico, [servicoIdNum, empresaIdNum], (err, row) => resolve(row));
+        });
 
-        const servicoData = isProduction ? servico.rows[0] : servico;
-        if (!servicoData) {
-            if (isProduction) await client.query('ROLLBACK');
-            else await new Promise((r) => db.run('ROLLBACK', r));
-            if (client) client.release();
+        if (!servico) {
             return res.json({ success: false, message: 'Serviço não encontrado' });
         }
 
-        // 6. INSERE AGENDAMENTO
+        // 6. CRIAR AGENDAMENTO
         const sqlInsert = isProduction
-            ? `INSERT INTO agendamentos
-               (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
+            ? `INSERT INTO agendamentos (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7, 'agendado', $8) RETURNING id`
-            : `INSERT INTO agendamentos
-               (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
-               VALUES (?,?,?,?,?,?,?, 'agendado',?)`;
+            : `INSERT INTO agendamentos (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, 'agendado', ?)`;
 
-        const paramsInsert = isProduction
-            ? [clienteIdNum, servicoIdNum, servicoData.nome, servicoData.valor, profissionalIdNum, data, hora, empresaIdNum]
-            : [clienteIdNum, servicoIdNum, servicoData.nome, servicoData.valor, profissionalIdNum, data, hora, empresaIdNum];
-
-        console.log('📝 INSERT PARAMS:', paramsInsert);
-
-        const result = isProduction
-            ? await client.query(sqlInsert, paramsInsert)
-            : await new Promise((resolve, reject) => {
-                db.run(sqlInsert, paramsInsert, function (err) {
-                    if (err) reject(err);
-                    else resolve({ lastID: this.lastID });
-                });
+        const result = await new Promise((resolve, reject) => {
+            const params = [clienteIdNum, servicoIdNum, servico.nome, servico.valor, profissionalIdNum, data, hora, empresaIdNum];
+            db.run(sqlInsert, params, function (err) {
+                if (err) reject(err);
+                else resolve({ lastID: this.lastID });
             });
+        });
 
-        // 7. COMMIT
-        if (isProduction) await client.query('COMMIT');
-        else await new Promise((r) => db.run('COMMIT', r));
+        // 7. INCREMENTAR CONTADOR
+        const mesAtual = new Date().toISOString().slice(0, 7);
+        const sqlInc = isProduction
+            ? `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = $1 WHERE id = $2`
+            : `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = ? WHERE id = ?`;
+        db.run(sqlInc, [mesAtual, empresaIdNum]);
 
-        // 8. BUSCA NOME DO PROFISSIONAL PRA RESPOSTA
+        // 8. BUSCAR PROFISSIONAL
         const sqlProf = isProduction
             ? `SELECT nome FROM profissionais WHERE id = $1`
-            : `SELECT nome FROM profissionais WHERE id =?`;
+            : `SELECT nome FROM profissionais WHERE id = ?`;
 
-        const profissional = isProduction
-            ? await client.query(sqlProf, [profissionalIdNum])
-            : await new Promise((resolve, reject) => {
-                db.get(sqlProf, [profissionalIdNum], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
+        const profissional = await new Promise((resolve) => {
+            db.get(sqlProf, [profissionalIdNum], (err, row) => resolve(row));
+        });
 
-        const profData = isProduction ? profissional.rows[0] : profissional;
-        const agendamentoId = isProduction ? result.rows[0].id : result.lastID;
-
-        if (client) client.release();
-
+        console.log('✅ CHATBOT - Agendamento criado! ID:', result.lastID);
         res.json({
             success: true,
-            agendamentoId: agendamentoId,
-            profissionalNome: profData?.nome || 'Profissional',
-            servicoNome: servicoData.nome,
-            valor: servicoData.valor
+            agendamentoId: result.lastID,
+            profissionalNome: profissional?.nome || 'Profissional',
+            servicoNome: servico.nome,
+            valor: servico.valor
         });
 
     } catch (error) {
-        // ROLLBACK em caso de erro
-        console.error('❌ Erro na transação:', error);
-        if (isProduction && client) {
-            try { await client.query('ROLLBACK'); } catch (e) { console.error('Erro no rollback:', e); }
-        } else {
-            await new Promise((r) => db.run('ROLLBACK', r));
-        }
-
-        if (client) client.release();
+        console.error('❌ CHATBOT - Erro:', error);
         res.json({ success: false, message: 'Erro interno. Tente novamente.' });
     }
-});
-
-app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
-    const { empresaId } = req.params;
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-    const link = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
-
-    res.json({ success: true, link });
 });
 
 // ============================================================
@@ -3084,4 +3006,16 @@ if (process.env.RENDER === 'true') {
     } catch (error) {
         console.log('⚠️ Cron job não encontrado, continuando...');
     }
+}
+
+// ============================================
+// JOB DE RESET DE CONTADORES
+// ============================================
+
+try {
+    const resetJob = require('./server/jobs/reset-contador');
+    resetJob.start();
+    console.log('✅ Job de reset de contadores iniciado');
+} catch (error) {
+    console.log('⚠️ Erro ao iniciar job de reset:', error.message);
 }
