@@ -110,8 +110,51 @@ function initDatabase() {
     setTimeout(criarIndices, 1000);
 }
 
+// server/config/database.js
+
 function inserirHorariosPadrao(empresaId) {
-    //... seu código existente...
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const diasSemana = [0, 1, 2, 3, 4, 5, 6];
+
+    console.log(`📝 Inserindo horários padrão para empresa: ${empresaId} (${isProduction ? 'POSTGRESQL' : 'SQLITE'})`);
+
+    // 🔥 PARA CADA DIA DA SEMANA
+    for (const dia of diasSemana) {
+        let sql;
+        let params = [empresaId, dia, 1, '09:00', '18:00', '12:00', '13:00', 30];
+
+        if (isProduction) {
+            // ✅ POSTGRESQL: Usa ON CONFLICT com DO UPDATE
+            sql = `
+                INSERT INTO horarios_funcionamento 
+                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (empresa_id, dia_semana) 
+                DO UPDATE SET
+                    aberto = EXCLUDED.aberto,
+                    hora_inicio = EXCLUDED.hora_inicio,
+                    hora_fim = EXCLUDED.hora_fim,
+                    almoco_inicio = EXCLUDED.almoco_inicio,
+                    almoco_fim = EXCLUDED.almoco_fim,
+                    intervalo_minutos = EXCLUDED.intervalo_minutos
+            `;
+        } else {
+            // ✅ SQLITE: Usa INSERT OR REPLACE
+            sql = `
+                INSERT OR REPLACE INTO horarios_funcionamento 
+                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `;
+        }
+
+        db.run(sql, params, function (err) {
+            if (err) {
+                console.error(`❌ Erro ao inserir horário dia ${dia} (${isProduction ? 'PostgreSQL' : 'SQLite'}):`, err.message);
+            } else {
+                console.log(`✅ Horário dia ${dia} inserido/atualizado com sucesso`);
+            }
+        });
+    }
 }
 
 module.exports = { db, initDatabase, inserirHorariosPadrao };
