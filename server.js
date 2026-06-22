@@ -401,105 +401,84 @@ app.post('/api/cadastro', (req, res) => {
                     console.log('✅ Usuário criado com sucesso!');
 
                     // 🔥🔥🔥 INSERIR HORÁRIOS (ADAPTADO PARA POSTGRESQL) 🔥🔥🔥
+                    // Na rota POST /api/cadastro, após criar a empresa e o usuário:
+
                     console.log('📝 Inserindo horários padrão para empresa:', empresa_id);
 
                     const diasSemana = [0, 1, 2, 3, 4, 5, 6];
                     let horariosInseridos = 0;
-                    let erroHorarios = false;
+                    let totalErros = 0;
 
                     for (const dia of diasSemana) {
-                        let sqlHorario;
-                        let paramsHorario;
+                        const sqlHorario = isProduction
+                            ? `
+            INSERT INTO horarios_funcionamento 
+            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+            VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)
+            ON CONFLICT (empresa_id, dia_semana) DO NOTHING
+        `
+                            : `
+            INSERT OR IGNORE INTO horarios_funcionamento 
+            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+            VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
+        `;
 
-                        if (isProduction) {
-                            // ✅ POSTGRESQL
-                            sqlHorario = `
-                                INSERT INTO horarios_funcionamento 
-                                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                                ON CONFLICT (empresa_id, dia_semana) 
-                                DO UPDATE SET
-                                    aberto = EXCLUDED.aberto,
-                                    hora_inicio = EXCLUDED.hora_inicio,
-                                    hora_fim = EXCLUDED.hora_fim,
-                                    almoco_inicio = EXCLUDED.almoco_inicio,
-                                    almoco_fim = EXCLUDED.almoco_fim,
-                                    intervalo_minutos = EXCLUDED.intervalo_minutos
-                            `;
-                            paramsHorario = [empresa_id, dia];
-                        } else {
-                            // ✅ SQLITE
-                            sqlHorario = `
-                                INSERT OR REPLACE INTO horarios_funcionamento 
-                                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                            `;
-                            paramsHorario = [empresa_id, dia];
-                        }
-
-                        db.run(sqlHorario, paramsHorario, function (err) {
+                        db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
                             if (err) {
                                 console.error(`❌ Erro ao inserir horário dia ${dia}:`, err.message);
-                                erroHorarios = true;
+                                totalErros++;
                             } else {
                                 horariosInseridos++;
                                 console.log(`✅ Horário dia ${dia} inserido (${horariosInseridos}/7)`);
                             }
 
-                            // Quando todos os 7 dias forem processados
-                            if (horariosInseridos === 7 || erroHorarios) {
-                                console.log(`📊 Total de horários inseridos: ${horariosInseridos}/7`);
+                            // Quando todos os 7 dias forem processados OU houver erro
+                            if (horariosInseridos + totalErros === 7 || horariosInseridos === 7) {
+                                // Verificar se realmente foram inseridos
+                                const sqlCheck = isProduction
+                                    ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
+                                    : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
 
-                                // 🔥 RESPOSTA FINAL
-                                res.json({
-                                    success: true,
-                                    message: 'Cadastro realizado! Você tem 45 dias de teste.',
-                                    data: {
-                                        empresa_id: empresa_id,
-                                        horarios_inseridos: horariosInseridos,
-                                        ambiente: isProduction ? 'Render (PostgreSQL)' : 'Local (SQLite)'
+                                db.get(sqlCheck, [empresa_id], (err, result) => {
+                                    if (!err && result) {
+                                        console.log(`✅ ${result.total} horários confirmados no banco`);
                                     }
+
+                                    // RESPOSTA FINAL
+                                    res.json({
+                                        success: true,
+                                        message: 'Cadastro realizado! Você tem 45 dias de teste.',
+                                        data: {
+                                            empresa_id: empresa_id,
+                                            horarios_inseridos: horariosInseridos
+                                        }
+                                    });
                                 });
                             }
                         });
                     }
 
-                    // 🔥 TIMEOUT DE SEGURANÇA (caso os callbacks não sejam chamados)
+                    // TIMEOUT DE SEGURANÇA
                     setTimeout(() => {
-                        console.log('⏰ Timeout: Verificando horários...');
-                        const sqlCheckAll = isProduction
+                        console.log('⏰ Verificando horários após timeout...');
+                        const sqlCheck = isProduction
                             ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
                             : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
 
-                        db.get(sqlCheckAll, [empresa_id], (err, result) => {
+                        db.get(sqlCheck, [empresa_id], (err, result) => {
                             if (!err && result && result.total > 0) {
-                                console.log(`✅ ${result.total} horários encontrados após timeout`);
+                                console.log(`✅ ${result.total} horários encontrados`);
                             } else {
-                                console.warn('⚠️ Nenhum horário encontrado após timeout. Inserindo manualmente...');
+                                console.warn('⚠️ Inserindo horários manualmente...');
+                                // Inserir manualmente se não tiver nenhum
+                                for (const dia of [0, 1, 2, 3, 4, 5, 6]) {
+                                    const sqlManual = isProduction
+                                        ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                       VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30) ON CONFLICT DO NOTHING`
+                                        : `INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                       VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
 
-                                // Inserir manualmente um por um
-                                for (const diaManual of [0, 1, 2, 3, 4, 5, 6]) {
-                                    let sqlManual;
-                                    let paramsManual;
-
-                                    if (isProduction) {
-                                        sqlManual = `
-                                            INSERT INTO horarios_funcionamento 
-                                            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                            VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                                            ON CONFLICT (empresa_id, dia_semana) DO NOTHING
-                                        `;
-                                        paramsManual = [empresa_id, diaManual];
-                                    } else {
-                                        sqlManual = `
-                                            INSERT OR IGNORE INTO horarios_funcionamento 
-                                            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                            VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                                        `;
-                                        paramsManual = [empresa_id, diaManual];
-                                    }
-
-                                    db.run(sqlManual, paramsManual);
+                                    db.run(sqlManual, isProduction ? [empresa_id, dia] : [empresa_id, dia]);
                                 }
                             }
                         });
