@@ -1826,16 +1826,20 @@ app.get('/api/clientes', auth, (req, res) => {
 });
 
 // ============================================
-// POST /api/clientes - CRIAR CLIENTE (COM DIAS_BLOQUEIO)
+// POST /api/clientes - CRIAR CLIENTE
 // ============================================
 app.post('/api/clientes', auth, (req, res) => {
     const { nome, telefone, email, dias_bloqueio } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    if (!nome) return res.json({ success: false, message: 'Nome é obrigatório' });
+    if (!nome) {
+        return res.json({ success: false, message: 'Nome é obrigatório' });
+    }
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
-    const diasBloqueioFinal = dias_bloqueio || 1;
+    const diasBloqueioFinal = dias_bloqueio !== undefined ? dias_bloqueio : 1;
+
+    console.log('📝 Criando cliente:', { nome, telefone: telefonePadrao, email, dias_bloqueio: diasBloqueioFinal, empresa_id });
 
     const sql = isProduction
         ? `INSERT INTO clientes (nome, telefone, email, empresa_id, dias_bloqueio) 
@@ -1848,7 +1852,7 @@ app.post('/api/clientes', auth, (req, res) => {
             console.error('❌ Erro ao criar cliente:', err.message);
 
             // Se o erro for por coluna não existir, tentar sem dias_bloqueio
-            if (err.message.includes('dias_bloqueio')) {
+            if (err.message && err.message.includes('dias_bloqueio')) {
                 console.log('🔄 Tentando sem dias_bloqueio (coluna pode não existir)...');
                 const sqlFallback = isProduction
                     ? `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES ($1, $2, $3, $4) RETURNING id`
@@ -1857,23 +1861,23 @@ app.post('/api/clientes', auth, (req, res) => {
                 db.run(sqlFallback, [nome, telefonePadrao, email, empresa_id], function (err2) {
                     if (err2) {
                         console.error('❌ Erro ao criar cliente (fallback):', err2.message);
-                        return res.json({ success: false, message: err2.message });
+                        return res.json({ success: false, message: 'Erro ao criar cliente: ' + err2.message });
                     }
                     let id = this?.lastID || this?.id || null;
+                    console.log('✅ Cliente criado (fallback) com ID:', id);
                     res.json({ success: true, data: { id: id }, message: 'Cliente cadastrado' });
                 });
                 return;
             }
 
-            return res.json({ success: false, message: err.message });
+            return res.json({ success: false, message: 'Erro ao criar cliente: ' + err.message });
         }
 
         let id = this?.lastID || this?.id || null;
         console.log('✅ Cliente criado com ID:', id);
-        res.json({ success: true, data: { id: id }, message: 'Cliente cadastrado' });
+        res.json({ success: true, data: { id: id }, message: 'Cliente cadastrado com sucesso!' });
     });
 });
-
 // ============================================
 // PUT /api/clientes/:id - ATUALIZAR CLIENTE (COM DIAS_BLOQUEIO)
 // ============================================
