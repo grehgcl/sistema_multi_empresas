@@ -1826,11 +1826,13 @@ app.get('/api/clientes', auth, (req, res) => {
 });
 
 // ============================================
-// POST /api/clientes - CRIAR CLIENTE
+// POST /api/clientes - CRIAR CLIENTE (COM FALLBACK)
 // ============================================
 app.post('/api/clientes', auth, (req, res) => {
     const { nome, telefone, email, dias_bloqueio } = req.body;
     const empresa_id = req.usuario.empresa_id;
+
+    console.log('📝 Criando cliente:', { nome, telefone, email, dias_bloqueio, empresa_id });
 
     if (!nome) {
         return res.json({ success: false, message: 'Nome é obrigatório' });
@@ -1839,8 +1841,9 @@ app.post('/api/clientes', auth, (req, res) => {
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
     const diasBloqueioFinal = dias_bloqueio !== undefined ? dias_bloqueio : 1;
 
-    console.log('📝 Criando cliente:', { nome, telefone: telefonePadrao, email, dias_bloqueio: diasBloqueioFinal, empresa_id });
-
+    // ============================================
+    // TENTATIVA 1: COM DIAS_BLOQUEIO
+    // ============================================
     const sql = isProduction
         ? `INSERT INTO clientes (nome, telefone, email, empresa_id, dias_bloqueio) 
            VALUES ($1, $2, $3, $4, $5) RETURNING id`
@@ -1849,11 +1852,13 @@ app.post('/api/clientes', auth, (req, res) => {
 
     db.run(sql, [nome, telefonePadrao, email, empresa_id, diasBloqueioFinal], function (err) {
         if (err) {
-            console.error('❌ Erro ao criar cliente:', err.message);
+            console.error('❌ Erro ao criar cliente (com dias_bloqueio):', err.message);
 
-            // Se o erro for por coluna não existir, tentar sem dias_bloqueio
+            // ============================================
+            // TENTATIVA 2: SEM DIAS_BLOQUEIO (FALLBACK)
+            // ============================================
             if (err.message && err.message.includes('dias_bloqueio')) {
-                console.log('🔄 Tentando sem dias_bloqueio (coluna pode não existir)...');
+                console.log('🔄 Fallback: tentando sem dias_bloqueio...');
                 const sqlFallback = isProduction
                     ? `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES ($1, $2, $3, $4) RETURNING id`
                     : `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`;
