@@ -1800,7 +1800,7 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// GET /api/clientes - BUSCAR CLIENTES (COM DIAS_BLOQUEIO)
+// GET /api/clientes - BUSCAR CLIENTES (SEM DIAS_BLOQUEIO)
 // ============================================
 app.get('/api/clientes', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
@@ -1810,15 +1810,11 @@ app.get('/api/clientes', auth, (req, res) => {
     }
 
     const sql = isProduction
-        ? `SELECT id, nome, telefone, email, created_at, 
-           COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot, 
-           COALESCE(dias_bloqueio, 1) as dias_bloqueio 
+        ? `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
            FROM clientes 
            WHERE empresa_id = $1 
            ORDER BY nome`
-        : `SELECT id, nome, telefone, email, created_at, 
-           COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot, 
-           COALESCE(dias_bloqueio, 1) as dias_bloqueio 
+        : `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
            FROM clientes 
            WHERE empresa_id = ? 
            ORDER BY nome`;
@@ -1832,8 +1828,8 @@ app.get('/api/clientes', auth, (req, res) => {
     });
 });
 
-// ============================================
-// POST /api/clientes - CRIAR CLIENTE (VERSÃO SIMPLIFICADA)
+/// ============================================
+// POST /api/clientes - CRIAR CLIENTE (SEM DIAS_BLOQUEIO)
 // ============================================
 app.post('/api/clientes', auth, (req, res) => {
     const { nome, telefone, email } = req.body;
@@ -1863,14 +1859,14 @@ app.post('/api/clientes', auth, (req, res) => {
     });
 });
 // ============================================
-// PUT /api/clientes/:id - ATUALIZAR CLIENTE (COM DIAS_BLOQUEIO)
+// PUT /api/clientes/:id - ATUALIZAR CLIENTE (SEM DIAS_BLOQUEIO)
 // ============================================
 app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
-    const { nome, telefone, email, dias_bloqueio } = req.body;
+    const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('📝 Atualizando cliente:', { id, nome, telefone, email, dias_bloqueio, empresa_id });
+    console.log('📝 Atualizando cliente:', { id, nome, telefone, email, empresa_id });
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
 
@@ -1878,17 +1874,15 @@ app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
         ? `UPDATE clientes SET 
            nome = COALESCE($1, nome), 
            telefone = COALESCE($2, telefone), 
-           email = COALESCE($3, email),
-           dias_bloqueio = COALESCE($4, dias_bloqueio, 1)
-           WHERE id = $5 AND empresa_id = $6`
+           email = COALESCE($3, email)
+           WHERE id = $4 AND empresa_id = $5`
         : `UPDATE clientes SET 
            nome = COALESCE(?, nome), 
            telefone = COALESCE(?, telefone), 
-           email = COALESCE(?, email),
-           dias_bloqueio = COALESCE(?, dias_bloqueio, 1)
+           email = COALESCE(?, email)
            WHERE id = ? AND empresa_id = ?`;
 
-    db.run(sql, [nome, telefonePadrao, email, dias_bloqueio || 1, id, empresa_id], function (err) {
+    db.run(sql, [nome, telefonePadrao, email, id, empresa_id], function (err) {
         if (err) {
             console.error('❌ Erro ao editar cliente:', err.message);
             return res.json({ success: false, message: err.message });
