@@ -2792,6 +2792,7 @@ body {
 .switch input:checked+.slider:before {
     transform: translateX(20px);
 }
+
 /* ============================================
    MODAIS CENTRALIZADOS E ONBOARDING
    ============================================ */
@@ -2803,7 +2804,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.6);
+    background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     justify-content: center;
@@ -2820,16 +2821,23 @@ body {
     max-width: 520px;
     max-height: 90vh;
     overflow-y: auto;
-    animation: modalFadeIn 0.3s cubic-bezier(0.4,0,0.2,1);
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     position: relative;
     border: 1px solid var(--border-color);
     margin: auto;
 }
 
 @keyframes modalFadeIn {
-    from { opacity: 0; transform: scale(0.95) translateY(20px); }
-    to { opacity: 1; transform: scale(1) translateY(0); }
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
 }
 
 .modal-content .close {
@@ -2846,6 +2854,7 @@ body {
     padding: 4px 8px;
     border-radius: 50%;
 }
+
 .modal-content .close:hover {
     color: var(--text-primary);
     background: var(--bg-hover);
@@ -2859,6 +2868,7 @@ body {
     margin-top: 20px;
     justify-content: flex-end;
 }
+
 .modal-buttons button {
     padding: 10px 24px;
     border: none;
@@ -2879,6 +2889,7 @@ body {
     position: relative;
     overflow: hidden;
 }
+
 .onboarding-card::before {
     content: '';
     position: absolute;
@@ -2887,24 +2898,28 @@ body {
     width: 200px;
     height: 200px;
     border-radius: 50%;
-    background: rgba(245,158,11,0.1);
+    background: rgba(245, 158, 11, 0.1);
     pointer-events: none;
 }
+
 .onboarding-content {
     position: relative;
     z-index: 1;
 }
+
 .onboarding-content i {
     font-size: 48px;
     color: var(--warning);
     margin-bottom: 12px;
 }
+
 .onboarding-content h3 {
     font-size: 22px;
     font-weight: 700;
     color: var(--dark);
     margin-bottom: 8px;
 }
+
 .onboarding-content p {
     color: var(--gray-dark);
     margin-bottom: 20px;
@@ -2918,17 +2933,19 @@ body {
     flex-wrap: wrap;
     margin-bottom: 20px;
 }
+
 .step {
     display: flex;
     align-items: center;
     gap: 10px;
     font-size: 14px;
     color: var(--gray-dark);
-    background: rgba(255,255,255,0.6);
+    background: rgba(255, 255, 255, 0.6);
     padding: 8px 16px;
     border-radius: var(--radius-full);
     backdrop-filter: blur(4px);
 }
+
 .step-number {
     width: 28px;
     height: 28px;
@@ -2951,6 +2968,7 @@ body {
     margin-bottom: 24px;
     border: 1px solid var(--border-color);
 }
+
 .quick-actions h3 {
     font-size: 16px;
     font-weight: 600;
@@ -2958,16 +2976,19 @@ body {
     margin-bottom: 16px;
     text-align: center;
 }
+
 .quick-actions h3 i {
     color: var(--primary);
     margin-right: 8px;
 }
+
 .quick-actions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 12px;
     justify-items: center;
 }
+
 .quick-action {
     display: flex;
     flex-direction: column;
@@ -2988,51 +3009,1528 @@ body {
     max-width: 180px;
     text-align: center;
 }
+
 .quick-action i {
     font-size: 28px;
     color: var(--primary);
     transition: var(--transition);
 }
+
 .quick-action:hover {
     border-color: var(--primary);
     background: var(--quick-action-hover);
     transform: translateY(-3px);
     box-shadow: var(--shadow-lg);
 }
+
 .quick-action:hover i {
     transform: scale(1.1);
 }
 
 .card-entry {
-    animation: cardEntry 0.6s cubic-bezier(0.4,0,0.2,1) both;
+    animation: cardEntry 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
-.card-entry:nth-child(1) { animation-delay: 0.05s; }
-.card-entry:nth-child(2) { animation-delay: 0.10s; }
-.card-entry:nth-child(3) { animation-delay: 0.15s; }
-.card-entry:nth-child(4) { animation-delay: 0.20s; }
+
+.card-entry:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.card-entry:nth-child(2) {
+    animation-delay: 0.10s;
+}
+
+.card-entry:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.card-entry:nth-child(4) {
+    animation-delay: 0.20s;
+}
 
 @keyframes cardEntry {
-    from { opacity: 0; transform: translateY(40px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
+    from {
+        opacity: 0;
+        transform: translateY(40px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 @media (max-width: 768px) {
-    .modal-content { padding: 24px; margin: 10px; max-width: 100%; }
-    .modal-buttons { flex-direction: column; }
-    .modal-buttons button { width: 100%; text-align: center; }
-    .quick-actions-grid { grid-template-columns: repeat(2,1fr); }
-    .quick-action { max-width: 100%; padding: 14px 16px; }
-    .onboarding-steps { flex-direction: column; align-items: center; gap: 10px; }
-    .step { width: 100%; justify-content: center; }
-    .onboarding-card { padding: 24px 16px; }
-    .onboarding-content h3 { font-size: 20px; }
+    .modal-content {
+        padding: 24px;
+        margin: 10px;
+        max-width: 100%;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+    }
+
+    .modal-buttons button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-action {
+        max-width: 100%;
+        padding: 14px 16px;
+    }
+
+    .onboarding-steps {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .step {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .onboarding-card {
+        padding: 24px 16px;
+    }
+
+    .onboarding-content h3 {
+        font-size: 20px;
+    }
 }
 
 @media (max-width: 480px) {
-    .quick-actions-grid { grid-template-columns: 1fr; }
-    .quick-action { flex-direction: row; padding: 12px 16px; justify-content: center; max-width: 100%; }
-    .quick-action i { font-size: 22px; }
-    .modal-content { padding: 20px; }
-    .modal-content h3 { font-size: 20px; }
-    .onboarding-content i { font-size: 36px; }
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-action {
+        flex-direction: row;
+        padding: 12px 16px;
+        justify-content: center;
+        max-width: 100%;
+    }
+
+    .quick-action i {
+        font-size: 22px;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
+
+    .modal-content h3 {
+        font-size: 20px;
+    }
+
+    .onboarding-content i {
+        font-size: 36px;
+    }
+}
+
+/* ============================================
+   AGENDA VISUAL - ESTILOS
+   ============================================ */
+
+/* Navegação da Agenda */
+.agenda-navegacao {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 24px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    border: 1px solid var(--border-color);
+}
+
+.agenda-navegacao .agenda-titulo {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    min-width: 200px;
+    text-align: center;
+}
+
+.btn-nav {
+    background: var(--bg-hover);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}
+
+.btn-nav:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-nav.btn-hoje {
+    width: auto;
+    padding: 0 20px;
+    border-radius: var(--radius-full);
+    background: var(--gradient);
+    color: white;
+    font-weight: 500;
+    font-size: 13px;
+    gap: 8px;
+}
+
+.btn-nav.btn-hoje:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+/* Tabs da Agenda */
+.agenda-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    justify-content: center;
+}
+
+.agenda-tab {
+    padding: 10px 24px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-full);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.agenda-tab:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.agenda-tab.active {
+    background: var(--gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+/* Legenda */
+.agenda-legenda {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 12px 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+    align-items: center;
+}
+
+.agenda-legenda span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.legenda-cor {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+}
+
+.legenda-disponivel {
+    background: #10b981;
+}
+
+.legenda-ocupado {
+    background: #ef4444;
+}
+
+.legenda-almoco {
+    background: #f59e0b;
+}
+
+.legenda-fechado {
+    background: #6b7280;
+}
+
+.legenda-info {
+    margin-left: auto;
+    color: var(--text-primary) !important;
+    font-weight: 500;
+}
+
+.legenda-info i {
+    color: var(--primary);
+}
+
+/* ============================================
+   VISÃO POR DIA
+   ============================================ */
+
+.agenda-dia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.dia-semana {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dia-data {
+    font-size: 16px;
+    color: var(--text-secondary);
+}
+
+.dia-profissionais {
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.agenda-grade {
+    display: flex;
+    gap: 1px;
+    overflow-x: auto;
+    background: var(--border-color);
+    border-radius: var(--radius-sm);
+}
+
+.agenda-horarios-coluna {
+    flex-shrink: 0;
+    width: 80px;
+    background: var(--bg-card);
+}
+
+.agenda-profissionais-colunas {
+    display: flex;
+    flex: 1;
+    gap: 1px;
+}
+
+.agenda-coluna-profissional {
+    flex: 1;
+    min-width: 120px;
+    background: var(--bg-card);
+}
+
+.agenda-cabecalho {
+    padding: 10px 8px;
+    font-weight: 600;
+    font-size: 12px;
+    text-align: center;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.agenda-cabecalho.profissional-nome {
+    font-size: 13px;
+    color: var(--text-primary);
+}
+
+.avatar-prof {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--gradient);
+    color: white;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.agenda-horario-label {
+    padding: 8px 6px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border-color);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.agenda-celula {
+    min-height: 44px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 12px;
+    padding: 2px 4px;
+    position: relative;
+}
+
+.agenda-celula.disponivel {
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.agenda-celula.disponivel:hover {
+    background: rgba(16, 185, 129, 0.2);
+    transform: scale(1.02);
+}
+
+.agenda-celula.ocupado {
+    background: rgba(239, 68, 68, 0.1);
+    cursor: default;
+}
+
+.agenda-celula.lotado {
+    background: rgba(107, 114, 128, 0.1);
+    cursor: not-allowed;
+}
+
+.agenda-celula .ocupado-cliente {
+    font-size: 10px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 80px;
+}
+
+.agenda-celula .disponivel-badge,
+.agenda-celula .ocupado-badge,
+.agenda-celula .lotado-badge {
+    font-size: 14px;
+}
+
+/* ============================================
+   VISÃO POR SEMANA
+   ============================================ */
+
+.agenda-semana-grade {
+    display: flex;
+    gap: 1px;
+    background: var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+
+.agenda-semana-horarios {
+    flex-shrink: 0;
+    width: 60px;
+    background: var(--bg-card);
+}
+
+.agenda-semana-coluna {
+    flex: 1;
+    min-width: 80px;
+    background: var(--bg-card);
+}
+
+.agenda-semana-coluna.coluna-hoje {
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-sm);
+}
+
+.semana-dia {
+    flex-direction: column;
+    padding: 8px 4px;
+}
+
+.semana-nome {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.semana-data {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.agenda-celula-semana {
+    min-height: 32px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+}
+
+.agenda-celula-semana.disponivel {
+    background: rgba(16, 185, 129, 0.08);
+}
+
+.agenda-celula-semana.disponivel:hover {
+    background: rgba(16, 185, 129, 0.2);
+    transform: scale(1.05);
+}
+
+.agenda-celula-semana.ocupado {
+    background: rgba(239, 68, 68, 0.1);
+    cursor: default;
+}
+
+.agenda-celula-semana.almoco {
+    background: rgba(245, 158, 11, 0.1);
+    cursor: default;
+}
+
+.agenda-celula-semana.fechado {
+    background: rgba(107, 114, 128, 0.05);
+    cursor: default;
+}
+
+.agenda-celula-semana.lotado {
+    background: rgba(107, 114, 128, 0.1);
+    cursor: not-allowed;
+}
+
+.status-indicator {
+    font-size: 12px;
+}
+
+/* ============================================
+   VISÃO POR MÊS
+   ============================================ */
+
+.agenda-mes-grade {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.agenda-mes-cabecalho {
+    padding: 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+}
+
+.agenda-mes-dia {
+    padding: 12px 8px;
+    min-height: 60px;
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    position: relative;
+}
+
+.agenda-mes-dia:hover {
+    transform: scale(1.03);
+    background: var(--border-color);
+}
+
+.agenda-mes-dia.dia-hoje {
+    border: 2px solid var(--primary);
+    background: rgba(102, 126, 234, 0.08);
+}
+
+.agenda-mes-dia.dia-fechado {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.agenda-mes-dia.dia-fechado:hover {
+    transform: none;
+    background: var(--bg-hover);
+}
+
+.agenda-mes-dia.dia-com-agendamento {
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.dia-numero {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.dia-agendamentos {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.agendamento-count {
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    padding: 0 6px;
+    font-size: 10px;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+}
+
+.dia-status {
+    font-size: 14px;
+}
+
+.agenda-mes-vazio {
+    min-height: 60px;
+}
+
+/* ============================================
+   RESUMOS E ESTATÍSTICAS
+   ============================================ */
+
+.agenda-resumo-dia,
+.agenda-resumo-mes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.resumo-item {
+    text-align: center;
+    padding: 8px;
+}
+
+.resumo-numero {
+    display: block;
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.resumo-label {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ============================================
+   ESTADO FECHADO
+   ============================================ */
+
+.agenda-fechado {
+    text-align: center;
+    padding: 60px 20px;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+}
+
+.agenda-fechado i {
+    font-size: 48px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.agenda-fechado h3 {
+    font-size: 20px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.agenda-fechado p {
+    color: var(--text-muted);
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .agenda-navegacao {
+        padding: 12px 16px;
+        gap: 10px;
+    }
+
+    .agenda-navegacao .agenda-titulo {
+        font-size: 14px;
+        min-width: 120px;
+    }
+
+    .agenda-tabs {
+        gap: 4px;
+    }
+
+    .agenda-tab {
+        padding: 6px 14px;
+        font-size: 12px;
+    }
+
+    .agenda-horarios-coluna {
+        width: 50px;
+    }
+
+    .agenda-coluna-profissional {
+        min-width: 80px;
+    }
+
+    .agenda-cabecalho {
+        font-size: 10px;
+        padding: 6px 4px;
+        min-height: 36px;
+    }
+
+    .agenda-cabecalho.profissional-nome {
+        font-size: 11px;
+    }
+
+    .agenda-horario-label {
+        font-size: 10px;
+        padding: 4px 2px;
+        min-height: 36px;
+    }
+
+    .agenda-celula {
+        min-height: 36px;
+        font-size: 10px;
+        padding: 2px;
+    }
+
+    .agenda-celula .ocupado-cliente {
+        font-size: 8px;
+        max-width: 50px;
+    }
+
+    .avatar-prof {
+        width: 22px;
+        height: 22px;
+        font-size: 10px;
+    }
+
+    .agenda-semana-horarios {
+        width: 40px;
+    }
+
+    .agenda-semana-coluna {
+        min-width: 50px;
+    }
+
+    .agenda-celula-semana {
+        min-height: 24px;
+        font-size: 9px;
+    }
+
+    .semana-data {
+        font-size: 14px;
+    }
+
+    .semana-nome {
+        font-size: 9px;
+    }
+
+    .agenda-mes-grade {
+        padding: 8px;
+        gap: 2px;
+    }
+
+    .agenda-mes-dia {
+        min-height: 44px;
+        padding: 8px 4px;
+    }
+
+    .dia-numero {
+        font-size: 13px;
+    }
+
+    .agenda-resumo-dia,
+    .agenda-resumo-mes {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        padding: 12px;
+    }
+
+    .resumo-numero {
+        font-size: 18px;
+    }
+
+    .agenda-legenda {
+        gap: 10px;
+        padding: 10px 14px;
+        font-size: 12px;
+    }
+
+    .agenda-legenda span {
+        font-size: 11px;
+    }
+
+    .legenda-info {
+        margin-left: 0;
+        width: 100%;
+        text-align: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .agenda-navegacao .agenda-titulo {
+        font-size: 12px;
+        min-width: 80px;
+    }
+
+    .btn-nav {
+        width: 32px;
+        height: 32px;
+        font-size: 12px;
+    }
+
+    .btn-nav.btn-hoje {
+        padding: 0 12px;
+        font-size: 11px;
+        height: 32px;
+    }
+
+    .agenda-coluna-profissional {
+        min-width: 60px;
+    }
+
+    .agenda-cabecalho.profissional-nome {
+        font-size: 9px;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .avatar-prof {
+        width: 18px;
+        height: 18px;
+        font-size: 8px;
+    }
+
+    .agenda-celula .ocupado-cliente {
+        display: none;
+    }
+
+    .agenda-semana-coluna {
+        min-width: 40px;
+    }
+
+    .agenda-mes-dia {
+        min-height: 36px;
+        padding: 4px 2px;
+    }
+
+    .dia-numero {
+        font-size: 11px;
+    }
+
+    .agendamento-count {
+        font-size: 8px;
+        min-width: 14px;
+        padding: 0 4px;
+    }
+
+    .agenda-tab {
+        padding: 4px 10px;
+        font-size: 10px;
+    }
+}
+
+/* ============================================
+   AGENDA COMPACTA - ESTILOS
+   ============================================ */
+
+.btn-nav-mini {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.btn-nav-mini:hover {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.btn-nav-mini.btn-hoje-mini {
+    width: auto;
+    padding: 0 10px;
+    background: var(--gradient);
+    color: white;
+    border-color: transparent;
+    font-size: 11px;
+}
+
+.btn-nav-mini.btn-hoje-mini:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.agenda-tab-mini {
+    padding: 3px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.agenda-tab-mini:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.agenda-tab-mini.active {
+    background: var(--gradient);
+    border-color: transparent;
+    color: white;
+}
+
+.agenda-tab-mini.active:hover {
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .agenda-tab-mini {
+        padding: 2px 6px;
+        font-size: 10px;
+    }
+
+    .btn-nav-mini {
+        width: 24px;
+        height: 24px;
+        font-size: 10px;
+    }
+
+    .btn-nav-mini.btn-hoje-mini {
+        padding: 0 6px;
+        font-size: 10px;
+    }
+}
+
+/* ============================================
+   AGENDA - ESTILO MICROSOFT OUTLOOK
+   ============================================ */
+
+/* HEADER */
+.agenda-outlook-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.agenda-titulo-area {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.agenda-data-titulo {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.agenda-prof-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+    padding: 2px 12px;
+    border-radius: 12px;
+}
+
+.agenda-acoes {
+    display: flex;
+    gap: 8px;
+}
+
+/* NAVEGAÇÃO */
+.agenda-outlook-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.nav-left {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.nav-right {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-nav-outlook {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: var(--transition);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-nav-outlook:hover {
+    background: var(--bg-hover);
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.btn-nav-outlook.btn-hoje {
+    background: var(--gradient);
+    color: white;
+    border-color: transparent;
+}
+
+.btn-nav-outlook.btn-hoje:hover {
+    box-shadow: 0 2px 12px rgba(102, 126, 234, 0.3);
+}
+
+.agenda-view-btn {
+    padding: 6px 14px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: var(--transition);
+}
+
+.agenda-view-btn:hover {
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.agenda-view-btn.active {
+    background: var(--gradient);
+    color: white;
+    border-color: transparent;
+}
+
+/* TABELA PRINCIPAL */
+.agenda-outlook-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 400px;
+}
+
+.agenda-outlook-table thead th {
+    background: var(--bg-hover);
+    padding: 8px 10px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.agenda-col-hora {
+    min-width: 60px;
+    width: 60px;
+}
+
+.agenda-col-prof {
+    min-width: 80px;
+    padding: 6px 4px !important;
+}
+
+.prof-avatar {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--gradient);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 24px;
+    text-align: center;
+    margin-right: 4px;
+}
+
+.prof-nome {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+/* CÉLULAS */
+.agenda-cell-hora {
+    padding: 6px 8px;
+    text-align: center;
+    font-weight: 500;
+    font-size: 12px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.agenda-cell-hora.almoco {
+    color: var(--warning);
+}
+
+.agenda-cell-prof {
+    padding: 4px 6px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 36px;
+    vertical-align: middle;
+}
+
+.agenda-cell-prof.disponivel {
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.agenda-cell-prof.disponivel:hover {
+    background: rgba(16, 185, 129, 0.2);
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.agenda-cell-prof.ocupado {
+    background: rgba(239, 68, 68, 0.08);
+    cursor: default;
+}
+
+.agenda-cell-prof.lotado {
+    background: rgba(107, 114, 128, 0.06);
+    cursor: not-allowed;
+}
+
+.agenda-cell-prof.almoco {
+    background: rgba(245, 158, 11, 0.08);
+    cursor: default;
+}
+
+.status-icon {
+    font-size: 14px;
+}
+
+.cliente-nome {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70px;
+}
+
+.disponivel-text,
+.almoco-text,
+.lotado-text {
+    font-size: 9px;
+    color: var(--text-muted);
+    display: block;
+    margin-top: 2px;
+}
+
+/* RESUMO */
+.agenda-outlook-resumo {
+    display: flex;
+    gap: 24px;
+    padding: 10px 16px;
+    background: var(--bg-hover);
+    border-top: 1px solid var(--border-color);
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.agenda-outlook-resumo strong {
+    color: var(--text-primary);
+}
+
+/* LEGENDA */
+.agenda-outlook-legenda {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 8px 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+    align-items: center;
+}
+
+.legenda-dot {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.legenda-dot.disponivel {
+    background: #10b981;
+}
+
+.legenda-dot.ocupado {
+    background: #ef4444;
+}
+
+.legenda-dot.almoco {
+    background: #f59e0b;
+}
+
+.legenda-dot.fechado {
+    background: #6b7280;
+}
+
+.legenda-dot.lotado {
+    background: #9ca3af;
+}
+
+/* ============================================
+   AGENDA - VISÃO SEMANA
+   ============================================ */
+
+.agenda-col-dia {
+    padding: 6px 4px !important;
+    text-align: center;
+    min-width: 50px;
+}
+
+.agenda-col-dia .dia-semana {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.agenda-col-dia .dia-numero {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.agenda-col-dia.hoje {
+    background: var(--primary) !important;
+}
+
+.agenda-col-dia.hoje .dia-semana,
+.agenda-col-dia.hoje .dia-numero {
+    color: white !important;
+}
+
+.agenda-cell-semana {
+    padding: 4px 2px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    min-height: 30px;
+    vertical-align: middle;
+}
+
+.agenda-cell-semana.disponivel {
+    background: rgba(16, 185, 129, 0.06);
+    cursor: pointer;
+}
+
+.agenda-cell-semana.disponivel:hover {
+    background: rgba(16, 185, 129, 0.2);
+}
+
+.agenda-cell-semana.ocupado {
+    background: rgba(239, 68, 68, 0.08);
+    cursor: default;
+}
+
+.agenda-cell-semana.lotado {
+    background: rgba(107, 114, 128, 0.06);
+    cursor: not-allowed;
+}
+
+.agenda-cell-semana.almoco {
+    background: rgba(245, 158, 11, 0.08);
+    cursor: default;
+}
+
+.agenda-cell-semana.fechado {
+    background: rgba(107, 114, 128, 0.04);
+    cursor: default;
+}
+
+/* ============================================
+   AGENDA - VISÃO MÊS
+   ============================================ */
+
+.agenda-mes-cabecalho {
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: var(--bg-hover);
+}
+
+.agenda-mes-dia {
+    padding: 8px 4px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-height: 50px;
+    vertical-align: top;
+    position: relative;
+}
+
+.agenda-mes-dia:hover {
+    background: var(--bg-hover);
+}
+
+.agenda-mes-dia.hoje {
+    background: var(--primary);
+    color: white;
+}
+
+.agenda-mes-dia.hoje .dia-numero {
+    color: white;
+}
+
+.agenda-mes-dia.fechado {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.agenda-mes-dia.com-agendamento {
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.agenda-mes-dia .dia-numero {
+    font-size: 14px;
+    font-weight: 500;
+    display: block;
+}
+
+.agenda-mes-dia .dia-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    border-radius: 50%;
+    font-size: 9px;
+    font-weight: 700;
+    min-width: 18px;
+    padding: 0 4px;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.agenda-mes-dia.hoje .dia-badge {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.agenda-mes-dia .dia-fechado-icon {
+    font-size: 12px;
+    display: block;
+    margin-top: 2px;
+}
+
+.agenda-mes-vazio {
+    border: 1px solid var(--border-color);
+    min-height: 50px;
+}
+
+/* ============================================
+   RESPONSIVO
+   ============================================ */
+
+@media (max-width: 768px) {
+    .agenda-titulo-area {
+        gap: 8px;
+    }
+
+    .agenda-data-titulo {
+        font-size: 14px;
+    }
+
+    .agenda-outlook-nav {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .nav-left,
+    .nav-right {
+        justify-content: center;
+    }
+
+    .agenda-col-prof {
+        min-width: 50px;
+    }
+
+    .prof-nome {
+        display: none;
+    }
+
+    .prof-avatar {
+        width: 20px;
+        height: 20px;
+        line-height: 20px;
+        font-size: 9px;
+        margin-right: 0;
+    }
+
+    .agenda-cell-prof {
+        padding: 2px 3px;
+        min-height: 28px;
+    }
+
+    .cliente-nome {
+        max-width: 40px;
+        font-size: 8px;
+    }
+
+    .agenda-cell-hora {
+        font-size: 10px;
+        padding: 4px 4px;
+        min-width: 40px;
+        width: 40px;
+    }
+
+    .agenda-col-dia {
+        min-width: 35px;
+        padding: 4px 2px !important;
+    }
+
+    .agenda-col-dia .dia-numero {
+        font-size: 12px;
+    }
+
+    .agenda-col-dia .dia-semana {
+        font-size: 8px;
+    }
+
+    .agenda-cell-semana {
+        min-height: 22px;
+        padding: 2px 1px;
+        font-size: 10px;
+    }
+
+    .agenda-mes-dia {
+        min-height: 36px;
+        padding: 4px 2px;
+    }
+
+    .agenda-mes-dia .dia-numero {
+        font-size: 11px;
+    }
+
+    .agenda-outlook-resumo {
+        font-size: 11px;
+        gap: 12px;
+        padding: 8px 12px;
+        flex-wrap: wrap;
+    }
+
+    .agenda-outlook-legenda {
+        font-size: 10px;
+        gap: 8px;
+    }
+
+    .agenda-view-btn {
+        padding: 4px 10px;
+        font-size: 10px;
+    }
+
+    .btn-nav-outlook {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .agenda-outlook-table {
+        font-size: 10px;
+        min-width: 300px;
+    }
+
+    .agenda-col-hora {
+        min-width: 30px;
+        width: 30px;
+    }
+
+    .agenda-col-prof {
+        min-width: 35px;
+    }
+
+    .status-icon {
+        font-size: 10px;
+    }
+
+    .agenda-mes-dia {
+        min-height: 28px;
+    }
+
+    .agenda-mes-dia .dia-numero {
+        font-size: 9px;
+    }
+
+    .agenda-mes-dia .dia-badge {
+        font-size: 7px;
+        min-width: 14px;
+    }
 }

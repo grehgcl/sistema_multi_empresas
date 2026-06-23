@@ -501,7 +501,7 @@ function processarResposta(texto) {
 }
 
 // ============================================
-// BUSCAR CLIENTE POR TELEFONE
+// BUSCAR CLIENTE POR TELEFONE - COM DIAS_BLOQUEIO
 // ============================================
 async function buscarClientePorTelefone(telefone) {
     try {
@@ -527,10 +527,12 @@ async function buscarClientePorTelefone(telefone) {
                 return;
             }
 
+            // Verificar limite com dias_bloqueio
             const podeAgendar = await verificarLimiteAgendamentos(clienteAtual.id);
             if (!podeAgendar) {
+                const diasBloqueio = clienteAtual.dias_bloqueio || 1;
                 adicionarMensagem(
-                    '⚠️ Você já fez um agendamento nos últimos <strong>20 dias</strong>.<br><br>Por favor, aguarde para fazer um novo agendamento.',
+                    `⚠️ Você já fez um agendamento nos últimos <strong>${diasBloqueio} dias</strong>.<br><br>Por favor, aguarde para fazer um novo agendamento.`,
                     'bot'
                 );
                 estado = 'inicio';
@@ -555,7 +557,6 @@ async function buscarClientePorTelefone(telefone) {
         adicionarMensagem('❌ Erro ao buscar cliente. Tente novamente.', 'bot');
     }
 }
-
 // ============================================
 // CADASTRAR NOVO CLIENTE
 // ============================================
@@ -593,10 +594,32 @@ async function cadastrarNovoCliente(nome, telefone) {
 }
 
 // ============================================
-// VERIFICAR LIMITE DE AGENDAMENTOS (20 DIAS)
+// VERIFICAR LIMITE DE AGENDAMENTOS (USANDO DIAS_BLOQUEIO)
 // ============================================
 async function verificarLimiteAgendamentos(clienteId) {
     try {
+        // Buscar o cliente para saber os dias de bloqueio
+        const resCliente = await fetch(`/api/clientes`, {
+            headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+        });
+        const dataCliente = await resCliente.json();
+
+        let diasBloqueio = 1; // padrão
+        if (dataCliente.success && dataCliente.data) {
+            const cliente = dataCliente.data.find(c => c.id === clienteId);
+            if (cliente) {
+                diasBloqueio = cliente.dias_bloqueio || 1;
+            }
+        }
+
+        console.log(`📋 Cliente ${clienteId} - Dias de bloqueio: ${diasBloqueio}`);
+
+        // Se for 0, não tem restrição
+        if (diasBloqueio === 0) {
+            return true;
+        }
+
+        // Buscar agendamentos do cliente
         const res = await fetch(`/api/agendamentos?cliente=${clienteId}`, {
             headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
         });
@@ -604,8 +627,8 @@ async function verificarLimiteAgendamentos(clienteId) {
 
         if (data.success && data.data) {
             const agora = new Date();
-            const vinteDiasAtras = new Date(agora);
-            vinteDiasAtras.setDate(vinteDiasAtras.getDate() - 20);
+            const dataLimite = new Date(agora);
+            dataLimite.setDate(dataLimite.getDate() - diasBloqueio);
 
             const agendamentosRecentes = data.data.filter(a =>
                 a.status === 'concluido' || a.status === 'pendente' || a.status === 'agendado'
@@ -613,7 +636,8 @@ async function verificarLimiteAgendamentos(clienteId) {
 
             for (let ag of agendamentosRecentes) {
                 const dataAg = new Date(ag.data);
-                if (dataAg >= vinteDiasAtras) {
+                if (dataAg >= dataLimite) {
+                    console.log(`❌ Cliente tem agendamento em ${ag.data} (${diasBloqueio} dias de bloqueio)`);
                     return false;
                 }
             }

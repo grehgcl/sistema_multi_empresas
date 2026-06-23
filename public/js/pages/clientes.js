@@ -1,4 +1,4 @@
-﻿// pages/clientes.js - COM BLOQUEIO DE CHATBOT, EDIÇÃO E WHATSAPP
+﻿// pages/clientes.js - COM BLOQUEIO DE CHATBOT, EDIÇÃO, WHATSAPP E DIAS_BLOQUEIO
 
 async function carregarClientes() {
     console.log("🟢 carregarClientes chamada");
@@ -78,6 +78,7 @@ async function carregarClientes() {
                 const isBloqueado = c.bloqueado_chatbot === 1;
                 const telefone = c.telefone || '';
                 const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
+                const diasBloqueio = c.dias_bloqueio || 1;
 
                 html += `
                     <div class="cliente-card-mobile">
@@ -104,6 +105,10 @@ async function carregarClientes() {
                             <div class="info-row">
                                 <span class="info-label">📅 Cadastro</span>
                                 <span class="info-value">${formatarDataBr(c.created_at)}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="info-label">⏳ Dias bloqueio</span>
+                                <span class="info-value"><strong>${diasBloqueio}</strong> dia(s)</span>
                             </div>
                         </div>
                         <div class="cliente-card-actions">
@@ -148,6 +153,7 @@ async function carregarClientes() {
                                 <th>Nome</th>
                                 <th>Telefone</th>
                                 <th>Email</th>
+                                <th>Dias Bloqueio</th>
                                 <th>Chatbot</th>
                                 <th>Ações</th>
                             </tr>
@@ -159,6 +165,7 @@ async function carregarClientes() {
                 const isBloqueado = c.bloqueado_chatbot === 1;
                 const telefone = c.telefone || '';
                 const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
+                const diasBloqueio = c.dias_bloqueio || 1;
 
                 html += `
                     <tr>
@@ -175,6 +182,7 @@ async function carregarClientes() {
                             ` : '-'}
                         </td>
                         <td>${c.email || '-'}</td>
+                        <td style="text-align: center;"><strong>${diasBloqueio}</strong> dia(s)</td>
                         <td>
                             <span class="status-badge ${isBloqueado ? 'inativo' : 'ativo'}">
                                 <span class="dot"></span>
@@ -244,7 +252,7 @@ window.abrirModalCliente = function () {
 
     const modalHtml = `
         <div id="modalCliente" class="modal" style="display: flex;">
-            <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-content" style="max-width: 450px;">
                 <h3>➕ Novo Cliente</h3>
                 <form id="formNovoCliente" onsubmit="salvarCliente(event)">
                     <div class="form-group">
@@ -258,6 +266,16 @@ window.abrirModalCliente = function () {
                     <div class="form-group">
                         <label>Email</label>
                         <input type="email" id="clienteEmail" class="form-control" placeholder="cliente@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Dias de bloqueio entre agendamentos</label>
+                        <input type="number" id="clienteDiasBloqueio" class="form-control" value="1" min="0" max="365">
+                        <small class="text-muted">
+                            Quantos dias o cliente deve esperar para fazer um novo agendamento.<br>
+                            <strong>1 dia</strong> = não pode agendar 2 vezes no mesmo dia.<br>
+                            <strong>7 dias</strong> = só pode agendar 1 vez por semana.<br>
+                            <strong>0 dias</strong> = sem restrição.
+                        </small>
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                         <button type="button" class="btn btn-secondary" onclick="fecharModalCliente()">Cancelar</button>
@@ -291,6 +309,7 @@ window.salvarCliente = async function (event) {
     const nome = document.getElementById('clienteNome').value;
     const telefone = document.getElementById('clienteTelefone').value;
     const email = document.getElementById('clienteEmail').value;
+    const diasBloqueio = parseInt(document.getElementById('clienteDiasBloqueio').value) || 1;
 
     if (!nome) {
         showToast('Nome é obrigatório', 'warning');
@@ -308,7 +327,12 @@ window.salvarCliente = async function (event) {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({ nome, telefone, email })
+            body: JSON.stringify({
+                nome,
+                telefone,
+                email,
+                dias_bloqueio: diasBloqueio
+            })
         });
 
         const data = await res.json();
@@ -330,7 +354,7 @@ window.salvarCliente = async function (event) {
 };
 
 // ============================================
-// EDITAR CLIENTE
+// EDITAR CLIENTE - COM DIAS_BLOQUEIO
 // ============================================
 
 window.editarCliente = async function (id) {
@@ -348,7 +372,7 @@ window.editarCliente = async function (id) {
 
     const modalHtml = `
         <div id="modalEditarCliente" class="modal" style="display: flex;">
-            <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-content" style="max-width: 450px;">
                 <h3>✏️ Editar Cliente</h3>
                 <form id="formEditarCliente" onsubmit="atualizarCliente(event, ${id})">
                     <div class="form-group">
@@ -363,6 +387,16 @@ window.editarCliente = async function (id) {
                         <label>Email</label>
                         <input type="email" id="editClienteEmail" class="form-control" value="${cliente.email || ''}" placeholder="cliente@email.com">
                     </div>
+                    <div class="form-group">
+    <label>Dias de bloqueio entre agendamentos</label>
+    <input type="number" id="editClienteDiasBloqueio" class="form-control" value="1" min="0" max="365">
+    <small class="text-muted">
+        Quantos dias o cliente deve esperar para fazer um novo agendamento.<br>
+        <strong>1 dia</strong> = não pode agendar 2 vezes no mesmo dia.<br>
+        <strong>7 dias</strong> = só pode agendar 1 vez por semana.<br>
+        <strong>0 dias</strong> = sem restrição.
+    </small>
+</div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
                         <button type="button" class="btn btn-secondary" onclick="fecharModalEditarCliente()">Cancelar</button>
                         <button type="submit" class="btn btn-primary">Salvar Alterações</button>
@@ -384,7 +418,7 @@ function fecharModalEditarCliente() {
 }
 
 // ============================================
-// ATUALIZAR CLIENTE
+// ATUALIZAR CLIENTE - COM DIAS_BLOQUEIO
 // ============================================
 
 window.atualizarCliente = async function (event, id) {
@@ -393,6 +427,9 @@ window.atualizarCliente = async function (event, id) {
     const nome = document.getElementById('editClienteNome').value;
     const telefone = document.getElementById('editClienteTelefone').value;
     const email = document.getElementById('editClienteEmail').value;
+    const diasBloqueio = parseInt(document.getElementById('editClienteDiasBloqueio').value) || 1;
+
+    console.log('📝 Atualizando cliente:', { id, nome, telefone, email, diasBloqueio });
 
     if (!nome) {
         showToast('Nome é obrigatório', 'warning');
@@ -410,7 +447,12 @@ window.atualizarCliente = async function (event, id) {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({ nome, telefone, email })
+            body: JSON.stringify({
+                nome,
+                telefone,
+                email,
+                dias_bloqueio: diasBloqueio
+            })
         });
 
         const data = await res.json();

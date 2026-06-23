@@ -496,3 +496,316 @@ http://localhost:3000
 =========================================
 ULTIMA ATUALIZACAO: 21/06/2026
 =========================================
+
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 22/06/2026
+=========================================
+
+LEIA OS ARQUIVOS NA ORDEM:
+1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
+2. docs/IA_CONTEXT.md - Contexto completo
+3. docs/ESTRUTURA.md - Onde fica cada coisa
+4. docs/DEV_GUIDE.md - Como desenvolver
+
+COMANDO: npm start
+
+USUARIOS:
+  Super Admin: super@admin.com / super123
+  Dono: admin@teste.com / 123456
+  Profissional: (criar pelo dono) - senha definida pelo dono
+
+=========================================
+✅ IMPLEMENTADO (22/06/2026)
+=========================================
+
+### 1. LIMITE DE AGENDAMENTOS (100/MÊS) 🎯
+- Starter e Trial: 100 agendamentos/mês
+- Pro, Business, Enterprise: Ilimitado
+- Contador agendamentos_mes e mes_referencia no banco
+- Reset automático no início de cada mês (job)
+- Barra de progresso na página de Planos
+- Bloqueio ao atingir 100 agendamentos
+- Chatbot também respeita o limite
+
+### 2. TEMA ESCURO POR PADRÃO 🌙
+- Sistema inicia com tema escuro estilo Instagram
+- Transição suave entre temas
+- Salvo no localStorage
+- Aba "Tema" nas configurações
+
+### 3. AÇÕES RÁPIDAS CORRIGIDAS ⚡
+- "Novo Agendamento" usa o mesmo modal da página de agendamentos
+- "Novo Cliente" usa o mesmo modal da página de clientes
+- Consistência visual em todo o sistema
+
+### 4. SISTEMA DE NOTIFICAÇÕES WHATSAPP 📱
+- Confirmação de agendamento
+- Lembrete 24h antes (job às 09:00)
+- Agradecimento após conclusão
+- Notificação de cancelamento
+- Modo LOG funcionando
+
+### 5. CORREÇÕES DO CHATBOT 🤖
+- Corrigido erro `profissionalId.includes is not a function`
+- Validação de horários melhorada
+- Calendário visual funcionando
+- Rota /api/chatbot/link corrigida (estava 404)
+
+=========================================
+🔄 O QUE JÁ EXISTE
+=========================================
+
+1. Autenticacao (Super Admin, Dono, Profissional)
+2. CRUD Clientes (apenas Dono)
+3. CRUD Agendamentos (Dono e Profissional)
+4. Sistema de Comissoes (configurável, padrao 30%)
+5. Financeiro com:
+   - Faturamento Bruto
+   - Comissoes a Pagar
+   - Faturamento Liquido
+   - Cards por profissional
+6. Super Admin: gestao de empresas
+7. Sistema de Profissionais (com limite por plano)
+8. Sistema de Servicos
+9. Chatbot Inteligente
+10. Sistema de Planos de Assinatura
+11. Sistema de Pagamentos (Mercado Pago)
+12. Landing Page tela dividida
+13. Dashboard com métricas
+14. Configurações (Profissionais, Horários, Chatbot, Tema)
+15. Tema escuro por padrão
+16. Limite de 100 agendamentos/mês para Starter
+
+=========================================
+📋 PLANOS COMPLETOS
+=========================================
+
+| Plano | Valor | Profissionais | Agendamentos/Mês |
+|-------|-------|---------------|------------------|
+| Trial | Grátis (45 dias) | 1 | 100 |
+| Starter | R$ 29,90/mês | 1 | 100 |
+| Pro | R$ 59,90/mês | 5 | Ilimitado |
+| Business | R$ 119,90/mês | 15 | Ilimitado |
+| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
+
+=========================================
+📁 ESTRUTURA DOS ARQUIVOS
+=========================================
+
+server/
+├── config/
+│   └── database.js
+├── middlewares/
+│   └── auth.js (com verificarLimiteAgendamentos)
+├── services/
+│   └── whatsapp.js
+├── jobs/
+│   ├── lembretes.js
+│   └── reset-contador.js (NOVO!)
+└── utils/
+    ├── constants.js
+    └── helpers.js
+
+scripts/
+├── migrate.js
+├── seed.js
+└── migrate-limite-agendamentos.js (NOVO!)
+
+public/
+├── index.html
+├── chatbot.html
+├── css/
+│   ├── style.css
+│   └── chatbot.css
+└── js/
+    ├── ui.js
+    └── pages/
+        ├── dashboard.js
+        ├── dashboard-profissional.js
+        ├── clientes.js
+        ├── agendamentos.js
+        ├── agendamentos-profissional.js
+        ├── servicos.js
+        ├── financeiro.js
+        ├── empresas.js
+        ├── configuracoes.js (com tema e chatbot)
+        └── planos.js (com barra de progresso)
+
+test-limite.js (NOVO!) - Script para testar o limite
+
+=========================================
+🔧 COMANDOS ÚTEIS
+=========================================
+
+# Iniciar servidor
+npm start
+
+# Testar limite de agendamentos
+node test-limite.js
+
+# Migração do banco (limite de agendamentos)
+node scripts/migrate-limite-agendamentos.js
+
+# Ver logs do servidor
+npm start
+
+# Acessar sistema
+http://localhost:3000
+
+=========================================
+ULTIMA ATUALIZACAO: 22/06/2026
+=========================================
+
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 23/06/2026
+=========================================
+
+LEIA OS ARQUIVOS NA ORDEM:
+1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
+2. docs/IA_CONTEXT.md - Contexto completo
+3. docs/ESTRUTURA.md - Onde fica cada coisa
+4. docs/DEV_GUIDE.md - Como desenvolver
+
+COMANDO: npm start
+
+USUARIOS:
+  Super Admin: super@admin.com / super123
+  Dono: admin@teste.com / 123456
+  Profissional: (criar pelo dono) - senha definida pelo dono
+
+=========================================
+✅ IMPLEMENTADO (23/06/2026)
+=========================================
+
+### 1. AGENDA INTELIGENTE DENTRO DO DASHBOARD 📅
+- Card da Agenda Visual dentro do Dashboard (abaixo de Ações Rápidas)
+- Visualização semanal com cores por profissional
+- Dono aparece como profissional (bolinha dourada 👑)
+- Clique na bolinha abre modal com data/hora/pré-setados
+- Cores: 🟢 Disponível, 🔴 Ocupado, 🍽️ Almoço, 🔒 Fechado
+
+### 2. SISTEMA DE DIAS_BLOQUEIO POR CLIENTE 🔒
+- Nova coluna `dias_bloqueio` na tabela `clientes` (padrão = 1)
+- Dono pode configurar no modal de edição do cliente
+- 1 dia = não pode agendar 2 vezes no mesmo dia
+- 7 dias = só pode agendar 1 vez por semana
+- 0 dias = sem restrição
+- Validação no backend (POST /api/agendamentos)
+- Validação no chatbot (POST /api/chatbot/agendar)
+
+### 3. VALIDAÇÃO DE AGENDAMENTOS ✅
+- Cliente não pode agendar antes do período de bloqueio
+- Calcula: último_agendamento + dias_bloqueio = data_mínima_permitida
+- Mensagem clara com data exata que pode agendar
+
+### 4. TEMA ESCURO POR PADRÃO 🌙
+- Sistema inicia com tema escuro estilo Instagram
+- Transição suave entre temas
+- Salvo no localStorage
+- Aba "Tema" nas configurações
+
+### 5. SISTEMA DE NOTIFICAÇÕES WHATSAPP 📱
+- Confirmação de agendamento
+- Lembrete 24h antes (job às 09:00)
+- Agradecimento após conclusão
+- Notificação de cancelamento
+- Modo LOG funcionando
+
+=========================================
+🔄 O QUE JÁ EXISTE
+=========================================
+
+1. Autenticacao (Super Admin, Dono, Profissional)
+2. CRUD Clientes (apenas Dono) com dias_bloqueio
+3. CRUD Agendamentos (Dono e Profissional)
+4. Sistema de Comissoes (configurável, padrao 30%)
+5. Financeiro com:
+   - Faturamento Bruto
+   - Comissoes a Pagar
+   - Faturamento Liquido
+   - Cards por profissional
+6. Super Admin: gestao de empresas
+7. Sistema de Profissionais (com limite por plano)
+8. Sistema de Servicos
+9. Chatbot Inteligente
+10. Sistema de Planos de Assinatura
+11. Sistema de Pagamentos (Mercado Pago)
+12. Landing Page tela dividida
+13. Dashboard com métricas
+14. Configurações (Profissionais, Horários, Chatbot, Tema)
+15. Tema escuro por padrão
+16. Limite de 100 agendamentos/mês para Starter
+17. Agenda Inteligente no Dashboard
+18. Dias de bloqueio por cliente
+
+=========================================
+📋 PLANOS COMPLETOS
+=========================================
+
+| Plano | Valor | Profissionais | Agendamentos/Mês |
+|-------|-------|---------------|------------------|
+| Trial | Grátis (45 dias) | 1 | 100 |
+| Starter | R$ 29,90/mês | 1 | 100 |
+| Pro | R$ 59,90/mês | 5 | Ilimitado |
+| Business | R$ 119,90/mês | 15 | Ilimitado |
+| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
+
+=========================================
+📁 ESTRUTURA DOS ARQUIVOS
+=========================================
+
+server/
+├── config/
+│   └── database.js
+├── middlewares/
+│   └── auth.js (com verificarLimiteAgendamentos)
+├── services/
+│   └── whatsapp.js
+├── jobs/
+│   ├── lembretes.js
+│   └── reset-contador.js
+└── utils/
+    ├── constants.js
+    └── helpers.js
+
+public/
+├── index.html
+├── chatbot.html
+├── css/
+│   ├── style.css
+│   └── chatbot.css
+└── js/
+    ├── ui.js
+    └── pages/
+        ├── dashboard.js (com Agenda Inteligente)
+        ├── dashboard-profissional.js
+        ├── clientes.js (com dias_bloqueio)
+        ├── agendamentos.js
+        ├── agendamentos-profissional.js
+        ├── servicos.js
+        ├── financeiro.js
+        ├── empresas.js
+        ├── configuracoes.js
+        └── planos.js (com barra de progresso)
+
+=========================================
+🔧 COMANDOS ÚTEIS
+=========================================
+
+# Iniciar servidor
+npm start
+
+# Migração do banco (dias_bloqueio)
+node scripts/migrate-dias-bloqueio.js
+
+# Ver logs do servidor
+npm start
+
+# Acessar sistema
+http://localhost:3000
+
+=========================================
+ULTIMA ATUALIZACAO: 23/06/2026
+=========================================

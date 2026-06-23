@@ -175,6 +175,19 @@
                     <label>Email</label>
                     <input type="email" id="clienteEmail" class="form-control" placeholder="email@exemplo.com">
                 </div>
+
+                <!-- ===== NOVO CAMPO: DIAS DE BLOQUEIO ===== -->
+                <div class="form-group">
+                    <label>Dias de bloqueio entre agendamentos</label>
+                    <input type="number" id="clienteDiasBloqueio" class="form-control" value="1" min="0" max="365">
+                    <small class="text-muted">
+                        Quantos dias o cliente deve esperar para fazer um novo agendamento.<br>
+                        <strong>1 dia</strong> = não pode agendar 2 vezes no mesmo dia.<br>
+                        <strong>7 dias</strong> = só pode agendar 1 vez por semana.<br>
+                        <strong>0 dias</strong> = sem restrição.
+                    </small>
+                </div>
+
                 <div class="modal-buttons">
                     <button type="submit" class="btn-3d">Salvar</button>
                     <button type="button" onclick="fecharModalCliente()" class="btn-secondary">Cancelar</button>
@@ -435,9 +448,7 @@
         function abrirModalAgendamentoRapido() {
             console.log('🔄 Ação rápida: Novo Agendamento');
 
-            // Verificar se a função existe no agendamentos.js
             if (typeof window.abrirModalAgendamentoDono === 'function') {
-                // Garantir que os dados estão carregados
                 if (typeof window.carregarDadosAgendamento === 'function') {
                     window.carregarDadosAgendamento().then(() => {
                         window.abrirModalAgendamentoDono();
@@ -448,7 +459,6 @@
                 return;
             }
 
-            // Fallback: usar o modal do index
             const modal = document.getElementById('modalAgendamento');
             if (modal) {
                 modal.style.display = 'block';
@@ -461,17 +471,14 @@
             }
         }
 
-        // Ação Rápida: Novo Cliente - chama a função do clientes.js
         function abrirModalClienteRapido() {
             console.log('🔄 Ação rápida: Novo Cliente');
 
-            // Verificar se a função existe no clientes.js
             if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalClienteRapido) {
                 window.abrirModalCliente();
                 return;
             }
 
-            // Fallback: usar o modal do index
             abrirModalCliente();
         }
 
@@ -626,7 +633,7 @@
             } else {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
-                    { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentos' },
+                    { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
                     { id: 'servicos', nome: 'Serviços', icone: 'fa-cut', funcao: 'carregarServicos' },
                     { id: 'financeiro', nome: 'Financeiro', icone: 'fa-chart-simple', funcao: 'carregarFinanceiro' },
                     { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
@@ -705,7 +712,6 @@
         }
 
         // ========== TEMA ESCURO POR PADRÃO ==========
-        // Se não houver tema salvo, usar escuro como padrão
         const temaSalvo = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', temaSalvo);
         localStorage.setItem('theme', temaSalvo);

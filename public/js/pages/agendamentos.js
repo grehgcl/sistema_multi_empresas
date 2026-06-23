@@ -813,7 +813,7 @@ function atualizarValorPorServicoDono() {
 }
 
 // ============================================
-// SALVAR AGENDAMENTO
+// SALVAR AGENDAMENTO (COM VALIDAÇÃO DE 1 POR DIA)
 // ============================================
 
 async function salvarAgendamentoDono() {
@@ -868,8 +868,17 @@ async function salvarAgendamentoDono() {
             showToast("Agendamento criado com sucesso!", "success");
             fecharModalAgendamentoDono();
             carregarAgendamentos();
+            // Recarregar a agenda inteligente se estiver visível
+            if (typeof carregarAgendaInteligente === 'function') {
+                carregarAgendaInteligente();
+            }
         } else {
-            showToast("Erro: " + result.message, "error");
+            // Verificar se é o erro de cliente já tem agendamento
+            if (result.message && result.message.includes('já possui um agendamento para este dia')) {
+                showToast('⚠️ ' + result.message, 'warning');
+            } else {
+                showToast("Erro: " + result.message, "error");
+            }
         }
     } catch (error) {
         console.error("❌ Erro ao criar agendamento:", error);

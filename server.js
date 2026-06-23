@@ -30,8 +30,8 @@ const {
     verificarDono,
     verificarLimiteProfissionais,
     verificarAcessoAgendamentos,
-    verificarLimiteAgendamentos,      // 🔥 ADICIONAR
-    incrementarContadorAgendamentos,   // 🔥 ADICIONAR
+    verificarLimiteAgendamentos,
+    incrementarContadorAgendamentos,
 } = require('./server/middlewares/auth');
 const { PLANOS, PLANOS_NOMES, JWT_SECRET } = require('./server/utils/constants');
 const {
@@ -52,6 +52,19 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
+
+// ============================================================
+// FUNÇÃO AUXILIAR: FORMATAR DATA (BACKEND)
+// ============================================================
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        const data = new Date(dataStr + 'T00:00:00');
+        return data.toLocaleDateString('pt-BR');
+    } catch {
+        return dataStr;
+    }
+}
 
 // ============================================================
 // FUNÇÃO AUXILIAR: GERAR HORÁRIOS DO DIA
@@ -490,6 +503,7 @@ app.post('/api/cadastro', (req, res) => {
         });
     });
 });
+
 // ============================================================
 // ROTAS DE PLANOS
 // ============================================================
@@ -1152,12 +1166,12 @@ app.get('/api/agendamentos', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO (COM NOTIFICAÇÃO WHATSAPP E LIMITE)
+// ROTA: CRIAR AGENDAMENTO (COM DIAS_BLOQUEIO CORRIGIDO)
 // ============================================
 app.post('/api/agendamentos',
     auth,
     verificarAcessoAgendamentos,
-    verificarLimiteAgendamentos,  // 🔥 NOVO MIDDLEWARE DE LIMITE
+    verificarLimiteAgendamentos,
     async (req, res) => {
         const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
         const empresa_id = req.usuario.empresa_id;
@@ -1174,7 +1188,126 @@ app.post('/api/agendamentos',
             return res.json({ success: false, message: 'Horário é obrigatório' });
         }
 
-        // Função para criar o agendamento
+        // ============================================
+        // 🔥 VALIDAÇÃO: BUSCAR DIAS_BLOQUEIO DO CLIENTE
+        // ============================================
+        const sqlDiasBloqueio = isProduction
+            ? `SELECT dias_bloqueio FROM clientes WHERE id = $1 AND empresa_id = $2`
+            : `SELECT dias_bloqueio FROM clientes WHERE id = ? AND empresa_id = ?`;
+
+        const clienteInfo = await new Promise((resolve) => {
+            db.get(sqlDiasBloqueio, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar dias_bloqueio:', err);
+                    resolve(null);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+
+        const diasBloqueio = clienteInfo?.dias_bloqueio || 1;
+        console.log(`📋 Cliente ${cliente_id} - Dias de bloqueio: ${diasBloqueio}`);
+
+        // ============================================
+        // 🔥 VALIDAÇÃO CORRIGIDA: BUSCAR ÚLTIMO AGENDAMENTO
+        // ============================================
+        if (diasBloqueio > 0) {
+            // Buscar o último agendamento do cliente
+            const sqlUltimoAgendamento = isProduction
+                ? `SELECT data FROM agendamentos 
+                   WHERE cliente_id = $1 
+                   AND empresa_id = $2 
+                   AND status != 'cancelado'
+                   ORDER BY data DESC
+                   LIMIT 1`
+                : `SELECT data FROM agendamentos 
+                   WHERE cliente_id = ? 
+                   AND empresa_id = ? 
+                   AND status != 'cancelado'
+                   ORDER BY data DESC
+                   LIMIT 1`;
+
+            const ultimoAgendamento = await new Promise((resolve) => {
+                db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
+                    if (err) {
+                        console.error('❌ Erro ao buscar último agendamento:', err);
+                        resolve(null);
+                    } else {
+                        resolve(row);
+                    }
+                });
+            });
+
+            if (ultimoAgendamento) {
+                const dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
+                const dataMinima = new Date(dataUltimo);
+                dataMinima.setDate(dataMinima.getDate() + diasBloqueio);
+                const dataMinimaStr = dataMinima.toISOString().split('T')[0];
+                const dataAgendamento = new Date(data + 'T00:00:00');
+
+                console.log(`📅 Último agendamento: ${ultimoAgendamento.data}`);
+                console.log(`📅 Data mínima permitida: ${dataMinimaStr}`);
+                console.log(`📅 Data do novo agendamento: ${data}`);
+
+                if (dataAgendamento < dataMinima) {
+                    console.log(`❌ Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
+                    return res.json({
+                        success: false,
+                        message: `Este cliente só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueio} dias após o último agendamento).`
+                    });
+                } else {
+                    console.log(`✅ Cliente ${cliente_id} pode agendar em ${data}`);
+                }
+            } else {
+                console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores`);
+            }
+        }
+
+        // ============================================
+        // VERIFICAR SE HORÁRIO ESTÁ OCUPADO (PROFISSIONAL)
+        // ============================================
+        let sqlCheckHorario = isProduction
+            ? `SELECT id FROM agendamentos 
+               WHERE empresa_id = $1 
+               AND data = $2 
+               AND hora = $3 
+               AND status != 'cancelado'`
+            : `SELECT id FROM agendamentos 
+               WHERE empresa_id = ? 
+               AND data = ? 
+               AND hora = ? 
+               AND status != 'cancelado'`;
+
+        let paramsCheck = [parseInt(empresa_id), data, hora];
+
+        if (profissional_id) {
+            sqlCheckHorario += isProduction ? ` AND profissional_id = $4` : ` AND profissional_id = ?`;
+            paramsCheck.push(parseInt(profissional_id));
+        }
+
+        const horarioOcupado = await new Promise((resolve) => {
+            db.get(sqlCheckHorario, paramsCheck, (err, row) => {
+                if (err) {
+                    console.error('❌ Erro ao verificar horário:', err);
+                    resolve(null);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+
+        if (horarioOcupado) {
+            console.log(`❌ Horário ${hora} já está ocupado`);
+            return res.json({
+                success: false,
+                message: 'Este horário já está ocupado. Escolha outro horário.'
+            });
+        }
+
+        // ============================================
+        // FUNÇÃO PARA CRIAR O AGENDAMENTO
+        // ============================================
         async function criarAgendamento(servicoNome, servicoValor, servicoId) {
             const sqlInsert = isProduction
                 ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
@@ -1205,7 +1338,6 @@ app.post('/api/agendamentos',
                 let id = this?.lastID || this?.id || null;
                 console.log('✅ Agendamento criado com ID:', id);
 
-                // 🔥 INCREMENTAR CONTADOR DE AGENDAMENTOS DO MÊS
                 incrementarContadorAgendamentos(empresa_id, (err) => {
                     if (err) {
                         console.error('⚠️ Erro ao incrementar contador:', err);
@@ -1218,7 +1350,6 @@ app.post('/api/agendamentos',
                 // ENVIA NOTIFICAÇÕES WHATSAPP
                 // ============================================
                 try {
-                    // Buscar cliente
                     const cliente = await new Promise((resolve, reject) => {
                         db.get('SELECT * FROM clientes WHERE id = ?', [parseInt(cliente_id)], (err, row) => {
                             if (err) reject(err);
@@ -1226,7 +1357,6 @@ app.post('/api/agendamentos',
                         });
                     });
 
-                    // Buscar serviço
                     const servico = await new Promise((resolve, reject) => {
                         db.get('SELECT * FROM servicos WHERE id = ?', [servicoId || null], (err, row) => {
                             if (err) reject(err);
@@ -1234,7 +1364,6 @@ app.post('/api/agendamentos',
                         });
                     });
 
-                    // Buscar profissional
                     let profissional = null;
                     if (profissional_id) {
                         profissional = await new Promise((resolve, reject) => {
@@ -1245,7 +1374,6 @@ app.post('/api/agendamentos',
                         });
                     }
 
-                    // Buscar empresa
                     const empresa = await new Promise((resolve, reject) => {
                         db.get('SELECT * FROM empresas WHERE id = ?', [parseInt(empresa_id)], (err, row) => {
                             if (err) reject(err);
@@ -1262,13 +1390,11 @@ app.post('/api/agendamentos',
                         empresa: { nome: empresa?.nome || 'Barbearia', endereco: empresa?.endereco || '' },
                     };
 
-                    // Envia confirmação para o cliente (se tiver telefone)
                     if (dadosNotificacao.cliente.telefone) {
                         await whatsappService.enviarConfirmacao(dadosNotificacao);
                         console.log(`📱 WhatsApp: Confirmação enviada para ${dadosNotificacao.cliente.telefone}`);
                     }
 
-                    // Envia notificação para o profissional (se tiver telefone)
                     if (profissional?.telefone) {
                         await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao);
                         console.log(`📱 WhatsApp: Notificação enviada para profissional ${profissional.telefone}`);
@@ -1276,14 +1402,12 @@ app.post('/api/agendamentos',
 
                 } catch (whatsappError) {
                     console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
-                    // Não bloqueia a criação do agendamento
                 }
 
                 res.json({ success: true, data: { id: id }, message: 'Agendamento criado com sucesso!' });
             });
         }
 
-        // Verificar se tem servico_id
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
             const sqlServico = isProduction
                 ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
@@ -1306,7 +1430,6 @@ app.post('/api/agendamentos',
                 criarAgendamento(servicoData.nome, servicoData.valor, parseInt(servico_id));
             });
         } else {
-            // Sem serviço_id (serviço manual)
             console.log('📝 Criando agendamento sem serviço_id (manual)');
             const servicoNome = req.body.servico || '';
             const servicoValor = parseFloat(req.body.valor) || 0;
@@ -1669,10 +1792,9 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================================
-// CLIENTES
-// ============================================================
-
+// ============================================
+// GET /api/clientes - BUSCAR CLIENTES (COM DIAS_BLOQUEIO)
+// ============================================
 app.get('/api/clientes', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
@@ -1681,11 +1803,15 @@ app.get('/api/clientes', auth, (req, res) => {
     }
 
     const sql = isProduction
-        ? `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+        ? `SELECT id, nome, telefone, email, created_at, 
+           COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot, 
+           COALESCE(dias_bloqueio, 1) as dias_bloqueio 
            FROM clientes 
            WHERE empresa_id = $1 
            ORDER BY nome`
-        : `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+        : `SELECT id, nome, telefone, email, created_at, 
+           COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot, 
+           COALESCE(dias_bloqueio, 1) as dias_bloqueio 
            FROM clientes 
            WHERE empresa_id = ? 
            ORDER BY nome`;
@@ -1722,24 +1848,39 @@ app.post('/api/clientes', auth, (req, res) => {
     });
 });
 
+// ============================================
+// PUT /api/clientes/:id - ATUALIZAR CLIENTE (COM DIAS_BLOQUEIO)
+// ============================================
 app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
-    const { nome, telefone, email } = req.body;
+    const { nome, telefone, email, dias_bloqueio } = req.body;
     const empresa_id = req.usuario.empresa_id;
+
+    console.log('📝 Atualizando cliente:', { id, nome, telefone, email, dias_bloqueio, empresa_id });
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
 
     const sql = isProduction
-        ? `UPDATE clientes SET nome = COALESCE($1, nome), telefone = COALESCE($2, telefone), email = COALESCE($3, email) 
-           WHERE id = $4 AND empresa_id = $5`
-        : `UPDATE clientes SET nome = COALESCE(?, nome), telefone = COALESCE(?, telefone), email = COALESCE(?, email) 
+        ? `UPDATE clientes SET 
+           nome = COALESCE($1, nome), 
+           telefone = COALESCE($2, telefone), 
+           email = COALESCE($3, email),
+           dias_bloqueio = COALESCE($4, dias_bloqueio, 1)
+           WHERE id = $5 AND empresa_id = $6`
+        : `UPDATE clientes SET 
+           nome = COALESCE(?, nome), 
+           telefone = COALESCE(?, telefone), 
+           email = COALESCE(?, email),
+           dias_bloqueio = COALESCE(?, dias_bloqueio, 1)
            WHERE id = ? AND empresa_id = ?`;
 
-    db.run(sql, [nome, telefonePadrao, email, id, empresa_id], function (err) {
+    db.run(sql, [nome, telefonePadrao, email, dias_bloqueio || 1, id, empresa_id], function (err) {
         if (err) {
             console.error('❌ Erro ao editar cliente:', err.message);
             return res.json({ success: false, message: err.message });
         }
+
+        console.log('✅ Cliente atualizado! Changes:', this.changes);
         res.json({ success: true, message: 'Cliente atualizado com sucesso' });
     });
 });
@@ -2230,6 +2371,7 @@ app.get('/api/empresa/dados', auth, (req, res) => {
 // ============================================================
 // ROTAS DO CHATBOT (PÚBLICAS) - MANTIDAS INTACTAS
 // ============================================================
+
 // ============================================================
 // ROTA: LINK DO CHATBOT (PROTEGIDA - APENAS DONO)
 // ============================================================
@@ -2608,9 +2750,9 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     });
 });
 
-// ============================================================
-// CHATBOT - AGENDAR (COM LIMITE DE 100/MÊS)
-// ============================================================
+// ============================================
+// CHATBOT - AGENDAR (COM DIAS_BLOQUEIO CORRIGIDO)
+// ============================================
 app.post('/api/chatbot/agendar', async (req, res) => {
     try {
         const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
@@ -2626,7 +2768,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         const empresaIdNum = parseInt(empresaId);
         const profissionalIdNum = profissionalId ? parseInt(profissionalId) : null;
 
-        // 1. VERIFICAR LIMITE
+        // ============================================
+        // 1. VERIFICAR LIMITE DE AGENDAMENTOS/MÊS
+        // ============================================
         const empresa = await new Promise((resolve) => {
             const sql = isProduction
                 ? `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = $1`
@@ -2663,7 +2807,84 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             }
         }
 
-        // 2. VERIFICAR HORÁRIO
+        // ============================================
+        // 2. BUSCAR DIAS_BLOQUEIO DO CLIENTE
+        // ============================================
+        const sqlDiasBloqueio = isProduction
+            ? `SELECT dias_bloqueio FROM clientes WHERE id = $1 AND empresa_id = $2`
+            : `SELECT dias_bloqueio FROM clientes WHERE id = ? AND empresa_id = ?`;
+
+        const clienteInfo = await new Promise((resolve) => {
+            db.get(sqlDiasBloqueio, [clienteIdNum, empresaIdNum], (err, row) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar dias_bloqueio:', err);
+                    resolve(null);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+
+        const diasBloqueio = clienteInfo?.dias_bloqueio || 1;
+        console.log(`📋 Cliente ${clienteIdNum} - Dias de bloqueio: ${diasBloqueio}`);
+
+        // ============================================
+        // 3. VALIDAR: BUSCAR ÚLTIMO AGENDAMENTO
+        // ============================================
+        if (diasBloqueio > 0) {
+            const sqlUltimoAgendamento = isProduction
+                ? `SELECT data FROM agendamentos 
+                   WHERE cliente_id = $1 
+                   AND empresa_id = $2 
+                   AND status != 'cancelado'
+                   ORDER BY data DESC
+                   LIMIT 1`
+                : `SELECT data FROM agendamentos 
+                   WHERE cliente_id = ? 
+                   AND empresa_id = ? 
+                   AND status != 'cancelado'
+                   ORDER BY data DESC
+                   LIMIT 1`;
+
+            const ultimoAgendamento = await new Promise((resolve) => {
+                db.get(sqlUltimoAgendamento, [clienteIdNum, empresaIdNum], (err, row) => {
+                    if (err) {
+                        console.error('❌ Erro ao buscar último agendamento no chatbot:', err);
+                        resolve(null);
+                    } else {
+                        resolve(row);
+                    }
+                });
+            });
+
+            if (ultimoAgendamento) {
+                const dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
+                const dataMinima = new Date(dataUltimo);
+                dataMinima.setDate(dataMinima.getDate() + diasBloqueio);
+                const dataMinimaStr = dataMinima.toISOString().split('T')[0];
+                const dataAgendamento = new Date(data + 'T00:00:00');
+
+                console.log(`📅 Chatbot - Último agendamento: ${ultimoAgendamento.data}`);
+                console.log(`📅 Chatbot - Data mínima permitida: ${dataMinimaStr}`);
+                console.log(`📅 Chatbot - Data do novo agendamento: ${data}`);
+
+                if (dataAgendamento < dataMinima) {
+                    console.log(`❌ Chatbot: Cliente ${clienteIdNum} não pode agendar antes de ${dataMinimaStr}`);
+                    return res.json({
+                        success: false,
+                        message: `Você só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueio} dias após o último agendamento).`
+                    });
+                } else {
+                    console.log(`✅ Chatbot: Cliente ${clienteIdNum} pode agendar em ${data}`);
+                }
+            } else {
+                console.log(`✅ Chatbot: Cliente ${clienteIdNum} não tem agendamentos anteriores`);
+            }
+        }
+
+        // ============================================
+        // 4. VERIFICAR HORÁRIO
+        // ============================================
         const sqlCheck = isProduction
             ? `SELECT id FROM agendamentos WHERE empresa_id = $1 AND data = $2 AND hora = $3 AND status != 'cancelado'`
             : `SELECT id FROM agendamentos WHERE empresa_id = ? AND data = ? AND hora = ? AND status != 'cancelado'`;
@@ -2676,20 +2897,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             return res.json({ success: false, message: 'Horário indisponível' });
         }
 
-        // 3. VERIFICAR 20 DIAS
-        const sql20dias = isProduction
-            ? `SELECT id FROM agendamentos WHERE cliente_id = $1 AND empresa_id = $2 AND data >= CURRENT_DATE - INTERVAL '20 days' AND status != 'cancelado' LIMIT 1`
-            : `SELECT id FROM agendamentos WHERE cliente_id = ? AND empresa_id = ? AND data >= date('now', '-20 days') AND status != 'cancelado' LIMIT 1`;
-
-        const recente = await new Promise((resolve) => {
-            db.get(sql20dias, [clienteIdNum, empresaIdNum], (err, row) => resolve(row));
-        });
-
-        if (recente) {
-            return res.json({ success: false, message: 'Você já tem agendamento nos últimos 20 dias' });
-        }
-
-        // 4. VERIFICAR CLIENTE BLOQUEADO
+        // ============================================
+        // 5. VERIFICAR CLIENTE BLOQUEADO
+        // ============================================
         const sqlCliente = isProduction
             ? `SELECT bloqueado_chatbot FROM clientes WHERE id = $1`
             : `SELECT bloqueado_chatbot FROM clientes WHERE id = ?`;
@@ -2702,7 +2912,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             return res.json({ success: false, message: 'Cliente bloqueado' });
         }
 
-        // 5. BUSCAR SERVIÇO
+        // ============================================
+        // 6. BUSCAR SERVIÇO
+        // ============================================
         const sqlServico = isProduction
             ? `SELECT nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = 1`
             : `SELECT nome, valor FROM servicos WHERE id = ? AND empresa_id = ? AND ativo = 1`;
@@ -2715,7 +2927,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             return res.json({ success: false, message: 'Serviço não encontrado' });
         }
 
-        // 6. CRIAR AGENDAMENTO
+        // ============================================
+        // 7. CRIAR AGENDAMENTO
+        // ============================================
         const sqlInsert = isProduction
             ? `INSERT INTO agendamentos (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
                VALUES ($1, $2, $3, $4, $5, $6, $7, 'agendado', $8) RETURNING id`
@@ -2730,14 +2944,18 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             });
         });
 
-        // 7. INCREMENTAR CONTADOR
+        // ============================================
+        // 8. INCREMENTAR CONTADOR
+        // ============================================
         const mesAtual = new Date().toISOString().slice(0, 7);
         const sqlInc = isProduction
             ? `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = $1 WHERE id = $2`
             : `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = ? WHERE id = ?`;
         db.run(sqlInc, [mesAtual, empresaIdNum]);
 
-        // 8. BUSCAR PROFISSIONAL
+        // ============================================
+        // 9. BUSCAR PROFISSIONAL
+        // ============================================
         const sqlProf = isProduction
             ? `SELECT nome FROM profissionais WHERE id = $1`
             : `SELECT nome FROM profissionais WHERE id = ?`;
@@ -2957,6 +3175,135 @@ if (process.env.WHATSAPP_ENABLED === 'true' && process.env.WHATSAPP_PROVIDER ===
         console.error('❌ Erro ao carregar wppconnect-local:', error.message);
     }
 }
+
+// ============================================
+// ROTA: PROFISSIONAIS DISPONÍVEIS POR HORÁRIO
+// ============================================
+
+app.get('/api/agenda/profissionais-disponiveis', auth, (req, res) => {
+    const { data, hora } = req.query;
+    const empresa_id = req.usuario.empresa_id;
+
+    if (!data || !hora) {
+        return res.json({ success: false, message: 'Data e hora são obrigatórias' });
+    }
+
+    // Buscar todos os profissionais ativos
+    const sqlProfissionais = isProduction
+        ? `SELECT id, nome, comissao_percent FROM profissionais WHERE empresa_id = $1 AND ativo = 1`
+        : `SELECT id, nome, comissao_percent FROM profissionais WHERE empresa_id = ? AND ativo = 1`;
+
+    db.all(sqlProfissionais, [empresa_id], (err, profissionais) => {
+        if (err) {
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (profissionais.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // Buscar agendamentos no horário
+        const sqlAgendamentos = isProduction
+            ? `SELECT profissional_id FROM agendamentos 
+               WHERE empresa_id = $1 AND data = $2 AND hora = $3 AND status != 'cancelado'`
+            : `SELECT profissional_id FROM agendamentos 
+               WHERE empresa_id = ? AND data = ? AND hora = ? AND status != 'cancelado'`;
+
+        db.all(sqlAgendamentos, [empresa_id, data, hora], (err, agendamentos) => {
+            if (err) {
+                return res.json({ success: false, message: err.message });
+            }
+
+            const ocupados = agendamentos.map(a => a.profissional_id).filter(id => id);
+
+            const profissionaisComStatus = profissionais.map(p => ({
+                ...p,
+                ocupado: ocupados.includes(p.id)
+            }));
+
+            // Buscar limite de profissionais do plano
+            const sqlEmpresa = isProduction
+                ? `SELECT limite_profissionais FROM empresas WHERE id = $1`
+                : `SELECT limite_profissionais FROM empresas WHERE id = ?`;
+
+            db.get(sqlEmpresa, [empresa_id], (err, empresa) => {
+                if (err) {
+                    return res.json({ success: false, message: err.message });
+                }
+
+                const limite = empresa?.limite_profissionais || 1;
+                const disponiveis = profissionaisComStatus.filter(p => !p.ocupado);
+                const totalOcupados = profissionaisComStatus.filter(p => p.ocupado).length;
+
+                res.json({
+                    success: true,
+                    data: profissionaisComStatus,
+                    meta: {
+                        limite: limite,
+                        disponiveis: disponiveis.length,
+                        ocupados: totalOcupados,
+                        total: profissionaisComStatus.length
+                    }
+                });
+            });
+        });
+    });
+});
+
+// ============================================
+// ROTA: AGENDAMENTOS POR PERÍODO (PARA AGENDA)
+// ============================================
+
+app.get('/api/agendamentos/periodo', auth, (req, res) => {
+    const { data_inicio, data_fim } = req.query;
+    const empresa_id = req.usuario.empresa_id;
+
+    if (!data_inicio || !data_fim) {
+        return res.json({ success: false, message: 'Data início e fim são obrigatórias' });
+    }
+
+    const sql = isProduction
+        ? `SELECT a.*, 
+           to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+           c.nome as cliente_nome, 
+           p.nome as profissional_nome, 
+           s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN profissionais p ON a.profissional_id = p.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.empresa_id = $1 
+           AND a.data BETWEEN $2 AND $3
+           AND a.status != 'cancelado'
+           ORDER BY a.data ASC, a.hora ASC`
+        : `SELECT a.*, 
+           date(a.data) as data_formatada,
+           c.nome as cliente_nome, 
+           p.nome as profissional_nome, 
+           s.nome as servico_nome
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN profissionais p ON a.profissional_id = p.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.empresa_id = ? 
+           AND a.data BETWEEN ? AND ?
+           AND a.status != 'cancelado'
+           ORDER BY a.data ASC, a.hora ASC`;
+
+    db.all(sql, [empresa_id, data_inicio, data_fim], (err, agendamentos) => {
+        if (err) {
+            return res.json({ success: false, message: err.message });
+        }
+
+        const dadosFormatados = agendamentos.map(a => ({
+            ...a,
+            data: a.data_formatada || a.data,
+            data_formatada: undefined
+        }));
+
+        res.json({ success: true, data: dadosFormatados });
+    });
+});
 
 // ============================================================
 // INICIALIZAÇÃO DO SERVIDOR
