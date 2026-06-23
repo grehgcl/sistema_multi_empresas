@@ -84,6 +84,80 @@ if (isProduction || isRender) {
 }
 
 // ============================================================
+// FUNÇÃO: VERIFICAR E CRIAR COLUNA dias_bloqueio
+// ============================================================
+function verificarColunaDiasBloqueio() {
+    console.log('🔍 Verificando coluna dias_bloqueio...');
+
+    const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    const sqlCheck = isProd
+        ? `SELECT column_name 
+           FROM information_schema.columns 
+           WHERE table_name = 'clientes' 
+           AND column_name = 'dias_bloqueio'`
+        : `PRAGMA table_info(clientes)`;
+
+    db.all(sqlCheck, [], (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao verificar coluna:', err.message);
+            return;
+        }
+
+        const existe = rows && rows.length > 0;
+
+        if (existe) {
+            console.log('✅ Coluna dias_bloqueio já existe!');
+            return;
+        }
+
+        console.log('📝 Criando coluna dias_bloqueio...');
+
+        const sqlAdd = isProd
+            ? `ALTER TABLE clientes ADD COLUMN IF NOT EXISTS dias_bloqueio INTEGER DEFAULT 1`
+            : `ALTER TABLE clientes ADD COLUMN dias_bloqueio INTEGER DEFAULT 1`;
+
+        db.run(sqlAdd, [], (err) => {
+            if (err) {
+                console.error('❌ Erro ao criar coluna:', err.message);
+
+                // Tentar sem IF NOT EXISTS (PostgreSQL)
+                if (isProd) {
+                    const sqlAdd2 = `ALTER TABLE clientes ADD COLUMN dias_bloqueio INTEGER DEFAULT 1`;
+                    db.run(sqlAdd2, [], (err2) => {
+                        if (err2 && !err2.message.includes('already exists')) {
+                            console.error('❌ Erro ao criar coluna (tentativa 2):', err2.message);
+                        } else {
+                            console.log('✅ Coluna dias_bloqueio criada com sucesso!');
+                            atualizarClientes();
+                        }
+                    });
+                }
+                return;
+            }
+
+            console.log('✅ Coluna dias_bloqueio criada com sucesso!');
+            atualizarClientes();
+        });
+    });
+}
+
+function atualizarClientes() {
+    const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const sqlUpdate = isProd
+        ? `UPDATE clientes SET dias_bloqueio = 1 WHERE dias_bloqueio IS NULL`
+        : `UPDATE clientes SET dias_bloqueio = 1 WHERE dias_bloqueio IS NULL`;
+
+    db.run(sqlUpdate, [], (err) => {
+        if (err) {
+            console.error('❌ Erro ao atualizar clientes:', err.message);
+        } else {
+            console.log('✅ Clientes atualizados com dias_bloqueio = 1');
+        }
+    });
+}
+
+// ============================================================
 // CRIAÇÃO DE ÍNDICES PRA PERFORMANCE
 // ============================================================
 function criarIndices() {
@@ -109,8 +183,6 @@ function initDatabase() {
     // Depois de criar as tabelas, cria os índices
     setTimeout(criarIndices, 1000);
 }
-
-// server/config/database.js
 
 function inserirHorariosPadrao(empresaId) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -157,4 +229,12 @@ function inserirHorariosPadrao(empresaId) {
     }
 }
 
-module.exports = { db, initDatabase, inserirHorariosPadrao };
+// ============================================================
+// EXPORTAR FUNÇÕES
+// ============================================================
+module.exports = {
+    db,
+    initDatabase,
+    inserirHorariosPadrao,
+    verificarColunaDiasBloqueio
+};

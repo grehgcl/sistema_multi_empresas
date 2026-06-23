@@ -94,6 +94,13 @@ function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
 
 initDatabase();
 
+// 🔥 ADICIONE ISSO AQUI (após o initDatabase)
+// Verificar e criar coluna dias_bloqueio automaticamente
+setTimeout(() => {
+    const { verificarColunaDiasBloqueio } = require('./server/config/database');
+    verificarColunaDiasBloqueio();
+}, 2000);
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================================
