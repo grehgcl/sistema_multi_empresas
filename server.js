@@ -1828,28 +1828,52 @@ app.get('/api/clientes', auth, (req, res) => {
     });
 });
 
-/// ============================================
-// POST /api/clientes - CRIAR CLIENTE (SEM DIAS_BLOQUEIO)
+// ============================================
+// POST /api/clientes - CRIAR CLIENTE (VERSÃO ROBUSTA)
 // ============================================
 app.post('/api/clientes', auth, (req, res) => {
-    const { nome, telefone, email } = req.body;
+    const { nome, telefone, email, dias_bloqueio } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('📝 Criando cliente:', { nome, telefone, email, empresa_id });
+    console.log('📝 Criando cliente:', { nome, telefone, email, dias_bloqueio, empresa_id });
 
     if (!nome) {
         return res.json({ success: false, message: 'Nome é obrigatório' });
     }
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+    const diasBloqueioFinal = dias_bloqueio !== undefined ? dias_bloqueio : 1;
 
+    // Tentar com dias_bloqueio (coluna já existe)
     const sql = isProduction
-        ? `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES ($1, $2, $3, $4) RETURNING id`
-        : `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`;
+        ? `INSERT INTO clientes (nome, telefone, email, empresa_id, dias_bloqueio) 
+           VALUES ($1, $2, $3, $4, $5) RETURNING id`
+        : `INSERT INTO clientes (nome, telefone, email, empresa_id, dias_bloqueio) 
+           VALUES (?, ?, ?, ?, ?)`;
 
-    db.run(sql, [nome, telefonePadrao, email, empresa_id], function (err) {
+    db.run(sql, [nome, telefonePadrao, email, empresa_id, diasBloqueioFinal], function (err) {
         if (err) {
             console.error('❌ Erro ao criar cliente:', err.message);
+
+            // Fallback: tentar sem dias_bloqueio
+            if (err.message && err.message.includes('dias_bloqueio')) {
+                console.log('🔄 Fallback: tentando sem dias_bloqueio...');
+                const sqlFallback = isProduction
+                    ? `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES ($1, $2, $3, $4) RETURNING id`
+                    : `INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)`;
+
+                db.run(sqlFallback, [nome, telefonePadrao, email, empresa_id], function (err2) {
+                    if (err2) {
+                        console.error('❌ Erro fallback:', err2.message);
+                        return res.json({ success: false, message: 'Erro ao criar cliente: ' + err2.message });
+                    }
+                    let id = this?.lastID || this?.id || null;
+                    console.log('✅ Cliente criado (fallback) ID:', id);
+                    res.json({ success: true, data: { id: id }, message: 'Cliente cadastrado!' });
+                });
+                return;
+            }
+
             return res.json({ success: false, message: 'Erro ao criar cliente: ' + err.message });
         }
 
