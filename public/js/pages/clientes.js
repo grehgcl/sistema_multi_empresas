@@ -297,14 +297,8 @@ function fecharModalCliente() {
     if (modal) modal.remove();
 }
 
-// ============================================
-// SALVAR NOVO CLIENTE
-// ============================================
-
 window.salvarCliente = async function (event) {
     if (event) event.preventDefault();
-
-    console.log("🟠 salvarCliente chamada");
 
     const nome = document.getElementById('clienteNome').value;
     const telefone = document.getElementById('clienteTelefone').value;
@@ -317,7 +311,6 @@ window.salvarCliente = async function (event) {
     }
 
     showLoading();
-
     const token = localStorage.getItem('token');
 
     try {
@@ -352,7 +345,6 @@ window.salvarCliente = async function (event) {
         showToast('Erro ao cadastrar cliente', 'error');
     }
 };
-
 // ============================================
 // EDITAR CLIENTE - COM DIAS_BLOQUEIO
 // ============================================
