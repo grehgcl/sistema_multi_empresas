@@ -2840,25 +2840,25 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         }
 
         // ============================================
-        // 2. BUSCAR DIAS_BLOQUEIO DO CLIENTE
+        // 🔥 VALIDAÇÃO: BUSCAR DIAS_BLOQUEIO DO CLIENTE (CORRIGIDA)
         // ============================================
         const sqlDiasBloqueio = isProduction
-            ? `SELECT dias_bloqueio FROM clientes WHERE id = $1 AND empresa_id = $2`
-            : `SELECT dias_bloqueio FROM clientes WHERE id = ? AND empresa_id = ?`;
+            ? `SELECT COALESCE(dias_bloqueio, 1) as dias_bloqueio FROM clientes WHERE id = $1 AND empresa_id = $2`
+            : `SELECT COALESCE(dias_bloqueio, 1) as dias_bloqueio FROM clientes WHERE id = ? AND empresa_id = ?`;
 
         const clienteInfo = await new Promise((resolve) => {
-            db.get(sqlDiasBloqueio, [clienteIdNum, empresaIdNum], (err, row) => {
+            db.get(sqlDiasBloqueio, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao buscar dias_bloqueio:', err);
-                    resolve(null);
+                    resolve({ dias_bloqueio: 1 }); // fallback
                 } else {
-                    resolve(row);
+                    resolve(row || { dias_bloqueio: 1 });
                 }
             });
         });
 
         const diasBloqueio = clienteInfo?.dias_bloqueio || 1;
-        console.log(`📋 Cliente ${clienteIdNum} - Dias de bloqueio: ${diasBloqueio}`);
+        console.log(`📋 Cliente ${cliente_id} - Dias de bloqueio: ${diasBloqueio}`);
 
         // ============================================
         // 3. VALIDAR: BUSCAR ÚLTIMO AGENDAMENTO
