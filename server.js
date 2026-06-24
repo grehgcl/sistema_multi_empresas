@@ -1418,6 +1418,7 @@ app.post('/api/agendamentos',
                     console.error('❌ Erro ao buscar dias_bloqueio_geral:', err);
                     resolve({ dias_bloqueio_geral: 0 });
                 } else {
+                    console.log(`📋 Empresa ${empresa_id} - dias_bloqueio_geral:`, row?.dias_bloqueio_geral || 0);
                     resolve(row || { dias_bloqueio_geral: 0 });
                 }
             });
@@ -1430,19 +1431,21 @@ app.post('/api/agendamentos',
         // 🔥 VALIDAÇÃO: BUSCAR ÚLTIMO AGENDAMENTO (se dias_bloqueio_geral > 0)
         // ============================================
         if (diasBloqueioGeral > 0) {
+            console.log(`🔍 Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
+
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
-                   WHERE cliente_id = $1 
-                   AND empresa_id = $2 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`
+           WHERE cliente_id = $1 
+           AND empresa_id = $2 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`
                 : `SELECT data FROM agendamentos 
-                   WHERE cliente_id = ? 
-                   AND empresa_id = ? 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`;
+           WHERE cliente_id = ? 
+           AND empresa_id = ? 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`;
 
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
@@ -1450,6 +1453,7 @@ app.post('/api/agendamentos',
                         console.error('❌ Erro ao buscar último agendamento:', err);
                         resolve(null);
                     } else {
+                        console.log(`📅 Último agendamento encontrado:`, row);
                         resolve(row);
                     }
                 });
@@ -1470,23 +1474,26 @@ app.post('/api/agendamentos',
                         console.log(`📅 Último agendamento: ${ultimoAgendamento.data}`);
                         console.log(`📅 Data mínima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
                         console.log(`📅 Data do novo agendamento: ${data}`);
+                        console.log(`📅 Data agendamento >= Data mínima? ${dataAgendamento >= dataMinima}`);
 
                         if (dataAgendamento < dataMinima) {
-                            console.log(`❌ Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
+                            console.log(`❌ BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
                             return res.json({
                                 success: false,
                                 message: `Você só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeral} dias após o último agendamento).`
                             });
                         } else {
-                            console.log(`✅ Cliente ${cliente_id} pode agendar em ${data}`);
+                            console.log(`✅ Cliente ${cliente_id} pode agendar em ${data} - Dentro do prazo permitido`);
                         }
                     }
                 } catch (error) {
                     console.error('❌ Erro ao processar data do último agendamento:', error);
                 }
             } else {
-                console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores`);
+                console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores - pode agendar livremente`);
             }
+        } else {
+            console.log(`ℹ️ Bloqueio geral DESATIVADO (0 dias) - Sem validação extra`);
         }
 
         // ============================================
