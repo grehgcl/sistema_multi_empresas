@@ -1,4 +1,4 @@
-﻿// Configurações Unificadas - Profissionais + Horários + Chatbot + Tema
+﻿// Configurações Unificadas - Profissionais + Horários + Chatbot + Tema + BLOQUEIO GERAL
 
 let profissionaisData = [];
 let planoInfo = { plano: 'trial', limite: 1, ativos: 0, podeAdicionar: true };
@@ -13,15 +13,17 @@ async function carregarConfiguracoes() {
     const token = localStorage.getItem('token');
 
     try {
-        const [profissionaisRes, horariosRes, planoRes] = await Promise.all([
+        const [profissionaisRes, horariosRes, planoRes, empresaRes] = await Promise.all([
             fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/horarios', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/empresa/plano', { headers: { 'Authorization': 'Bearer ' + token } })
+            fetch('/api/empresa/plano', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/empresa/dados', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
         const profissionaisData_raw = await profissionaisRes.json();
         const horariosData = await horariosRes.json();
         const planoData = await planoRes.json();
+        const empresaData = await empresaRes.json();
 
         if (profissionaisData_raw.success) {
             profissionaisData = profissionaisData_raw.data || [];
@@ -41,6 +43,12 @@ async function carregarConfiguracoes() {
             };
         }
 
+        // Buscar dias_bloqueio_geral da empresa
+        let diasBloqueioGeral = 0;
+        if (empresaData.success && empresaData.data) {
+            diasBloqueioGeral = empresaData.data.dias_bloqueio_geral || 0;
+        }
+
         const temaSalvo = localStorage.getItem('theme') || 'light';
 
         let html = `
@@ -58,6 +66,9 @@ async function carregarConfiguracoes() {
                     </button>
                     <button class="config-tab" onclick="switchConfigTab('horarios')">
                         <i class="fas fa-clock"></i> Horários
+                    </button>
+                    <button class="config-tab" onclick="switchConfigTab('bloqueio')">
+                        <i class="fas fa-lock"></i> Bloqueio Geral
                     </button>
                     <button class="config-tab" onclick="switchConfigTab('chatbot')">
                         <i class="fas fa-robot"></i> Chatbot
@@ -95,15 +106,18 @@ async function carregarConfiguracoes() {
 function switchConfigTab(tab) {
     document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
     const tabs = document.querySelectorAll('.config-tab');
-    const index = ['profissionais', 'horarios', 'chatbot', 'tema'].indexOf(tab);
+    const index = ['profissionais', 'horarios', 'bloqueio', 'chatbot', 'tema'].indexOf(tab);
     if (tabs[index]) tabs[index].classList.add('active');
 
-    switch(tab) {
+    switch (tab) {
         case 'profissionais':
             document.getElementById('configContent').innerHTML = renderProfissionais();
             break;
         case 'horarios':
             carregarHorarios();
+            break;
+        case 'bloqueio':
+            carregarBloqueioGeral();
             break;
         case 'chatbot':
             carregarChatbot();
@@ -114,6 +128,193 @@ function switchConfigTab(tab) {
             break;
         default:
             break;
+    }
+}
+
+// ============================================
+// CARREGAR BLOQUEIO GERAL
+// ============================================
+async function carregarBloqueioGeral() {
+    showLoading();
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/empresa/dados', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        let diasBloqueioGeral = 0;
+        if (data.success && data.data) {
+            diasBloqueioGeral = data.data.dias_bloqueio_geral || 0;
+        }
+
+        document.getElementById('configContent').innerHTML = renderBloqueioGeral(diasBloqueioGeral);
+    } catch (error) {
+        showToast('Erro ao carregar bloqueio geral', 'error');
+        document.getElementById('configContent').innerHTML = '<div class="card"><p class="text-muted">Erro ao carregar bloqueio geral</p></div>';
+    }
+    hideLoading();
+}
+
+// ============================================
+// RENDER BLOQUEIO GERAL (COM ESTILOS INLINE)
+// ============================================
+function renderBloqueioGeral(diasAtual) {
+    const opcoes = [
+        { value: 0, label: '❌ Desativado (0 dias)', desc: 'Cliente pode agendar no dia seguinte (mas não no mesmo dia)' },
+        { value: 7, label: '📅 7 dias', desc: 'Cliente só pode agendar 1 vez por semana' },
+        { value: 14, label: '📅 14 dias', desc: 'Cliente só pode agendar 1 vez a cada 2 semanas' },
+        { value: 30, label: '📅 30 dias', desc: 'Cliente só pode agendar 1 vez por mês' }
+    ];
+
+    // Encontrar a descrição atual
+    const descricaoAtual = opcoes.find(o => o.value === diasAtual)?.desc || '';
+
+    return `
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-lock"></i> Bloqueio Geral de Agendamentos</h3>
+            </div>
+            
+            <div style="background: #fef3c720; padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                <p style="margin: 0; color: var(--text-secondary);">
+                    <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
+                    <strong>Regra fixa:</strong> Cliente NÃO pode fazer mais de 1 agendamento por dia.
+                    <br>
+                    <strong>Bloqueio geral:</strong> Define quantos dias os clientes devem esperar entre um agendamento e outro.
+                </p>
+            </div>
+            
+            <div class="form-group" style="max-width: 400px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 6px; color: var(--text-primary);">
+                    <i class="fas fa-calendar-alt"></i> Dias de bloqueio entre agendamentos:
+                </label>
+                <select id="bloqueioGeralSelect" class="form-control" style="
+                    width: 100%;
+                    padding: 12px 16px;
+                    border: 2px solid var(--border-color);
+                    border-radius: 12px;
+                    font-size: 15px;
+                    background: var(--bg-input);
+                    color: var(--text-primary);
+                    transition: all 0.3s ease;
+                    font-family: 'Inter', sans-serif;
+                    cursor: pointer;
+                    appearance: auto;
+                ">
+                    ${opcoes.map(o => `
+                        <option value="${o.value}" ${o.value === diasAtual ? 'selected' : ''} style="padding: 8px;">
+                            ${o.label}
+                        </option>
+                    `).join('')}
+                </select>
+                <small id="bloqueioDescricao" style="
+                    display: block;
+                    margin-top: 8px;
+                    color: var(--text-muted);
+                    font-size: 13px;
+                    padding: 8px 12px;
+                    background: var(--bg-hover);
+                    border-radius: 8px;
+                    border-left: 3px solid var(--primary);
+                ">
+                    <i class="fas fa-info-circle"></i> ${descricaoAtual}
+                </small>
+            </div>
+            
+            <button onclick="salvarBloqueioGeral()" class="btn btn-primary" style="
+                margin-top: 10px;
+                padding: 12px 28px;
+                background: var(--gradient);
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+            ">
+                <i class="fas fa-save"></i> Salvar Bloqueio Geral
+            </button>
+            
+            <div style="margin-top: 20px; padding: 16px; background: var(--bg-hover); border-radius: 12px;">
+                <h4 style="margin: 0 0 10px 0; color: var(--text-primary);">📋 Como funciona:</h4>
+                <ul style="margin: 0; padding-left: 20px; line-height: 2; color: var(--text-secondary);">
+                    <li><strong>0 dias:</strong> Cliente pode agendar no dia seguinte (mas não no mesmo dia)</li>
+                    <li><strong>7 dias:</strong> Cliente só pode agendar 1 vez por semana</li>
+                    <li><strong>14 dias:</strong> Cliente só pode agendar 1 vez a cada 2 semanas</li>
+                    <li><strong>30 dias:</strong> Cliente só pode agendar 1 vez por mês</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// SALVAR BLOQUEIO GERAL
+// ============================================
+async function salvarBloqueioGeral() {
+    const select = document.getElementById('bloqueioGeralSelect');
+    if (!select) {
+        showToast('Erro: elemento não encontrado', 'error');
+        return;
+    }
+
+    const dias = parseInt(select.value) || 0;
+    const token = localStorage.getItem('token');
+
+    // Pegar a descrição para mostrar na confirmação
+    const opcoes = [
+        { value: 0, label: '❌ Desativado (0 dias)', desc: 'Cliente pode agendar no dia seguinte (mas não no mesmo dia)' },
+        { value: 7, label: '📅 7 dias', desc: 'Cliente só pode agendar 1 vez por semana' },
+        { value: 14, label: '📅 14 dias', desc: 'Cliente só pode agendar 1 vez a cada 2 semanas' },
+        { value: 30, label: '📅 30 dias', desc: 'Cliente só pode agendar 1 vez por mês' }
+    ];
+    const opcao = opcoes.find(o => o.value === dias);
+    const label = opcao ? opcao.label : `${dias} dias`;
+
+    if (!confirm(`Deseja aplicar bloqueio de ${label} para TODOS os clientes?`)) {
+        return;
+    }
+
+    showLoading();
+
+    try {
+        const res = await fetch('/api/empresa/bloqueio-geral', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ dias_bloqueio: dias })
+        });
+
+        const data = await res.json();
+
+        hideLoading();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            // Atualizar a descrição
+            const descEl = document.getElementById('bloqueioDescricao');
+            if (descEl && opcao) {
+                descEl.innerHTML = `<i class="fas fa-info-circle"></i> ${opcao.desc}`;
+            }
+            // Atualizar o select
+            if (select) {
+                select.value = dias;
+            }
+            carregarBloqueioGeral();
+        } else {
+            showToast(data.message || 'Erro ao salvar bloqueio', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Erro:', error);
+        showToast('Erro ao salvar bloqueio', 'error');
     }
 }
 
@@ -167,9 +368,9 @@ function renderProfissionais() {
             <div class="card-header">
                 <h3><i class="fas fa-users"></i> Profissionais</h3>
                 ${planoInfo.podeAdicionar ?
-                    `<button class="btn-primary" onclick="abrirModalProfissional()">+ Novo Profissional</button>` :
-                    `<button class="btn-secondary" disabled style="opacity: 0.6;">🔒 Limite Atingido</button>`
-                }
+            `<button class="btn-primary" onclick="abrirModalProfissional()">+ Novo Profissional</button>` :
+            `<button class="btn-secondary" disabled style="opacity: 0.6;">🔒 Limite Atingido</button>`
+        }
             </div>
             
             <div style="background: linear-gradient(135deg, ${planoInfo.is_trial ? '#f59e0b20' : '#667eea20'}, ${planoInfo.is_trial ? '#f59e0b20' : '#764ba220'}); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid ${planoInfo.is_trial ? '#f59e0b' : '#667eea'};">
@@ -187,12 +388,12 @@ function renderProfissionais() {
                     </div>
                     <div>
                         ${planoInfo.is_trial ?
-                            `<span style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px;">🎯 Trial: ${planoInfo.dias_restantes} dias</span>` :
-                            `<span style="background: #48bb78; color: white; padding: 4px 12px; border-radius: 20px;">✅ Válido até: ${planoInfo.valida_ate || 'N/A'}</span>`
-                        }
+            `<span style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px;">🎯 Trial: ${planoInfo.dias_restantes} dias</span>` :
+            `<span style="background: #48bb78; color: white; padding: 4px 12px; border-radius: 20px;">✅ Válido até: ${planoInfo.valida_ate || 'N/A'}</span>`
+        }
                         ${!planoInfo.podeAdicionar && planoInfo.ativos > 0 ?
-                            `<button class="btn-primary" onclick="carregarPlanos()" style="margin-left: 10px;">💎 Upgrade</button>` : ''
-                        }
+            `<button class="btn-primary" onclick="carregarPlanos()" style="margin-left: 10px;">💎 Upgrade</button>` : ''
+        }
                     </div>
                 </div>
             </div>
@@ -238,7 +439,7 @@ function renderProfissionaisList() {
 }
 
 // ============================================
-// RENDER HORÁRIOS - CORRIGIDO
+// RENDER HORÁRIOS
 // ============================================
 function renderHorarios(horarios) {
     const dias = { 0: 'Domingo', 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado' };
@@ -255,7 +456,7 @@ function renderHorarios(horarios) {
         const h = horariosMap[dia] || {};
         const aberto = h.aberto !== undefined ? h.aberto : (dia === 0 ? 0 : 1);
         const disabled = aberto === 0 ? 'disabled' : '';
-        
+
         rows += `
             <tr>
                 <td><strong>${dias[dia]}</strong></td>
@@ -327,7 +528,7 @@ function renderChatbot(link) {
                 <h4>📋 Regras do Chatbot:</h4>
                 <ul style="margin-left: 20px; margin-top: 8px;">
                     <li>✅ Respeita horários de funcionamento</li>
-                    <li>✅ Cliente só agenda 1 vez a cada 20 dias</li>
+                    <li>✅ Respeita o bloqueio geral de dias</li>
                     <li>✅ Você pode bloquear clientes na tela de Clientes</li>
                     <li>✅ Atendimento 24h automático</li>
                 </ul>
@@ -355,7 +556,7 @@ function renderChatbot(link) {
 // ============================================
 function renderTema(temaAtual) {
     const isDark = temaAtual === 'dark';
-    
+
     return `
         <div class="card">
             <div class="card-header">
@@ -402,24 +603,24 @@ function renderTema(temaAtual) {
 function toggleTheme() {
     const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
     const newTheme = isDark ? 'light' : 'dark';
-    
+
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
-    
+
     const toggle = document.getElementById('themeToggle');
     if (toggle) {
         toggle.checked = newTheme === 'dark';
     }
-    
+
     showToast(`Tema ${newTheme === 'dark' ? '🌙 escuro' : '☀️ claro'} ativado!`, 'success');
-    
+
     setTimeout(() => {
         carregarConfiguracoes();
     }, 300);
 }
 
 // ============================================
-// FUNÇÕES DE HORÁRIOS - CORRIGIDAS
+// FUNÇÕES DE HORÁRIOS
 // ============================================
 function inicializarHorariosEvents() {
     const tbody = document.getElementById('horariosTableBody');
@@ -463,9 +664,9 @@ async function salvarHorario(dia, dados) {
     try {
         const res = await fetch(`/api/horarios/${dia}`, {
             method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + token 
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
             },
             body: JSON.stringify(dados)
         });
@@ -494,7 +695,7 @@ async function carregarLinkChatbot() {
         if (data.success) {
             const linkInput = document.getElementById('chatbotLink');
             if (linkInput) linkInput.value = data.link;
-            
+
             const qrDiv = document.getElementById('qrCode');
             if (qrDiv) {
                 qrDiv.innerHTML = `
@@ -523,7 +724,7 @@ function copiarLinkChatbot() {
 // ============================================
 function abrirModalProfissional(profissional = null) {
     if (!profissional && !planoInfo.podeAdicionar) {
-        showModal('Limite Atingido', 
+        showModal('Limite Atingido',
             `<p>Seu plano ${planoInfo.plano_nome} permite apenas ${planoInfo.limite} profissional(is).</p>
              <button class="btn-primary" onclick="carregarPlanos()">💎 Ver Planos</button>
              <button class="btn-secondary" onclick="fecharModalPersonalizado()">Fechar</button>`
@@ -541,6 +742,10 @@ function abrirModalProfissional(profissional = null) {
             <div class="form-group">
                 <label>Email *</label>
                 <input type="email" id="prof-email" class="form-control" value="${isEdit ? escapeHtml(profissional.email) : ''}" placeholder="email@exemplo.com" required>
+            </div>
+            <div class="form-group">
+                <label>Telefone (opcional)</label>
+                <input type="text" id="prof-telefone" class="form-control" value="${isEdit ? (profissional.telefone || '') : ''}" placeholder="(00) 00000-0000">
             </div>
             <div class="form-group">
                 <label>${isEdit ? 'Nova Senha (opcional)' : 'Senha *'}</label>
@@ -563,6 +768,7 @@ async function salvarProfissional(event, id) {
     event.preventDefault();
     const nome = document.getElementById('prof-nome')?.value;
     const email = document.getElementById('prof-email')?.value;
+    const telefone = document.getElementById('prof-telefone')?.value;
     const senha = document.getElementById('prof-senha')?.value;
     const comissao = parseInt(document.getElementById('prof-comissao')?.value);
 
@@ -573,10 +779,11 @@ async function salvarProfissional(event, id) {
 
     showLoading();
     const token = localStorage.getItem('token');
-    const body = { 
-        nome: nome.trim(), 
-        email: email.trim(), 
-        comissao_percent: comissao || 30 
+    const body = {
+        nome: nome.trim(),
+        email: email.trim(),
+        comissao_percent: comissao || 30,
+        telefone: telefone || ''
     };
     if (!id && senha) body.senha = senha;
     if (id && senha && senha.length > 0) body.senha = senha;
@@ -584,9 +791,9 @@ async function salvarProfissional(event, id) {
     try {
         const res = await fetch(id ? `/api/profissionais/${id}` : '/api/profissionais', {
             method: id ? 'PUT' : 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + token 
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
             },
             body: JSON.stringify(body)
         });
@@ -622,9 +829,9 @@ async function resetarSenhaProfissional(id, nome) {
     try {
         const res = await fetch(`/api/profissionais/${id}/reset-senha`, {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + token 
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
             },
             body: JSON.stringify({ senha: novaSenha })
         });
@@ -644,9 +851,9 @@ async function alternarStatusProfissional(id, ativar) {
     try {
         await fetch(`/api/profissionais/${id}`, {
             method: 'PUT',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'Authorization': 'Bearer ' + token 
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
             },
             body: JSON.stringify({ ativo: ativar ? 1 : 0 })
         });
@@ -664,9 +871,9 @@ async function excluirProfissional(id, nome) {
     showLoading();
     const token = localStorage.getItem('token');
     try {
-        await fetch(`/api/profissionais/${id}`, { 
-            method: 'DELETE', 
-            headers: { 'Authorization': 'Bearer ' + token } 
+        await fetch(`/api/profissionais/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
         });
         hideLoading();
         showToast('Profissional excluído com sucesso!', 'success');
@@ -717,6 +924,8 @@ window.carregarConfiguracoes = carregarConfiguracoes;
 window.switchConfigTab = switchConfigTab;
 window.carregarHorarios = carregarHorarios;
 window.carregarChatbot = carregarChatbot;
+window.carregarBloqueioGeral = carregarBloqueioGeral;
+window.salvarBloqueioGeral = salvarBloqueioGeral;
 window.abrirModalProfissional = abrirModalProfissional;
 window.salvarProfissional = salvarProfissional;
 window.editarProfissional = editarProfissional;
@@ -729,4 +938,4 @@ window.carregarLinkChatbot = carregarLinkChatbot;
 window.toggleTheme = toggleTheme;
 window.carregarPlanos = carregarPlanos;
 
-console.log('✅ configuracoes.js carregado com TEMA ESCURO!');
+console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL!');

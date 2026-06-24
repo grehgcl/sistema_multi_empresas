@@ -175,19 +175,6 @@
                     <label>Email</label>
                     <input type="email" id="clienteEmail" class="form-control" placeholder="email@exemplo.com">
                 </div>
-
-                <!-- ===== NOVO CAMPO: DIAS DE BLOQUEIO ===== -->
-                <div class="form-group">
-                    <label>Dias de bloqueio entre agendamentos</label>
-                    <input type="number" id="clienteDiasBloqueio" class="form-control" value="1" min="0" max="365">
-                    <small class="text-muted">
-                        Quantos dias o cliente deve esperar para fazer um novo agendamento.<br>
-                        <strong>1 dia</strong> = não pode agendar 2 vezes no mesmo dia.<br>
-                        <strong>7 dias</strong> = só pode agendar 1 vez por semana.<br>
-                        <strong>0 dias</strong> = sem restrição.
-                    </small>
-                </div>
-
                 <div class="modal-buttons">
                     <button type="submit" class="btn-3d">Salvar</button>
                     <button type="button" onclick="fecharModalCliente()" class="btn-secondary">Cancelar</button>
@@ -441,13 +428,11 @@
         }
 
         // ============================================
-        // CORREÇÃO: AÇÕES RÁPIDAS - CHAMAM AS FUNÇÕES DO AGENDAMENTOS.JS
+        // CORREÇÃO: AÇÕES RÁPIDAS
         // ============================================
 
-        // Ação Rápida: Novo Agendamento - chama a função do agendamentos.js
         function abrirModalAgendamentoRapido() {
             console.log('🔄 Ação rápida: Novo Agendamento');
-
             if (typeof window.abrirModalAgendamentoDono === 'function') {
                 if (typeof window.carregarDadosAgendamento === 'function') {
                     window.carregarDadosAgendamento().then(() => {
@@ -458,7 +443,6 @@
                 }
                 return;
             }
-
             const modal = document.getElementById('modalAgendamento');
             if (modal) {
                 modal.style.display = 'block';
@@ -473,16 +457,13 @@
 
         function abrirModalClienteRapido() {
             console.log('🔄 Ação rápida: Novo Cliente');
-
             if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalClienteRapido) {
                 window.abrirModalCliente();
                 return;
             }
-
             abrirModalCliente();
         }
 
-        // ========== MODAL AGENDAMENTO (FALLBACK) ==========
         function carregarSelectsAgendamento() {
             try {
                 const token = localStorage.getItem('token');

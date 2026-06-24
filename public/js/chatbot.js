@@ -105,11 +105,9 @@ async function carregarProfissionais() {
     try {
         console.log('🔍 Buscando profissionais para empresa:', empresaId);
 
-        // TENTAR A ROTA COM TOKEN PRIMEIRO
         let token = localStorage.getItem('token');
         let profissionaisEncontrados = [];
 
-        // TENTAR COM TOKEN
         if (token) {
             try {
                 const res = await fetch(`/api/profissionais`, {
@@ -128,7 +126,6 @@ async function carregarProfissionais() {
             }
         }
 
-        // SE NÃO ENCONTROU, TENTAR A ROTA DO CHATBOT
         if (profissionaisEncontrados.length === 0) {
             try {
                 const res = await fetch(`/api/chatbot/profissionais/${empresaId}`);
@@ -146,9 +143,7 @@ async function carregarProfissionais() {
         profissionaisList = [];
 
         if (profissionaisEncontrados.length > 0) {
-            // Filtrar apenas os ativos
             const ativos = profissionaisEncontrados.filter(p => p.ativo === 1 || p.ativo === true);
-
             console.log(`✅ ${ativos.length} profissionais ativos encontrados`);
 
             for (let p of ativos) {
@@ -161,9 +156,6 @@ async function carregarProfissionais() {
             }
         }
 
-        // ============================================
-        // SEMPRE ADICIONAR O DONO COMO OPÇÃO
-        // ============================================
         const donoNome = dadosEmpresa?.nome_dono || 'Dono';
         const jaExisteDono = profissionaisList.some(p => p.isDono === true || p.nome.includes('(Dono)'));
 
@@ -178,7 +170,6 @@ async function carregarProfissionais() {
             console.log(`✅ Dono "${donoNome}" adicionado como profissional`);
         }
 
-        // SE NÃO TIVER NENHUM PROFISSIONAL, ADICIONAR UM FALLBACK
         if (profissionaisList.length === 0) {
             profissionaisList.push({
                 id: 'dono_fallback',
@@ -194,7 +185,6 @@ async function carregarProfissionais() {
 
     } catch (error) {
         console.error('❌ Erro ao carregar profissionais:', error);
-        // FALLBACK: Adicionar pelo menos o dono
         profissionaisList = [{
             id: 'dono_fallback',
             nome: 'Dono (Proprietário)',
@@ -400,22 +390,17 @@ function processarResposta(texto) {
         }
 
         case 'aguardando_profissional': {
-            // Verificar se o usuário escolheu "qualquer"
             if (mensagem === 'qualquer' || mensagem === 'tanto faz' || mensagem === 'qualquer um' || mensagem === 'nao' || mensagem === 'não') {
                 agendamentoAtual.profissional_id = null;
                 agendamentoAtual.profissional_nome = 'Qualquer profissional';
                 estado = 'aguardando_data';
                 perguntarData();
             } else {
-                // Procurar o profissional escolhido
                 const profissional = profissionaisList.find(p =>
                     p.nome.toLowerCase() === mensagem ||
                     p.nome.toLowerCase().includes(mensagem)
                 );
                 if (profissional) {
-                    // ============================================
-                    // SE FOR O DONO (isDono = true), guardar como null
-                    // ============================================
                     if (profissional.isDono) {
                         agendamentoAtual.profissional_id = null;
                         agendamentoAtual.profissional_nome = profissional.nome;
@@ -426,7 +411,6 @@ function processarResposta(texto) {
                     estado = 'aguardando_data';
                     perguntarData();
                 } else {
-                    // Não encontrou, mostrar opções novamente
                     perguntarProfissional();
                 }
             }
@@ -501,7 +485,7 @@ function processarResposta(texto) {
 }
 
 // ============================================
-// BUSCAR CLIENTE POR TELEFONE - COM DIAS_BLOQUEIO
+// BUSCAR CLIENTE POR TELEFONE - COM BLOQUEIO GERAL
 // ============================================
 async function buscarClientePorTelefone(telefone) {
     try {
@@ -527,14 +511,30 @@ async function buscarClientePorTelefone(telefone) {
                 return;
             }
 
-            // Verificar limite com dias_bloqueio
+            // ============================================
+            // 🔥 VERIFICAR LIMITE COM BLOQUEIO GERAL
+            // ============================================
             const podeAgendar = await verificarLimiteAgendamentos(clienteAtual.id);
             if (!podeAgendar) {
-                const diasBloqueio = clienteAtual.dias_bloqueio || 1;
-                adicionarMensagem(
-                    `⚠️ Você já fez um agendamento nos últimos <strong>${diasBloqueio} dias</strong>.<br><br>Por favor, aguarde para fazer um novo agendamento.`,
-                    'bot'
-                );
+                // Buscar quantos dias estão configurados no bloqueio geral
+                let diasBloqueioGeral = 0;
+                try {
+                    const resEmpresa = await fetch('/api/empresa/dados', {
+                        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
+                    });
+                    const dataEmpresa = await resEmpresa.json();
+                    if (dataEmpresa.success && dataEmpresa.data) {
+                        diasBloqueioGeral = dataEmpresa.data.dias_bloqueio_geral || 0;
+                    }
+                } catch (e) {
+                    console.warn('Erro ao buscar bloqueio geral:', e);
+                }
+
+                const mensagem = diasBloqueioGeral > 0
+                    ? `⚠️ Você já fez um agendamento nos últimos <strong>${diasBloqueioGeral} dias</strong>.<br><br>Por favor, aguarde para fazer um novo agendamento.`
+                    : `⚠️ Você já possui um agendamento para este dia. Cada cliente só pode fazer UM agendamento por dia.`;
+
+                adicionarMensagem(mensagem, 'bot');
                 estado = 'inicio';
                 return;
             }
@@ -557,6 +557,7 @@ async function buscarClientePorTelefone(telefone) {
         adicionarMensagem('❌ Erro ao buscar cliente. Tente novamente.', 'bot');
     }
 }
+
 // ============================================
 // CADASTRAR NOVO CLIENTE
 // ============================================
@@ -594,32 +595,35 @@ async function cadastrarNovoCliente(nome, telefone) {
 }
 
 // ============================================
-// VERIFICAR LIMITE DE AGENDAMENTOS (USANDO DIAS_BLOQUEIO)
+// VERIFICAR LIMITE DE AGENDAMENTOS (USANDO DIAS_BLOQUEIO_GERAL)
 // ============================================
 async function verificarLimiteAgendamentos(clienteId) {
     try {
-        // Buscar o cliente para saber os dias de bloqueio
-        const resCliente = await fetch(`/api/clientes`, {
+        // ============================================
+        // 🔥 BUSCAR DIAS_BLOQUEIO_GERAL DA EMPRESA
+        // ============================================
+        const resEmpresa = await fetch('/api/empresa/dados', {
             headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
         });
-        const dataCliente = await resCliente.json();
+        const dataEmpresa = await resEmpresa.json();
 
-        let diasBloqueio = 1; // padrão
-        if (dataCliente.success && dataCliente.data) {
-            const cliente = dataCliente.data.find(c => c.id === clienteId);
-            if (cliente) {
-                diasBloqueio = cliente.dias_bloqueio || 1;
-            }
+        let diasBloqueioGeral = 0;
+
+        if (dataEmpresa.success && dataEmpresa.data) {
+            diasBloqueioGeral = dataEmpresa.data.dias_bloqueio_geral || 0;
         }
 
-        console.log(`📋 Cliente ${clienteId} - Dias de bloqueio: ${diasBloqueio}`);
+        console.log(`📋 Empresa - Dias de bloqueio geral: ${diasBloqueioGeral} dias`);
 
-        // Se for 0, não tem restrição
-        if (diasBloqueio === 0) {
+        // Se for 0, não tem restrição (apenas a regra de 1 agendamento por dia, que é validada no backend)
+        if (diasBloqueioGeral === 0) {
+            console.log('✅ Sem bloqueio geral, permitindo agendamento (respeitando 1 por dia)');
             return true;
         }
 
-        // Buscar agendamentos do cliente
+        // ============================================
+        // BUSCAR ÚLTIMO AGENDAMENTO DO CLIENTE
+        // ============================================
         const res = await fetch(`/api/agendamentos?cliente=${clienteId}`, {
             headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
         });
@@ -628,7 +632,7 @@ async function verificarLimiteAgendamentos(clienteId) {
         if (data.success && data.data) {
             const agora = new Date();
             const dataLimite = new Date(agora);
-            dataLimite.setDate(dataLimite.getDate() - diasBloqueio);
+            dataLimite.setDate(dataLimite.getDate() - diasBloqueioGeral);
 
             const agendamentosRecentes = data.data.filter(a =>
                 a.status === 'concluido' || a.status === 'pendente' || a.status === 'agendado'
@@ -637,7 +641,7 @@ async function verificarLimiteAgendamentos(clienteId) {
             for (let ag of agendamentosRecentes) {
                 const dataAg = new Date(ag.data);
                 if (dataAg >= dataLimite) {
-                    console.log(`❌ Cliente tem agendamento em ${ag.data} (${diasBloqueio} dias de bloqueio)`);
+                    console.log(`❌ Cliente tem agendamento em ${ag.data} (${diasBloqueioGeral} dias de bloqueio)`);
                     return false;
                 }
             }
@@ -674,7 +678,7 @@ function mostrarServicos() {
 }
 
 // ============================================
-// PERGUNTAR PROFISSIONAL - CORRIGIDO
+// PERGUNTAR PROFISSIONAL
 // ============================================
 function perguntarProfissional() {
     if (profissionaisList.length === 0) {
@@ -779,13 +783,11 @@ async function carregarDatasDisponiveis(mes, ano) {
             console.log(`✅ ${datasDisponiveis.length} datas disponíveis`);
         } else {
             console.warn('⚠ Nenhuma data da API, usando fallback...');
-            // FALLBACK: gerar datas manualmente
             datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
             console.log(`📦 ${datasDisponiveis.length} datas de fallback`);
         }
     } catch (error) {
         console.error('❌ Erro ao carregar datas:', error);
-        // FALLBACK em caso de erro
         datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
         console.log(`📦 ${datasDisponiveis.length} datas de fallback (erro)`);
     }
@@ -799,7 +801,6 @@ function gerarDatasFallback(mes, ano) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    // Gerar datas para os próximos 15 dias
     for (let i = 1; i <= 15; i++) {
         const data = new Date(hoje);
         data.setDate(data.getDate() + i);
@@ -1035,19 +1036,15 @@ function selecionarDataCalendario(dataStr) {
 }
 
 // ============================================
-// PERGUNTAR HORÁRIO - CORRIGIDO
+// PERGUNTAR HORÁRIO
 // ============================================
 async function perguntarHorario(data) {
     try {
-        // ============================================
-        // PASSAR O PROFISSIONAL ID PARA FILTRAR HORÁRIOS
-        // ============================================
         const body = {
             empresaId: empresaId,
             data: data
         };
 
-        // Se tiver profissional selecionado, passar para filtrar
         if (agendamentoAtual.profissional_id && agendamentoAtual.profissional_id !== 'dono_') {
             body.profissionalId = agendamentoAtual.profissional_id;
         }
@@ -1147,7 +1144,7 @@ async function verificarEConfirmar() {
 }
 
 // ============================================
-// FINALIZAR AGENDAMENTO - CORRIGIDO (BUSCA CLIENTE NO RENDER)
+// FINALIZAR AGENDAMENTO
 // ============================================
 async function finalizarAgendamento() {
     try {
@@ -1156,13 +1153,9 @@ async function finalizarAgendamento() {
         console.log('  - agendamentoAtual:', agendamentoAtual);
         console.log('  - empresaId:', empresaId);
 
-        // ============================================
-        // SE O CLIENTE NÃO ESTIVER DEFINIDO, TENTAR BUSCAR NOVAMENTE
-        // ============================================
         if (!clienteAtual || !clienteAtual.id) {
             console.log('⚠️ Cliente não identificado, tentando buscar...');
 
-            // Tentar buscar o cliente pelo telefone
             if (telefoneCliente) {
                 console.log('🔍 Buscando cliente pelo telefone:', telefoneCliente);
                 try {
@@ -1186,9 +1179,7 @@ async function finalizarAgendamento() {
                 }
             }
 
-            // Se ainda não tiver cliente, tentar buscar pelo nome
             if (!clienteAtual || !clienteAtual.id) {
-                // Tentar buscar pelo nome
                 try {
                     const res = await fetch('/api/clientes', {
                         headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
@@ -1209,9 +1200,6 @@ async function finalizarAgendamento() {
             }
         }
 
-        // ============================================
-        // VALIDAR DADOS OBRIGATÓRIOS
-        // ============================================
         if (!clienteAtual || !clienteAtual.id) {
             console.log('❌ Cliente ainda não identificado após tentativas');
             adicionarMensagem('❌ Erro: Cliente não identificado. Tente novamente.', 'bot');
@@ -1231,9 +1219,6 @@ async function finalizarAgendamento() {
             return;
         }
 
-        // ============================================
-        // GARANTIR QUE EMPRESA_ID EXISTE
-        // ============================================
         let empresaIdFinal = empresaId;
         if (!empresaIdFinal) {
             const params = new URLSearchParams(window.location.search);
@@ -1241,9 +1226,6 @@ async function finalizarAgendamento() {
             console.log('🏢 empresaId recuperado da URL:', empresaIdFinal);
         }
 
-        // ============================================
-        // VERIFICAR PROFISSIONAL
-        // ============================================
         let profissionalId = agendamentoAtual.profissional_id;
 
         if (profissionalId && typeof profissionalId === 'string' && profissionalId.includes('dono')) {
@@ -1255,9 +1237,6 @@ async function finalizarAgendamento() {
             profissionalId = null;
         }
 
-        // ============================================
-        // MONTAR BODY
-        // ============================================
         const body = {
             clienteId: parseInt(clienteAtual.id),
             servicoId: parseInt(agendamentoAtual.servico_id),
@@ -1329,3 +1308,5 @@ function formatarDataBr(dataStr) {
 // ============================================
 window.enviarMensagem = enviarMensagem;
 window.mudarMesCalendario = window.mudarMesCalendario;
+
+console.log('✅ chatbot.js carregado com BLOQUEIO GERAL!');
