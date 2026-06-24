@@ -1217,23 +1217,22 @@ app.post('/api/agendamentos',
         console.log(`📋 Cliente ${cliente_id} - Dias de bloqueio: ${diasBloqueio}`);
 
         // ============================================
-        // 🔥 VALIDAÇÃO CORRIGIDA: BUSCAR ÚLTIMO AGENDAMENTO
+        // 🔥 VALIDAÇÃO CORRIGIDA: BUSCAR ÚLTIMO AGENDAMENTO (COM TRATAMENTO DE DATA INVÁLIDA)
         // ============================================
         if (diasBloqueio > 0) {
-            // Buscar o último agendamento do cliente
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
-                   WHERE cliente_id = $1 
-                   AND empresa_id = $2 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`
+           WHERE cliente_id = $1 
+           AND empresa_id = $2 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`
                 : `SELECT data FROM agendamentos 
-                   WHERE cliente_id = ? 
-                   AND empresa_id = ? 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`;
+           WHERE cliente_id = ? 
+           AND empresa_id = ? 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`;
 
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
@@ -1246,25 +1245,37 @@ app.post('/api/agendamentos',
                 });
             });
 
-            if (ultimoAgendamento) {
-                const dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
-                const dataMinima = new Date(dataUltimo);
-                dataMinima.setDate(dataMinima.getDate() + diasBloqueio);
-                const dataMinimaStr = dataMinima.toISOString().split('T')[0];
-                const dataAgendamento = new Date(data + 'T00:00:00');
+            if (ultimoAgendamento && ultimoAgendamento.data) {
+                try {
+                    const dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
 
-                console.log(`📅 Último agendamento: ${ultimoAgendamento.data}`);
-                console.log(`📅 Data mínima permitida: ${dataMinimaStr}`);
-                console.log(`📅 Data do novo agendamento: ${data}`);
+                    // 🔥 VERIFICA SE A DATA É VÁLIDA
+                    if (isNaN(dataUltimo.getTime())) {
+                        console.log(`⚠️ Data inválida no último agendamento: ${ultimoAgendamento.data}`);
+                        console.log(`✅ Cliente ${cliente_id} - permitindo agendamento (data inválida)`);
+                    } else {
+                        const dataMinima = new Date(dataUltimo);
+                        dataMinima.setDate(dataMinima.getDate() + diasBloqueio);
+                        const dataMinimaStr = dataMinima.toISOString().split('T')[0];
+                        const dataAgendamento = new Date(data + 'T00:00:00');
 
-                if (dataAgendamento < dataMinima) {
-                    console.log(`❌ Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
-                    return res.json({
-                        success: false,
-                        message: `Este cliente só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueio} dias após o último agendamento).`
-                    });
-                } else {
-                    console.log(`✅ Cliente ${cliente_id} pode agendar em ${data}`);
+                        console.log(`📅 Último agendamento: ${ultimoAgendamento.data}`);
+                        console.log(`📅 Data mínima permitida: ${dataMinimaStr}`);
+                        console.log(`📅 Data do novo agendamento: ${data}`);
+
+                        if (dataAgendamento < dataMinima) {
+                            console.log(`❌ Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
+                            return res.json({
+                                success: false,
+                                message: `Este cliente só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueio} dias após o último agendamento).`
+                            });
+                        } else {
+                            console.log(`✅ Cliente ${cliente_id} pode agendar em ${data}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao processar data do último agendamento:', error);
+                    console.log(`✅ Cliente ${cliente_id} - permitindo agendamento (erro na data)`);
                 }
             } else {
                 console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores`);
@@ -2840,43 +2851,22 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         }
 
         // ============================================
-        // 🔥 VALIDAÇÃO: BUSCAR DIAS_BLOQUEIO DO CLIENTE (CORRIGIDA)
-        // ============================================
-        const sqlDiasBloqueio = isProduction
-            ? `SELECT COALESCE(dias_bloqueio, 1) as dias_bloqueio FROM clientes WHERE id = $1 AND empresa_id = $2`
-            : `SELECT COALESCE(dias_bloqueio, 1) as dias_bloqueio FROM clientes WHERE id = ? AND empresa_id = ?`;
-
-        const clienteInfo = await new Promise((resolve) => {
-            db.get(sqlDiasBloqueio, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
-                if (err) {
-                    console.error('❌ Erro ao buscar dias_bloqueio:', err);
-                    resolve({ dias_bloqueio: 1 }); // fallback
-                } else {
-                    resolve(row || { dias_bloqueio: 1 });
-                }
-            });
-        });
-
-        const diasBloqueio = clienteInfo?.dias_bloqueio || 1;
-        console.log(`📋 Cliente ${cliente_id} - Dias de bloqueio: ${diasBloqueio}`);
-
-        // ============================================
-        // 3. VALIDAR: BUSCAR ÚLTIMO AGENDAMENTO
+        // 3. VALIDAR: BUSCAR ÚLTIMO AGENDAMENTO (COM TRATAMENTO DE DATA INVÁLIDA)
         // ============================================
         if (diasBloqueio > 0) {
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
-                   WHERE cliente_id = $1 
-                   AND empresa_id = $2 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`
+           WHERE cliente_id = $1 
+           AND empresa_id = $2 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`
                 : `SELECT data FROM agendamentos 
-                   WHERE cliente_id = ? 
-                   AND empresa_id = ? 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`;
+           WHERE cliente_id = ? 
+           AND empresa_id = ? 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`;
 
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [clienteIdNum, empresaIdNum], (err, row) => {
@@ -2889,25 +2879,37 @@ app.post('/api/chatbot/agendar', async (req, res) => {
                 });
             });
 
-            if (ultimoAgendamento) {
-                const dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
-                const dataMinima = new Date(dataUltimo);
-                dataMinima.setDate(dataMinima.getDate() + diasBloqueio);
-                const dataMinimaStr = dataMinima.toISOString().split('T')[0];
-                const dataAgendamento = new Date(data + 'T00:00:00');
+            if (ultimoAgendamento && ultimoAgendamento.data) {
+                try {
+                    const dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
 
-                console.log(`📅 Chatbot - Último agendamento: ${ultimoAgendamento.data}`);
-                console.log(`📅 Chatbot - Data mínima permitida: ${dataMinimaStr}`);
-                console.log(`📅 Chatbot - Data do novo agendamento: ${data}`);
+                    // 🔥 VERIFICA SE A DATA É VÁLIDA
+                    if (isNaN(dataUltimo.getTime())) {
+                        console.log(`⚠️ Chatbot - Data inválida no último agendamento: ${ultimoAgendamento.data}`);
+                        console.log(`✅ Chatbot - Cliente ${clienteIdNum} - permitindo agendamento (data inválida)`);
+                    } else {
+                        const dataMinima = new Date(dataUltimo);
+                        dataMinima.setDate(dataMinima.getDate() + diasBloqueio);
+                        const dataMinimaStr = dataMinima.toISOString().split('T')[0];
+                        const dataAgendamento = new Date(data + 'T00:00:00');
 
-                if (dataAgendamento < dataMinima) {
-                    console.log(`❌ Chatbot: Cliente ${clienteIdNum} não pode agendar antes de ${dataMinimaStr}`);
-                    return res.json({
-                        success: false,
-                        message: `Você só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueio} dias após o último agendamento).`
-                    });
-                } else {
-                    console.log(`✅ Chatbot: Cliente ${clienteIdNum} pode agendar em ${data}`);
+                        console.log(`📅 Chatbot - Último agendamento: ${ultimoAgendamento.data}`);
+                        console.log(`📅 Chatbot - Data mínima permitida: ${dataMinimaStr}`);
+                        console.log(`📅 Chatbot - Data do novo agendamento: ${data}`);
+
+                        if (dataAgendamento < dataMinima) {
+                            console.log(`❌ Chatbot: Cliente ${clienteIdNum} não pode agendar antes de ${dataMinimaStr}`);
+                            return res.json({
+                                success: false,
+                                message: `Você só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueio} dias após o último agendamento).`
+                            });
+                        } else {
+                            console.log(`✅ Chatbot: Cliente ${clienteIdNum} pode agendar em ${data}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Chatbot - Erro ao processar data do último agendamento:', error);
+                    console.log(`✅ Chatbot - Cliente ${clienteIdNum} - permitindo agendamento (erro na data)`);
                 }
             } else {
                 console.log(`✅ Chatbot: Cliente ${clienteIdNum} não tem agendamentos anteriores`);
