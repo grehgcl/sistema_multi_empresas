@@ -94,12 +94,68 @@ function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
 
 initDatabase();
 
-// 🔥 ADICIONE ISSO AQUI (após o initDatabase)
-// Verificar e criar coluna dias_bloqueio automaticamente
+// ============================================================
+// 🔥 MIGRAÇÕES AUTOMÁTICAS
+// ============================================================
+
+// 1. Verificar e criar coluna dias_bloqueio na tabela clientes
 setTimeout(() => {
     const { verificarColunaDiasBloqueio } = require('./server/config/database');
     verificarColunaDiasBloqueio();
 }, 2000);
+
+// 2. Verificar e criar coluna dias_bloqueio_geral na tabela empresas
+setTimeout(() => {
+    console.log('🔍 Verificando coluna dias_bloqueio_geral em empresas...');
+
+    const sqlCheck = isProduction
+        ? `SELECT column_name 
+           FROM information_schema.columns 
+           WHERE table_name = 'empresas' 
+           AND column_name = 'dias_bloqueio_geral'`
+        : `PRAGMA table_info(empresas)`;
+
+    db.all(sqlCheck, [], (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao verificar dias_bloqueio_geral:', err.message);
+            return;
+        }
+
+        const existe = rows && rows.some(r => r.name === 'dias_bloqueio_geral' || r.column_name === 'dias_bloqueio_geral');
+
+        if (existe) {
+            console.log('✅ Coluna dias_bloqueio_geral já existe!');
+            return;
+        }
+
+        console.log('📝 Criando coluna dias_bloqueio_geral...');
+
+        const sqlAdd = isProduction
+            ? `ALTER TABLE empresas ADD COLUMN IF NOT EXISTS dias_bloqueio_geral INTEGER DEFAULT 0`
+            : `ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0`;
+
+        db.run(sqlAdd, [], (err) => {
+            if (err) {
+                console.error('❌ Erro ao criar dias_bloqueio_geral:', err.message);
+                return;
+            }
+            console.log('✅ Coluna dias_bloqueio_geral criada com sucesso!');
+
+            // Atualizar empresas existentes
+            const sqlUpdate = isProduction
+                ? `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`
+                : `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`;
+
+            db.run(sqlUpdate, [], (err) => {
+                if (err) {
+                    console.error('⚠️ Erro ao atualizar empresas:', err.message);
+                } else {
+                    console.log('✅ Empresas atualizadas com dias_bloqueio_geral = 0');
+                }
+            });
+        });
+    });
+}, 2500);
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
