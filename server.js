@@ -1196,9 +1196,9 @@ app.post('/api/agendamentos',
         }
 
         // ============================================
-        // 🔥 CHATBOT: VALIDAÇÃO - CLIENTE JÁ TEM AGENDAMENTO NESTE DIA?
+        // 🔥 VALIDAÇÃO: CLIENTE JÁ TEM AGENDAMENTO NESTE DIA?
         // ============================================
-        const sqlAgendamentoHojeChat = isProduction
+        const sqlAgendamentoHoje = isProduction
             ? `SELECT id FROM agendamentos 
        WHERE cliente_id = $1 
        AND data = $2 
@@ -1212,10 +1212,10 @@ app.post('/api/agendamentos',
        AND status != 'cancelado'
        LIMIT 1`;
 
-        const agendamentoHojeChat = await new Promise((resolve) => {
-            db.get(sqlAgendamentoHojeChat, [clienteIdNum, data, empresaIdNum], (err, row) => {
+        const agendamentoHoje = await new Promise((resolve) => {
+            db.get(sqlAgendamentoHoje, [parseInt(cliente_id), data, parseInt(empresa_id)], (err, row) => {
                 if (err) {
-                    console.error('❌ Erro ao verificar agendamento no mesmo dia (chatbot):', err);
+                    console.error('❌ Erro ao verificar agendamento no mesmo dia:', err);
                     resolve(null);
                 } else {
                     resolve(row);
@@ -1223,8 +1223,8 @@ app.post('/api/agendamentos',
             });
         });
 
-        if (agendamentoHojeChat) {
-            console.log(`❌ Chatbot: Cliente ${clienteIdNum} já tem agendamento no dia ${data}`);
+        if (agendamentoHoje) {
+            console.log(`❌ Cliente ${cliente_id} já tem agendamento no dia ${data}`);
             return res.json({
                 success: false,
                 message: `Você já possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente só pode fazer UM agendamento por dia.`
@@ -1258,17 +1258,17 @@ app.post('/api/agendamentos',
         if (diasBloqueio > 1) {
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
-                   WHERE cliente_id = $1 
-                   AND empresa_id = $2 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`
+           WHERE cliente_id = $1 
+           AND empresa_id = $2 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`
                 : `SELECT data FROM agendamentos 
-                   WHERE cliente_id = ? 
-                   AND empresa_id = ? 
-                   AND status != 'cancelado'
-                   ORDER BY data DESC
-                   LIMIT 1`;
+           WHERE cliente_id = ? 
+           AND empresa_id = ? 
+           AND status != 'cancelado'
+           ORDER BY data DESC
+           LIMIT 1`;
 
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
