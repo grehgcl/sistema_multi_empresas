@@ -37,32 +37,93 @@ if (isProduction || isRender) {
         return sql.replace(/\?/g, () => `$${++i}`);
     }
 
+    // ============================================================
+    // 🔥 CORREÇÃO: WRAPPER COM TRATAMENTO DE CALLBACK
+    // ============================================================
     db = {
         get: (sql, params, callback) => {
-            if (typeof params === 'function') { callback = params; params = []; }
+            // 🔥 FIX: Garantir que callback é uma função
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            // 🔥 FIX: Se callback não for fornecido, criar um placeholder
+            if (typeof callback !== 'function') {
+                callback = () => { };
+            }
+            // 🔥 FIX: Garantir que params é um array
+            if (!Array.isArray(params)) {
+                params = [params];
+            }
+
             sql = convertPlaceholders(sql);
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
+                if (err) {
+                    console.error('❌ db.get error:', err.message);
+                    return callback(err);
+                }
                 callback(null, result.rows[0] || null);
             });
         },
+
         all: (sql, params, callback) => {
-            if (typeof params === 'function') { callback = params; params = []; }
+            // 🔥 FIX: Garantir que callback é uma função
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            // 🔥 FIX: Se callback não for fornecido, criar um placeholder
+            if (typeof callback !== 'function') {
+                callback = () => { };
+            }
+            // 🔥 FIX: Garantir que params é um array
+            if (!Array.isArray(params)) {
+                params = [params];
+            }
+
             sql = convertPlaceholders(sql);
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
+                if (err) {
+                    console.error('❌ db.all error:', err.message);
+                    return callback(err);
+                }
                 callback(null, result.rows);
             });
         },
+
         run: (sql, params, callback) => {
-            if (typeof params === 'function') { callback = params; params = []; }
+            // 🔥 FIX: Garantir que callback é uma função
+            if (typeof params === 'function') {
+                callback = params;
+                params = [];
+            }
+            // 🔥 FIX: Se callback não for fornecido, criar um placeholder
+            if (typeof callback !== 'function') {
+                callback = () => { };
+            }
+            // 🔥 FIX: Garantir que params é um array
+            if (!Array.isArray(params)) {
+                params = [params];
+            }
+
             sql = convertPlaceholders(sql);
             pool.query(sql, params, (err, result) => {
-                if (err) return callback(err);
+                if (err) {
+                    console.error('❌ db.run error:', err.message);
+                    console.error('❌ SQL:', sql);
+                    console.error('❌ Params:', params);
+                    return callback(err);
+                }
                 const lastID = result.rows[0]?.id || null;
-                callback(null, { lastID, id: lastID, changes: result.rowCount });
+                callback(null, {
+                    lastID: lastID,
+                    id: lastID,
+                    changes: result.rowCount,
+                    rows: result.rows
+                });
             });
         },
+
         pool: pool
     };
 
@@ -75,7 +136,30 @@ if (isProduction || isRender) {
     console.log('🟢 Conectando ao SQLite (Desenvolvimento)...');
     if (sqlite3) {
         const sqliteDb = new sqlite3.Database(path.join(__dirname, '../../database/barbearia.db'));
-        db = sqliteDb;
+
+        // 🔥 FIX: Wrapper para SQLite com tratamento de callback
+        db = {
+            get: (sql, params, callback) => {
+                if (typeof params === 'function') { callback = params; params = []; }
+                if (typeof callback !== 'function') { callback = () => { }; }
+                if (!Array.isArray(params)) { params = [params]; }
+                return sqliteDb.get(sql, params, callback);
+            },
+            all: (sql, params, callback) => {
+                if (typeof params === 'function') { callback = params; params = []; }
+                if (typeof callback !== 'function') { callback = () => { }; }
+                if (!Array.isArray(params)) { params = [params]; }
+                return sqliteDb.all(sql, params, callback);
+            },
+            run: (sql, params, callback) => {
+                if (typeof params === 'function') { callback = params; params = []; }
+                if (typeof callback !== 'function') { callback = () => { }; }
+                if (!Array.isArray(params)) { params = [params]; }
+                return sqliteDb.run(sql, params, callback);
+            },
+            close: () => sqliteDb.close()
+        };
+
         console.log('✅ SQLite conectado!');
     } else {
         console.error('❌ sqlite3 não disponível! Execute: npm install --include=dev');
@@ -161,15 +245,21 @@ function atualizarClientes() {
 // CRIAÇÃO DE ÍNDICES PRA PERFORMANCE
 // ============================================================
 function criarIndices() {
-    const indices = [
+    const isProd = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    const indices = isProd ? [
         `CREATE INDEX IF NOT EXISTS idx_agendamentos_empresa_data ON agendamentos(empresa_id, data)`,
         `CREATE INDEX IF NOT EXISTS idx_agendamentos_profissional_data ON agendamentos(profissional_id, data, hora) WHERE status = 'agendado'`,
         `CREATE INDEX IF NOT EXISTS idx_clientes_empresa_telefone ON clientes(empresa_id, telefone)`,
         `CREATE INDEX IF NOT EXISTS idx_horario_unico ON agendamentos(empresa_id, profissional_id, data, hora) WHERE status = 'agendado'`
+    ] : [
+        `CREATE INDEX IF NOT EXISTS idx_agendamentos_empresa_data ON agendamentos(empresa_id, data)`,
+        `CREATE INDEX IF NOT EXISTS idx_agendamentos_profissional_data ON agendamentos(profissional_id, data, hora) WHERE status = 'agendado'`,
+        `CREATE INDEX IF NOT EXISTS idx_clientes_empresa_telefone ON clientes(empresa_id, telefone)`
     ];
 
     indices.forEach(sql => {
-        db.run(sql, (err) => {
+        db.run(sql, [], (err) => {
             if (err && !err.message.includes('already exists')) {
                 console.error('❌ Erro ao criar índice:', err.message);
             }
@@ -178,8 +268,6 @@ function criarIndices() {
 }
 
 function initDatabase() {
-    //... seu código de criação de tabelas existente...
-
     // Depois de criar as tabelas, cria os índices
     setTimeout(criarIndices, 1000);
 }
@@ -190,13 +278,11 @@ function inserirHorariosPadrao(empresaId) {
 
     console.log(`📝 Inserindo horários padrão para empresa: ${empresaId} (${isProduction ? 'POSTGRESQL' : 'SQLITE'})`);
 
-    // 🔥 PARA CADA DIA DA SEMANA
     for (const dia of diasSemana) {
         let sql;
         let params = [empresaId, dia, 1, '09:00', '18:00', '12:00', '13:00', 30];
 
         if (isProduction) {
-            // ✅ POSTGRESQL: Usa ON CONFLICT com DO UPDATE
             sql = `
                 INSERT INTO horarios_funcionamento 
                 (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
@@ -211,7 +297,6 @@ function inserirHorariosPadrao(empresaId) {
                     intervalo_minutos = EXCLUDED.intervalo_minutos
             `;
         } else {
-            // ✅ SQLITE: Usa INSERT OR REPLACE
             sql = `
                 INSERT OR REPLACE INTO horarios_funcionamento 
                 (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
