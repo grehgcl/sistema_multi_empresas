@@ -1728,6 +1728,125 @@ app.get('/api/profissional/agendamentos', auth, (req, res) => {
     });
 });
 
+// ============================================================
+// ROTA: FINANCEIRO DO PROFISSIONAL
+// ============================================================
+app.get('/api/profissional/financeiro', auth, (req, res) => {
+    // Verificar se é profissional
+    if (req.usuario.role !== 'profissional') {
+        return res.json({ 
+            success: false, 
+            message: 'Acesso negado. Apenas profissionais podem acessar.' 
+        });
+    }
+
+    const profissional_id = req.usuario.id;
+    const empresa_id = req.usuario.empresa_id;
+
+    console.log(`📊 Buscando financeiro do profissional ${profissional_id} (${req.usuario.nome})`);
+
+    // Buscar agendamentos concluídos do profissional
+    const sql = isProduction
+        ? `SELECT 
+            a.id,
+            a.data,
+            to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+            a.valor,
+            a.servico,
+            a.comissao,
+            a.cliente_id,
+            a.status,
+            c.nome as cliente_nome,
+            s.nome as servico_nome
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.profissional_id = $1 
+        AND a.empresa_id = $2
+        AND a.status = 'concluido'
+        ORDER BY a.data DESC
+        LIMIT 50`
+        : `SELECT 
+            a.id,
+            a.data,
+            date(a.data) as data_formatada,
+            a.valor,
+            a.servico,
+            a.comissao,
+            a.cliente_id,
+            a.status,
+            c.nome as cliente_nome,
+            s.nome as servico_nome
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.profissional_id = ? 
+        AND a.empresa_id = ?
+        AND a.status = 'concluido'
+        ORDER BY a.data DESC
+        LIMIT 50`;
+
+    db.all(sql, [profissional_id, empresa_id], (err, agendamentos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar financeiro do profissional:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
+        // Calcular totais
+        let totalComissoes = 0;
+        let totalServicos = 0;
+        let totalValor = 0;
+
+        const dadosFormatados = agendamentos.map(a => {
+            const comissao = parseFloat(a.comissao) || 0;
+            const valor = parseFloat(a.valor) || 0;
+            
+            totalComissoes += comissao;
+            totalServicos += 1;
+            totalValor += valor;
+
+            // Formatar a data
+            let dataFormatada = a.data_formatada || a.data;
+            if (dataFormatada && typeof dataFormatada === 'string') {
+                // Já está formatada
+            } else if (a.data) {
+                try {
+                    const dataObj = new Date(a.data);
+                    dataFormatada = dataObj.toISOString().split('T')[0];
+                } catch (e) {
+                    dataFormatada = String(a.data);
+                }
+            }
+
+            return {
+                id: a.id,
+                data: dataFormatada,
+                valor: valor,
+                servico: a.servico || a.servico_nome || 'N/A',
+                servico_nome: a.servico_nome || a.servico || 'N/A',
+                comissao: comissao,
+                cliente_id: a.cliente_id,
+                cliente_nome: a.cliente_nome || 'N/A',
+                status: a.status
+            };
+        });
+
+        console.log(`✅ Financeiro do profissional ${profissional_id}: ${totalServicos} serviços, R$ ${totalComissoes.toFixed(2)} em comissões`);
+
+        res.json({
+            success: true,
+            data: {
+                comissoes: dadosFormatados,
+                totais: {
+                    total_comissoes: totalComissoes,
+                    total_servicos: totalServicos,
+                    total_valor: totalValor
+                }
+            }
+        });
+    });
+});
+
 app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
