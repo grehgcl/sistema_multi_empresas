@@ -104,57 +104,95 @@ setTimeout(() => {
     verificarColunaDiasBloqueio();
 }, 2000);
 
-// 2. Verificar e criar coluna dias_bloqueio_geral na tabela empresas
+// ============================================================
+// 🔥 MIGRAÇÃO: dias_bloqueio_geral (CORRIGIDA PARA POSTGRESQL)
+// ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando coluna dias_bloqueio_geral em empresas...');
 
-    const sqlCheck = isProduction
-        ? `SELECT column_name 
-           FROM information_schema.columns 
-           WHERE table_name = 'empresas' 
-           AND column_name = 'dias_bloqueio_geral'`
-        : `PRAGMA table_info(empresas)`;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.all(sqlCheck, [], (err, rows) => {
-        if (err) {
-            console.error('❌ Erro ao verificar dias_bloqueio_geral:', err.message);
-            return;
-        }
+    if (isProduction) {
+        // PostgreSQL - Verificar se a coluna existe
+        const sqlCheck = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'empresas' 
+            AND column_name = 'dias_bloqueio_geral'
+        `;
 
-        const existe = rows && rows.some(r => r.name === 'dias_bloqueio_geral' || r.column_name === 'dias_bloqueio_geral');
-
-        if (existe) {
-            console.log('✅ Coluna dias_bloqueio_geral já existe!');
-            return;
-        }
-
-        console.log('📝 Criando coluna dias_bloqueio_geral...');
-
-        const sqlAdd = isProduction
-            ? `ALTER TABLE empresas ADD COLUMN IF NOT EXISTS dias_bloqueio_geral INTEGER DEFAULT 0`
-            : `ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0`;
-
-        db.run(sqlAdd, [], (err) => {
+        db.get(sqlCheck, [], (err, row) => {
             if (err) {
-                console.error('❌ Erro ao criar dias_bloqueio_geral:', err.message);
+                console.error('❌ Erro ao verificar dias_bloqueio_geral:', err.message);
                 return;
             }
-            console.log('✅ Coluna dias_bloqueio_geral criada com sucesso!');
 
-            // Atualizar empresas existentes
-            const sqlUpdate = isProduction
-                ? `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`
-                : `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`;
+            if (row) {
+                console.log('✅ Coluna dias_bloqueio_geral já existe!');
+                return;
+            }
 
-            db.run(sqlUpdate, [], (err) => {
+            console.log('📝 Criando coluna dias_bloqueio_geral no PostgreSQL...');
+
+            const sqlAdd = `ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0`;
+
+            db.run(sqlAdd, [], (err) => {
                 if (err) {
-                    console.error('⚠️ Erro ao atualizar empresas:', err.message);
-                } else {
-                    console.log('✅ Empresas atualizadas com dias_bloqueio_geral = 0');
+                    console.error('❌ Erro ao criar dias_bloqueio_geral:', err.message);
+                    return;
                 }
+                console.log('✅ Coluna dias_bloqueio_geral criada com sucesso!');
+
+                // Atualizar empresas existentes
+                const sqlUpdate = `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`;
+                db.run(sqlUpdate, [], (err) => {
+                    if (err) {
+                        console.error('⚠️ Erro ao atualizar empresas:', err.message);
+                    } else {
+                        console.log('✅ Empresas atualizadas com dias_bloqueio_geral = 0');
+                    }
+                });
             });
         });
-    });
+    } else {
+        // SQLite
+        const sqlCheck = `PRAGMA table_info(empresas)`;
+
+        db.all(sqlCheck, [], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro ao verificar dias_bloqueio_geral:', err.message);
+                return;
+            }
+
+            const existe = rows && rows.some(r => r.name === 'dias_bloqueio_geral');
+
+            if (existe) {
+                console.log('✅ Coluna dias_bloqueio_geral já existe!');
+                return;
+            }
+
+            console.log('📝 Criando coluna dias_bloqueio_geral no SQLite...');
+
+            const sqlAdd = `ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0`;
+
+            db.run(sqlAdd, [], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao criar dias_bloqueio_geral:', err.message);
+                    return;
+                }
+                console.log('✅ Coluna dias_bloqueio_geral criada com sucesso!');
+
+                const sqlUpdate = `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`;
+                db.run(sqlUpdate, [], (err) => {
+                    if (err) {
+                        console.error('⚠️ Erro ao atualizar empresas:', err.message);
+                    } else {
+                        console.log('✅ Empresas atualizadas com dias_bloqueio_geral = 0');
+                    }
+                });
+            });
+        });
+    }
 }, 2500);
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -625,10 +663,15 @@ app.get('/api/empresa/dados', auth, (req, res) => {
         return res.json({ success: false, message: 'Empresa não identificada' });
     }
 
+    // 🔥 CORRIGIDO: Garantir que o campo existe
     const sql = isProduction
-        ? `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at, COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral 
+        ? `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
+           assinatura_valida_ate, ultima_cobranca, created_at, 
+           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral 
            FROM empresas WHERE id = $1`
-        : `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, ultima_cobranca, created_at, COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral 
+        : `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
+           assinatura_valida_ate, ultima_cobranca, created_at, 
+           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral 
            FROM empresas WHERE id = ?`;
 
     db.get(sql, [empresaId], (err, empresa) => {
@@ -639,33 +682,62 @@ app.get('/api/empresa/dados', auth, (req, res) => {
         if (!empresa) {
             return res.json({ success: false, message: 'Empresa não encontrada' });
         }
+
+        console.log('📋 Dados da empresa retornados:', empresa);
         res.json({ success: true, data: empresa });
     });
 });
 
 // ============================================================
-// 🔥 NOVA ROTA: ATUALIZAR BLOQUEIO GERAL
+// 🔥 ROTA: ATUALIZAR BLOQUEIO GERAL (COM LOGS)
 // ============================================================
 app.put('/api/empresa/bloqueio-geral', auth, verificarDono, (req, res) => {
     const { dias_bloqueio } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    console.log('📝 Atualizando bloqueio geral:', { empresaId, dias_bloqueio });
+    console.log('📝 ===== BLOQUEIO GERAL =====');
+    console.log('📝 Usuário:', req.usuario);
+    console.log('📝 Empresa ID:', empresaId);
+    console.log('📝 Dias bloqueio recebido:', dias_bloqueio);
+    console.log('📝 Body completo:', req.body);
 
     const diasBloqueioFinal = parseInt(dias_bloqueio) || 0;
 
     const sql = isProduction
-        ? `UPDATE empresas SET dias_bloqueio_geral = $1 WHERE id = $2`
+        ? `UPDATE empresas SET dias_bloqueio_geral = $1 WHERE id = $2 RETURNING id`
         : `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`;
+
+    console.log('📝 SQL:', sql);
+    console.log('📝 Parâmetros:', [diasBloqueioFinal, empresaId]);
 
     db.run(sql, [diasBloqueioFinal, empresaId], function (err) {
         if (err) {
             console.error('❌ Erro ao atualizar bloqueio geral:', err.message);
+            console.error('❌ Stack:', err.stack);
             return res.json({ success: false, message: err.message });
         }
 
         console.log('✅ Bloqueio geral atualizado para:', diasBloqueioFinal);
-        res.json({ success: true, message: `Bloqueio geral atualizado para ${diasBloqueioFinal} dias!` });
+        console.log('✅ Changes:', this?.changes || 'N/A');
+
+        // VERIFICAR SE FOI ATUALIZADO
+        const sqlCheck = isProduction
+            ? `SELECT dias_bloqueio_geral FROM empresas WHERE id = $1`
+            : `SELECT dias_bloqueio_geral FROM empresas WHERE id = ?`;
+
+        db.get(sqlCheck, [empresaId], (err, row) => {
+            if (err) {
+                console.error('❌ Erro ao verificar atualização:', err.message);
+            } else {
+                console.log('📋 Valor no banco após update:', row);
+            }
+        });
+
+        res.json({
+            success: true,
+            message: `Bloqueio geral atualizado para ${diasBloqueioFinal} dias!`,
+            data: { dias_bloqueio: diasBloqueioFinal }
+        });
     });
 });
 app.post('/api/upgrade', auth, verificarDono, (req, res) => {
