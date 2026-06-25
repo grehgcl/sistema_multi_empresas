@@ -56,14 +56,16 @@ function verificarLimiteProfissionais(req, res, next) {
 
     console.log(`🔍 Verificando limite de profissionais para empresa ${empresaId}`);
 
+    // 🔥 CORRIGIDO: Usar $1 e $2 (dois placeholders diferentes)
     const sql = isProduction
         ? `SELECT plano, limite_profissionais, 
             (SELECT COUNT(*) FROM profissionais WHERE empresa_id = $1 AND ativo = 1) as total_profs 
-            FROM empresas WHERE id = $1`
+            FROM empresas WHERE id = $2`
         : `SELECT plano, limite_profissionais, 
             (SELECT COUNT(*) FROM profissionais WHERE empresa_id = ? AND ativo = 1) as total_profs 
             FROM empresas WHERE id = ?`;
 
+    // 🔥 CORRIGIDO: Passar o mesmo valor para os dois placeholders
     db.get(sql, [empresaId, empresaId], (err, empresa) => {
         if (err) {
             console.error('❌ Erro ao verificar limite:', err);
@@ -86,7 +88,6 @@ function verificarLimiteProfissionais(req, res, next) {
         next();
     });
 }
-
 // ============================================
 // 5. VERIFICAR ACESSO A AGENDAMENTOS (TRIAL/ASSINATURA)
 // ============================================
