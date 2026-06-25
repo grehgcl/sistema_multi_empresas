@@ -31,35 +31,44 @@ if (isProduction || isRender) {
         ssl: { rejectUnauthorized: false }
     });
 
-    // WRAPPER UNIVERSAL: converte? em $1, $2... automático
+    // 🔥 CORRIGIDO: NÃO converte se já tiver $1
     function convertPlaceholders(sql) {
+        // Se já tem $1, $2... NÃO CONVERTE
+        if (sql.includes('$1')) {
+            return sql;
+        }
+        // Se tem ?, converte para $1, $2...
         let i = 0;
         return sql.replace(/\?/g, () => `$${++i}`);
     }
 
     // ============================================================
-    // 🔥 CORREÇÃO: WRAPPER COM TRATAMENTO DE CALLBACK
+    // 🔥 WRAPPER COM TRATAMENTO DE CALLBACK
     // ============================================================
     db = {
         get: (sql, params, callback) => {
-            // 🔥 FIX: Garantir que callback é uma função
             if (typeof params === 'function') {
                 callback = params;
                 params = [];
             }
-            // 🔥 FIX: Se callback não for fornecido, criar um placeholder
             if (typeof callback !== 'function') {
                 callback = () => { };
             }
-            // 🔥 FIX: Garantir que params é um array
             if (!Array.isArray(params)) {
                 params = [params];
             }
 
-            sql = convertPlaceholders(sql);
-            pool.query(sql, params, (err, result) => {
+            // 🔥 SÓ CONVERTE SE TIVER ?
+            const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
+
+            // Log para depuração
+            console.log(`📝 GET SQL: ${sqlFinal.substring(0, 100)}...`);
+
+            pool.query(sqlFinal, params, (err, result) => {
                 if (err) {
                     console.error('❌ db.get error:', err.message);
+                    console.error('❌ SQL:', sqlFinal);
+                    console.error('❌ Params:', params);
                     return callback(err);
                 }
                 callback(null, result.rows[0] || null);
@@ -67,24 +76,26 @@ if (isProduction || isRender) {
         },
 
         all: (sql, params, callback) => {
-            // 🔥 FIX: Garantir que callback é uma função
             if (typeof params === 'function') {
                 callback = params;
                 params = [];
             }
-            // 🔥 FIX: Se callback não for fornecido, criar um placeholder
             if (typeof callback !== 'function') {
                 callback = () => { };
             }
-            // 🔥 FIX: Garantir que params é um array
             if (!Array.isArray(params)) {
                 params = [params];
             }
 
-            sql = convertPlaceholders(sql);
-            pool.query(sql, params, (err, result) => {
+            const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
+
+            console.log(`📝 ALL SQL: ${sqlFinal.substring(0, 100)}...`);
+
+            pool.query(sqlFinal, params, (err, result) => {
                 if (err) {
                     console.error('❌ db.all error:', err.message);
+                    console.error('❌ SQL:', sqlFinal);
+                    console.error('❌ Params:', params);
                     return callback(err);
                 }
                 callback(null, result.rows);
@@ -92,25 +103,25 @@ if (isProduction || isRender) {
         },
 
         run: (sql, params, callback) => {
-            // 🔥 FIX: Garantir que callback é uma função
             if (typeof params === 'function') {
                 callback = params;
                 params = [];
             }
-            // 🔥 FIX: Se callback não for fornecido, criar um placeholder
             if (typeof callback !== 'function') {
                 callback = () => { };
             }
-            // 🔥 FIX: Garantir que params é um array
             if (!Array.isArray(params)) {
                 params = [params];
             }
 
-            sql = convertPlaceholders(sql);
-            pool.query(sql, params, (err, result) => {
+            const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
+
+            console.log(`📝 RUN SQL: ${sqlFinal.substring(0, 100)}...`);
+
+            pool.query(sqlFinal, params, (err, result) => {
                 if (err) {
                     console.error('❌ db.run error:', err.message);
-                    console.error('❌ SQL:', sql);
+                    console.error('❌ SQL:', sqlFinal);
                     console.error('❌ Params:', params);
                     return callback(err);
                 }
@@ -137,7 +148,6 @@ if (isProduction || isRender) {
     if (sqlite3) {
         const sqliteDb = new sqlite3.Database(path.join(__dirname, '../../database/barbearia.db'));
 
-        // 🔥 FIX: Wrapper para SQLite com tratamento de callback
         db = {
             get: (sql, params, callback) => {
                 if (typeof params === 'function') { callback = params; params = []; }
@@ -205,7 +215,6 @@ function verificarColunaDiasBloqueio() {
             if (err) {
                 console.error('❌ Erro ao criar coluna:', err.message);
 
-                // Tentar sem IF NOT EXISTS (PostgreSQL)
                 if (isProd) {
                     const sqlAdd2 = `ALTER TABLE clientes ADD COLUMN dias_bloqueio INTEGER DEFAULT 1`;
                     db.run(sqlAdd2, [], (err2) => {
@@ -268,7 +277,6 @@ function criarIndices() {
 }
 
 function initDatabase() {
-    // Depois de criar as tabelas, cria os índices
     setTimeout(criarIndices, 1000);
 }
 
