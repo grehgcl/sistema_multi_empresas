@@ -14,9 +14,9 @@ let agendaInteligenteCores = {};
 let agendaInteligenteCarregando = false;
 
 const coresPaleta = [
-    '#2196F3', '#4ade80', '#9c27b0', '#ff9800', '#e91e63',
-    '#00bcd4', '#ffc107', '#795548', '#607d8b', '#3f51b5',
-    '#009688', '#ff5722', '#8bc34a', '#9e9e9e', '#673ab7'
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#FF9FF3', '#54A0FF', '#5F27CD', '#341F97',
+    '#00D2D3', '#1DD1A1', '#F368E0', '#FF9F43', '#EE5A24'
 ];
 
 async function carregarAgendaInteligente() {
@@ -116,7 +116,7 @@ function renderizarAgendaInteligente() {
     }
 
     // ============================================
-    // LEGENDA DE CORES
+    // LEGENDA DE CORES - MELHORADA
     // ============================================
     let html = `
         <div style="margin-bottom:10px;">
@@ -137,6 +137,29 @@ function renderizarAgendaInteligente() {
                 </div>
                 <span style="font-size:10px;color:var(--text-muted);">
                     <i class="fas fa-mouse-pointer"></i> Clique na bolinha para agendar
+                </span>
+            </div>
+            <!-- LEGENDA MELHORADA -->
+            <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:10px;padding:6px 0;margin-top:4px;border-top:1px solid var(--border-color);">
+                <span style="display:flex;align-items:center;gap:4px;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#10b981;border:2px solid rgba(16,185,129,0.3);"></span>
+                    <span style="color:var(--text-muted);">Disponível</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:4px;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid rgba(239,68,68,0.3);"></span>
+                    <span style="color:var(--text-muted);">Ocupado</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:4px;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid rgba(245,158,11,0.3);"></span>
+                    <span style="color:var(--text-muted);">Almoço</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:4px;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#6b7280;border:2px solid rgba(107,114,128,0.3);"></span>
+                    <span style="color:var(--text-muted);">Fechado</span>
+                </span>
+                <span style="display:flex;align-items:center;gap:4px;border-left:1px solid var(--border-color);padding-left:12px;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#d4af37;border:2px solid #d4af37;"></span>
+                    <span style="color:var(--text-muted);">👑 Dono</span>
                 </span>
             </div>
         </div>
@@ -170,25 +193,43 @@ function renderizarAgendaInteligente() {
     }
 
     // ============================================
-    // TABELA DO CALENDÁRIO - ESTILO CLEAN E MAIOR
+    // TABELA DO CALENDÁRIO - COM HORÁRIOS DESTACADOS
     // ============================================
     html += `
-        <div style="overflow-x:auto;max-height:450px;overflow-y:auto;">
+        <div style="overflow-x:auto;max-height:450px;overflow-y:auto;border-radius:8px;border:1px solid var(--border-color);">
             <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:500px;">
                 <thead>
                     <tr>
-                        <th style="padding:5px 8px;background:var(--bg-hover);text-align:center;font-weight:600;position:sticky;top:0;z-index:5;font-size:10px;min-width:50px;color:var(--text-muted);">Horário</th>
+                        <th style="padding:8px 8px;background:var(--bg-hover);text-align:center;font-weight:700;position:sticky;top:0;z-index:5;font-size:10px;min-width:55px;color:var(--text-muted);border-bottom:2px solid var(--border-color);">
+                            <i class="fas fa-clock"></i> Horário
+                        </th>
                         ${dias.map(d => {
         const dataStr = d.toISOString().split('T')[0];
         const isHoje = dataStr === hoje;
         const nomeDia = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
         const diaNum = d.getDate();
         return `
-                                <th style="padding:5px 4px;background:${isHoje ? 'var(--primary)' : 'var(--bg-hover)'};color:${isHoje ? '#fff' : 'var(--text-secondary)'};text-align:center;font-weight:600;position:sticky;top:0;z-index:5;font-size:10px;min-width:55px;border-radius:${isHoje ? '4px 4px 0 0' : '0'};">
-                                    ${nomeDia}
-                                    <br><span style="font-size:14px;font-weight:700;">${diaNum}</span>
-                                </th>
-                            `;
+                            <th style="padding:8px 4px;
+                                       background:${isHoje ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'var(--bg-hover)'};
+                                       color:${isHoje ? '#ffffff' : 'var(--text-secondary)'};
+                                       text-align:center;
+                                       font-weight:${isHoje ? '700' : '600'};
+                                       position:sticky;
+                                       top:0;
+                                       z-index:5;
+                                       font-size:10px;
+                                       min-width:60px;
+                                       border-bottom:${isHoje ? '3px solid #ffffff' : '2px solid var(--border-color)'};
+                                       box-shadow:${isHoje ? '0 2px 12px rgba(102, 126, 234, 0.4)' : 'none'};
+                                       border-radius:${isHoje ? '8px 8px 0 0' : '0'};">
+                                ${nomeDia}
+                                <br>
+                                <span style="font-size:${isHoje ? '18px' : '14px'};font-weight:${isHoje ? '800' : '700'};display:block;margin-top:2px;${isHoje ? 'text-shadow: 0 1px 4px rgba(0,0,0,0.2);' : ''}">
+                                    ${diaNum}
+                                </span>
+                                ${isHoje ? `<span style="display:block;font-size:8px;margin-top:2px;opacity:0.9;">📌 HOJE</span>` : ''}
+                            </th>
+                        `;
     }).join('')}
                     </tr>
                 </thead>
@@ -196,11 +237,65 @@ function renderizarAgendaInteligente() {
     `;
 
     for (let hora of horariosBase) {
-        html += `<tr>`;
-        html += `<td style="padding:4px 6px;text-align:center;border-bottom:1px solid var(--border-color);font-size:10px;font-weight:500;color:var(--text-muted);background:var(--bg-card);">${hora}</td>`;
+        // Destacar horário atual
+        const agora = new Date();
+        const horaAtual = agora.getHours().toString().padStart(2, '0') + ':' + agora.getMinutes().toString().padStart(2, '0');
+        const isHorarioAtual = hora === horaAtual;
+
+        // Verificar se é horário de almoço (12:00 às 13:00)
+        const isAlmoco = hora >= '12:00' && hora < '13:00';
+
+        html += `<tr style="${isHorarioAtual ? 'background:rgba(102,126,234,0.08);' : ''}">`;
+
+        // 🔥 COLUNA DO HORÁRIO - COM ÍCONE E CORES FORTES
+        html += `
+        <td style="
+            padding: 10px 6px;
+            text-align: center;
+            border-bottom: 2px solid var(--border-color);
+            font-size: ${isHorarioAtual ? '15px' : '12px'};
+            font-weight: ${isHorarioAtual ? '800' : '700'};
+            color: ${isHorarioAtual ? '#ffffff' : (isAlmoco ? '#d97706' : 'var(--text-primary)')};
+            background: ${isHorarioAtual ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (isAlmoco ? 'rgba(245,158,11,0.15)' : 'var(--bg-hover)')};
+            white-space: nowrap;
+            border-right: 3px solid ${isHorarioAtual ? 'var(--primary)' : 'var(--border-color)'};
+            min-width: 70px;
+            position: sticky;
+            left: 0;
+            z-index: 3;
+            box-shadow: ${isHorarioAtual ? '0 2px 16px rgba(102,126,234,0.4)' : '2px 0 8px rgba(0,0,0,0.04)'};
+            ${isHorarioAtual ? 'border-radius: 6px 0 0 6px;' : ''}
+            transition: all 0.3s ease;
+        ">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                ${isHorarioAtual ? `
+                    <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 8px;border-radius:10px;color:white;font-weight:600;">
+                        ● AGORA
+                    </span>
+                ` : ''}
+                ${isAlmoco ? `
+                    <span style="font-size:14px;">🍽️</span>
+                ` : `
+                    <span style="font-size:10px;opacity:0.5;color:var(--text-muted);">
+                        <i class="fas fa-clock"></i>
+                    </span>
+                `}
+                <span style="font-size: ${isHorarioAtual ? '16px' : '13px'}; font-weight: ${isHorarioAtual ? '800' : '700'};">
+                    ${hora}
+                </span>
+                ${isHorarioAtual ? `
+                    <span style="font-size:7px;opacity:0.8;color:white;margin-top:-2px;">horário atual</span>
+                ` : ''}
+                ${isAlmoco ? `
+                    <span style="font-size:7px;color:#d97706;font-weight:600;">ALMOÇO</span>
+                ` : ''}
+            </div>
+        </td>
+    `;
 
         for (let d of dias) {
             const dataStr = d.toISOString().split('T')[0];
+            const isHoje = dataStr === hoje;
             const diaSemana = d.getDay();
             const horarioDia = agendaInteligenteHorarios.find(h => h.dia_semana === diaSemana);
 
@@ -215,6 +310,7 @@ function renderizarAgendaInteligente() {
                 a.status !== 'cancelado'
             );
 
+            // 🔥 IDENTIFICAR QUEM ESTÁ OCUPADO
             const ocupadosIds = agendamentosHora.map(a => a.profissional_id).filter(id => id !== null && id !== undefined);
             const temAgendamentoDono = agendamentosHora.some(a => a.profissional_id === null || a.profissional_id === '');
 
@@ -222,56 +318,134 @@ function renderizarAgendaInteligente() {
             let bgColor = 'transparent';
             let title = '';
 
+            // 🔥 DESTAQUE DO DIA ATUAL
+            if (isHoje) {
+                bgColor = 'rgba(102, 126, 234, 0.04)';
+            }
+
             if (!estaAberto) {
-                bgColor = 'rgba(107,114,128,0.04)';
+                bgColor = isHoje ? 'rgba(102, 126, 234, 0.04)' : 'rgba(107,114,128,0.04)';
                 cellContent = `<span style="color:#9ca3af;font-size:14px;">—</span>`;
                 title = 'Fechado';
             } else if (noAlmoco) {
-                bgColor = 'rgba(245,158,11,0.08)';
-                cellContent = `<span style="color:#d97706;font-size:16px;">🍽️</span>`;
+                bgColor = isHoje ? 'rgba(102, 126, 234, 0.08)' : 'rgba(245,158,11,0.08)';
+                cellContent = `<span style="color:#d97706;font-size:18px;">🍽️</span>`;
                 title = 'Horário de almoço';
             } else {
-                const disponiveis = agendaInteligenteProfissionais.filter(p => {
+                // 🔥 VERIFICAR DISPONIBILIDADE DE CADA PROFISSIONAL
+                const profissionaisComStatus = agendaInteligenteProfissionais.map(p => {
+                    let ocupado = false;
                     if (p.is_dono === true) {
-                        return !temAgendamentoDono;
+                        ocupado = temAgendamentoDono;
+                    } else {
+                        ocupado = ocupadosIds.includes(p.id);
                     }
-                    return !ocupadosIds.includes(p.id);
+                    return { ...p, ocupado };
                 });
 
+                const disponiveis = profissionaisComStatus.filter(p => !p.ocupado);
+
                 if (disponiveis.length === 0) {
-                    bgColor = 'rgba(107,114,128,0.05)';
-                    cellContent = `<span style="color:#9ca3af;font-size:14px;">⛔</span>`;
+                    bgColor = isHoje ? 'rgba(102, 126, 234, 0.08)' : 'rgba(239,68,68,0.06)';
+                    cellContent = `<span style="color:#ef4444;font-size:14px;font-weight:700;">🔴</span>`;
                     title = 'Todos os profissionais ocupados';
                 } else {
-                    const displayProfs = disponiveis.slice(0, 4);
-                    const mais = disponiveis.length > 4 ? ` +${disponiveis.length - 4}` : '';
+                    // 🔥 MOSTRAR TODOS OS PROFISSIONAIS COM SEU STATUS
+                    const todosProfissionais = profissionaisComStatus;
+                    const displayProfs = todosProfissionais.slice(0, 4);
+                    const mais = todosProfissionais.length > 4 ? ` +${todosProfissionais.length - 4}` : '';
+
+                    bgColor = isHoje ? 'rgba(102, 126, 234, 0.06)' : 'rgba(16,185,129,0.04)';
 
                     cellContent = `
-                        <div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;">
-                            ${displayProfs.map(p => {
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+                            <div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;">
+                                ${displayProfs.map(p => {
                         const isDono = p.is_dono === true;
                         const cor = agendaInteligenteCores[p.id] || '#666';
-                        const tooltipText = isDono ? `👑 ${p.nome} - ${hora}` : `${p.nome} - ${hora}`;
+                        const isOcupado = p.ocupado;
+
+                        // 🔥 TAMANHO DA BOLINHA: MAIOR SE OCUPADO
+                        const size = isOcupado ? '28px' : '22px';
+                        const fontSize = isOcupado ? '14px' : '10px';
+                        const borderWidth = isOcupado ? '3px' : '2px';
+                        const borderColor = isOcupado ? '#ef4444' : (isDono ? '#d4af37' : 'rgba(255,255,255,0.4)');
+                        const boxShadow = isOcupado ? '0 0 16px rgba(239,68,68,0.5)' : '0 0 8px rgba(16,185,129,0.3)';
+                        const opacidade = isOcupado ? '1' : '1';
+                        const cursor = isOcupado ? 'not-allowed' : 'pointer';
+                        const statusText = isOcupado ? '🔴 Ocupado' : '✅ Disponível';
+                        const tooltipText = isDono ? `👑 ${p.nome} - ${hora} ${statusText}` : `${p.nome} - ${hora} ${statusText}`;
+
                         return `
-                                    <span style="display:inline-block;width:20px;height:20px;border-radius:50%;background:${cor};border:${isDono ? '2px solid #d4af37' : '2px solid rgba(255,255,255,0.3)'};cursor:pointer;transition:all 0.2s;box-shadow:0 0 4px rgba(16,185,129,0.2);" 
-                                          title="${tooltipText}"
-                                          onmouseover="this.style.transform='scale(1.2)';this.style.boxShadow='0 0 10px ${cor}'"
-                                          onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 0 4px rgba(16,185,129,0.2)'"
-                                          onclick="event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')"></span>
-                                `;
+                                        <div style="position:relative;display:inline-block;cursor:${cursor};" 
+                                             title="${tooltipText}"
+                                             onclick="${isOcupado ? '' : `event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')`}">
+                                            <span style="display:inline-block;
+                                                         width:${size};
+                                                         height:${size};
+                                                         border-radius:50%;
+                                                         background:${isOcupado ? '#ef4444' : cor};
+                                                         border:${borderWidth} solid ${borderColor};
+                                                         box-shadow: ${boxShadow};
+                                                         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                                                         position:relative;
+                                                         ${isOcupado ? 'animation: pulseRed 1.5s infinite;' : ''}
+                                                         opacity:${opacidade};"
+                                                  ${!isOcupado ? `
+                                                      onmouseover="this.style.transform='scale(1.25)';this.style.boxShadow='0 0 20px ${cor}'"
+                                                      onmouseout="this.style.transform='scale(1)';this.style.boxShadow='${boxShadow}'"
+                                                  ` : ''}
+                                                  >
+                                                ${isDono ? `<span style="position:absolute;top:-4px;right:-4px;font-size:${isOcupado ? '12px' : '10px'};">👑</span>` : ''}
+                                                ${isOcupado ? `
+                                                    <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:${fontSize};color:white;font-weight:700;">✕</span>
+                                                ` : `
+                                                    <span style="position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;background:#10b981;border-radius:50%;border:1px solid white;box-shadow:0 0 4px rgba(16,185,129,0.5);"></span>
+                                                `}
+                                            </span>
+                                            ${isOcupado ? `
+                                                <span style="position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:7px;color:#ef4444;white-space:nowrap;font-weight:600;">
+                                                    🔴
+                                                </span>
+                                            ` : ''}
+                                        </div>
+                                    `;
                     }).join('')}
-                            ${mais}
-                            <span style="font-size:9px;color:#10b981;margin-left:2px;">●</span>
+                                ${mais}
+                            </div>
+                            ${todosProfissionais.length > 1 ? `
+                                <span style="font-size:7px;color:var(--text-muted);opacity:0.6;">
+                                    ${disponiveis.length}/${todosProfissionais.length} disponíveis
+                                </span>
+                            ` : ''}
                         </div>
                     `;
-                    bgColor = 'rgba(16,185,129,0.04)';
                     title = `${hora} - ${disponiveis.length} profissional(is) disponível(eis)`;
                 }
             }
 
+            // 🔥 BORDA PARA DESTACAR O DIA ATUAL
+            const borderStyle = isHoje ? 'border-left:2px solid var(--primary);border-right:2px solid var(--primary);' : '';
+            const borderTop = isHoje && hora === horariosBase[0] ? 'border-top:2px solid var(--primary);' : '';
+            const borderBottom = isHoje && hora === horariosBase[horariosBase.length - 1] ? 'border-bottom:2px solid var(--primary);' : '';
+
             html += `
-                <td style="padding:4px 3px;border-bottom:1px solid var(--border-color);background:${bgColor};text-align:center;font-size:9px;min-height:32px;vertical-align:middle;" 
+                <td style="padding:4px 3px;
+                           border-bottom:1px solid var(--border-color);
+                           background:${bgColor};
+                           text-align:center;
+                           font-size:9px;
+                           min-height:38px;
+                           vertical-align:middle;
+                           ${borderStyle}
+                           ${borderTop}
+                           ${borderBottom}
+                           ${isHoje ? 'position:relative;' : ''}
+                           " 
                     title="${title}">
+                    ${isHoje && !cellContent.includes('—') && !cellContent.includes('🍽️') && !cellContent.includes('🔴') ? `
+                        <div style="position:absolute;top:0;left:0;right:0;bottom:0;border:1px solid rgba(102,126,234,0.15);border-radius:4px;pointer-events:none;"></div>
+                    ` : ''}
                     ${cellContent}
                 </td>
             `;
@@ -287,30 +461,46 @@ function renderizarAgendaInteligente() {
     `;
 
     // ============================================
-    // NAVEGAÇÃO - CLEAN
+    // NAVEGAÇÃO - MELHORADA
     // ============================================
     html += `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px 0;border-top:1px solid var(--border-color);margin-top:8px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;gap:6px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px 0;border-top:1px solid var(--border-color);margin-top:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;gap:6px;">
             <div style="display:flex;gap:4px;align-items:center;">
-                <button onclick="mudarAgendaSemana(-1)" style="background:none;border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:4px 10px;color:var(--text-secondary);font-size:12px;transition:all 0.2s;">
+                <button onclick="mudarAgendaSemana(-1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:6px 12px;color:var(--text-secondary);font-size:12px;transition:all 0.2s;">
                     ◀
                 </button>
-                <span style="font-weight:500;color:var(--text-primary);font-size:13px;">
-                    ${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - 
-                    ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                <span style="font-weight:600;color:var(--text-primary);font-size:13px;background:var(--bg-hover);padding:4px 14px;border-radius:6px;">
+                    📅 ${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })} - 
+                    ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>
-                <button onclick="mudarAgendaSemana(1)" style="background:none;border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:4px 10px;color:var(--text-secondary);font-size:12px;transition:all 0.2s;">
+                <button onclick="mudarAgendaSemana(1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:6px 12px;color:var(--text-secondary);font-size:12px;transition:all 0.2s;">
                     ▶
                 </button>
-                <button onclick="irAgendaHoje()" style="background:var(--gradient);border:none;border-radius:6px;cursor:pointer;padding:4px 14px;color:white;font-size:11px;font-weight:600;transition:all 0.2s;">
-                    Hoje
+                <button onclick="irAgendaHoje()" style="background:var(--gradient-primary);border:none;border-radius:6px;cursor:pointer;padding:6px 16px;color:white;font-size:11px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(102,126,234,0.3);">
+                    📌 Hoje
                 </button>
             </div>
-            <div style="display:flex;gap:8px;font-size:9px;">
-                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#10b981;vertical-align:middle;margin-right:3px;"></span> Disponível</span>
-                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#ef4444;vertical-align:middle;margin-right:3px;"></span> Ocupado</span>
-                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#f59e0b;vertical-align:middle;margin-right:3px;"></span> Almoço</span>
-                <span><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#6b7280;vertical-align:middle;margin-right:3px;"></span> Fechado</span>
+            <div style="display:flex;gap:10px;font-size:9px;flex-wrap:wrap;">
+                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;"></span>
+                    Disponível
+                </span>
+                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;"></span>
+                    Ocupado
+                </span>
+                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;"></span>
+                    Almoço
+                </span>
+                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;"></span>
+                    Fechado
+                </span>
+                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;border:1px solid var(--primary);">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--primary);"></span>
+                    Hoje
+                </span>
             </div>
         </div>
     `;
@@ -330,6 +520,21 @@ function mudarAgendaSemana(direcao) {
 function irAgendaHoje() {
     agendaInteligenteDate = new Date();
     renderizarAgendaInteligente();
+}
+
+// ============================================
+// 🔥 ATUALIZAR AGENDA APÓS AGENDAMENTO
+// ============================================
+
+function atualizarAgendaAposAgendamento() {
+    console.log('🔄 Atualizando agenda após agendamento...');
+
+    // Pequeno delay para garantir que o agendamento foi salvo
+    setTimeout(() => {
+        agendaInteligenteData = [];
+        agendaInteligenteCarregando = false;
+        carregarAgendaInteligente();
+    }, 500);
 }
 
 // ============================================
@@ -1498,6 +1703,7 @@ window.abrirAgendamentoInteligente = abrirAgendamentoInteligente;
 window.mudarAgendaSemana = mudarAgendaSemana;
 window.irAgendaHoje = irAgendaHoje;
 window.renderizarAgendaInteligente = renderizarAgendaInteligente;
+window.atualizarAgendaAposAgendamento = atualizarAgendaAposAgendamento;
 
 // Garantir que as listas estejam disponíveis globalmente
 window.clientesList = window.clientesList || [];

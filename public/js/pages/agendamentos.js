@@ -80,12 +80,12 @@ async function carregarAgendamentos() {
                 <div class="filter-group">
                     <label><i class="fas fa-filter"></i> Status</label>
                     <select id="filtroStatus" class="filter-select">
-    <option value="todos">Todos</option>
-    <option value="agendado">📋 Agendado</option>
-    <option value="pendente">⏳ Pendente</option>
-    <option value="concluido">✅ Concluído</option>
-    <option value="cancelado">❌ Cancelado</option>
-</select>
+                        <option value="todos">Todos</option>
+                        <option value="agendado">📋 Agendado</option>
+                        <option value="pendente">⏳ Pendente</option>
+                        <option value="concluido">✅ Concluído</option>
+                        <option value="cancelado">❌ Cancelado</option>
+                    </select>
                 </div>
                 <div class="filter-group">
                     <label><i class="fas fa-user"></i> Profissional</label>
@@ -867,11 +867,13 @@ async function salvarAgendamentoDono() {
         if (result.success) {
             showToast("Agendamento criado com sucesso!", "success");
             fecharModalAgendamentoDono();
-            carregarAgendamentos();
-            // Recarregar a agenda inteligente se estiver visível
-            if (typeof carregarAgendaInteligente === 'function') {
-                carregarAgendaInteligente();
+
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
+            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                window.atualizarAgendaAposAgendamento();
             }
+
+            carregarAgendamentos();
         } else {
             // Verificar se é o erro de cliente já tem agendamento
             if (result.message && result.message.includes('já possui um agendamento para este dia')) {
@@ -908,6 +910,12 @@ async function concluirAgendamento(id) {
         if (result.success) {
             showToast(result.message, "success");
             carregarAgendamentos();
+
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
+            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                window.atualizarAgendaAposAgendamento();
+            }
+
             if (typeof carregarFinanceiro === "function") {
                 const btnFinanceiro = document.getElementById("btnFinanceiro");
                 if (btnFinanceiro && btnFinanceiro.classList.contains("active")) {
@@ -945,6 +953,11 @@ async function excluirAgendamento(id) {
         if (result.success) {
             showToast("Agendamento removido", "success");
             carregarAgendamentos();
+
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
+            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                window.atualizarAgendaAposAgendamento();
+            }
         } else {
             showToast("Erro: " + result.message, "error");
         }
@@ -1124,6 +1137,11 @@ async function salvarEdicaoAgendamentoDono(id) {
             showToast("Agendamento atualizado com sucesso!", "success");
             fecharModalEditarAgendamentoDono();
             carregarAgendamentos();
+
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
+            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                window.atualizarAgendaAposAgendamento();
+            }
         } else {
             showToast("Erro: " + result.message, "error");
         }

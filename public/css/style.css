@@ -4534,3 +4534,105 @@ body {
         min-width: 14px;
     }
 }
+
+/* Animação para bolinhas ocupadas */
+@keyframes pulseRed {
+    0% {
+        transform: scale(1);
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
+    }
+
+    100% {
+        transform: scale(1);
+        box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+    }
+}
+
+/* Estilo para a coluna de horários */
+.horario-coluna {
+    background: var(--bg-hover);
+    font-weight: 700;
+    border-right: 3px solid var(--border-color);
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    min-width: 70px;
+}
+
+.horario-coluna.ativo {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    box-shadow: 0 2px 16px rgba(102, 126, 234, 0.4);
+    border-radius: 6px 0 0 6px;
+}
+
+.horario-coluna.almoco {
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+}
+
+.horario-coluna .hora-texto {
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.horario-coluna.ativo .hora-texto {
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.horario-coluna .badge-agora {
+    font-size: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 1px 8px;
+    border-radius: 10px;
+    color: white;
+    font-weight: 600;
+}
+
+.horario-coluna .badge-almoco {
+    font-size: 7px;
+    color: #d97706;
+    font-weight: 600;
+}
+
+/* Estilo para a tabela com sticky horário */
+.tabela-agenda {
+    overflow-x: auto;
+    max-height: 450px;
+    overflow-y: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.tabela-agenda table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+    min-width: 500px;
+}
+
+.tabela-agenda thead th {
+    padding: 8px 8px;
+    background: var(--bg-hover);
+    text-align: center;
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    font-size: 10px;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tabela-agenda tbody td {
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    vertical-align: middle;
+    min-height: 38px;
+}
