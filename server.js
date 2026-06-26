@@ -1370,6 +1370,43 @@ app.post('/api/agendamentos',
         }
 
         // ============================================
+        // 🔥🔥🔥 VALIDAÇÃO: DATA/HORA NÃO PODE SER NO PASSADO 🔥🔥🔥
+        // ============================================
+        const agora = new Date();
+        const [ano, mes, dia] = data.split('-').map(Number);
+        const [horaStr, minutoStr] = hora.split(':').map(Number);
+        const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0, 0);
+
+        console.log('📅 Data/Hora agendamento:', dataHoraAgendamento);
+        console.log('🕐 Agora:', agora);
+
+        // VALIDAÇÃO PRINCIPAL: Data/hora já passou?
+        if (dataHoraAgendamento < agora) {
+            console.log('❌ Tentativa de agendar em data/hora passada');
+            return res.json({
+                success: false,
+                message: '⏰ Não é possível agendar em datas ou horários que já passaram. Selecione uma data/hora futura.'
+            });
+        }
+
+        // VALIDAÇÃO EXTRA: Se for hoje, verificar se o horário já passou
+        const hojeStr = agora.toISOString().split('T')[0];
+        if (data === hojeStr) {
+            const horaAtual = agora.getHours();
+            const minutoAtual = agora.getMinutes();
+            const horaAgendamento = parseInt(horaStr);
+            const minutoAgendamento = parseInt(minutoStr);
+
+            if (horaAgendamento < horaAtual || (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
+                console.log('❌ Tentativa de agendar em horário que já passou hoje');
+                return res.json({
+                    success: false,
+                    message: `⏰ Não é possível agendar no horário ${hora} pois já passou. Escolha um horário futuro.`
+                });
+            }
+        }
+
+        // ============================================
         // 🔥 VALIDAÇÃO: CLIENTE JÁ TEM AGENDAMENTO NESTE DIA? (REGRRA FIXA)
         // ============================================
         const sqlAgendamentoHoje = isProduction
@@ -1734,9 +1771,9 @@ app.get('/api/profissional/agendamentos', auth, (req, res) => {
 app.get('/api/profissional/financeiro', auth, (req, res) => {
     // Verificar se é profissional
     if (req.usuario.role !== 'profissional') {
-        return res.json({ 
-            success: false, 
-            message: 'Acesso negado. Apenas profissionais podem acessar.' 
+        return res.json({
+            success: false,
+            message: 'Acesso negado. Apenas profissionais podem acessar.'
         });
     }
 
@@ -1800,7 +1837,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
         const dadosFormatados = agendamentos.map(a => {
             const comissao = parseFloat(a.comissao) || 0;
             const valor = parseFloat(a.valor) || 0;
-            
+
             totalComissoes += comissao;
             totalServicos += 1;
             totalValor += valor;
@@ -2934,6 +2971,43 @@ app.post('/api/chatbot/agendar', async (req, res) => {
 
         if (!clienteId || !servicoId || !data || !hora || !empresaId) {
             return res.json({ success: false, message: 'Dados incompletos' });
+        }
+
+        // ============================================
+        // 🔥🔥🔥 VALIDAÇÃO: DATA/HORA NÃO PODE SER NO PASSADO (CHATBOT) 🔥🔥🔥
+        // ============================================
+        const agora = new Date();
+        const [ano, mes, dia] = data.split('-').map(Number);
+        const [horaStr, minutoStr] = hora.split(':').map(Number);
+        const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0, 0);
+
+        console.log('📅 Chatbot - Data/Hora agendamento:', dataHoraAgendamento);
+        console.log('🕐 Chatbot - Agora:', agora);
+
+        // VALIDAÇÃO PRINCIPAL: Data/hora já passou?
+        if (dataHoraAgendamento < agora) {
+            console.log('❌ Chatbot - Tentativa de agendar em data/hora passada');
+            return res.json({
+                success: false,
+                message: '⏰ Não é possível agendar em datas ou horários que já passaram. Selecione uma data/hora futura.'
+            });
+        }
+
+        // VALIDAÇÃO EXTRA: Se for hoje, verificar se o horário já passou
+        const hojeStr = agora.toISOString().split('T')[0];
+        if (data === hojeStr) {
+            const horaAtual = agora.getHours();
+            const minutoAtual = agora.getMinutes();
+            const horaAgendamento = parseInt(horaStr);
+            const minutoAgendamento = parseInt(minutoStr);
+
+            if (horaAgendamento < horaAtual || (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
+                console.log('❌ Chatbot - Tentativa de agendar em horário que já passou hoje');
+                return res.json({
+                    success: false,
+                    message: `⏰ Não é possível agendar no horário ${hora} pois já passou. Escolha um horário futuro.`
+                });
+            }
         }
 
         const clienteIdNum = parseInt(clienteId);

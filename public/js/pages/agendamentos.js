@@ -637,7 +637,7 @@ async function salvarNovoCliente(event) {
 }
 
 // ============================================
-// HORÁRIOS DISPONÍVEIS
+// HORÁRIOS DISPONÍVEIS - CORRIGIDO (variável h renomeada)
 // ============================================
 
 async function carregarHorariosDisponiveisDono() {
@@ -647,6 +647,16 @@ async function carregarHorariosDisponiveisDono() {
 
     if (!data) {
         horaSelect.innerHTML = '<option value="">Selecione uma data primeiro</option>';
+        return;
+    }
+
+    // 🔥 VALIDAR SE DATA NÃO É PASSADA
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().split('T')[0];
+
+    if (data < hojeStr) {
+        horaSelect.innerHTML = '<option value="">⚠️ Esta data já passou</option>';
+        showToast('⚠️ Não é possível agendar em datas passadas', 'warning');
         return;
     }
 
@@ -677,14 +687,37 @@ async function carregarHorariosDisponiveisDono() {
                 horarios = result.data;
             }
 
-            if (horarios.length > 0) {
+            // 🔥 FILTRAR HORÁRIOS QUE JÁ PASSARAM (SE FOR HOJE)
+            const agora = new Date();
+            const hojeStr = agora.toISOString().split('T')[0];
+            let horariosFiltrados = horarios;
+
+            if (data === hojeStr) {
+                const horaAtual = agora.getHours();
+                const minutoAtual = agora.getMinutes();
+                horariosFiltrados = horarios.filter(horaItem => {
+                    const [horaNum, minutoNum] = horaItem.split(':').map(Number);
+                    return horaNum > horaAtual || (horaNum === horaAtual && minutoNum > minutoAtual);
+                });
+                console.log(`⏰ Filtrando horários: ${horarios.length} → ${horariosFiltrados.length} disponíveis`);
+            }
+
+            if (horariosFiltrados.length > 0) {
                 let options = '<option value="">Selecione um horário</option>';
-                for (let hora of horarios) {
-                    options += `<option value="${hora}">${hora}</option>`;
+                for (let horaItem of horariosFiltrados) {
+                    const horaNum = parseInt(horaItem.split(':')[0]);
+                    const isAlmoco = horaNum >= 12 && horaNum < 13;
+                    const emoji = isAlmoco ? ' 🍽️' : '';
+                    options += `<option value="${horaItem}">${horaItem}${emoji}</option>`;
                 }
                 horaSelect.innerHTML = options;
             } else {
-                horaSelect.innerHTML = '<option value="">Nenhum horário disponível neste dia</option>';
+                if (data === hojeStr) {
+                    horaSelect.innerHTML = '<option value="">⏰ Todos os horários de hoje já passaram</option>';
+                    showToast('⏰ Todos os horários de hoje já passaram. Escolha outro dia.', 'warning');
+                } else {
+                    horaSelect.innerHTML = '<option value="">Nenhum horário disponível neste dia</option>';
+                }
             }
         } else {
             horaSelect.innerHTML = '<option value="">Erro ao carregar horários</option>';
@@ -835,6 +868,36 @@ async function salvarAgendamentoDono() {
         return;
     }
 
+    // 🔥🔥🔥 VALIDAÇÃO FRONTEND - DATA/HORA PASSADA 🔥🔥🔥
+    const agora = new Date();
+    const hojeStr = agora.toISOString().split('T')[0];
+
+    // Verificar se a data é passada
+    if (data < hojeStr) {
+        showToast('⏰ Não é possível agendar em datas que já passaram!', 'warning');
+        return;
+    }
+
+    // Verificar se é hoje e horário já passou
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const [horaNum, minutoNum] = hora.split(':').map(Number);
+    const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum, minutoNum, 0, 0);
+
+    if (dataHoraSelecionada < agora) {
+        showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
+        return;
+    }
+
+    // Verificação extra para hoje
+    if (data === hojeStr) {
+        const horaAtual = agora.getHours();
+        const minutoAtual = agora.getMinutes();
+        if (horaNum < horaAtual || (horaNum === horaAtual && minutoNum <= minutoAtual)) {
+            showToast(`⏰ O horário ${hora} já passou! Escolha um horário futuro.`, 'warning');
+            return;
+        }
+    }
+
     showLoading();
 
     const token = localStorage.getItem("token");
@@ -878,6 +941,8 @@ async function salvarAgendamentoDono() {
             // Verificar se é o erro de cliente já tem agendamento
             if (result.message && result.message.includes('já possui um agendamento para este dia')) {
                 showToast('⚠️ ' + result.message, 'warning');
+            } else if (result.message && result.message.includes('Não é possível agendar em datas')) {
+                showToast('⏰ ' + result.message, 'warning');
             } else {
                 showToast("Erro: " + result.message, "error");
             }

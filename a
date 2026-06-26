@@ -1,0 +1,95 @@
+[33mc2c8128[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m)[m ✨ Melhoria: Agenda Inteligente Premium com navegação e validação corrigida
+[33m8010f1b[m 🐛 Fix: Correção definitiva do problema de data nos agendamentos
+[33m9b81d73[m 🐛 Fix: Correção do erro de clientes - Verificação de elementos antes de acessar .value
+[33m4242318[m 🚀 Force deploy: Sistema de comissões
+[33m788e327[m 🐛 Fix: Correção do placeholder na query de verificação de profissionais
+[33mbf85777[m 🐛 Fix: Correção do convertPlaceholders no database.js
+[33m8e949c4[m ✨ Melhorias completas na Agenda Inteligente e Interface
+[33m3240f2d[m 🐛 Fix: Correção do erro 'callback is not a function' no PostgreSQL
+[33m6901dc3[m ✨ Add: Rota /api/profissional/financeiro para dashboard do profissional
+[33maae6b44[m 🐛 Fix: Correção da validação de datas no bloqueio geral para PostgreSQL
+[33m8f6c6f0[m 🐛 Fix: Correção do bloqueio geral no PostgreSQL
+[33m73e042a[m Corrige bloqueio geral para PostgreSQL
+[33m3574cf5[m fix: corrigir formatarMoeda para valores undefined no dashboard
+[33m87fad71[m fix: migração automática da coluna dias_bloqueio_geral no Render
+[33m97a7778[m feat: Sistema de Bloqueio Geral de Agendamentos + Correções
+[33me73cecb[m feat: adicionar rotas /api/empresa/dados e /api/empresa/bloqueio-geral
+[33mdef12bf[m fix: correção da variável na validação de mesmo dia
+[33mdeb4689[m fix: cliente não pode fazer mais de 1 agendamento por dia
+[33m0dcd520[m fix: tratamento de data inválida na validação de dias_bloqueio
+[33m4c5b62d[m fix: adicionando todas as colunas faltantes
+[33me7a3adf[m fix: correção da coluna dias_bloqueio no banco e validação de agendamentos
+[33m59a086e[m fix: validação de dias_bloqueio no agendamento
+[33mdc967b8[m fix: rota POST clientes com fallback
+[33m8e6ef6b[m fix: removendo dias_bloqueio das rotas de clientes
+[33m34b5f8f[m fix: criar coluna dias_bloqueio automaticamente ao iniciar o servidor
+[33m802451b[m fix: script para criar coluna dias_bloqueio
+[33m51b83dd[m fix: removendo dias_bloqueio da rota POST clientes
+[33me77da1d[m fix: fallback para criar cliente sem dias_bloqueio
+[33m3a2f4d0[m fix: script para corrigir dias_bloqueio no Render
+[33ma0086d9[m fix: correção cadastro clientes no Render com fallback
+[33m7e8f577[m fix: Correção no cadastro de clientes para PostgreSQL/Render
+[33m78bf16b[m feat: Agenda Inteligente no Dashboard e Sistema de Dias de Bloqueio por Cliente
+[33m6273d7d[m feat: limite de 100 agendamentos/mês para Starter
+[33m79c2ec2[m fix: correção de horários para novos donos no Render
+[33m3f6846e[m fix: correção definitiva para horários no PostgreSQL/Render
+[33m1daf36a[m fix: correção para PostgreSQL no Render
+[33ma46cd33[m fix: correção de agendamentos para novos donos
+[33m27b186a[m feat: tema escuro por padrão, ações rápidas corrigidas e melhorias visuais
+[33md756fd4[m feat: implementa tema escuro estilo Instagram e corrige chatbot
+[33ma42f69e[m fix: corrige recursão infinita em abrirModalCliente
+[33m5d9c03d[m fix: formatação de datas no financeiro para PostgreSQL
+[33me920ba8[m fix: busca cliente novamente antes de finalizar agendamento
+[33ma7a1de2[m fix: agendamento funcionando no Render com validação e logs
+[33me6540aa[m fix: datas disponíveis para PostgreSQL e fallback no frontend
+[33ma6e92dd[m fix: CSS do chatbot corrigido para funcionar no Render
+[33m5612f17[m fix: formatação de data para PostgreSQL no Render
+[33m23dfb11[m fix: verifica nome do cliente ao buscar por telefone
+[33mff9bc3f[m fix: corrige ação rápida Novo Agendamento carregando clientes
+[33m96a57b2[m feat: dashboard premium com boas-vindas, ações rápidas e onboarding
+[33m5337948[m fix: corrige menu mobile e melhora responsividade
+[33m086b4d9[m fix: melhora keep alive para evitar dormir no Render
+[33m9884e94[m feat: redesign landing e melhorias mobile
+[33m46bad14[m fix(agendamentos): inclui status 'agendado' no filtro e listagem do painel
+[33mc7703b8[m feat(landing): redesign completo da landing page e correção toggle password
+[33m2fbf70c[m feat: versão inicial do SEE&AGENDE
+[33me304906[m Docs: Atualização dos 4 documentos com correções finais de 17/06/2026
+[33m097c636[m Fix: Removida declaração duplicada de isProduction
+[33mc36f216[m Fix: Criação/atualização automática do Super Admin no PostgreSQL
+[33m6fd0cb1[m Script para criar Super Admin no PostgreSQL
+[33m7333812[m Fix: Recriação forçada do Super Admin e Dono no PostgreSQL
+[33m8d78380[m Fix: Criação de agendamentos com mais logs e verificação de acesso
+[33mc55b6db[m Fix: Criação de agendamentos com placeholders PostgreSQL e logs de debug
+[33m0d13710[m Fix: Horários disponíveis e salvamento de horários com placeholders corretos
+[33mf28f230[m Fix: Rotas de horários e horários disponíveis com logs de debug
+[33mab9f990[m Fix: Carregamento de horários com rota correta e tratamento de resposta
+[33m8d1b327[m Fix: Rota de horários com placeholders corretos e inicialização do banco sem ON CONFLICT/OR
+[33m2b6a1ff[m Fix: Todas as queries adaptadas para PostgreSQL e SQLite com placeholders corretos
+[33m2588226[m Fix: Todas as queries GET adaptadas para PostgreSQL com placeholders
+[33mde0324e[m Fix: CRUD clientes e serviços adaptados para PostgreSQL com placeholders
+[33ma9de4de[m Fix: Financeiro com placeholders PostgreSQL e agendamentos com verificação de array
+[33m513de4e[m Fix: Login adaptado para PostgreSQL com placeholders
+[33mcb3e1ae[m Fix: Cadastro com logs de debug e busca do ID da empresa
+[33m3f6b86e[m Fix: Cadastro com PostgreSQL - verificação de email e criação de empresa
+[33m0ace551[m Fix: Rota de cadastro adaptada para PostgreSQL com busca do ID
+[33md5d83a4[m Fix: Busca do ID da empresa após inserção no seed
+[33ma5aaf95[m Fix: Seed simplificado com async/await para PostgreSQL
+[33maf48a59[m Fix: Correção definitiva do seed e inserção de horários para PostgreSQL
+[33m20ce5e9[m Fix: Correção da sintaxe ON CONFLICT para PostgreSQL e seed adaptado
+[33m0bd0d19[m Fix: Correção do wrapper PostgreSQL e seed adaptado
+[33mbd36afa[m Fix: sqlite3 como devDependency e carregamento condicional no Render
+[33m788bfb3[m Deploy: Preparação para o Render com PostgreSQL e Keep Alive
+[33m441c544[m Preparação para deploy no Render com PostgreSQL
+[33m1b7963f[m REFATORAÇÃO: Backend modularizado e docs atualizados
+[33mb6b2dbc[m feat: Implementação completa do sistema de planos e pagamentos
+[33ma320a7e[m fix: Correções no dashboard e persistência de login
+[33mbe9e5c5[m docs: Atualização da documentação com sistema de planos e landing page
+[33me46768a[m fix: Correção do dashboard do profissional e melhorias na landing page
+[33m22f9ce9[m feat: Nova landing page See&Agende com sistema de planos
+[33mfd3af2e[m fix: Correção de alinhamento das tabelas e melhorias no frontend
+[33m3923652[m feat: Implementação do sistema de planos e correções de bugs
+[33m69e665b[m feat: Implementa Chatbot Inteligente para agendamentos
+[33m99a57e2[m feat: Melhorias completas no sistema
+[33mc9d7cfb[m feat: Melhora significativa do Dashboard e UI
+[33m92f5418[m feat: Implementa gestão completa de profissionais na tela de configurações
+[33me6628c9[m[33m ([m[1;33mtag: [m[1;33mv1.0.0[m[33m)[m Initial commit: Barbearia Pro v1.0.0

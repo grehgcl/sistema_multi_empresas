@@ -1,4 +1,4 @@
-﻿// pages/dashboard.js - Versão Premium com Banner, Onboarding + AGENDA INTELIGENTE (EXPANDIDA)
+﻿// pages/dashboard.js - Versão Premium com Banner, Onboarding + AGENDA INTELIGENTE (EXPANDIDA) + VALIDAÇÃO DE HORÁRIOS PASSADOS
 let dashboardData = null;
 let chartInstance = null;
 
@@ -161,6 +161,10 @@ function renderizarAgendaInteligente() {
                     <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#d4af37;border:2px solid #d4af37;"></span>
                     <span style="color:var(--text-muted);">👑 Dono</span>
                 </span>
+                <span style="display:flex;align-items:center;gap:4px;border-left:1px solid var(--border-color);padding-left:12px;">
+                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#6b7280;border:2px solid #6b7280;"></span>
+                    <span style="color:var(--text-muted);">⏰ Passou</span>
+                </span>
             </div>
         </div>
     `;
@@ -179,6 +183,7 @@ function renderizarAgendaInteligente() {
     }
 
     const hoje = new Date().toISOString().split('T')[0];
+    const agora = new Date();
 
     // ============================================
     // GERAR HORÁRIOS COMPLETOS (08:00 às 18:00 com 30min)
@@ -238,12 +243,17 @@ function renderizarAgendaInteligente() {
 
     for (let hora of horariosBase) {
         // Destacar horário atual
-        const agora = new Date();
         const horaAtual = agora.getHours().toString().padStart(2, '0') + ':' + agora.getMinutes().toString().padStart(2, '0');
         const isHorarioAtual = hora === horaAtual;
 
         // Verificar se é horário de almoço (12:00 às 13:00)
         const isAlmoco = hora >= '12:00' && hora < '13:00';
+
+        // Verificar se o horário já passou (global)
+        const [horaNum, minutoNum] = hora.split(':').map(Number);
+        const horaBase = new Date();
+        horaBase.setHours(horaNum, minutoNum, 0, 0);
+        const isPassadoGlobal = horaBase < agora;
 
         html += `<tr style="${isHorarioAtual ? 'background:rgba(102,126,234,0.08);' : ''}">`;
 
@@ -255,8 +265,8 @@ function renderizarAgendaInteligente() {
             border-bottom: 2px solid var(--border-color);
             font-size: ${isHorarioAtual ? '15px' : '12px'};
             font-weight: ${isHorarioAtual ? '800' : '700'};
-            color: ${isHorarioAtual ? '#ffffff' : (isAlmoco ? '#d97706' : 'var(--text-primary)')};
-            background: ${isHorarioAtual ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (isAlmoco ? 'rgba(245,158,11,0.15)' : 'var(--bg-hover)')};
+            color: ${isHorarioAtual ? '#ffffff' : (isAlmoco ? '#d97706' : (isPassadoGlobal ? '#6b7280' : 'var(--text-primary)'))};
+            background: ${isHorarioAtual ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (isAlmoco ? 'rgba(245,158,11,0.15)' : (isPassadoGlobal ? 'rgba(107,114,128,0.08)' : 'var(--bg-hover)'))};
             white-space: nowrap;
             border-right: 3px solid ${isHorarioAtual ? 'var(--primary)' : 'var(--border-color)'};
             min-width: 70px;
@@ -266,6 +276,7 @@ function renderizarAgendaInteligente() {
             box-shadow: ${isHorarioAtual ? '0 2px 16px rgba(102,126,234,0.4)' : '2px 0 8px rgba(0,0,0,0.04)'};
             ${isHorarioAtual ? 'border-radius: 6px 0 0 6px;' : ''}
             transition: all 0.3s ease;
+            opacity: ${isPassadoGlobal && !isHorarioAtual ? '0.5' : '1'};
         ">
             <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
                 ${isHorarioAtual ? `
@@ -288,6 +299,9 @@ function renderizarAgendaInteligente() {
                 ` : ''}
                 ${isAlmoco ? `
                     <span style="font-size:7px;color:#d97706;font-weight:600;">ALMOÇO</span>
+                ` : ''}
+                ${isPassadoGlobal && !isHorarioAtual ? `
+                    <span style="font-size:7px;color:#6b7280;font-weight:600;">⏰ PASSOU</span>
                 ` : ''}
             </div>
         </td>
@@ -323,7 +337,24 @@ function renderizarAgendaInteligente() {
                 bgColor = 'rgba(102, 126, 234, 0.04)';
             }
 
-            if (!estaAberto) {
+            // 🔥🔥🔥 VERIFICAR SE A DATA JÁ PASSOU 🔥🔥🔥
+            const dataObj = new Date(dataStr + 'T00:00:00');
+            const hojeObj = new Date();
+            hojeObj.setHours(0, 0, 0, 0);
+            const dataPassou = dataObj < hojeObj;
+
+            // 🔥🔥🔥 VERIFICAR SE O HORÁRIO JÁ PASSOU (SE FOR HOJE) 🔥🔥🔥
+            const [horaNumCell, minutoNumCell] = hora.split(':').map(Number);
+            const dataHoraCell = new Date(dataObj);
+            dataHoraCell.setHours(horaNumCell, minutoNumCell, 0, 0);
+            const isPassado = dataHoraCell < agora;
+
+            if (dataPassou || isPassado) {
+                // DATA OU HORÁRIO JÁ PASSOU - MOSTRAR INDISPONÍVEL
+                bgColor = isHoje ? 'rgba(107,114,128,0.06)' : 'rgba(107,114,128,0.04)';
+                cellContent = `<span style="color:#6b7280;font-size:16px;opacity:0.4;">⏰</span>`;
+                title = dataPassou ? 'Data já passou' : 'Horário já passou';
+            } else if (!estaAberto) {
                 bgColor = isHoje ? 'rgba(102, 126, 234, 0.04)' : 'rgba(107,114,128,0.04)';
                 cellContent = `<span style="color:#9ca3af;font-size:14px;">—</span>`;
                 title = 'Fechado';
@@ -365,47 +396,53 @@ function renderizarAgendaInteligente() {
                         const cor = agendaInteligenteCores[p.id] || '#666';
                         const isOcupado = p.ocupado;
 
-                        // 🔥 TAMANHO DA BOLINHA: MAIOR SE OCUPADO
+                        // 🔥 TAMANHO DA BOLINHA
                         const size = isOcupado ? '28px' : '22px';
                         const fontSize = isOcupado ? '14px' : '10px';
                         const borderWidth = isOcupado ? '3px' : '2px';
                         const borderColor = isOcupado ? '#ef4444' : (isDono ? '#d4af37' : 'rgba(255,255,255,0.4)');
                         const boxShadow = isOcupado ? '0 0 16px rgba(239,68,68,0.5)' : '0 0 8px rgba(16,185,129,0.3)';
                         const opacidade = isOcupado ? '1' : '1';
-                        const cursor = isOcupado ? 'not-allowed' : 'pointer';
+                        const cursor = (isOcupado || isPassado || dataPassou) ? 'not-allowed' : 'pointer';
                         const statusText = isOcupado ? '🔴 Ocupado' : '✅ Disponível';
                         const tooltipText = isDono ? `👑 ${p.nome} - ${hora} ${statusText}` : `${p.nome} - ${hora} ${statusText}`;
 
+                        // 🔥🔥🔥 SE FOR PASSADO, NÃO PERMITE CLIQUE 🔥🔥🔥
+                        const isIndisponivel = isOcupado || isPassado || dataPassou;
+                        const onClick = isIndisponivel ? '' : `event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')`;
+
                         return `
-                                        <div style="position:relative;display:inline-block;cursor:${cursor};" 
-                                             title="${tooltipText}"
-                                             onclick="${isOcupado ? '' : `event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')`}">
+                                        <div style="position:relative;display:inline-block;cursor:${cursor};${isIndisponivel ? 'filter: grayscale(0.5);opacity:0.4;' : ''}" 
+                                             title="${isPassado || dataPassou ? '⏰ Horário já passou' : tooltipText}"
+                                             onclick="${onClick}">
                                             <span style="display:inline-block;
                                                          width:${size};
                                                          height:${size};
                                                          border-radius:50%;
-                                                         background:${isOcupado ? '#ef4444' : cor};
-                                                         border:${borderWidth} solid ${borderColor};
-                                                         box-shadow: ${boxShadow};
+                                                         background:${isPassado || dataPassou ? '#6b7280' : (isOcupado ? '#ef4444' : cor)};
+                                                         border:${borderWidth} solid ${isPassado || dataPassou ? '#6b7280' : borderColor};
+                                                         box-shadow: ${isPassado || dataPassou ? 'none' : boxShadow};
                                                          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                                                          position:relative;
-                                                         ${isOcupado ? 'animation: pulseRed 1.5s infinite;' : ''}
+                                                         ${isOcupado && !isPassado ? 'animation: pulseRed 1.5s infinite;' : ''}
                                                          opacity:${opacidade};"
-                                                  ${!isOcupado ? `
+                                                  ${!isIndisponivel ? `
                                                       onmouseover="this.style.transform='scale(1.25)';this.style.boxShadow='0 0 20px ${cor}'"
                                                       onmouseout="this.style.transform='scale(1)';this.style.boxShadow='${boxShadow}'"
                                                   ` : ''}
                                                   >
                                                 ${isDono ? `<span style="position:absolute;top:-4px;right:-4px;font-size:${isOcupado ? '12px' : '10px'};">👑</span>` : ''}
-                                                ${isOcupado ? `
+                                                ${isPassado || dataPassou ? `
+                                                    <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;color:white;font-weight:700;">⏰</span>
+                                                ` : (isOcupado ? `
                                                     <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:${fontSize};color:white;font-weight:700;">✕</span>
                                                 ` : `
                                                     <span style="position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;background:#10b981;border-radius:50%;border:1px solid white;box-shadow:0 0 4px rgba(16,185,129,0.5);"></span>
-                                                `}
+                                                `)}
                                             </span>
-                                            ${isOcupado ? `
-                                                <span style="position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:7px;color:#ef4444;white-space:nowrap;font-weight:600;">
-                                                    🔴
+                                            ${isIndisponivel ? `
+                                                <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:7px;color:#6b7280;white-space:nowrap;font-weight:600;">
+                                                    ${isPassado || dataPassou ? '⏰ passou' : '🔴 ocupado'}
                                                 </span>
                                             ` : ''}
                                         </div>
@@ -441,9 +478,10 @@ function renderizarAgendaInteligente() {
                            ${borderTop}
                            ${borderBottom}
                            ${isHoje ? 'position:relative;' : ''}
+                           ${(isPassado || dataPassou) ? 'opacity:0.5;' : ''}
                            " 
                     title="${title}">
-                    ${isHoje && !cellContent.includes('—') && !cellContent.includes('🍽️') && !cellContent.includes('🔴') ? `
+                    ${isHoje && !cellContent.includes('—') && !cellContent.includes('🍽️') && !cellContent.includes('🔴') && !cellContent.includes('⏰') ? `
                         <div style="position:absolute;top:0;left:0;right:0;bottom:0;border:1px solid rgba(102,126,234,0.15);border-radius:4px;pointer-events:none;"></div>
                     ` : ''}
                     ${cellContent}
@@ -501,6 +539,10 @@ function renderizarAgendaInteligente() {
                     <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--primary);"></span>
                     Hoje
                 </span>
+                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;border:1px solid #6b7280;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;"></span>
+                    ⏰ Passou
+                </span>
             </div>
         </div>
     `;
@@ -542,6 +584,17 @@ function atualizarAgendaAposAgendamento() {
 // ============================================
 
 function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
+    // 🔥🔥🔥 VALIDAÇÃO FRONTEND: Verificar se data/hora não é passada 🔥🔥🔥
+    const agora = new Date();
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const [horaNum, minutoNum] = hora.split(':').map(Number);
+    const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum, minutoNum, 0, 0);
+
+    if (dataHoraSelecionada < agora) {
+        showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
+        return;
+    }
+
     console.log(`📝 Agendamento: ${data} às ${hora}${profissionalId ? ` - Prof: ${profissionalId}` : ''}`);
 
     const isDono = profissionalId && typeof profissionalId === 'string' && profissionalId.startsWith('dono_');
@@ -1710,4 +1763,4 @@ window.clientesList = window.clientesList || [];
 window.servicosList = window.servicosList || [];
 window.profissionaisList = window.profissionaisList || [];
 
-console.log('✅ dashboard.js carregado com AGENDA INTELIGENTE EXPANDIDA!');
+console.log('✅ dashboard.js carregado com AGENDA INTELIGENTE EXPANDIDA + VALIDAÇÃO DE HORÁRIOS PASSADOS!');
