@@ -1,4 +1,4 @@
-﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 24/06/2026
+﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 25/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite (desenvolvimento local)
@@ -11,10 +11,10 @@
 │   └── js/
 │       ├── ui.js             # UI Global (toasts, loading, modal)
 │       └── pages/
-│           ├── dashboard.js              # Dashboard com AGENDA INTELIGENTE
+│           ├── dashboard.js              # Dashboard com AGENDA INTELIGENTE (MELHORADA!)
 │           ├── dashboard-profissional.js # Dashboard Profissional
 │           ├── clientes.js               # CRUD Clientes + DIAS_BLOQUEIO
-│           ├── agendamentos.js           # CRUD Agendamentos
+│           ├── agendamentos.js           # CRUD Agendamentos (ATUALIZA AGENDA!)
 │           ├── agendamentos-profissional.js # Agendamentos (Profissional)
 │           ├── servicos.js               # CRUD Servicos
 │           ├── financeiro.js             # Financeiro
@@ -28,9 +28,9 @@
 │   └── PARA_NOVA_IA.txt
 ├── server/
 │   ├── config/
-│   │   └── database.js      # Conexão com banco + criação das tabelas
+│   │   └── database.js      # Conexão com banco + CRIAÇÃO DAS TABELAS (CORRIGIDO!)
 │   ├── middlewares/
-│   │   └── auth.js          # Middlewares de autenticação + LIMITE AGENDAMENTOS
+│   │   └── auth.js          # Middlewares de autenticação + LIMITE AGENDAMENTOS (CORRIGIDO!)
 │   ├── services/
 │   │   └── whatsapp.js      # Serviço de notificações WhatsApp
 │   ├── jobs/
@@ -43,7 +43,8 @@
 │   ├── migrate.js           # Migração do banco
 │   ├── seed.js              # População com dados iniciais
 │   ├── migrate-limite-agendamentos.js # Migração para limite
-│   └── migrate-dias-bloqueio.js # Migração para dias_bloqueio individual
+│   ├── migrate-dias-bloqueio.js # Migração para dias_bloqueio individual
+│   └── fix-bloqueio-geral.js # Script de correção do bloqueio geral
 ├── .render/
 │   └── start.sh             # Script de inicialização no Render
 ├── keep_alive.js            # Mantém o servidor ativo
@@ -61,13 +62,21 @@
 - Estilo Instagram com transições suaves
 - Salvo automaticamente no localStorage
 
-## AGENDA INTELIGENTE
+## AGENDA INTELIGENTE (MELHORADA!)
 - Card da Agenda dentro do Dashboard (abaixo de Ações Rápidas)
 - Visualização semanal com grade de horários (08:00 às 18:00)
 - Cada profissional tem uma cor única (Dono = dourado 👑)
 - Clique na bolinha colorida abre modal com data/hora pré-setados
 - Cores: 🟢 Disponível, 🔴 Ocupado, 🍽️ Almoço, 🔒 Fechado
 - Legenda de cores no topo do card
+
+### Melhorias Visuais (25/06/2026):
+- ✅ Coluna de horários com ícone de relógio e cores fortes
+- ✅ Horário atual com badge "AGORA"
+- ✅ Dia atual com gradiente azul-roxo e "📌 HOJE"
+- ✅ Bolinhas ocupadas maiores (28px) com animação pulsante
+- ✅ Modais responsivos com layout em grid
+- ✅ Atualização automática da agenda após agendamentos
 
 ## DIAS_BLOQUEIO INDIVIDUAL POR CLIENTE
 - Campo `dias_bloqueio` na tabela `clientes` (padrão = 1)
@@ -91,6 +100,18 @@
 - Reset automático no início de cada mês
 - Bloqueio ao atingir o limite
 - Aplicado tanto no sistema manual quanto no chatbot
+
+## CORREÇÕES RECENTES (25/06/2026) 🐛
+
+### database.js:
+- ✅ convertPlaceholders NÃO converte queries com $1
+- ✅ Verifica se já tem placeholders PostgreSQL
+- ✅ Logs de depuração para todas as queries
+
+### auth.js (middlewares):
+- ✅ verificarLimiteProfissionais: query com $1 e $2
+- ✅ Passa [empresaId, empresaId] para ambos
+- ✅ Corrige erro "bind message supplies 2 parameters"
 
 ## VARIAVEIS GLOBAIS (localStorage)
 - token: JWT do usuario logado
@@ -119,7 +140,7 @@
 - Financeiro Global (todas comissoes)
 
 ### Dono
-- Dashboard (stats da empresa, gráficos, métricas + AGENDA INTELIGENTE)
+- Dashboard (stats da empresa, gráficos, métricas + AGENDA INTELIGENTE MELHORADA)
 - Agendamentos (CRUD com filtros, edicao, horarios 30/30min)
 - Servicos (CRUD completo)
 - Financeiro (cards por profissional + totais)
@@ -137,5 +158,5 @@
 - PUT /api/empresa/bloqueio-geral - Atualiza o bloqueio geral
 
 =========================================
-ULTIMA ATUALIZACAO: 24/06/2026
+ULTIMA ATUALIZACAO: 25/06/2026
 =========================================

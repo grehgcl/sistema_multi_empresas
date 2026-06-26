@@ -238,7 +238,7 @@
     <script src="/js/pages/dashboard.js"></script>
     <script src="/js/pages/dashboard-profissional.js"></script>
     <script src="/js/pages/clientes.js"></script>
-    <script src="/js/pages/agendamentos.js"></script>
+    <script src="/js/pages/agendamentos.js?v=2"></script>
     <script src="/js/pages/agendamentos-profissional.js"></script>
     <script src="/js/pages/financeiro.js"></script>
     <script src="/js/pages/empresas.js"></script>
@@ -704,6 +704,28 @@
         } else {
             mostrarLanding();
             mostrarLogin();
+        }
+
+
+
+
+        // Função global de formatação de data
+        function formatarDataBrCorrigida(dataStr) {
+            if (!dataStr) return '-';
+            if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+                const partes = dataStr.split('-');
+                if (partes.length === 3) {
+                    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+                }
+            }
+            if (typeof dataStr === 'string' && dataStr.includes('T')) {
+                const dataPart = dataStr.split('T')[0];
+                const partes = dataPart.split('-');
+                if (partes.length === 3) {
+                    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+                }
+            }
+            return dataStr;
         }
     </script>
 
