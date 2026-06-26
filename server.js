@@ -1416,50 +1416,39 @@ app.post('/api/agendamentos',
         // ============================================
         // 🚫 VALIDAÇÃO: NÃO PERMITIR DATA/HORA PASSADA
         // ============================================
-        // ============================================
-// 🚫 VALIDAÇÃO CORRETA DE DATA/HORA (BACKEND)
-// ============================================
+        const agora = new Date();
+        // Criar data com o horário específico para comparação
+        const [ano, mes, dia] = dataCorrigida.split('-').map(Number);
+        const [horaStr, minutoStr] = hora.split(':').map(Number);
+        const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0);
 
-const agora = new Date();
+        // Verificar se a data/hora é no passado
+        if (dataHoraAgendamento < agora) {
+            console.log(`❌ Tentativa de agendar em data/hora passada: ${dataCorrigida} ${hora}`);
+            return res.json({
+                success: false,
+                message: '❌ Não é possível agendar em datas ou horários que já passaram. Por favor, selecione uma data/hora futura.'
+            });
+        }
 
-// Data atual (sem hora)
-const hoje = new Date();
-hoje.setHours(0, 0, 0, 0);
+        // Verificar se é hoje e o horário já passou
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const dataAgendamentoDate = new Date(ano, mes - 1, dia);
+        dataAgendamentoDate.setHours(0, 0, 0, 0);
 
-// Data do agendamento
-const dataAgendamento = new Date(dataCorrigida);
-dataAgendamento.setHours(0, 0, 0, 0);
+        if (dataAgendamentoDate.getTime() === hoje.getTime()) {
+            const horaAtual = new Date().getHours();
+            const minutoAtual = new Date().getMinutes();
 
-// Se a data do agendamento é anterior a hoje → erro
-if (dataAgendamento < hoje) {
-    console.log(`❌ Tentativa de agendar em data passada: ${dataCorrigida}`);
-    return res.json({
-        success: false,
-        message: '❌ Esta data já passou. Não é possível agendar.'
-    });
-}
-
-// Se a data do agendamento é igual a hoje → validar horário
-if (dataAgendamento.getTime() === hoje.getTime()) {
-    const [horaStr, minutoStr] = hora.split(':').map(Number);
-    
-    const agoraHora = agora.getHours();
-    const agoraMinuto = agora.getMinutes();
-    
-    const horaAgendamentoMin = horaStr * 60 + minutoStr;
-    const horaAtualMin = agoraHora * 60 + agoraMinuto;
-    
-    if (horaAgendamentoMin <= horaAtualMin) {
-        console.log(`❌ Tentativa de agendar horário que já passou: ${hora}`);
-        return res.json({
-            success: false,
-            message: `❌ O horário ${hora} já passou hoje. Selecione um horário futuro.`
-        });
-    }
-}
-
-// Se a data do agendamento é futura → permitir
-console.log(`✅ Data futura (${dataCorrigida}) - Horário permitido: ${hora}`);
+            if (horaStr < horaAtual || (horaStr === horaAtual && minutoStr <= minutoAtual)) {
+                console.log(`❌ Tentativa de agendar horário que já passou: ${hora}`);
+                return res.json({
+                    success: false,
+                    message: `❌ O horário ${hora} já passou. Por favor, selecione um horário futuro.`
+                });
+            }
+        }
 
         // ============================================
         // 🔥 VALIDAÇÃO: CLIENTE JÁ TEM AGENDAMENTO NESTE DIA? (USANDO dataCorrigida)
@@ -3743,84 +3732,6 @@ app.get('/api/agendamentos/periodo', auth, (req, res) => {
     });
 });
 
-
-// ============================================================
-// ROTA DE TESTE WHATSAPP
-// ============================================================
-app.post('/api/test-whatsapp', auth, async (req, res) => {
-    const { telefone, mensagem } = req.body;
-
-    console.log('📱 [TESTE] ===== INICIANDO TESTE WHATSAPP =====');
-    console.log('📱 [TESTE] Telefone:', telefone);
-    console.log('📱 [TESTE] Mensagem:', mensagem);
-    console.log('📱 [TESTE] WhatsApp Enabled:', process.env.WHATSAPP_ENABLED);
-    console.log('📱 [TESTE] Provider:', process.env.WHATSAPP_PROVIDER);
-
-    try {
-        if (!whatsappService) {
-            console.error('❌ [TESTE] WhatsApp service não carregado');
-            return res.json({
-                success: false,
-                error: 'WhatsApp service não carregado'
-            });
-        }
-
-        if (!telefone) {
-            return res.json({
-                success: false,
-                error: 'Telefone é obrigatório. Exemplo: 5511999999999'
-            });
-        }
-
-        // Limpar telefone
-        const telefoneLimpo = telefone.replace(/\D/g, '');
-        console.log('📱 [TESTE] Telefone limpo:', telefoneLimpo);
-
-        const mensagemFinal = mensagem || '🧪 Teste do WhatsApp!';
-
-        const resultado = await whatsappService.send(telefoneLimpo, mensagemFinal);
-
-        console.log('📱 [TESTE] Resultado:', JSON.stringify(resultado, null, 2));
-
-        res.json({
-            success: true,
-            resultado,
-            telefone: telefoneLimpo,
-            mensagem: mensagemFinal,
-            config: {
-                enabled: process.env.WHATSAPP_ENABLED,
-                provider: process.env.WHATSAPP_PROVIDER
-            }
-        });
-
-    } catch (error) {
-        console.error('❌ [TESTE] Erro:', error);
-        res.json({
-            success: false,
-            error: error.message,
-            stack: error.stack
-        });
-    }
-});
-
-
-// ============================================================
-// ROTA WPPCONNECT
-// ============================================================
-app.post('/api/wppconnect/send', async (req, res) => {
-    const { phone, message } = req.body;
-    
-    console.log(`📱 [WPPCONNECT] Recebido: ${phone} - ${message}`);
-    
-    try {
-        const wppconnect = require('./server/services/wppconnect-local');
-        const resultado = await wppconnect.sendMessage(phone, message);
-        res.json(resultado);
-    } catch (error) {
-        console.error('❌ [WPPCONNECT] Erro:', error);
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
 // ============================================================
 // INICIALIZAÇÃO DO SERVIDOR
 // ============================================================
