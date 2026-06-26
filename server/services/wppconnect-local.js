@@ -2,134 +2,104 @@
 const wppconnect = require('@wppconnect-team/wppconnect');
 
 let client = null;
-let isConnecting = false;
-let isReady = false;
+let isConnected = false;
+let connectionPromise = null;
 
-async function iniciarWPPConnect() {
-    if (client && isReady) {
-        console.log('[WPPCONNECT-LOCAL] ✅ Cliente já conectado e pronto');
+async function getClient() {
+    // Se já está conectado, retorna
+    if (client && isConnected) {
         return client;
     }
 
-    if (isConnecting) {
-        console.log('[WPPCONNECT-LOCAL] ⏳ Aguardando conexão...');
-        while (isConnecting) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
+    // Se está conectando, aguarda
+    if (connectionPromise) {
+        return connectionPromise;
+    }
+
+    // Inicia conexão
+    connectionPromise = new Promise(async (resolve, reject) => {
+        try {
+            client = await wppconnect.create({
+                session: 'seeagende',
+                catchQR: (base64Qr, asciiQR) => {
+                    console.log('📱 Escaneie o QR Code para conectar:');
+                    console.log(asciiQR);
+                },
+                statusFind: (statusSession) => {
+                    console.log('📱 Status:', statusSession);
+                    if (statusSession === 'isLogged') {
+                        isConnected = true;
+                    }
+                },
+                autoClose: false
+            });
+
+            isConnected = true;
+            console.log('✅ WPPConnect conectado!');
+            connectionPromise = null;
+            resolve(client);
+        } catch (error) {
+            console.error('❌ Erro ao conectar WPPConnect:', error);
+            connectionPromise = null;
+            reject(error);
         }
-        return client;
-    }
+    });
 
-    isConnecting = true;
-    console.log('[WPPCONNECT-LOCAL] 🔄 Conectando ao WhatsApp...');
-
-    try {
-        client = await wppconnect.create({
-            session: 'seeagende',
-            autoClose: false,
-            logQR: true,
-            browserArgs: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-            puppeteerOptions: {
-                headless: true,
-                args: ['--no-sandbox', '--disable-setuid-sandbox']
-            }
-        });
-
-        console.log('[WPPCONNECT-LOCAL] ⏳ Aguardando sincronização...');
-
-        // Aguarda até 30 segundos para conectar
-        let attempts = 0;
-        while (attempts < 30) {
-            try {
-                if (client.isConnected) {
-                    console.log('[WPPCONNECT-LOCAL] ✅ Cliente conectado!');
-                    break;
-                }
-            } catch (e) { }
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            attempts++;
-        }
-
-        isReady = true;
-        isConnecting = false;
-        console.log('[WPPCONNECT-LOCAL] ✅ WhatsApp conectado e pronto!');
-        return client;
-    } catch (error) {
-        console.error('[WPPCONNECT-LOCAL] ❌ Erro:', error.message);
-        isConnecting = false;
-        throw error;
-    }
+    return connectionPromise;
 }
 
-async function enviarMensagem(phone, message) {
+async function sendMessage(telefone, mensagem) {
+    console.log(`📱 [WPPCONNECT] Enviando para ${telefone}`);
+
     try {
-        const client = await iniciarWPPConnect();
+        const client = await getClient();
 
-        if (!client || !client.isConnected) {
-            return { success: false, error: 'Cliente não conectado' };
+        if (!client) {
+            throw new Error('Cliente não conectado');
         }
 
-        // Formata o telefone
-        let cleanPhone = phone.replace(/\D/g, '');
-        if (!cleanPhone.startsWith('55')) {
-            cleanPhone = `55${cleanPhone}`;
-        }
+        // 🔥 Testar diferentes formatos de número
+        const numeroLimpo = telefone.replace(/\D/g, '');
 
-        console.log(`[WPPCONNECT-LOCAL] 📤 Enviando para ${cleanPhone}...`);
-        console.log(`[WPPCONNECT-LOCAL] 📝 Mensagem: ${message.substring(0, 50)}...`);
+        // Tentar com @c.us
+        const numero1 = numeroLimpo + '@c.us';
+        console.log(`📱 [WPPCONNECT] Tentando formato 1: ${numero1}`);
 
-        // TENTATIVA 1: sendText com número puro (funciona na maioria das vezes)
         try {
-            console.log('[WPPCONNECT-LOCAL] 🔄 Tentando sendText...');
-            const result = await client.sendText(cleanPhone, message);
-            console.log(`[WPPCONNECT-LOCAL] ✅ Mensagem enviada com sucesso via sendText!`);
-            return { success: true, data: result };
-        } catch (sendTextError) {
-            console.log(`[WPPCONNECT-LOCAL] ⚠️ sendText falhou: ${sendTextError.message}`);
-        }
+            const result = await client.sendText(numero1, mensagem);
+            console.log(`✅ [WPPCONNECT] Mensagem enviada para ${telefone}`);
+            return { success: true, result };
+        } catch (error1) {
+            console.log(`❌ [WPPCONNECT] Formato 1 falhou:`, error1.message);
 
-        // TENTATIVA 2: sendMessage com chat ID (@c.us)
-        try {
-            console.log('[WPPCONNECT-LOCAL] 🔄 Tentando sendMessage com chat ID...');
-            const chatId = `${cleanPhone}@c.us`;
-            const result = await client.sendMessage(chatId, message);
-            console.log(`[WPPCONNECT-LOCAL] ✅ Mensagem enviada com sucesso via sendMessage!`);
-            return { success: true, data: result };
-        } catch (sendMessageError) {
-            console.log(`[WPPCONNECT-LOCAL] ⚠️ sendMessage falhou: ${sendMessageError.message}`);
-        }
+            // Tentar sem @c.us
+            console.log(`📱 [WPPCONNECT] Tentando formato 2: ${numeroLimpo}`);
+            try {
+                const result = await client.sendText(numeroLimpo, mensagem);
+                console.log(`✅ [WPPCONNECT] Mensagem enviada para ${telefone}`);
+                return { success: true, result };
+            } catch (error2) {
+                console.log(`❌ [WPPCONNECT] Formato 2 falhou:`, error2.message);
 
-        // TENTATIVA 3: Criar chat primeiro e depois enviar
-        try {
-            console.log('[WPPCONNECT-LOCAL] 🔄 Tentando criar chat e enviar...');
-            const chat = await client.createChat(cleanPhone);
-            if (chat) {
-                const result = await client.sendMessage(chat.id._serialized, message);
-                console.log(`[WPPCONNECT-LOCAL] ✅ Mensagem enviada com sucesso via chat!`);
-                return { success: true, data: result };
+                // Tentar com 55 + número
+                if (!numeroLimpo.startsWith('55')) {
+                    const numero3 = '55' + numeroLimpo;
+                    console.log(`📱 [WPPCONNECT] Tentando formato 3: ${numero3}`);
+                    try {
+                        const result = await client.sendText(numero3, mensagem);
+                        console.log(`✅ [WPPCONNECT] Mensagem enviada para ${telefone}`);
+                        return { success: true, result };
+                    } catch (error3) {
+                        console.log(`❌ [WPPCONNECT] Formato 3 falhou:`, error3.message);
+                        throw new Error(`Todos os formatos falharam: ${error1.message}`);
+                    }
+                }
+                throw error2;
             }
-        } catch (chatError) {
-            console.log(`[WPPCONNECT-LOCAL] ⚠️ Chat falhou: ${chatError.message}`);
         }
-
-        // TENTATIVA 4: sendText com o número no formato internacional (com 55)
-        try {
-            console.log('[WPPCONNECT-LOCAL] 🔄 Tentando sendText com formato internacional...');
-            const result = await client.sendText(cleanPhone, message);
-            console.log(`[WPPCONNECT-LOCAL] ✅ Mensagem enviada com sucesso!`);
-            return { success: true, data: result };
-        } catch (finalError) {
-            console.log(`[WPPCONNECT-LOCAL] ❌ Todas as tentativas falharam: ${finalError.message}`);
-            return { success: false, error: finalError.message };
-        }
-
     } catch (error) {
-        console.error('[WPPCONNECT-LOCAL] ❌ Erro ao enviar:', error.message);
+        console.error('❌ [WPPCONNECT] Erro ao enviar:', error);
         return { success: false, error: error.message };
     }
 }
-
-module.exports = {
-    enviarMensagem,
-    iniciarWPPConnect,
-    getClient: iniciarWPPConnect
-};
+module.exports = { getClient, sendMessage };
