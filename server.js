@@ -1298,17 +1298,14 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 // ============================================================
 
 // ============================================
-// ROTA: /api/agendamentos - CORRIGIDA (POSTGRESQL + SQLITE)
+// ROTA: /api/agendamentos - CORRIGIDA (POSTGRESQL)
 // ============================================
 app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     if (!empresa_id) return res.json({ success: true, data: [] });
 
-    // 🔥 CORRIGIDO: Manter a data no formato original sem conversão de fuso
-    let sql;
-    if (isProduction) {
-        // PostgreSQL - usar to_char para manter formato
-        sql = `SELECT a.*, 
+    const sql = isProduction
+        ? `SELECT a.*, 
            to_char(a.data, 'YYYY-MM-DD') as data_formatada,
            c.nome as cliente_nome, 
            p.nome as profissional_nome, 
@@ -1319,10 +1316,8 @@ app.get('/api/agendamentos', auth, (req, res) => {
            LEFT JOIN servicos s ON a.servico_id = s.id
            WHERE a.empresa_id = $1 
            AND (a.status IN ('agendado', 'pendente', 'concluido') OR a.status IS NULL OR a.status = '')
-           ORDER BY a.data DESC, a.hora ASC`;
-    } else {
-        // SQLite - usar date() para manter formato
-        sql = `SELECT a.*, 
+           ORDER BY a.data DESC, a.hora ASC`
+        : `SELECT a.*, 
            date(a.data) as data_formatada,
            c.nome as cliente_nome, 
            p.nome as profissional_nome, 
@@ -1334,7 +1329,6 @@ app.get('/api/agendamentos', auth, (req, res) => {
            WHERE a.empresa_id = ? 
            AND (a.status IN ('agendado', 'pendente', 'concluido') OR a.status IS NULL OR a.status = '')
            ORDER BY a.data DESC, a.hora ASC`;
-    }
 
     db.all(sql, [empresa_id], (err, agendamentos) => {
         if (err) {
@@ -1342,48 +1336,18 @@ app.get('/api/agendamentos', auth, (req, res) => {
             return res.json({ success: false, message: err.message });
         }
 
-        // 🔥 CORRIGIDO: Usar a data exatamente como está no banco
-        const dadosFormatados = agendamentos.map(a => {
-            let dataFinal = a.data_formatada || a.data;
-
-            // Se a data veio como objeto Date, converter para string
-            if (dataFinal instanceof Date) {
-                const ano = dataFinal.getFullYear();
-                const mes = String(dataFinal.getMonth() + 1).padStart(2, '0');
-                const dia = String(dataFinal.getDate()).padStart(2, '0');
-                dataFinal = `${ano}-${mes}-${dia}`;
-            }
-
-            // Se for string, verificar se está no formato correto
-            if (typeof dataFinal === 'string') {
-                // Se tiver timezone, remover
-                if (dataFinal.includes('T')) {
-                    dataFinal = dataFinal.split('T')[0];
-                }
-                // Se tiver GMT, remover
-                if (dataFinal.includes('GMT')) {
-                    const parts = dataFinal.split(' ');
-                    if (parts.length > 0) {
-                        dataFinal = parts[0];
-                    }
-                }
-            }
-
-            console.log(`📅 Data retornada: ${dataFinal} (original: ${a.data})`);
-
-            return {
-                ...a,
-                data: dataFinal,
-                data_formatada: undefined
-            };
-        });
+        const dadosFormatados = agendamentos.map(a => ({
+            ...a,
+            data: a.data_formatada || a.data,
+            data_formatada: undefined
+        }));
 
         res.json({ success: true, data: dadosFormatados });
     });
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO DE DATAS PASSADAS) - CORRIGIDA
+// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL)
 // ============================================
 app.post('/api/agendamentos',
     auth,
@@ -1406,52 +1370,7 @@ app.post('/api/agendamentos',
         }
 
         // ============================================
-        // 🔥 CORRIGIR DATA - MANTER O FORMATO ORIGINAL
-        // ============================================
-        // A data já vem no formato YYYY-MM-DD do frontend
-        // Não fazer conversão de fuso horário
-        const dataCorrigida = data; // Mantém exatamente como veio
-        console.log(`📅 DATA RECEBIDA: ${dataCorrigida}`);
-
-        // ============================================
-        // 🚫 VALIDAÇÃO: NÃO PERMITIR DATA/HORA PASSADA
-        // ============================================
-        const agora = new Date();
-        // Criar data com o horário específico para comparação
-        const [ano, mes, dia] = dataCorrigida.split('-').map(Number);
-        const [horaStr, minutoStr] = hora.split(':').map(Number);
-        const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0);
-
-        // Verificar se a data/hora é no passado
-        if (dataHoraAgendamento < agora) {
-            console.log(`❌ Tentativa de agendar em data/hora passada: ${dataCorrigida} ${hora}`);
-            return res.json({
-                success: false,
-                message: '❌ Não é possível agendar em datas ou horários que já passaram. Por favor, selecione uma data/hora futura.'
-            });
-        }
-
-        // Verificar se é hoje e o horário já passou
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const dataAgendamentoDate = new Date(ano, mes - 1, dia);
-        dataAgendamentoDate.setHours(0, 0, 0, 0);
-
-        if (dataAgendamentoDate.getTime() === hoje.getTime()) {
-            const horaAtual = new Date().getHours();
-            const minutoAtual = new Date().getMinutes();
-
-            if (horaStr < horaAtual || (horaStr === horaAtual && minutoStr <= minutoAtual)) {
-                console.log(`❌ Tentativa de agendar horário que já passou: ${hora}`);
-                return res.json({
-                    success: false,
-                    message: `❌ O horário ${hora} já passou. Por favor, selecione um horário futuro.`
-                });
-            }
-        }
-
-        // ============================================
-        // 🔥 VALIDAÇÃO: CLIENTE JÁ TEM AGENDAMENTO NESTE DIA? (USANDO dataCorrigida)
+        // 🔥 VALIDAÇÃO: CLIENTE JÁ TEM AGENDAMENTO NESTE DIA? (REGRRA FIXA)
         // ============================================
         const sqlAgendamentoHoje = isProduction
             ? `SELECT id FROM agendamentos 
@@ -1468,7 +1387,7 @@ app.post('/api/agendamentos',
                LIMIT 1`;
 
         const agendamentoHoje = await new Promise((resolve) => {
-            db.get(sqlAgendamentoHoje, [parseInt(cliente_id), dataCorrigida, parseInt(empresa_id)], (err, row) => {
+            db.get(sqlAgendamentoHoje, [parseInt(cliente_id), data, parseInt(empresa_id)], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar agendamento no mesmo dia:', err);
                     resolve(null);
@@ -1479,10 +1398,10 @@ app.post('/api/agendamentos',
         });
 
         if (agendamentoHoje) {
-            console.log(`❌ Cliente ${cliente_id} já tem agendamento no dia ${dataCorrigida}`);
+            console.log(`❌ Cliente ${cliente_id} já tem agendamento no dia ${data}`);
             return res.json({
                 success: false,
-                message: `Você já possui um agendamento para o dia ${formatarDataBr(dataCorrigida)}. Cada cliente só pode fazer UM agendamento por dia.`
+                message: `Você já possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente só pode fazer UM agendamento por dia.`
             });
         }
 
@@ -1509,7 +1428,7 @@ app.post('/api/agendamentos',
         console.log(`📋 Empresa ${empresa_id} - Dias de bloqueio geral: ${diasBloqueioGeral}`);
 
         // ============================================
-        // 🔥 VALIDAÇÃO: BUSCAR ÚLTIMO AGENDAMENTO (se dias_bloqueio_geral > 0) - USANDO dataCorrigida
+        // 🔥 VALIDAÇÃO: BUSCAR ÚLTIMO AGENDAMENTO (se dias_bloqueio_geral > 0)
         // ============================================
         if (diasBloqueioGeral > 0) {
             console.log(`🔍 Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
@@ -1542,14 +1461,17 @@ app.post('/api/agendamentos',
 
             if (ultimoAgendamento && ultimoAgendamento.data) {
                 try {
-                    // Converter corretamente a data
+                    // 🔥 CORRIGIDO: Converter corretamente a data
                     let dataUltimo;
+
+                    // Verificar se já é um objeto Date ou string
                     if (typeof ultimoAgendamento.data === 'string') {
                         dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
                     } else if (ultimoAgendamento.data instanceof Date) {
                         dataUltimo = new Date(ultimoAgendamento.data);
                         dataUltimo.setHours(0, 0, 0, 0);
                     } else {
+                        // Tentar converter de qualquer forma
                         dataUltimo = new Date(ultimoAgendamento.data);
                         dataUltimo.setHours(0, 0, 0, 0);
                     }
@@ -1565,13 +1487,22 @@ app.post('/api/agendamentos',
 
                         const dataMinimaStr = dataMinima.toISOString().split('T')[0];
 
-                        // Converter data do novo agendamento - USANDO dataCorrigida
-                        const dataAgendamento = new Date(ano, mes - 1, dia);
-                        dataAgendamento.setHours(0, 0, 0, 0);
+                        // 🔥 CORRIGIDO: Converter data do novo agendamento
+                        let dataAgendamento;
+                        if (typeof data === 'string') {
+                            dataAgendamento = new Date(data + 'T00:00:00');
+                        } else if (data instanceof Date) {
+                            dataAgendamento = new Date(data);
+                            dataAgendamento.setHours(0, 0, 0, 0);
+                        } else {
+                            dataAgendamento = new Date(data);
+                            dataAgendamento.setHours(0, 0, 0, 0);
+                        }
 
                         console.log(`📅 Último agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
                         console.log(`📅 Data mínima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
                         console.log(`📅 Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
+                        console.log(`📅 Data agendamento >= Data mínima? ${dataAgendamento >= dataMinima}`);
 
                         if (dataAgendamento < dataMinima) {
                             console.log(`❌ BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
@@ -1580,11 +1511,12 @@ app.post('/api/agendamentos',
                                 message: `Você só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeral} dias após o último agendamento).`
                             });
                         } else {
-                            console.log(`✅ Cliente ${cliente_id} pode agendar em ${dataCorrigida} - Dentro do prazo permitido`);
+                            console.log(`✅ Cliente ${cliente_id} pode agendar em ${data} - Dentro do prazo permitido`);
                         }
                     }
                 } catch (error) {
                     console.error('❌ Erro ao processar data do último agendamento:', error);
+                    console.error('❌ Stack:', error.stack);
                 }
             } else {
                 console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores - pode agendar livremente`);
@@ -1592,78 +1524,49 @@ app.post('/api/agendamentos',
         } else {
             console.log(`ℹ️ Bloqueio geral DESATIVADO (0 dias) - Sem validação extra`);
         }
-
         // ============================================
-        // 🔥 VERIFICAR SE HORÁRIO ESTÁ OCUPADO (USANDO dataCorrigida)
+        // VERIFICAR SE HORÁRIO ESTÁ OCUPADO (PROFISSIONAL)
         // ============================================
-        console.log(`🔍 Verificando horário ${hora} para profissional: ${profissional_id || 'Dono'}`);
-
         let sqlCheckHorario = isProduction
-            ? `SELECT id, profissional_id FROM agendamentos 
+            ? `SELECT id FROM agendamentos 
                WHERE empresa_id = $1 
                AND data = $2 
                AND hora = $3 
                AND status != 'cancelado'`
-            : `SELECT id, profissional_id FROM agendamentos 
+            : `SELECT id FROM agendamentos 
                WHERE empresa_id = ? 
                AND data = ? 
                AND hora = ? 
                AND status != 'cancelado'`;
 
-        let paramsCheck = [parseInt(empresa_id), dataCorrigida, hora]; // 🔥 USANDO dataCorrigida
+        let paramsCheck = [parseInt(empresa_id), data, hora];
 
-        // Buscar todos os agendamentos no horário
-        const agendamentosNoHorario = await new Promise((resolve) => {
-            db.all(sqlCheckHorario, paramsCheck, (err, rows) => {
+        if (profissional_id) {
+            sqlCheckHorario += isProduction ? ` AND profissional_id = $4` : ` AND profissional_id = ?`;
+            paramsCheck.push(parseInt(profissional_id));
+        }
+
+        const horarioOcupado = await new Promise((resolve) => {
+            db.get(sqlCheckHorario, paramsCheck, (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar horário:', err);
-                    resolve([]);
+                    resolve(null);
                 } else {
-                    resolve(rows || []);
+                    resolve(row);
                 }
             });
         });
 
-        console.log(`📋 Agendamentos no horário ${hora}:`, agendamentosNoHorario);
-
-        // ============================================
-        // 🔥 VERIFICAR OCUPAÇÃO POR TIPO DE AGENDAMENTO
-        // ============================================
-        let horarioOcupado = false;
-        let mensagemOcupado = '';
-
-        if (profissional_id) {
-            const ocupadoPorProfissional = agendamentosNoHorario.some(a =>
-                a.profissional_id === parseInt(profissional_id)
-            );
-
-            if (ocupadoPorProfissional) {
-                horarioOcupado = true;
-                mensagemOcupado = `O profissional já está ocupado neste horário. Escolha outro horário ou outro profissional.`;
-            }
-        } else {
-            const ocupadoPorDono = agendamentosNoHorario.some(a =>
-                a.profissional_id === null || a.profissional_id === 0 || a.profissional_id === '' || a.profissional_id === 'null'
-            );
-
-            if (ocupadoPorDono) {
-                horarioOcupado = true;
-                mensagemOcupado = `O Dono já está ocupado neste horário. Escolha outro horário.`;
-            }
-        }
-
         if (horarioOcupado) {
-            console.log(`❌ Horário ${hora} está ocupado: ${mensagemOcupado}`);
+            console.log(`❌ Horário ${hora} já está ocupado`);
             return res.json({
                 success: false,
-                message: mensagemOcupado
+                message: 'Este horário já está ocupado. Escolha outro horário.'
             });
         }
 
-        console.log(`✅ Horário ${hora} está disponível para este profissional/dono`);
-
         // ============================================
-        // FUNÇÃO PARA CRIAR O AGENDAMENTO - USANDO dataCorrigida
+        // FUNÇÃO PARA CRIAR O AGENDAMENTO
         // ============================================
         async function criarAgendamento(servicoNome, servicoValor, servicoId) {
             const sqlInsert = isProduction
@@ -1674,7 +1577,7 @@ app.post('/api/agendamentos',
 
             const params = [
                 parseInt(cliente_id),
-                dataCorrigida, // 🔥 USANDO dataCorrigida
+                data,
                 hora,
                 servicoId || null,
                 servicoNome || '',
@@ -1683,7 +1586,7 @@ app.post('/api/agendamentos',
                 profissional_id ? parseInt(profissional_id) : null
             ];
 
-            console.log('📝 SQL Insert - DATA:', dataCorrigida);
+            console.log('📝 SQL Insert:', sqlInsert);
             console.log('📝 Parâmetros:', params);
 
             db.run(sqlInsert, params, async function (err) {
@@ -1694,7 +1597,6 @@ app.post('/api/agendamentos',
 
                 let id = this?.lastID || this?.id || null;
                 console.log('✅ Agendamento criado com ID:', id);
-                console.log('✅ DATA SALVA:', dataCorrigida);
 
                 incrementarContadorAgendamentos(empresa_id, (err) => {
                     if (err) {
@@ -1743,7 +1645,7 @@ app.post('/api/agendamentos',
                         cliente: { nome: cliente?.nome || 'Cliente', telefone: cliente?.telefone || null },
                         servico: { nome: servico?.nome || servicoNome, valor: servico?.valor || servicoValor },
                         profissional: profissional ? { nome: profissional.nome, telefone: profissional.telefone || null } : null,
-                        data: dataCorrigida, // 🔥 USANDO dataCorrigida
+                        data: data,
                         hora: hora,
                         empresa: { nome: empresa?.nome || 'Barbearia', endereco: empresa?.endereco || '' },
                     };
@@ -1766,9 +1668,6 @@ app.post('/api/agendamentos',
             });
         }
 
-        // ============================================
-        // BUSCAR SERVIÇO E CRIAR AGENDAMENTO
-        // ============================================
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
             const sqlServico = isProduction
                 ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
@@ -1835,9 +1734,9 @@ app.get('/api/profissional/agendamentos', auth, (req, res) => {
 app.get('/api/profissional/financeiro', auth, (req, res) => {
     // Verificar se é profissional
     if (req.usuario.role !== 'profissional') {
-        return res.json({
-            success: false,
-            message: 'Acesso negado. Apenas profissionais podem acessar.'
+        return res.json({ 
+            success: false, 
+            message: 'Acesso negado. Apenas profissionais podem acessar.' 
         });
     }
 
@@ -1901,7 +1800,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
         const dadosFormatados = agendamentos.map(a => {
             const comissao = parseFloat(a.comissao) || 0;
             const valor = parseFloat(a.valor) || 0;
-
+            
             totalComissoes += comissao;
             totalServicos += 1;
             totalValor += valor;
@@ -3025,7 +2924,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 });
 
 // ============================================
-// CHATBOT - AGENDAR (COM BLOQUEIO GERAL E DATAS PASSADAS)
+// CHATBOT - AGENDAR (COM BLOQUEIO GERAL)
 // ============================================
 app.post('/api/chatbot/agendar', async (req, res) => {
     try {
@@ -3035,39 +2934,6 @@ app.post('/api/chatbot/agendar', async (req, res) => {
 
         if (!clienteId || !servicoId || !data || !hora || !empresaId) {
             return res.json({ success: false, message: 'Dados incompletos' });
-        }
-
-        // ============================================
-        // 🚫 CHATBOT: VALIDAÇÃO - DATA/HORA PASSADA
-        // ============================================
-        const agora = new Date();
-        const dataHoraAgendamento = new Date(`${data}T${hora}:00`);
-
-        if (dataHoraAgendamento < agora) {
-            return res.json({
-                success: false,
-                message: '❌ Não é possível agendar em datas ou horários que já passaram. Por favor, selecione uma data/hora futura.'
-            });
-        }
-
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-        const dataAgendamento = new Date(data);
-        dataAgendamento.setHours(0, 0, 0, 0);
-
-        if (dataAgendamento.getTime() === hoje.getTime()) {
-            const horaAtual = new Date().getHours();
-            const minutoAtual = new Date().getMinutes();
-            const horaAgendamento = parseInt(hora.split(':')[0]);
-            const minutoAgendamento = parseInt(hora.split(':')[1]);
-
-            if (horaAgendamento < horaAtual ||
-                (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
-                return res.json({
-                    success: false,
-                    message: `❌ O horário ${hora} já passou. Por favor, selecione um horário futuro.`
-                });
-            }
         }
 
         const clienteIdNum = parseInt(clienteId);
@@ -3261,72 +3127,19 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         }
 
         // ============================================
-        // 4. VERIFICAR HORÁRIO (POR PROFISSIONAL/DONO)
+        // 4. VERIFICAR HORÁRIO
         // ============================================
-        console.log(`🔍 Chatbot - Verificando horário ${hora} para profissional: ${profissionalIdNum || 'Dono'}`);
-
         const sqlCheck = isProduction
-            ? `SELECT id, profissional_id FROM agendamentos 
-               WHERE empresa_id = $1 
-               AND data = $2 
-               AND hora = $3 
-               AND status != 'cancelado'`
-            : `SELECT id, profissional_id FROM agendamentos 
-               WHERE empresa_id = ? 
-               AND data = ? 
-               AND hora = ? 
-               AND status != 'cancelado'`;
+            ? `SELECT id FROM agendamentos WHERE empresa_id = $1 AND data = $2 AND hora = $3 AND status != 'cancelado'`
+            : `SELECT id FROM agendamentos WHERE empresa_id = ? AND data = ? AND hora = ? AND status != 'cancelado'`;
 
-        const agendamentosNoHorario = await new Promise((resolve) => {
-            db.all(sqlCheck, [empresaIdNum, data, hora], (err, rows) => {
-                if (err) {
-                    console.error('❌ Erro ao verificar horário (chatbot):', err);
-                    resolve([]);
-                } else {
-                    resolve(rows || []);
-                }
-            });
+        const ocupado = await new Promise((resolve) => {
+            db.get(sqlCheck, [empresaIdNum, data, hora], (err, row) => resolve(row));
         });
 
-        console.log(`📋 Chatbot - Agendamentos no horário ${hora}:`, agendamentosNoHorario);
-
-        // ============================================
-        // 🔥 VERIFICAR OCUPAÇÃO POR TIPO DE AGENDAMENTO (CHATBOT)
-        // ============================================
-        let horarioOcupado = false;
-        let mensagemOcupado = '';
-
-        if (profissionalIdNum) {
-            // Se tem profissional_id, verifica se o horário está ocupado para este profissional
-            const ocupadoPorProfissional = agendamentosNoHorario.some(a =>
-                a.profissional_id === profissionalIdNum
-            );
-
-            if (ocupadoPorProfissional) {
-                horarioOcupado = true;
-                mensagemOcupado = 'O profissional já está ocupado neste horário. Escolha outro horário ou outro profissional.';
-            }
-        } else {
-            // Se NÃO tem profissional_id (agendamento do DONO), verifica se o horário está ocupado por outro agendamento do dono
-            const ocupadoPorDono = agendamentosNoHorario.some(a =>
-                a.profissional_id === null || a.profissional_id === 0 || a.profissional_id === '' || a.profissional_id === 'null'
-            );
-
-            if (ocupadoPorDono) {
-                horarioOcupado = true;
-                mensagemOcupado = 'O Dono já está ocupado neste horário. Escolha outro horário.';
-            }
+        if (ocupado) {
+            return res.json({ success: false, message: 'Horário indisponível' });
         }
-
-        if (horarioOcupado) {
-            console.log(`❌ Chatbot - Horário ${hora} está ocupado: ${mensagemOcupado}`);
-            return res.json({
-                success: false,
-                message: mensagemOcupado
-            });
-        }
-
-        console.log(`✅ Chatbot - Horário ${hora} está disponível para este profissional/dono`);
 
         // ============================================
         // 5. VERIFICAR CLIENTE BLOQUEADO
@@ -3748,7 +3561,6 @@ app.listen(PORT, HOST, () => {
     console.log(`   Business: R$ 99,90/mês - 12 profissionais`);
     console.log(`   Enterprise: R$ 199,90/mês - Profissionais ilimitados`);
     console.log(`\n📱 WhatsApp: ${process.env.WHATSAPP_ENABLED === 'true' ? '✅ ATIVADO' : '❌ DESABILITADO'}`);
-    console.log(`\n🔒 BLOQUEIO DE DATAS PASSADAS: ✅ ATIVADO`);
 });
 
 // ============================================================

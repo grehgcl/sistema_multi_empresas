@@ -1,80 +1,7 @@
 ﻿// pages/agendamentos.js - Versão Completa com Filtros, Edição e Horários Disponíveis
-// 🔒 COM BLOQUEIO DE DATAS/HORÁRIOS PASSADOS
-// 🔥 CORRIGIDO: Usa variável global para data da agenda inteligente
-
 let profissionaisList = [];
 let clientesList = [];
 let servicosList = [];
-
-// ============================================
-// VARIÁVEIS GLOBAIS PARA DADOS FORÇADOS
-// ============================================
-window.dataAgendamentoForcada = null;
-window.horaAgendamentoForcada = null;
-window.profissionalAgendamentoForcado = null;
-
-// ============================================
-// 🔥 FUNÇÃO PARA FORMATAR DATA PARA ENVIO
-// ============================================
-window.formatarDataParaEnvio = function (dataStr) {
-    // Se já estiver no formato YYYY-MM-DD, retorna ela mesma
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dataStr)) {
-        return dataStr;
-    }
-
-    // Se for um objeto Date, converter para YYYY-MM-DD
-    if (dataStr instanceof Date) {
-        const ano = dataStr.getFullYear();
-        const mes = String(dataStr.getMonth() + 1).padStart(2, '0');
-        const dia = String(dataStr.getDate()).padStart(2, '0');
-        return `${ano}-${mes}-${dia}`;
-    }
-
-    // Tentar converter de outros formatos
-    try {
-        const data = new Date(dataStr);
-        if (!isNaN(data.getTime())) {
-            const ano = data.getFullYear();
-            const mes = String(data.getMonth() + 1).padStart(2, '0');
-            const dia = String(data.getDate()).padStart(2, '0');
-            return `${ano}-${mes}-${dia}`;
-        }
-    } catch (e) { }
-
-    return dataStr;
-};
-// ============================================
-// 🔥 FUNÇÃO NOVA PARA FORMATAR DATA - SEM FUSO HORÁRIO
-// ============================================
-function formatarDataBrCorrigida(dataStr) {
-    if (!dataStr) return '-';
-
-    // Se for string no formato YYYY-MM-DD (ex: "2026-06-26")
-    if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-        const partes = dataStr.split('-');
-        if (partes.length === 3) {
-            const ano = partes[0];
-            const mes = partes[1];
-            const dia = partes[2];
-            return `${dia}/${mes}/${ano}`;
-        }
-    }
-
-    // Se for string com T (formato ISO)
-    if (typeof dataStr === 'string' && dataStr.includes('T')) {
-        const dataPart = dataStr.split('T')[0];
-        const partes = dataPart.split('-');
-        if (partes.length === 3) {
-            const ano = partes[0];
-            const mes = partes[1];
-            const dia = partes[2];
-            return `${dia}/${mes}/${ano}`;
-        }
-    }
-
-    // Fallback
-    return dataStr;
-}
 
 async function carregarAgendamentos() {
     ativarBotao("agendamentos");
@@ -229,38 +156,6 @@ async function carregarAgendamentos() {
 }
 
 // ============================================
-// 🚫 VALIDAR SE DATA/HORA É FUTURA
-// ============================================
-function validarDataHoraFutura(data, hora) {
-    const agora = new Date();
-    const dataHoraAgendamento = new Date(`${data}T${hora}:00`);
-
-    if (dataHoraAgendamento < agora) {
-        showToast('❌ Não é possível agendar em datas ou horários que já passaram.', 'error');
-        return false;
-    }
-
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const dataAgendamento = new Date(data);
-    dataAgendamento.setHours(0, 0, 0, 0);
-
-    if (dataAgendamento.getTime() === hoje.getTime()) {
-        const horaAtual = new Date().getHours();
-        const minutoAtual = new Date().getMinutes();
-        const horaAgendamento = parseInt(hora.split(':')[0]);
-        const minutoAgendamento = parseInt(hora.split(':')[1]);
-
-        if (horaAgendamento < horaAtual ||
-            (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
-            showToast(`❌ O horário ${hora} já passou. Selecione um horário futuro.`, 'error');
-            return false;
-        }
-    }
-    return true;
-}
-
-// ============================================
 // FUNÇÃO PARA ATUALIZAR ESTATÍSTICAS
 // ============================================
 
@@ -284,6 +179,10 @@ function atualizarEstatisticasAgendamentos(agendamentos) {
     if (canceladosEl) canceladosEl.textContent = cancelados;
 }
 
+// ============================================
+// FUNÇÃO PARA RENDERIZAR LINHA DA TABELA
+// ============================================
+
 function renderizarLinhaAgendamento(item) {
     const statusMap = {
         'concluido': { class: 'concluido', label: '✅ Concluído' },
@@ -293,9 +192,7 @@ function renderizarLinhaAgendamento(item) {
     };
 
     const statusInfo = statusMap[item.status] || statusMap['pendente'];
-
-    // 🔥 USAR formatarDataBr para a data
-    const dataFormatada = item.data ? formatarDataBrCorrigida(item.data) : '-';
+    const dataFormatada = item.data ? formatarDataBr(item.data) : '-';
     const horaFormatada = item.hora || '-';
     const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
@@ -459,7 +356,7 @@ async function carregarListaAgendamentosComFiltro() {
                                 <div class="card-body-mobile">
                                     <div class="info-row">
                                         <span class="info-label">📅 Data</span>
-                                        <span class="info-value">${formatarDataBrCorrigida(item.data)}</span>
+                                        <span class="info-value">${formatarDataBr(item.data)}</span>
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">⏰ Horário</span>
@@ -522,7 +419,7 @@ function renderizarLinhaAgendamento(item) {
     };
 
     const statusInfo = statusMap[item.status] || statusMap['pendente'];
-    const dataFormatada = item.data ? formatarDataBrCorrigida(item.data) : '-';
+    const dataFormatada = item.data ? formatarDataBr(item.data) : '-';
     const horaFormatada = item.hora || '-';
     const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
@@ -577,10 +474,12 @@ function renderizarLinhaAgendamento(item) {
 // ATUALIZAR AO REDIMENSIONAR A TELA
 // ============================================
 
+// Adicionar listener para quando a tela mudar de tamanho
 let resizeTimeout;
 window.addEventListener('resize', function () {
     clearTimeout(resizeTimeout);
     resizeTimeout = setTimeout(function () {
+        // Recarregar a lista se estiver na página de agendamentos
         if (document.getElementById('listaAgendamentos')) {
             carregarListaAgendamentosComFiltro();
         }
@@ -610,56 +509,41 @@ function limparFiltrosAgendamentos() {
 }
 
 // ============================================
-// FUNÇÃO FORMATAR DATA - CORRIGIDA (SEM FUSO HORÁRIO)
+// FUNÇÃO FORMATAR DATA - CORRIGIDA (POSTGRESQL COMPATÍVEL)
 // ============================================
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
-
-    // Se for string no formato YYYY-MM-DD (ex: "2026-06-26")
-    if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-        const partes = dataStr.split('-');
-        if (partes.length === 3) {
-            // 🔥 NÃO CONVERTER PARA DATE - apenas reorganizar
-            const ano = partes[0];
-            const mes = partes[1];
-            const dia = partes[2];
-            return `${dia}/${mes}/${ano}`;
-        }
-    }
-
-    // Se for string no formato "2026-06-26T00:00:00.000Z"
-    if (typeof dataStr === 'string' && dataStr.includes('T')) {
-        const dataPart = dataStr.split('T')[0];
-        const partes = dataPart.split('-');
-        if (partes.length === 3) {
-            const ano = partes[0];
-            const mes = partes[1];
-            const dia = partes[2];
-            return `${dia}/${mes}/${ano}`;
-        }
-    }
-
-    // Se for objeto Date (raro, mas seguro)
-    if (dataStr instanceof Date) {
-        const dia = String(dataStr.getDate()).padStart(2, '0');
-        const mes = String(dataStr.getMonth() + 1).padStart(2, '0');
-        const ano = dataStr.getFullYear();
-        return `${dia}/${mes}/${ano}`;
-    }
-
-    // Fallback: tentar converter
     try {
+        // Se for uma string no formato ISO (YYYY-MM-DD)
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                const ano = parseInt(partes[0]);
+                const mes = parseInt(partes[1]) - 1;
+                const dia = parseInt(partes[2]);
+                // Criar data com UTC para evitar problemas de timezone
+                const data = new Date(Date.UTC(ano, mes, dia));
+                return data.toLocaleDateString('pt-BR');
+            }
+        }
+        // Tentar criar data normalmente
         const data = new Date(dataStr);
         if (!isNaN(data.getTime())) {
-            const dia = String(data.getDate()).padStart(2, '0');
-            const mes = String(data.getMonth() + 1).padStart(2, '0');
-            const ano = data.getFullYear();
-            return `${dia}/${mes}/${ano}`;
+            return data.toLocaleDateString('pt-BR');
         }
-    } catch (e) { }
-
-    return dataStr;
+        return dataStr;
+    } catch {
+        return dataStr;
+    }
 }
+
+function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // ============================================
 // NOVO CLIENTE VIA MODAL
 // ============================================
@@ -812,56 +696,21 @@ async function carregarHorariosDisponiveisDono() {
 }
 
 // ============================================
-// ABRIR MODAL NOVO AGENDAMENTO (CORRIGIDO - USA VARIÁVEL GLOBAL E FORÇA DADOS)
+// ABRIR MODAL NOVO AGENDAMENTO
 // ============================================
 
 async function abrirModalAgendamentoDono() {
-    console.log('🔄 abrirModalAgendamentoDono - INICIANDO...');
+    const clientes = Array.isArray(clientesList) ? clientesList : [];
+    const servicos = Array.isArray(servicosList) ? servicosList : [];
+    const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
 
-    // ============================================
-    // 🔥 FORÇAR RECARREGAMENTO DOS DADOS
-    // ============================================
-    await carregarDadosParaAgendamento();
-
-    // Usar as listas globais
-    const clientes = Array.isArray(window.clientesList) ? window.clientesList : [];
-    const servicos = Array.isArray(window.servicosList) ? window.servicosList : [];
-    const profissionais = Array.isArray(window.profissionaisList) ? window.profissionaisList : [];
-
-    console.log(`📊 Dados disponíveis: ${clientes.length} clientes, ${servicos.length} serviços, ${profissionais.length} profissionais`);
-
-    // ============================================
-    // 🔥 USAR DATA DA VARIÁVEL GLOBAL OU CALCULAR AMANHÃ
-    // ============================================
-    let dataAmanha;
-    if (window.dataAgendamentoForcada) {
-        dataAmanha = window.dataAgendamentoForcada;
-        console.log(`📅 Data da variável global: ${dataAmanha}`);
-    } else {
-        const hoje = new Date();
-        const amanha = new Date(hoje);
-        amanha.setDate(amanha.getDate() + 1);
-        dataAmanha = amanha.toISOString().split('T')[0];
-        console.log(`📅 Data calculada (amanhã): ${dataAmanha}`);
-    }
-
-    const horaForcada = window.horaAgendamentoForcada || '';
-    const profissionalForcado = window.profissionalAgendamentoForcado || null;
-
-    // ============================================
-    // 🔥 GERAR OPTIONS DOS CLIENTES (CORRIGIDO)
-    // ============================================
     let clientesOptions = '<option value="">Selecione...</option>';
     if (clientes.length > 0) {
         for (let c of clientes) {
-            // Verificar se cliente tem nome
-            const nomeCliente = c.nome || `Cliente ${c.id}`;
-            clientesOptions += `<option value="${c.id}">${escapeHtml(nomeCliente)}</option>`;
+            clientesOptions += `<option value="${c.id}">${escapeHtml(c.nome)}</option>`;
         }
-        console.log(`✅ ${clientes.length} clientes renderizados no select`);
     } else {
         clientesOptions = '<option value="">Nenhum cliente cadastrado. Clique em "+ Novo Cliente"</option>';
-        console.warn('⚠️ Nenhum cliente disponível!');
     }
 
     let servicosOptions = '<option value="">Selecione um serviço</option>';
@@ -880,9 +729,6 @@ async function abrirModalAgendamentoDono() {
         }
     }
 
-    // ============================================
-    // 🔥 GERAR HTML DO MODAL
-    // ============================================
     const modalHtml = `
         <div id="modalAgendamentoDono" class="modal" style="display: flex;">
             <div class="modal-content" style="max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
@@ -903,7 +749,7 @@ async function abrirModalAgendamentoDono() {
 
                 <div class="form-group">
                     <label>Data *</label>
-                    <input type="date" id="dataAgendamentoDono" class="form-control" value="${dataAmanha}" onchange="carregarHorariosDisponiveisDono()">
+                    <input type="date" id="dataAgendamentoDono" class="form-control" onchange="carregarHorariosDisponiveisDono()">
                 </div>
 
                 <div class="form-group">
@@ -943,55 +789,10 @@ async function abrirModalAgendamentoDono() {
         </div>
     `;
 
-    // Remover modal existente
     const existingModal = document.getElementById("modalAgendamentoDono");
     if (existingModal) existingModal.remove();
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    console.log('✅ Modal de agendamento renderizado');
-
-    // ============================================
-    // 🔥 FORÇAR HORÁRIO E PROFISSIONAL
-    // ============================================
-    setTimeout(() => {
-        // Carregar horários
-        carregarHorariosDisponiveisDono();
-
-        // Forçar o profissional
-        if (profissionalForcado) {
-            const profSelect = document.getElementById('profissionalIdDono');
-            if (profSelect) {
-                for (let opt of profSelect.options) {
-                    if (opt.value == profissionalForcado) {
-                        profSelect.value = profissionalForcado;
-                        console.log(`✅ Profissional ${profissionalForcado} selecionado`);
-                        break;
-                    }
-                }
-            }
-        }
-
-        // Forçar o horário
-        setTimeout(() => {
-            if (horaForcada) {
-                const horaSelect = document.getElementById('horaAgendamentoDono');
-                if (horaSelect) {
-                    for (let opt of horaSelect.options) {
-                        if (opt.value === horaForcada) {
-                            horaSelect.value = horaForcada;
-                            console.log(`✅ Horário ${horaForcada} selecionado`);
-                            break;
-                        }
-                    }
-                }
-            }
-        }, 500);
-    }, 200);
-
-    // Mostrar toast com a data
-    if (window.dataAgendamentoForcada) {
-        showToast(`📅 ${formatarDataBrCorrigida(window.dataAgendamentoForcada)}`, 'info');
-    }
 }
 
 function fecharModalAgendamentoDono() {
@@ -1011,19 +812,18 @@ function atualizarValorPorServicoDono() {
     }
 }
 
+// ============================================
+// SALVAR AGENDAMENTO (COM VALIDAÇÃO DE 1 POR DIA)
+// ============================================
+
 async function salvarAgendamentoDono() {
     const cliente_id = document.getElementById("clienteIdDono").value;
-    const dataRaw = document.getElementById("dataAgendamentoDono").value;
+    const data = document.getElementById("dataAgendamentoDono").value;
     const hora = document.getElementById("horaAgendamentoDono").value;
     const servico_id = document.getElementById("servicoIdDono").value;
     const servico_descricao = document.getElementById("servicoDescricaoDono").value;
     const valor = document.getElementById("valorAgendamentoDono").value;
     const profissional_id = document.getElementById("profissionalIdDono").value;
-
-    // 🔥 FORMATAR A DATA CORRETAMENTE
-    const data = formatarDataParaEnvio(dataRaw);
-
-    console.log('📝 Salvando agendamento:', { cliente_id, data, hora, servico_id, profissional_id });
 
     if (!cliente_id || !data) {
         showToast("Cliente e data são obrigatórios", "warning");
@@ -1035,22 +835,12 @@ async function salvarAgendamentoDono() {
         return;
     }
 
-    // 🚫 VALIDAR DATA/HORA FUTURA
-    if (!validarDataHoraFutura(data, hora)) {
-        return;
-    }
-
-    // Limpar variáveis globais
-    window.dataAgendamentoForcada = null;
-    window.horaAgendamentoForcada = null;
-    window.profissionalAgendamentoForcado = null;
-
     showLoading();
 
     const token = localStorage.getItem("token");
     const body = {
         cliente_id: parseInt(cliente_id),
-        data: data,  // 👈 USAR A DATA FORMATADA
+        data: data,
         hora: hora,
         valor: parseFloat(valor) || 0,
         profissional_id: profissional_id ? parseInt(profissional_id) : null
@@ -1075,27 +865,26 @@ async function salvarAgendamentoDono() {
         const result = await res.json();
 
         if (result.success) {
-            showToast("✅ Agendamento criado com sucesso!", "success");
+            showToast("Agendamento criado com sucesso!", "success");
             fecharModalAgendamentoDono();
 
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
             if (typeof window.atualizarAgendaAposAgendamento === 'function') {
                 window.atualizarAgendaAposAgendamento();
             }
 
             carregarAgendamentos();
-            if (typeof carregarDashboard === 'function') {
-                carregarDashboard();
-            }
         } else {
+            // Verificar se é o erro de cliente já tem agendamento
             if (result.message && result.message.includes('já possui um agendamento para este dia')) {
                 showToast('⚠️ ' + result.message, 'warning');
             } else {
-                showToast("❌ Erro: " + result.message, "error");
+                showToast("Erro: " + result.message, "error");
             }
         }
     } catch (error) {
         console.error("❌ Erro ao criar agendamento:", error);
-        showToast("❌ Erro ao criar agendamento", "error");
+        showToast("Erro ao criar agendamento", "error");
     }
 
     hideLoading();
@@ -1122,6 +911,7 @@ async function concluirAgendamento(id) {
             showToast(result.message, "success");
             carregarAgendamentos();
 
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
             if (typeof window.atualizarAgendaAposAgendamento === 'function') {
                 window.atualizarAgendaAposAgendamento();
             }
@@ -1164,6 +954,7 @@ async function excluirAgendamento(id) {
             showToast("Agendamento removido", "success");
             carregarAgendamentos();
 
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
             if (typeof window.atualizarAgendaAposAgendamento === 'function') {
                 window.atualizarAgendaAposAgendamento();
             }
@@ -1313,10 +1104,6 @@ async function salvarEdicaoAgendamentoDono(id) {
         return;
     }
 
-    if (hora && !validarDataHoraFutura(data, hora)) {
-        return;
-    }
-
     showLoading();
 
     const token = localStorage.getItem("token");
@@ -1351,6 +1138,7 @@ async function salvarEdicaoAgendamentoDono(id) {
             fecharModalEditarAgendamentoDono();
             carregarAgendamentos();
 
+            // 🔥 ATUALIZAR A AGENDA INTELIGENTE
             if (typeof window.atualizarAgendaAposAgendamento === 'function') {
                 window.atualizarAgendaAposAgendamento();
             }
@@ -1396,6 +1184,7 @@ window.abrirModalAgendamento = async function () {
 
     const token = localStorage.getItem('token');
 
+    // Carregar clientes
     try {
         const res = await fetch('/api/clientes', {
             headers: { 'Authorization': 'Bearer ' + token }
@@ -1409,6 +1198,7 @@ window.abrirModalAgendamento = async function () {
         console.error('❌ Erro ao carregar clientes:', error);
     }
 
+    // Carregar profissionais
     try {
         const res = await fetch('/api/profissionais', {
             headers: { 'Authorization': 'Bearer ' + token }
@@ -1421,6 +1211,7 @@ window.abrirModalAgendamento = async function () {
         console.error('❌ Erro ao carregar profissionais:', error);
     }
 
+    // Carregar serviços
     try {
         const res = await fetch('/api/servicos', {
             headers: { 'Authorization': 'Bearer ' + token }
@@ -1433,6 +1224,7 @@ window.abrirModalAgendamento = async function () {
         console.error('❌ Erro ao carregar serviços:', error);
     }
 
+    // Abrir o modal
     if (typeof abrirModalAgendamentoDono === 'function') {
         abrirModalAgendamentoDono();
     } else {
@@ -1447,19 +1239,23 @@ window.abrirModalAgendamento = async function () {
 window.abrirModalCliente = function () {
     console.log('🔄 Abrindo modal de cliente...');
 
+    // Verificar se a função original existe (a do clientes.js)
     if (typeof window.abrirModalClienteOriginal === 'function') {
         window.abrirModalClienteOriginal();
         return;
     }
 
+    // Tentar encontrar a função de abrir modal do clientes.js
     if (typeof abrirModalCliente === 'function' && abrirModalCliente !== window.abrirModalCliente) {
         abrirModalCliente();
         return;
     }
 
+    // Fallback: carregar a página de clientes
     showToast('Carregando página de clientes...', 'info');
     if (typeof carregarClientes === 'function') {
         carregarClientes();
+        // Tentar abrir o modal depois que carregar
         setTimeout(() => {
             if (typeof abrirModalCliente === 'function' && abrirModalCliente !== window.abrirModalCliente) {
                 abrirModalCliente();
@@ -1471,38 +1267,3 @@ window.abrirModalCliente = function () {
 };
 
 console.log('✅ Ações rápidas corrigidas!');
-
-// ============================================
-// 🔥 FUNÇÃO PARA LIMPAR VARIÁVEIS GLOBAIS
-// ============================================
-
-function limparVariaveisAgendamento() {
-    window.dataAgendamentoForcada = null;
-    window.horaAgendamentoForcada = null;
-    window.profissionalAgendamentoForcado = null;
-    console.log('🧹 Variáveis de agendamento limpas');
-}
-
-// ============================================
-// FECHAR MODAL AGENDAMENTO (SUBSTITUIR A EXISTENTE)
-// ============================================
-
-function fecharModalAgendamentoDono() {
-    const modal = document.getElementById("modalAgendamentoDono");
-    if (modal) modal.remove();
-
-    // ============================================
-    // 🔥 LIMPAR VARIÁVEIS GLOBAIS AO FECHAR
-    // ============================================
-    window.dataAgendamentoForcada = null;
-    window.horaAgendamentoForcada = null;
-    window.profissionalAgendamentoForcado = null;
-
-    console.log('🧹 Modal fechado, variáveis limpas');
-}
-
-// ============================================
-// EXPORTAR FUNÇÕES (ADICIONAR AO FINAL DO ARQUIVO)
-// ============================================
-
-window.limparVariaveisAgendamento = limparVariaveisAgendamento;

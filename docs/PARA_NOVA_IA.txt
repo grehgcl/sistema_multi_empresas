@@ -1,6 +1,6 @@
 ﻿=========================================
   GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 25/06/2026
+  ULTIMA ATUALIZACAO: 24/06/2026
 =========================================
 
 LEIA OS ARQUIVOS NA ORDEM:
@@ -17,7 +17,7 @@ USUARIOS:
   Profissional: (criar pelo dono) - senha definida pelo dono
 
 =========================================
-✅ IMPLEMENTADO (25/06/2026)
+✅ IMPLEMENTADO (24/06/2026)
 =========================================
 
 ### 1. BLOQUEIO GERAL DE AGENDAMENTOS 🔒 (NOVO!)
@@ -32,20 +32,12 @@ USUARIOS:
 - Validação no backend (POST /api/agendamentos)
 - Validação no chatbot (POST /api/chatbot/agendar)
 
-### 2. AGENDA INTELIGENTE DENTRO DO DASHBOARD 📅 (MELHORADA!)
+### 2. AGENDA INTELIGENTE DENTRO DO DASHBOARD 📅
 - Card da Agenda Visual dentro do Dashboard (abaixo de Ações Rápidas)
 - Visualização semanal com cores por profissional
 - Dono aparece como profissional (bolinha dourada 👑)
 - Clique na bolinha abre modal com data/hora/pré-setados
 - Cores: 🟢 Disponível, 🔴 Ocupado, 🍽️ Almoço, 🔒 Fechado
-
-#### Melhorias Visuais (25/06/2026):
-- ✅ Coluna de horários com ícone de relógio e cores fortes
-- ✅ Horário atual com badge "AGORA"
-- ✅ Dia atual com gradiente azul-roxo e "📌 HOJE"
-- ✅ Bolinhas ocupadas maiores (28px) com animação pulsante
-- ✅ Modais responsivos com layout em grid
-- ✅ Atualização automática da agenda após agendamentos
 
 ### 3. SISTEMA DE DIAS_BLOQUEIO POR CLIENTE (INDIVIDUAL)
 - Nova coluna `dias_bloqueio` na tabela `clientes` (padrão = 1)
@@ -64,12 +56,6 @@ USUARIOS:
 - Agradecimento após conclusão
 - Notificação de cancelamento
 - Modo LOG funcionando
-
-### 6. CORREÇÕES DO POSTGRESQL 🐛 (25/06/2026)
-- ✅ Middleware verificarLimiteProfissionais com $1 e $2
-- ✅ database.js: convertPlaceholders NÃO converte queries com $1
-- ✅ verificarLimiteAgendamentos com placeholders corretos
-- ✅ incrementarContadorAgendamentos funcionando
 
 =========================================
 🔄 O QUE JÁ EXISTE
@@ -95,10 +81,9 @@ USUARIOS:
 14. Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
 15. Tema escuro por padrão
 16. Limite de 100 agendamentos/mês para Starter
-17. Agenda Inteligente no Dashboard (MELHORADA!)
+17. Agenda Inteligente no Dashboard
 18. Dias de bloqueio individual por cliente
 19. BLOQUEIO GERAL (coletivo) - NOVO!
-20. Correções PostgreSQL para produção (Render)
 
 =========================================
 📋 PLANOS COMPLETOS
@@ -118,9 +103,9 @@ USUARIOS:
 
 server/
 ├── config/
-│   └── database.js (CORRIGIDO!)
+│   └── database.js
 ├── middlewares/
-│   └── auth.js (CORRIGIDO! com verificarLimiteAgendamentos)
+│   └── auth.js (com verificarLimiteAgendamentos)
 ├── services/
 │   └── whatsapp.js
 ├── jobs/
@@ -134,15 +119,15 @@ public/
 ├── index.html
 ├── chatbot.html
 ├── css/
-│   ├── style.css (COM ANIMAÇÕES!)
+│   ├── style.css
 │   └── chatbot.css
 └── js/
     ├── ui.js
     └── pages/
-        ├── dashboard.js (COM AGENDA INTELIGENTE MELHORADA!)
+        ├── dashboard.js (com Agenda Inteligente)
         ├── dashboard-profissional.js
         ├── clientes.js (com dias_bloqueio)
-        ├── agendamentos.js (ATUALIZA AGENDA!)
+        ├── agendamentos.js
         ├── agendamentos-profissional.js
         ├── servicos.js
         ├── financeiro.js
@@ -160,8 +145,8 @@ npm start
 # Migração do banco (dias_bloqueio individual)
 node scripts/migrate-dias-bloqueio.js
 
-# Correção do bloqueio geral (PostgreSQL)
-npm run fix-bloqueio
+# Migração do banco (dias_bloqueio_geral)
+ALTER TABLE empresas ADD COLUMN IF NOT EXISTS dias_bloqueio_geral INTEGER DEFAULT 0;
 
 # Ver logs do servidor
 npm start
@@ -170,21 +155,5 @@ npm start
 http://localhost:3000
 
 =========================================
-🐛 ERROS CONHECIDOS E SOLUÇÕES
-=========================================
-
-### Erro: "bind message supplies 2 parameters"
-- Causa: Query com $1 e $1 (mesmo placeholder repetido)
-- Solução: Usar $1 e $2 (placeholders diferentes) e passar [valor, valor]
-
-### Erro: "callback is not a function"
-- Causa: Função chamada sem callback no PostgreSQL
-- Solução: Verificar se callback é função antes de chamar
-
-### Erro: 500 ao excluir/adicionar profissional
-- Causa: Middleware verificarLimiteProfissionais com placeholders errados
-- Solução: Query com $1 e $2, passar [empresaId, empresaId]
-
-=========================================
-ULTIMA ATUALIZACAO: 25/06/2026
+ULTIMA ATUALIZACAO: 24/06/2026
 =========================================
