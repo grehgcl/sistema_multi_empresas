@@ -1,4 +1,4 @@
-﻿// pages/dashboard.js - Versão Premium com TODAS AS MELHORIAS VISUAIS
+﻿// pages/dashboard.js - Versão Premium com TODAS AS MELHORIAS VISUAIS + CORREÇÃO DE TIMEZONE + RECARREGAMENTO DA AGENDA
 let dashboardData = null;
 let chartInstance = null;
 
@@ -34,8 +34,53 @@ const iconesHorarios = {
     '18:00': '🌆'
 };
 
+// ============================================
+// FUNÇÃO AUXILIAR: FORMATAR DATA PARA EXIBIÇÃO
+// ============================================
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                const ano = parseInt(partes[0]);
+                const mes = parseInt(partes[1]) - 1;
+                const dia = parseInt(partes[2]);
+                const data = new Date(Date.UTC(ano, mes, dia));
+                return data.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+            }
+        }
+        const data = new Date(dataStr);
+        if (!isNaN(data.getTime())) {
+            return data.toLocaleDateString('pt-BR');
+        }
+        return dataStr;
+    } catch {
+        return dataStr;
+    }
+}
+
+// ============================================
+// FUNÇÃO AUXILIAR: FORMATAR MOEDA
+// ============================================
+function formatarMoeda(valor) {
+    if (valor === undefined || valor === null || isNaN(valor)) {
+        return '0,00';
+    }
+    const num = parseFloat(valor);
+    if (isNaN(num)) {
+        return '0,00';
+    }
+    return num.toFixed(2).replace('.', ',');
+}
+
 async function carregarAgendaInteligente() {
-    if (agendaInteligenteCarregando) return;
+    console.log('🔄 CARREGANDO AGENDA DA API...');
+
+    // 🔥 FORÇAR LIMPEZA
+    agendaInteligenteData = [];
+    agendaInteligenteCarregando = false;
+
     agendaInteligenteCarregando = true;
 
     const token = localStorage.getItem('token');
@@ -72,7 +117,10 @@ async function carregarAgendaInteligente() {
             agendaInteligenteCores[p.id] = coresPaleta[corIndex];
         });
 
-        agendaInteligenteData = (await agendamentosRes.json()).data || [];
+        const agendamentosData = await agendamentosRes.json();
+        agendaInteligenteData = agendamentosData.success ? agendamentosData.data : [];
+
+        console.log(`✅ Agenda carregada com ${agendamentosData.data ? agendamentosData.data.length : 0} agendamentos`);
 
         agendaInteligenteDate = new Date();
         renderizarAgendaInteligente();
@@ -100,23 +148,19 @@ function isHorarioAlmoco(hora, almocoInicio, almocoFim) {
 }
 
 function renderizarAgendaInteligente() {
+    console.log('📊 RENDERIZANDO AGENDA - Dados:', agendaInteligenteData.length);
     const container = document.getElementById('agendaInteligenteContainer');
     if (!container) return;
 
     // ============================================
     // 🔥 USAR A DATA DO agendaInteligenteDate (NÃO FORÇAR HOJE)
     // ============================================
-    // Se não tiver data definida, usar hoje
     if (!agendaInteligenteDate) {
         agendaInteligenteDate = new Date();
     }
 
-    // A data de início é a data que está em agendaInteligenteDate
     const dataBase = new Date(agendaInteligenteDate);
     const inicioSemana = new Date(dataBase);
-
-    // Ajustar para começar no dia atual da semana (não força o dia de hoje)
-    // Mas mantém a semana baseada na data selecionada
 
     const hoje = new Date();
     const hojeStr = hoje.toISOString().split('T')[0];
@@ -551,63 +595,72 @@ function renderizarAgendaInteligente() {
                         const isOcupado = p.ocupado;
                         const avatar = p.nome.charAt(0).toUpperCase();
 
-                        const size = isOcupado ? tamanhoBolinha + 4 : tamanhoBolinha;
-                        const borderWidth = isOcupado ? '3px' : '2px';
-                        const borderColor = isOcupado ? '#ef4444' : (isDono ? '#d4af37' : 'rgba(255,255,255,0.4)');
-                        const boxShadow = isOcupado ? '0 0 16px rgba(239,68,68,0.5)' : '0 0 12px rgba(16,185,129,0.3)';
+                        // 🔥 FORÇAR A COR VERMELHA SE ESTIVER OCUPADO
+                        const corFundo = isOcupado ? 'linear-gradient(135deg,#ef4444,#dc2626)' : `linear-gradient(135deg,${cor},${cor}dd)`;
+                        const corBorda = isOcupado ? '#ef4444' : (isDono ? '#d4af37' : 'rgba(255,255,255,0.4)');
+                        const sombra = isOcupado ? '0 0 20px rgba(239,68,68,0.6)' : '0 0 12px rgba(16,185,129,0.3)';
                         const cursor = isOcupado ? 'not-allowed' : 'pointer';
-                        const statusText = isOcupado ? '🔴 Ocupado' : '🟢 Disponível';
+                        const tooltip = isOcupado ? '🔴 Ocupado' : '🟢 Disponível';
 
                         const isIndisponivel = isOcupado || isPassado;
                         const onClick = isIndisponivel ? '' : `event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')`;
 
+                        // 🔥 TAMANHO DA BOLINHA
+                        const size = isOcupado ? tamanhoBolinha + 4 : tamanhoBolinha;
+                        const fontSize = isOcupado ? '14px' : '12px';
+                        const icone = isPassado ? '⏰' : (isOcupado ? '✕' : avatar);
+
                         return `
-                                        <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:${cursor};${isIndisponivel ? 'filter: grayscale(0.6);opacity:0.4;' : ''}" 
-                                             title="${isPassado ? '⏰ Horário já passou' : ''}"
-                                             onclick="${onClick}">
-                                            <div style="position:relative;">
-                                                <span style="display:flex;
-                                                             width:${size}px;
-                                                             height:${size}px;
-                                                             border-radius:50%;
-                                                             background:${isPassado ? '#9ca3af' : (isOcupado ? 'linear-gradient(135deg,#ef4444,#dc2626)' : `linear-gradient(135deg,${cor},${cor}dd)`)};
-                                                             border:${borderWidth} solid ${isPassado ? '#9ca3af' : borderColor};
-                                                             box-shadow: ${isPassado ? 'none' : boxShadow};
-                                                             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                                                             position:relative;
-                                                             ${isOcupado && !isPassado ? 'animation: pulseRed 1.5s infinite;' : ''}
-                                                             ${!isIndisponivel ? 'cursor:pointer;' : ''}
-                                                             align-items:center;
-                                                             justify-content:center;
-                                                             color:white;
-                                                             font-weight:700;
-                                                             font-size:${size * 0.4}px;
-                                                             text-shadow:0 1px 3px rgba(0,0,0,0.2);"
-                                                      ${!isIndisponivel ? `
-                                                          onmouseover="this.style.transform='scale(1.2)';this.style.boxShadow='0 0 32px ${cor}'"
-                                                          onmouseout="this.style.transform='scale(1)';this.style.boxShadow='${boxShadow}'"
-                                                      ` : ''}
-                                                      >
-                                                    ${isPassado ? '⏰' : (isOcupado ? '✕' : avatar)}
-                                                </span>
-                                                ${isDono ? `<span style="position:absolute;top:-6px;right:-6px;font-size:${size * 0.35}px;text-shadow:0 0 4px rgba(0,0,0,0.3);">👑</span>` : ''}
-                                                ${isOcupado && !isPassado ? `
-                                                    <span style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(239,68,68,0.5);"></span>
-                                                ` : ''}
-                                                ${!isOcupado && !isPassado ? `
-                                                    <span style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#22c55e;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(34,197,94,0.5);animation:pulse-green 2s infinite;"></span>
-                                                ` : ''}
-                                            </div>
-                                            <span style="font-size:6px;color:var(--text-muted);margin-top:2px;max-width:32px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isOcupado ? 'color:#ef4444;' : ''}">
-                                                ${p.nome.length > 6 ? p.nome.substring(0, 5) + '…' : p.nome}
-                                            </span>
-                                            ${isIndisponivel ? `
-                                                <span style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;color:#6b7280;white-space:nowrap;font-weight:600;">
-                                                    ${isPassado ? '⏰' : '🔴'}
-                                                </span>
-                                            ` : ''}
-                                        </div>
-                                    `;
+    <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:${cursor};${isIndisponivel ? 'filter: grayscale(0.6);opacity:0.4;' : ''}" 
+         title="${isPassado ? '⏰ Horário já passou' : tooltip}"
+         onclick="${onClick}">
+        <div style="position:relative;">
+            <span style="display:flex;
+                         width:${size}px;
+                         height:${size}px;
+                         border-radius:50%;
+                         background:${isPassado ? '#9ca3af' : corFundo};
+                         border:3px solid ${isPassado ? '#9ca3af' : corBorda};
+                         box-shadow: ${isPassado ? 'none' : sombra};
+                         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                         position:relative;
+                         ${isOcupado && !isPassado ? 'animation: pulseRed 1.5s infinite;' : ''}
+                         ${!isIndisponivel ? 'cursor:pointer;' : ''}
+                         align-items:center;
+                         justify-content:center;
+                         color:white;
+                         font-weight:700;
+                         font-size:${fontSize};
+                         text-shadow:0 1px 3px rgba(0,0,0,0.2);
+                         ${isOcupado ? 'background:linear-gradient(135deg,#ef4444,#dc2626) !important;border:3px solid #ef4444 !important;box-shadow:0 0 20px rgba(239,68,68,0.6) !important;' : ''}"
+                  ${!isIndisponivel ? `
+                      onmouseover="this.style.transform='scale(1.2)';this.style.boxShadow='0 0 32px ${cor}'"
+                      onmouseout="this.style.transform='scale(1)';this.style.boxShadow='${sombra}'"
+                  ` : ''}
+                  >
+                ${icone}
+            </span>
+            ${isDono ? `<span style="position:absolute;top:-6px;right:-6px;font-size:${size * 0.35}px;text-shadow:0 0 4px rgba(0,0,0,0.3);">👑</span>` : ''}
+            ${isOcupado && !isPassado ? `
+                <span style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(239,68,68,0.5);"></span>
+            ` : ''}
+            ${!isOcupado && !isPassado ? `
+                <span style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#22c55e;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(34,197,94,0.5);animation:pulse-green 2s infinite;"></span>
+            ` : ''}
+        </div>
+        <span style="font-size:6px;color:var(--text-muted);margin-top:2px;max-width:32px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isOcupado ? 'color:#ef4444;font-weight:600;' : ''}">
+            ${p.nome.length > 6 ? p.nome.substring(0, 5) + '…' : p.nome}
+        </span>
+        ${isOcupado ? `
+            <span style="font-size:6px;color:#ef4444;font-weight:600;background:rgba(239,68,68,0.1);padding:0px 6px;border-radius:8px;border:1px solid rgba(239,68,68,0.2);margin-top:-1px;">🔴 ocupado</span>
+        ` : ''}
+        ${isPassado ? `
+            <span style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;color:#6b7280;white-space:nowrap;font-weight:600;">
+                ⏰ passou
+            </span>
+        ` : ''}
+    </div>
+`;
                     }).join('')}
                                 ${mais ? `<span style="font-size:8px;color:var(--text-muted);font-weight:600;">${mais}</span>` : ''}
                             </div>
@@ -720,7 +773,7 @@ function renderizarAgendaInteligente() {
     container.innerHTML = html;
 
     // ============================================
-    // SCROLL PARA O HORÁRIO ATUAL (se estiver na semana atual)
+    // SCROLL PARA O HORÁRIO ATUAL
     // ============================================
     setTimeout(() => {
         const wrapper = document.getElementById('agendaScrollWrapper');
@@ -774,20 +827,52 @@ function irAgendaHoje() {
     renderizarAgendaInteligente();
 }
 
+// ============================================
+// 🔥 ATUALIZAR AGENDA APÓS AGENDAMENTO - CORRIGIDO
+// ============================================
 function atualizarAgendaAposAgendamento() {
-    console.log('🔄 Atualizando agenda após agendamento...');
-    setTimeout(() => {
-        agendaInteligenteData = [];
-        agendaInteligenteCarregando = false;
+    console.log('🔄 🔥 FORÇANDO ATUALIZAÇÃO DA AGENDA...');
+
+    // 🔥 ZERAR TUDO
+    agendaInteligenteData = [];
+    agendaInteligenteCarregando = false;
+    agendaInteligenteProfissionais = [];
+    agendaInteligenteHorarios = [];
+
+    // 🔥 RECARREGAR COMPLETAMENTE
+    setTimeout(function () {
+        // 🔥 FORÇAR LIMPEZA DO CONTAINER
+        const container = document.getElementById('agendaInteligenteContainer');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align:center;padding:30px;">
+                    <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:32px;height:32px;"></div>
+                    <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Atualizando agenda...</p>
+                </div>
+            `;
+        }
+
+        // 🔥 RECARREGAR
         carregarAgendaInteligente();
-    }, 500);
+        console.log('✅ Agenda recarregada!');
+    }, 300);
 }
 
 // ============================================
-// ABRIR AGENDAMENTO - DIRETO PELA BOLINHA
+// 🔥 ABRIR AGENDAMENTO - DIRETO PELA BOLINHA (CORRIGIDO - TIMEZONE + RECARREGAMENTO)
 // ============================================
 
 function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
+    // 🔥 CORREÇÃO: Ajustar a data para compensar o timezone do backend
+    const dataParts = data.split('-').map(Number);
+    const dataObj = new Date(dataParts[0], dataParts[1] - 1, dataParts[2]);
+    dataObj.setDate(dataObj.getDate() + 1);
+    const dataCorrigida = dataObj.getFullYear() + '-' +
+        String(dataObj.getMonth() + 1).padStart(2, '0') + '-' +
+        String(dataObj.getDate()).padStart(2, '0');
+
+    console.log(`📝 Data original: ${data} → Data enviada: ${dataCorrigida}`);
+
     const agora = new Date();
     const [ano, mes, dia] = data.split('-').map(Number);
     const [horaNum, minutoNum] = hora.split(':').map(Number);
@@ -802,7 +887,14 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 
     const isDono = profissionalId && typeof profissionalId === 'string' && profissionalId.startsWith('dono_');
 
+    // 🔥 VARIÁVEL PARA CONTROLAR SE JÁ FOI ABERTO
+    let modalAberto = false;
+
     async function carregarDadosEAbrirModal() {
+        // 🔥 SE JÁ ESTIVER ABERTO, NÃO ABRE NOVAMENTE
+        if (modalAberto) return;
+        modalAberto = true;
+
         showLoading();
 
         try {
@@ -839,18 +931,19 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
             if (typeof abrirModalAgendamentoDono !== 'function') {
                 showToast('❌ Função de agendamento não disponível', 'error');
                 hideLoading();
+                modalAberto = false;
                 return;
             }
 
+            // 🔥 ABRIR O MODAL
             abrirModalAgendamentoDono();
 
             function preencherModalCompleto() {
                 const dataInput = document.getElementById('dataAgendamentoDono');
                 if (dataInput) {
                     dataInput.value = data;
-                    if (typeof dataInput.dispatchEvent === 'function') {
-                        dataInput.dispatchEvent(new Event('change'));
-                    }
+                    const event = new Event('change', { bubbles: true });
+                    dataInput.dispatchEvent(event);
                 }
 
                 const profSelect = document.getElementById('profissionalIdDono');
@@ -930,8 +1023,114 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 setTimeout(forcarPreenchimentoHorario, 500);
                 setTimeout(forcarPreenchimentoHorario, 1000);
 
+                // 🔥 FUNÇÃO DE SALVAR COM DATA CORRIGIDA
+                function salvarAgendamentoComDataCorrigida(dataCorrigida, dataOriginal) {
+                    const cliente_id = document.getElementById('clienteIdDono').value;
+                    const hora = document.getElementById('horaAgendamentoDono').value;
+                    const servico_id = document.getElementById('servicoIdDono').value;
+                    const servico_descricao = document.getElementById('servicoDescricaoDono').value;
+                    const valor = document.getElementById('valorAgendamentoDono').value;
+                    const profissional_id = document.getElementById('profissionalIdDono').value;
+
+                    if (!cliente_id || !dataOriginal) {
+                        showToast("Cliente e data são obrigatórios", "warning");
+                        return;
+                    }
+
+                    if (!hora || hora === '') {
+                        showToast("Selecione um horário", "warning");
+                        return;
+                    }
+
+                    showLoading();
+
+                    const token = localStorage.getItem("token");
+                    const body = {
+                        cliente_id: parseInt(cliente_id),
+                        data: dataCorrigida,
+                        hora: hora,
+                        valor: parseFloat(valor) || 0,
+                        profissional_id: profissional_id ? parseInt(profissional_id) : null
+                    };
+
+                    if (servico_id && servico_id !== '') {
+                        body.servico_id = parseInt(servico_id);
+                    } else if (servico_descricao && servico_descricao.trim() !== '') {
+                        body.servico = servico_descricao.trim();
+                    }
+
+                    console.log('📤 Enviando data corrigida:', dataCorrigida);
+
+                    fetch("/api/agendamentos", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": "Bearer " + token
+                        },
+                        body: JSON.stringify(body)
+                    })
+                        .then(res => res.json())
+                        .then(result => {
+                            hideLoading();
+
+                            if (result.success) {
+                                showToast("Agendamento criado com sucesso!", "success");
+                                fecharModalAgendamentoDono();
+
+                                // 🔥🔥🔥 FORÇAR RECARREGAMENTO DA AGENDA 🔥🔥🔥
+                                if (typeof window.forcarRecarregarAgenda === 'function') {
+                                    window.forcarRecarregarAgenda();
+                                } else {
+                                    // Fallback: recarregar direto
+                                    agendaInteligenteData = [];
+                                    agendaInteligenteCarregando = false;
+                                    setTimeout(function () {
+                                        carregarAgendaInteligente();
+                                    }, 500);
+                                }
+
+                                carregarAgendamentos();
+                            } else {
+                                if (result.message && result.message.includes('já possui um agendamento para este dia')) {
+                                    showToast('⚠️ ' + result.message, 'warning');
+                                } else if (result.message && result.message.includes('Não é possível agendar em datas')) {
+                                    showToast('⏰ ' + result.message, 'warning');
+                                } else {
+                                    showToast("Erro: " + result.message, "error");
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            hideLoading();
+                            console.error("❌ Erro ao criar agendamento:", error);
+                            showToast("Erro ao criar agendamento", "error");
+                        });
+                }
+
+                // 🔥 SALVAR A REFERÊNCIA DO BOTÃO ORIGINAL
+                const botoes = document.querySelectorAll('#modalAgendamentoDono .btn-primary');
+                let botaoSalvar = null;
+                for (let btn of botoes) {
+                    if (btn.textContent.includes('Salvar') || btn.textContent.includes('salvar')) {
+                        botaoSalvar = btn;
+                        break;
+                    }
+                }
+
+                // 🔥 SE ENCONTROU O BOTÃO, SUBSTITUIR O ONCLICK
+                if (botaoSalvar) {
+                    const novoBotao = botaoSalvar.cloneNode(true);
+                    botaoSalvar.parentNode.replaceChild(novoBotao, botaoSalvar);
+
+                    novoBotao.onclick = function () {
+                        // 🔥 CHAMAR A FUNÇÃO DE SALVAR COM A DATA CORRIGIDA
+                        salvarAgendamentoComDataCorrigida(dataCorrigida, data);
+                    };
+                }
+
                 showToast(`📅 ${formatarDataBr(data)} às ${hora}`, 'info');
                 hideLoading();
+                modalAberto = false;
             }
 
             function aguardarModal(tentativa = 0) {
@@ -951,24 +1150,11 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
             console.error('❌ Erro ao carregar dados:', error);
             showToast('❌ Erro ao carregar dados do agendamento', 'error');
             hideLoading();
+            modalAberto = false;
         }
     }
 
     carregarDadosEAbrirModal();
-}
-
-// ============================================
-// FUNÇÃO AUXILIAR: FORMATAR MOEDA
-// ============================================
-function formatarMoeda(valor) {
-    if (valor === undefined || valor === null || isNaN(valor)) {
-        return '0,00';
-    }
-    const num = parseFloat(valor);
-    if (isNaN(num)) {
-        return '0,00';
-    }
-    return num.toFixed(2).replace('.', ',');
 }
 
 // ============================================
@@ -1775,16 +1961,6 @@ function renderizarGraficoAgendamentos(dias, dados) {
     }
 }
 
-function formatarDataBr(dataStr) {
-    if (!dataStr) return '-';
-    try {
-        const data = new Date(dataStr + 'T00:00:00');
-        return data.toLocaleDateString('pt-BR');
-    } catch {
-        return dataStr;
-    }
-}
-
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -1890,6 +2066,31 @@ function abrirModalCliente() {
 }
 
 // ============================================
+// 🔥 FUNÇÃO PARA FORÇAR RECARREGAMENTO DA AGENDA
+// ============================================
+window.forcarRecarregarAgenda = function () {
+    console.log('🔥 FORÇANDO RECARREGAMENTO DA AGENDA...');
+    agendaInteligenteData = [];
+    agendaInteligenteCarregando = false;
+
+    // 🔥 FORÇAR LIMPEZA DO CONTAINER
+    const container = document.getElementById('agendaInteligenteContainer');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+                <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:32px;height:32px;"></div>
+                <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Atualizando agenda...</p>
+            </div>
+        `;
+    }
+
+    setTimeout(function () {
+        carregarAgendaInteligente();
+        console.log('✅ Agenda recarregada!');
+    }, 500);
+};
+
+// ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 window.carregarDashboard = carregarDashboard;
@@ -1905,9 +2106,10 @@ window.mudarAgendaSemana = mudarAgendaSemana;
 window.irAgendaHoje = irAgendaHoje;
 window.renderizarAgendaInteligente = renderizarAgendaInteligente;
 window.atualizarAgendaAposAgendamento = atualizarAgendaAposAgendamento;
+window.forcarRecarregarAgenda = window.forcarRecarregarAgenda;
 
 window.clientesList = window.clientesList || [];
 window.servicosList = window.servicosList || [];
 window.profissionaisList = window.profissionaisList || [];
 
-console.log('✅ dashboard.js carregado com TODAS AS MELHORIAS VISUAIS!');
+console.log('✅ dashboard.js carregado com TODAS AS MELHORIAS VISUAIS + CORREÇÃO DE TIMEZONE + RECARREGAMENTO DA AGENDA!');
