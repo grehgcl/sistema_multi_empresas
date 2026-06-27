@@ -1,4 +1,4 @@
-﻿// pages/dashboard.js - Versão Premium com Banner, Onboarding + AGENDA INTELIGENTE (EXPANDIDA) + VALIDAÇÃO DE HORÁRIOS PASSADOS
+﻿// pages/dashboard.js - Versão Premium com TODAS AS MELHORIAS VISUAIS
 let dashboardData = null;
 let chartInstance = null;
 
@@ -19,6 +19,21 @@ const coresPaleta = [
     '#00D2D3', '#1DD1A1', '#F368E0', '#FF9F43', '#EE5A24'
 ];
 
+// Ícones por horário
+const iconesHorarios = {
+    '08:00': '🌅', '08:30': '🌅',
+    '09:00': '☀️', '09:30': '☀️',
+    '10:00': '☀️', '10:30': '☀️',
+    '11:00': '☀️', '11:30': '☀️',
+    '12:00': '🍽️', '12:30': '🍽️',
+    '13:00': '🌤️', '13:30': '🌤️',
+    '14:00': '🌤️', '14:30': '🌤️',
+    '15:00': '🌤️', '15:30': '🌤️',
+    '16:00': '🌤️', '16:30': '🌤️',
+    '17:00': '🌆', '17:30': '🌆',
+    '18:00': '🌆'
+};
+
 async function carregarAgendaInteligente() {
     if (agendaInteligenteCarregando) return;
     agendaInteligenteCarregando = true;
@@ -37,7 +52,6 @@ async function carregarAgendaInteligente() {
 
         const profs = (await profissionaisRes.json()).data?.filter(p => p.ativo === 1) || [];
 
-        // Criar objeto do Dono como profissional
         const dono = {
             id: 'dono_' + (usuario.empresa_id || 0),
             nome: usuario.nome || 'Dono',
@@ -60,6 +74,7 @@ async function carregarAgendaInteligente() {
 
         agendaInteligenteData = (await agendamentosRes.json()).data || [];
 
+        agendaInteligenteDate = new Date();
         renderizarAgendaInteligente();
 
     } catch (error) {
@@ -79,13 +94,33 @@ async function carregarAgendaInteligente() {
     agendaInteligenteCarregando = false;
 }
 
+function isHorarioAlmoco(hora, almocoInicio, almocoFim) {
+    if (!almocoInicio || !almocoFim) return false;
+    return hora >= almocoInicio && hora < almocoFim;
+}
+
 function renderizarAgendaInteligente() {
     const container = document.getElementById('agendaInteligenteContainer');
     if (!container) return;
 
     // ============================================
-    // VERIFICAR SE TEM PROFISSIONAIS
+    // 🔥 USAR A DATA DO agendaInteligenteDate (NÃO FORÇAR HOJE)
     // ============================================
+    // Se não tiver data definida, usar hoje
+    if (!agendaInteligenteDate) {
+        agendaInteligenteDate = new Date();
+    }
+
+    // A data de início é a data que está em agendaInteligenteDate
+    const dataBase = new Date(agendaInteligenteDate);
+    const inicioSemana = new Date(dataBase);
+
+    // Ajustar para começar no dia atual da semana (não força o dia de hoje)
+    // Mas mantém a semana baseada na data selecionada
+
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().split('T')[0];
+
     if (!agendaInteligenteProfissionais || agendaInteligenteProfissionais.length === 0) {
         container.innerHTML = `
             <div style="text-align:center;padding:30px 10px;">
@@ -99,9 +134,6 @@ function renderizarAgendaInteligente() {
         return;
     }
 
-    // ============================================
-    // VERIFICAR SE TEM HORÁRIOS
-    // ============================================
     if (!agendaInteligenteHorarios || agendaInteligenteHorarios.length === 0) {
         container.innerHTML = `
             <div style="text-align:center;padding:30px 10px;">
@@ -116,14 +148,117 @@ function renderizarAgendaInteligente() {
     }
 
     // ============================================
-    // LEGENDA DE CORES - MELHORADA
+    // DIAS DA SEMANA - USANDO A DATA SELECIONADA
+    // ============================================
+    const dias = [];
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(inicioSemana);
+        d.setDate(inicioSemana.getDate() + i);
+        dias.push(d);
+    }
+
+    const agora = new Date();
+    const horaAtual = agora.getHours();
+    const minutoAtual = agora.getMinutes();
+
+    // ============================================
+    // BUSCAR CONFIGURAÇÃO DO DIA ATUAL
+    // ============================================
+    const diaSemanaHoje = hoje.getDay();
+    const horarioConfiguradoHoje = agendaInteligenteHorarios.find(h => h.dia_semana === diaSemanaHoje);
+
+    function gerarHorariosDoDiaConfig(horaInicio, horaFim, almocoInicio, almocoFim) {
+        const horarios = [];
+        if (!horaInicio || !horaFim) return horarios;
+
+        const [inicioH, inicioM] = horaInicio.split(':').map(Number);
+        const [fimH, fimM] = horaFim.split(':').map(Number);
+        const [almocoInicioH, almocoInicioM] = (almocoInicio || '12:00').split(':').map(Number);
+        const [almocoFimH, almocoFimM] = (almocoFim || '13:00').split(':').map(Number);
+        const intervalo = 30;
+
+        const inicioMin = inicioH * 60 + inicioM;
+        const fimMin = fimH * 60 + fimM;
+        const almocoInicioMin = almocoInicioH * 60 + almocoInicioM;
+        const almocoFimMin = almocoFimH * 60 + almocoFimM;
+
+        for (let minutos = inicioMin; minutos < fimMin; minutos += intervalo) {
+            if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
+                continue;
+            }
+            const h = Math.floor(minutos / 60);
+            const m = minutos % 60;
+            horarios.push(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
+        }
+        return horarios;
+    }
+
+    let horariosBase = [];
+    let horarioInicioPadrao = '08:00';
+    let horarioFimPadrao = '18:00';
+    let almocoInicioPadrao = '12:00';
+    let almocoFimPadrao = '13:00';
+
+    if (horarioConfiguradoHoje && horarioConfiguradoHoje.aberto === 1) {
+        horarioInicioPadrao = horarioConfiguradoHoje.hora_inicio || '08:00';
+        horarioFimPadrao = horarioConfiguradoHoje.hora_fim || '18:00';
+        almocoInicioPadrao = horarioConfiguradoHoje.almoco_inicio || '12:00';
+        almocoFimPadrao = horarioConfiguradoHoje.almoco_fim || '13:00';
+
+        horariosBase = gerarHorariosDoDiaConfig(
+            horarioInicioPadrao,
+            horarioFimPadrao,
+            almocoInicioPadrao,
+            almocoFimPadrao
+        );
+    }
+
+    if (horariosBase.length === 0) {
+        for (let h = 8; h <= 18; h++) {
+            const horaStr = String(h).padStart(2, '0') + ':00';
+            horariosBase.push(horaStr);
+            if (h < 18) {
+                horariosBase.push(String(h).padStart(2, '0') + ':30');
+            }
+        }
+    }
+
+    // ============================================
+    // ENCONTRAR O ÍNDICE DO HORÁRIO ATUAL
+    // ============================================
+    let horarioAtualIndex = 0;
+    const totalMinutosAtual = horaAtual * 60 + minutoAtual;
+
+    for (let i = 0; i < horariosBase.length; i++) {
+        const [h, m] = horariosBase[i].split(':').map(Number);
+        const totalMinutos = h * 60 + m;
+        if (totalMinutos >= totalMinutosAtual) {
+            horarioAtualIndex = i;
+            break;
+        }
+    }
+    if (horarioAtualIndex >= horariosBase.length - 2) {
+        horarioAtualIndex = Math.max(0, horariosBase.length - 5);
+    }
+
+    // ============================================
+    // BARRA DE PROGRESSO
+    // ============================================
+    const [inicioH, inicioM] = horarioInicioPadrao.split(':').map(Number);
+    const [fimH, fimM] = horarioFimPadrao.split(':').map(Number);
+    const totalMinutosDia = (fimH * 60 + fimM) - (inicioH * 60 + inicioM);
+    const minutosPassados = (horaAtual * 60 + minutoAtual) - (inicioH * 60 + inicioM);
+    const progressoDia = totalMinutosDia > 0 ? Math.max(0, Math.min(100, (minutosPassados / totalMinutosDia) * 100)) : 0;
+
+    // ============================================
+    // LEGENDA DE CORES
     // ============================================
     let html = `
-        <div style="margin-bottom:10px;">
+        <div style="margin-bottom:14px;">
             <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;">
                 <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
                     <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">👤 Profissionais:</span>
-                    ${agendaInteligenteProfissionais.slice(0, 5).map(p => {
+                    ${agendaInteligenteProfissionais.slice(0, 6).map(p => {
         const cor = agendaInteligenteCores[p.id] || '#666';
         const isDono = p.is_dono === true;
         return `
@@ -133,89 +268,81 @@ function renderizarAgendaInteligente() {
                             </span>
                         `;
     }).join('')}
-                    ${agendaInteligenteProfissionais.length > 5 ? `<span style="font-size:11px;color:var(--text-muted);">+${agendaInteligenteProfissionais.length - 5}</span>` : ''}
+                    ${agendaInteligenteProfissionais.length > 6 ? `<span style="font-size:11px;color:var(--text-muted);">+${agendaInteligenteProfissionais.length - 6}</span>` : ''}
                 </div>
                 <span style="font-size:10px;color:var(--text-muted);">
-                    <i class="fas fa-mouse-pointer"></i> Clique na bolinha para agendar
+                    <i class="fas fa-mouse-pointer"></i> Clique na bolinha 🟢
                 </span>
             </div>
-            <!-- LEGENDA MELHORADA -->
-            <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:10px;padding:6px 0;margin-top:4px;border-top:1px solid var(--border-color);">
-                <span style="display:flex;align-items:center;gap:4px;">
-                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#10b981;border:2px solid rgba(16,185,129,0.3);"></span>
+            
+            <div style="display:flex;flex-wrap:wrap;gap:14px;font-size:10px;padding:8px 0 4px;margin-top:4px;border-top:1px solid var(--border-color);">
+                <span style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(34,197,94,0.12),rgba(16,185,129,0.08));padding:2px 12px 2px 8px;border-radius:12px;border:1px solid rgba(34,197,94,0.2);">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#10b981);box-shadow:0 0 8px rgba(16,185,129,0.3);"></span>
                     <span style="color:var(--text-muted);">Disponível</span>
                 </span>
-                <span style="display:flex;align-items:center;gap:4px;">
-                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#ef4444;border:2px solid rgba(239,68,68,0.3);"></span>
+                <span style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(220,38,38,0.08));padding:2px 12px 2px 8px;border-radius:12px;border:1px solid rgba(239,68,68,0.2);">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 8px rgba(239,68,68,0.3);"></span>
                     <span style="color:var(--text-muted);">Ocupado</span>
                 </span>
-                <span style="display:flex;align-items:center;gap:4px;">
-                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#f59e0b;border:2px solid rgba(245,158,11,0.3);"></span>
+                <span style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(217,119,6,0.08));padding:2px 12px 2px 8px;border-radius:12px;border:1px solid rgba(245,158,11,0.2);">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 8px rgba(245,158,11,0.3);"></span>
                     <span style="color:var(--text-muted);">Almoço</span>
                 </span>
-                <span style="display:flex;align-items:center;gap:4px;">
-                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#6b7280;border:2px solid rgba(107,114,128,0.3);"></span>
+                <span style="display:flex;align-items:center;gap:5px;background:rgba(107,114,128,0.08);padding:2px 12px 2px 8px;border-radius:12px;border:1px solid rgba(107,114,128,0.2);">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;box-shadow:0 0 8px rgba(107,114,128,0.3);"></span>
                     <span style="color:var(--text-muted);">Fechado</span>
                 </span>
-                <span style="display:flex;align-items:center;gap:4px;border-left:1px solid var(--border-color);padding-left:12px;">
-                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#d4af37;border:2px solid #d4af37;"></span>
+                <span style="display:flex;align-items:center;gap:5px;background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(184,142,47,0.1));padding:2px 12px 2px 8px;border-radius:12px;border:1px solid rgba(212,175,55,0.3);">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,#d4af37,#b88e2f);box-shadow:0 0 8px rgba(212,175,55,0.3);"></span>
                     <span style="color:var(--text-muted);">👑 Dono</span>
                 </span>
-                <span style="display:flex;align-items:center;gap:4px;border-left:1px solid var(--border-color);padding-left:12px;">
-                    <span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:#6b7280;border:2px solid #6b7280;"></span>
+                <span style="display:flex;align-items:center;gap:5px;background:rgba(107,114,128,0.06);padding:2px 12px 2px 8px;border-radius:12px;border:1px dashed #6b7280;">
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#9ca3af;opacity:0.5;"></span>
                     <span style="color:var(--text-muted);">⏰ Passou</span>
                 </span>
+            </div>
+            
+            <div style="margin-top:6px;">
+                <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--text-muted);">
+                    <span>🌅 ${horarioInicioPadrao}</span>
+                    <span>⏳ ${Math.round(progressoDia)}% do dia</span>
+                    <span>🌆 ${horarioFimPadrao}</span>
+                </div>
+                <div style="height:3px;background:var(--bg-hover);border-radius:3px;overflow:hidden;margin-top:2px;">
+                    <div style="height:100%;width:${Math.min(progressoDia, 100)}%;background:linear-gradient(90deg,#667eea,#764ba2,transparent);border-radius:3px;transition:width 1s ease;"></div>
+                </div>
             </div>
         </div>
     `;
 
     // ============================================
-    // DIAS DA SEMANA
-    // ============================================
-    const dias = [];
-    const inicioSemana = new Date(agendaInteligenteDate);
-    inicioSemana.setDate(agendaInteligenteDate.getDate() - agendaInteligenteDate.getDay());
-
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(inicioSemana);
-        d.setDate(inicioSemana.getDate() + i);
-        dias.push(d);
-    }
-
-    const hoje = new Date().toISOString().split('T')[0];
-    const agora = new Date();
-
-    // ============================================
-    // GERAR HORÁRIOS COMPLETOS (08:00 às 18:00 com 30min)
-    // ============================================
-    const horariosBase = [];
-    for (let h = 8; h <= 18; h++) {
-        const horaStr = String(h).padStart(2, '0') + ':00';
-        horariosBase.push(horaStr);
-        if (h < 18) {
-            horariosBase.push(String(h).padStart(2, '0') + ':30');
-        }
-    }
-
-    // ============================================
-    // TABELA DO CALENDÁRIO - COM HORÁRIOS DESTACADOS
+    // TABELA DO CALENDÁRIO
     // ============================================
     html += `
-        <div style="overflow-x:auto;max-height:450px;overflow-y:auto;border-radius:8px;border:1px solid var(--border-color);">
-            <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:500px;">
+        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:500px;overflow-y:auto;border-radius:12px;border:1px solid var(--border-color);background:var(--bg-card);box-shadow:0 2px 12px rgba(0,0,0,0.04);position:relative;">
+            <table id="agendaTabela" style="width:100%;border-collapse:collapse;font-size:11px;min-width:550px;">
                 <thead>
                     <tr>
-                        <th style="padding:8px 8px;background:var(--bg-hover);text-align:center;font-weight:700;position:sticky;top:0;z-index:5;font-size:10px;min-width:55px;color:var(--text-muted);border-bottom:2px solid var(--border-color);">
-                            <i class="fas fa-clock"></i> Horário
+                        <th style="padding:10px 8px;background:var(--bg-hover);text-align:center;font-weight:700;position:sticky;top:0;z-index:10;font-size:10px;min-width:55px;color:var(--text-muted);border-bottom:2px solid var(--border-color);">
+                            <i class="fas fa-clock" style="font-size:12px;"></i>
                         </th>
                         ${dias.map(d => {
         const dataStr = d.toISOString().split('T')[0];
-        const isHoje = dataStr === hoje;
+        const isHoje = dataStr === hojeStr;
         const nomeDia = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
         const diaNum = d.getDate();
+        const mesNum = d.getMonth() + 1;
+        const isFimSemana = d.getDay() === 0 || d.getDay() === 6;
+        const mesStr = mesNum !== new Date(hoje).getMonth() + 1 ? `/${String(mesNum).padStart(2, '0')}` : '';
+
+        const agendamentosDia = agendaInteligenteData.filter(a => a.data === dataStr && a.status !== 'cancelado');
+        const totalAgendamentosDia = agendamentosDia.length;
+        const badgeAgendamentos = totalAgendamentosDia > 0 ?
+            `<span style="display:inline-block;font-size:7px;background:${isHoje ? 'rgba(255,255,255,0.25)' : 'var(--primary)'};color:${isHoje ? '#fff' : 'white'};padding:0px 6px;border-radius:8px;margin-left:2px;">${totalAgendamentosDia}</span>` : '';
+
         return `
-                            <th style="padding:8px 4px;
-                                       background:${isHoje ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'var(--bg-hover)'};
+                            <th style="padding:10px 4px;
+                                       background:${isHoje ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (isFimSemana ? 'var(--bg-hover)' : 'var(--bg-hover)')};
                                        color:${isHoje ? '#ffffff' : 'var(--text-secondary)'};
                                        text-align:center;
                                        font-weight:${isHoje ? '700' : '600'};
@@ -223,85 +350,103 @@ function renderizarAgendaInteligente() {
                                        top:0;
                                        z-index:5;
                                        font-size:10px;
-                                       min-width:60px;
+                                       min-width:65px;
                                        border-bottom:${isHoje ? '3px solid #ffffff' : '2px solid var(--border-color)'};
-                                       box-shadow:${isHoje ? '0 2px 12px rgba(102, 126, 234, 0.4)' : 'none'};
-                                       border-radius:${isHoje ? '8px 8px 0 0' : '0'};">
-                                ${nomeDia}
-                                <br>
-                                <span style="font-size:${isHoje ? '18px' : '14px'};font-weight:${isHoje ? '800' : '700'};display:block;margin-top:2px;${isHoje ? 'text-shadow: 0 1px 4px rgba(0,0,0,0.2);' : ''}">
-                                    ${diaNum}
+                                       box-shadow:${isHoje ? '0 2px 16px rgba(102, 126, 234, 0.35)' : 'none'};
+                                       border-radius:${isHoje ? '10px 10px 0 0' : '0'};
+                                       ${isFimSemana && !isHoje ? 'opacity:0.7;' : ''}
+                                       transition: all 0.3s ease;
+                                       cursor:default;">
+                                <span style="display:block;font-size:9px;font-weight:400;text-transform:uppercase;letter-spacing:0.5px;${isHoje ? 'opacity:0.9;' : ''}">
+                                    ${nomeDia}
                                 </span>
-                                ${isHoje ? `<span style="display:block;font-size:8px;margin-top:2px;opacity:0.9;">📌 HOJE</span>` : ''}
+                                <span style="font-size:${isHoje ? '20px' : '15px'};font-weight:${isHoje ? '800' : '700'};display:block;margin-top:1px;${isHoje ? 'text-shadow: 0 2px 8px rgba(0,0,0,0.2);' : ''}">
+                                    ${diaNum}${mesStr}
+                                </span>
+                                <div style="display:flex;align-items:center;justify-content:center;gap:3px;margin-top:1px;">
+                                    ${isHoje ? `<span style="font-size:7px;opacity:0.9;letter-spacing:1px;font-weight:600;">● HOJE</span>` : ''}
+                                    ${badgeAgendamentos}
+                                </div>
                             </th>
                         `;
     }).join('')}
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="agendaTbody">
     `;
 
-    for (let hora of horariosBase) {
-        // Destacar horário atual
-        const horaAtual = agora.getHours().toString().padStart(2, '0') + ':' + agora.getMinutes().toString().padStart(2, '0');
-        const isHorarioAtual = hora === horaAtual;
+    // ============================================
+    // RENDERIZAR HORÁRIOS
+    // ============================================
+    for (let idx = 0; idx < horariosBase.length; idx++) {
+        const hora = horariosBase[idx];
+        const isHorarioAtual = (idx === horarioAtualIndex);
+        const isAlmoco = hora >= almocoInicioPadrao && hora < almocoFimPadrao;
+        const isPassadoGlobal = idx < horarioAtualIndex;
 
-        // Verificar se é horário de almoço (12:00 às 13:00)
-        const isAlmoco = hora >= '12:00' && hora < '13:00';
+        const rowId = isHorarioAtual ? 'agenda-horario-atual' : '';
 
-        // Verificar se o horário já passou (global)
-        const [horaNum, minutoNum] = hora.split(':').map(Number);
-        const horaBase = new Date();
-        horaBase.setHours(horaNum, minutoNum, 0, 0);
-        const isPassadoGlobal = horaBase < agora;
+        let rowStyle = '';
+        if (isHorarioAtual) {
+            rowStyle = 'background:linear-gradient(90deg, rgba(102,126,234,0.12), rgba(118,75,162,0.08));border-left:4px solid #667eea;';
+        } else if (isPassadoGlobal) {
+            rowStyle = 'opacity:0.4;';
+        } else if (isAlmoco) {
+            rowStyle = 'background:rgba(245,158,11,0.04);';
+        }
 
-        html += `<tr style="${isHorarioAtual ? 'background:rgba(102,126,234,0.08);' : ''}">`;
+        html += `<tr id="${rowId}" style="${rowStyle}">`;
 
-        // 🔥 COLUNA DO HORÁRIO - COM ÍCONE E CORES FORTES
+        let horarioBg = 'var(--bg-hover)';
+        let horarioColor = 'var(--text-primary)';
+        let horarioFontSize = '12px';
+        let horarioFontWeight = '700';
+        let extraContent = '';
+
+        if (isHorarioAtual) {
+            horarioBg = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            horarioColor = '#ffffff';
+            horarioFontSize = '15px';
+            horarioFontWeight = '800';
+            extraContent = `
+                <span style="display:block;font-size:7px;background:rgba(255,255,255,0.2);padding:1px 10px;border-radius:10px;margin-top:1px;">● AGORA</span>
+            `;
+        } else if (isAlmoco) {
+            horarioBg = 'rgba(245,158,11,0.1)';
+            horarioColor = '#d97706';
+            extraContent = `<span style="font-size:14px;">🍽️</span>`;
+        } else if (isPassadoGlobal) {
+            horarioBg = 'rgba(107,114,128,0.06)';
+            horarioColor = '#6b7280';
+            extraContent = `<span style="font-size:10px;opacity:0.5;">⏰</span>`;
+        }
+
         html += `
         <td style="
-            padding: 10px 6px;
+            padding: 8px 6px;
             text-align: center;
-            border-bottom: 2px solid var(--border-color);
-            font-size: ${isHorarioAtual ? '15px' : '12px'};
-            font-weight: ${isHorarioAtual ? '800' : '700'};
-            color: ${isHorarioAtual ? '#ffffff' : (isAlmoco ? '#d97706' : (isPassadoGlobal ? '#6b7280' : 'var(--text-primary)'))};
-            background: ${isHorarioAtual ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (isAlmoco ? 'rgba(245,158,11,0.15)' : (isPassadoGlobal ? 'rgba(107,114,128,0.08)' : 'var(--bg-hover)'))};
+            border-bottom: 1px solid var(--border-color);
+            font-size: ${horarioFontSize};
+            font-weight: ${horarioFontWeight};
+            color: ${horarioColor};
+            background: ${horarioBg};
             white-space: nowrap;
-            border-right: 3px solid ${isHorarioAtual ? 'var(--primary)' : 'var(--border-color)'};
-            min-width: 70px;
+            border-right: 2px solid ${isHorarioAtual ? '#667eea' : 'var(--border-color)'};
+            min-width: 60px;
             position: sticky;
             left: 0;
             z-index: 3;
-            box-shadow: ${isHorarioAtual ? '0 2px 16px rgba(102,126,234,0.4)' : '2px 0 8px rgba(0,0,0,0.04)'};
-            ${isHorarioAtual ? 'border-radius: 6px 0 0 6px;' : ''}
+            box-shadow: ${isHorarioAtual ? '0 2px 16px rgba(102,126,234,0.3)' : '2px 0 8px rgba(0,0,0,0.03)'};
+            ${isHorarioAtual ? 'border-radius: 8px 0 0 8px;' : ''}
             transition: all 0.3s ease;
-            opacity: ${isPassadoGlobal && !isHorarioAtual ? '0.5' : '1'};
         ">
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
-                ${isHorarioAtual ? `
-                    <span style="font-size:10px;background:rgba(255,255,255,0.2);padding:1px 8px;border-radius:10px;color:white;font-weight:600;">
-                        ● AGORA
-                    </span>
-                ` : ''}
-                ${isAlmoco ? `
-                    <span style="font-size:14px;">🍽️</span>
-                ` : `
-                    <span style="font-size:10px;opacity:0.5;color:var(--text-muted);">
-                        <i class="fas fa-clock"></i>
-                    </span>
-                `}
-                <span style="font-size: ${isHorarioAtual ? '16px' : '13px'}; font-weight: ${isHorarioAtual ? '800' : '700'};">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 1px;">
+                ${extraContent}
+                <span style="font-size: ${isHorarioAtual ? '16px' : '12px'}; font-weight: ${isHorarioAtual ? '800' : '700'};">
                     ${hora}
                 </span>
-                ${isHorarioAtual ? `
-                    <span style="font-size:7px;opacity:0.8;color:white;margin-top:-2px;">horário atual</span>
-                ` : ''}
-                ${isAlmoco ? `
-                    <span style="font-size:7px;color:#d97706;font-weight:600;">ALMOÇO</span>
-                ` : ''}
                 ${isPassadoGlobal && !isHorarioAtual ? `
-                    <span style="font-size:7px;color:#6b7280;font-weight:600;">⏰ PASSOU</span>
+                    <span style="font-size:6px;color:#6b7280;font-weight:600;letter-spacing:0.5px;">PASSOU</span>
                 ` : ''}
             </div>
         </td>
@@ -309,14 +454,27 @@ function renderizarAgendaInteligente() {
 
         for (let d of dias) {
             const dataStr = d.toISOString().split('T')[0];
-            const isHoje = dataStr === hoje;
+            const isHoje = dataStr === hojeStr;
             const diaSemana = d.getDay();
             const horarioDia = agendaInteligenteHorarios.find(h => h.dia_semana === diaSemana);
 
             const estaAberto = horarioDia && horarioDia.aberto === 1;
-            const noAlmoco = estaAberto &&
-                hora >= (horarioDia?.almoco_inicio || '12:00') &&
-                hora < (horarioDia?.almoco_fim || '13:00');
+            const almocoInicioDia = horarioDia?.almoco_inicio || '12:00';
+            const almocoFimDia = horarioDia?.almoco_fim || '13:00';
+            const noAlmoco = estaAberto && isHorarioAlmoco(hora, almocoInicioDia, almocoFimDia);
+
+            let dentroExpediente = true;
+            if (estaAberto && horarioDia) {
+                const horaInicioDia = horarioDia.hora_inicio || '08:00';
+                const horaFimDia = horarioDia.hora_fim || '18:00';
+                const [hInicio, mInicio] = horaInicioDia.split(':').map(Number);
+                const [hFim, mFim] = horaFimDia.split(':').map(Number);
+                const [hAtual, mAtual] = hora.split(':').map(Number);
+                const minutosAtual = hAtual * 60 + mAtual;
+                const minutosInicio = hInicio * 60 + mInicio;
+                const minutosFim = hFim * 60 + mFim;
+                dentroExpediente = minutosAtual >= minutosInicio && minutosAtual < minutosFim;
+            }
 
             const agendamentosHora = agendaInteligenteData.filter(a =>
                 a.data === dataStr &&
@@ -324,46 +482,41 @@ function renderizarAgendaInteligente() {
                 a.status !== 'cancelado'
             );
 
-            // 🔥 IDENTIFICAR QUEM ESTÁ OCUPADO
             const ocupadosIds = agendamentosHora.map(a => a.profissional_id).filter(id => id !== null && id !== undefined);
             const temAgendamentoDono = agendamentosHora.some(a => a.profissional_id === null || a.profissional_id === '');
 
             let cellContent = '';
             let bgColor = 'transparent';
             let title = '';
+            let cellStyle = '';
 
-            // 🔥 DESTAQUE DO DIA ATUAL
             if (isHoje) {
                 bgColor = 'rgba(102, 126, 234, 0.04)';
             }
 
-            // 🔥🔥🔥 VERIFICAR SE A DATA JÁ PASSOU 🔥🔥🔥
             const dataObj = new Date(dataStr + 'T00:00:00');
             const hojeObj = new Date();
             hojeObj.setHours(0, 0, 0, 0);
             const dataPassou = dataObj < hojeObj;
 
-            // 🔥🔥🔥 VERIFICAR SE O HORÁRIO JÁ PASSOU (SE FOR HOJE) 🔥🔥🔥
-            const [horaNumCell, minutoNumCell] = hora.split(':').map(Number);
-            const dataHoraCell = new Date(dataObj);
-            dataHoraCell.setHours(horaNumCell, minutoNumCell, 0, 0);
-            const isPassado = dataHoraCell < agora;
+            const isPassado = isPassadoGlobal || dataPassou;
+            const isFuturo = !isPassado && !noAlmoco && estaAberto && dentroExpediente;
 
-            if (dataPassou || isPassado) {
-                // DATA OU HORÁRIO JÁ PASSOU - MOSTRAR INDISPONÍVEL
-                bgColor = isHoje ? 'rgba(107,114,128,0.06)' : 'rgba(107,114,128,0.04)';
-                cellContent = `<span style="color:#6b7280;font-size:16px;opacity:0.4;">⏰</span>`;
-                title = dataPassou ? 'Data já passou' : 'Horário já passou';
-            } else if (!estaAberto) {
-                bgColor = isHoje ? 'rgba(102, 126, 234, 0.04)' : 'rgba(107,114,128,0.04)';
+            if (!estaAberto || !dentroExpediente) {
+                bgColor = 'rgba(107,114,128,0.04)';
                 cellContent = `<span style="color:#9ca3af;font-size:14px;">—</span>`;
-                title = 'Fechado';
+                title = !estaAberto ? 'Fechado' : 'Fora do expediente';
+                cellStyle = 'opacity:0.4;';
+            } else if (dataPassou || isPassadoGlobal) {
+                bgColor = 'rgba(107,114,128,0.04)';
+                cellContent = `<span style="color:#9ca3af;font-size:14px;opacity:0.3;">⏰</span>`;
+                title = dataPassou ? 'Data já passou' : 'Horário já passou';
+                cellStyle = 'opacity:0.3;filter:grayscale(0.8);';
             } else if (noAlmoco) {
-                bgColor = isHoje ? 'rgba(102, 126, 234, 0.08)' : 'rgba(245,158,11,0.08)';
-                cellContent = `<span style="color:#d97706;font-size:18px;">🍽️</span>`;
+                bgColor = 'rgba(245,158,11,0.06)';
+                cellContent = `<span style="color:#d97706;font-size:16px;">🍽️</span>`;
                 title = 'Horário de almoço';
             } else {
-                // 🔥 VERIFICAR DISPONIBILIDADE DE CADA PROFISSIONAL
                 const profissionaisComStatus = agendaInteligenteProfissionais.map(p => {
                     let ocupado = false;
                     if (p.is_dono === true) {
@@ -377,83 +530,92 @@ function renderizarAgendaInteligente() {
                 const disponiveis = profissionaisComStatus.filter(p => !p.ocupado);
 
                 if (disponiveis.length === 0) {
-                    bgColor = isHoje ? 'rgba(102, 126, 234, 0.08)' : 'rgba(239,68,68,0.06)';
+                    bgColor = 'rgba(239,68,68,0.05)';
                     cellContent = `<span style="color:#ef4444;font-size:14px;font-weight:700;">🔴</span>`;
                     title = 'Todos os profissionais ocupados';
                 } else {
-                    // 🔥 MOSTRAR TODOS OS PROFISSIONAIS COM SEU STATUS
                     const todosProfissionais = profissionaisComStatus;
-                    const displayProfs = todosProfissionais.slice(0, 4);
-                    const mais = todosProfissionais.length > 4 ? ` +${todosProfissionais.length - 4}` : '';
+                    const qtdeProf = todosProfissionais.length;
+                    const tamanhoBolinha = qtdeProf <= 2 ? 30 : qtdeProf <= 4 ? 26 : 22;
+                    const displayProfs = todosProfissionais.slice(0, 6);
+                    const mais = todosProfissionais.length > 6 ? ` +${todosProfissionais.length - 6}` : '';
 
                     bgColor = isHoje ? 'rgba(102, 126, 234, 0.06)' : 'rgba(16,185,129,0.04)';
 
                     cellContent = `
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
-                            <div style="display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;">
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center;width:100%;">
                                 ${displayProfs.map(p => {
                         const isDono = p.is_dono === true;
                         const cor = agendaInteligenteCores[p.id] || '#666';
                         const isOcupado = p.ocupado;
+                        const avatar = p.nome.charAt(0).toUpperCase();
 
-                        // 🔥 TAMANHO DA BOLINHA
-                        const size = isOcupado ? '28px' : '22px';
-                        const fontSize = isOcupado ? '14px' : '10px';
+                        const size = isOcupado ? tamanhoBolinha + 4 : tamanhoBolinha;
                         const borderWidth = isOcupado ? '3px' : '2px';
                         const borderColor = isOcupado ? '#ef4444' : (isDono ? '#d4af37' : 'rgba(255,255,255,0.4)');
-                        const boxShadow = isOcupado ? '0 0 16px rgba(239,68,68,0.5)' : '0 0 8px rgba(16,185,129,0.3)';
-                        const opacidade = isOcupado ? '1' : '1';
-                        const cursor = (isOcupado || isPassado || dataPassou) ? 'not-allowed' : 'pointer';
-                        const statusText = isOcupado ? '🔴 Ocupado' : '✅ Disponível';
-                        const tooltipText = isDono ? `👑 ${p.nome} - ${hora} ${statusText}` : `${p.nome} - ${hora} ${statusText}`;
+                        const boxShadow = isOcupado ? '0 0 16px rgba(239,68,68,0.5)' : '0 0 12px rgba(16,185,129,0.3)';
+                        const cursor = isOcupado ? 'not-allowed' : 'pointer';
+                        const statusText = isOcupado ? '🔴 Ocupado' : '🟢 Disponível';
 
-                        // 🔥🔥🔥 SE FOR PASSADO, NÃO PERMITE CLIQUE 🔥🔥🔥
-                        const isIndisponivel = isOcupado || isPassado || dataPassou;
+                        const isIndisponivel = isOcupado || isPassado;
                         const onClick = isIndisponivel ? '' : `event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')`;
 
                         return `
-                                        <div style="position:relative;display:inline-block;cursor:${cursor};${isIndisponivel ? 'filter: grayscale(0.5);opacity:0.4;' : ''}" 
-                                             title="${isPassado || dataPassou ? '⏰ Horário já passou' : tooltipText}"
+                                        <div style="position:relative;display:inline-flex;flex-direction:column;align-items:center;cursor:${cursor};${isIndisponivel ? 'filter: grayscale(0.6);opacity:0.4;' : ''}" 
+                                             title="${isPassado ? '⏰ Horário já passou' : ''}"
                                              onclick="${onClick}">
-                                            <span style="display:inline-block;
-                                                         width:${size};
-                                                         height:${size};
-                                                         border-radius:50%;
-                                                         background:${isPassado || dataPassou ? '#6b7280' : (isOcupado ? '#ef4444' : cor)};
-                                                         border:${borderWidth} solid ${isPassado || dataPassou ? '#6b7280' : borderColor};
-                                                         box-shadow: ${isPassado || dataPassou ? 'none' : boxShadow};
-                                                         transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-                                                         position:relative;
-                                                         ${isOcupado && !isPassado ? 'animation: pulseRed 1.5s infinite;' : ''}
-                                                         opacity:${opacidade};"
-                                                  ${!isIndisponivel ? `
-                                                      onmouseover="this.style.transform='scale(1.25)';this.style.boxShadow='0 0 20px ${cor}'"
-                                                      onmouseout="this.style.transform='scale(1)';this.style.boxShadow='${boxShadow}'"
-                                                  ` : ''}
-                                                  >
-                                                ${isDono ? `<span style="position:absolute;top:-4px;right:-4px;font-size:${isOcupado ? '12px' : '10px'};">👑</span>` : ''}
-                                                ${isPassado || dataPassou ? `
-                                                    <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;color:white;font-weight:700;">⏰</span>
-                                                ` : (isOcupado ? `
-                                                    <span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:${fontSize};color:white;font-weight:700;">✕</span>
-                                                ` : `
-                                                    <span style="position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;background:#10b981;border-radius:50%;border:1px solid white;box-shadow:0 0 4px rgba(16,185,129,0.5);"></span>
-                                                `)}
+                                            <div style="position:relative;">
+                                                <span style="display:flex;
+                                                             width:${size}px;
+                                                             height:${size}px;
+                                                             border-radius:50%;
+                                                             background:${isPassado ? '#9ca3af' : (isOcupado ? 'linear-gradient(135deg,#ef4444,#dc2626)' : `linear-gradient(135deg,${cor},${cor}dd)`)};
+                                                             border:${borderWidth} solid ${isPassado ? '#9ca3af' : borderColor};
+                                                             box-shadow: ${isPassado ? 'none' : boxShadow};
+                                                             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                                                             position:relative;
+                                                             ${isOcupado && !isPassado ? 'animation: pulseRed 1.5s infinite;' : ''}
+                                                             ${!isIndisponivel ? 'cursor:pointer;' : ''}
+                                                             align-items:center;
+                                                             justify-content:center;
+                                                             color:white;
+                                                             font-weight:700;
+                                                             font-size:${size * 0.4}px;
+                                                             text-shadow:0 1px 3px rgba(0,0,0,0.2);"
+                                                      ${!isIndisponivel ? `
+                                                          onmouseover="this.style.transform='scale(1.2)';this.style.boxShadow='0 0 32px ${cor}'"
+                                                          onmouseout="this.style.transform='scale(1)';this.style.boxShadow='${boxShadow}'"
+                                                      ` : ''}
+                                                      >
+                                                    ${isPassado ? '⏰' : (isOcupado ? '✕' : avatar)}
+                                                </span>
+                                                ${isDono ? `<span style="position:absolute;top:-6px;right:-6px;font-size:${size * 0.35}px;text-shadow:0 0 4px rgba(0,0,0,0.3);">👑</span>` : ''}
+                                                ${isOcupado && !isPassado ? `
+                                                    <span style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(239,68,68,0.5);"></span>
+                                                ` : ''}
+                                                ${!isOcupado && !isPassado ? `
+                                                    <span style="position:absolute;bottom:-4px;right:-4px;width:8px;height:8px;background:#22c55e;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(34,197,94,0.5);animation:pulse-green 2s infinite;"></span>
+                                                ` : ''}
+                                            </div>
+                                            <span style="font-size:6px;color:var(--text-muted);margin-top:2px;max-width:32px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${isOcupado ? 'color:#ef4444;' : ''}">
+                                                ${p.nome.length > 6 ? p.nome.substring(0, 5) + '…' : p.nome}
                                             </span>
                                             ${isIndisponivel ? `
-                                                <span style="position:absolute;bottom:-18px;left:50%;transform:translateX(-50%);font-size:7px;color:#6b7280;white-space:nowrap;font-weight:600;">
-                                                    ${isPassado || dataPassou ? '⏰ passou' : '🔴 ocupado'}
+                                                <span style="position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);font-size:6px;color:#6b7280;white-space:nowrap;font-weight:600;">
+                                                    ${isPassado ? '⏰' : '🔴'}
                                                 </span>
                                             ` : ''}
                                         </div>
                                     `;
                     }).join('')}
-                                ${mais}
+                                ${mais ? `<span style="font-size:8px;color:var(--text-muted);font-weight:600;">${mais}</span>` : ''}
                             </div>
                             ${todosProfissionais.length > 1 ? `
-                                <span style="font-size:7px;color:var(--text-muted);opacity:0.6;">
-                                    ${disponiveis.length}/${todosProfissionais.length} disponíveis
-                                </span>
+                                <div style="display:flex;gap:8px;font-size:6px;color:var(--text-muted);opacity:0.6;margin-top:1px;background:var(--bg-hover);padding:1px 10px;border-radius:10px;">
+                                    <span>🟢 ${disponiveis.length} livre</span>
+                                    <span>🔴 ${todosProfissionais.length - disponiveis.length} ocupado</span>
+                                </div>
                             ` : ''}
                         </div>
                     `;
@@ -461,10 +623,9 @@ function renderizarAgendaInteligente() {
                 }
             }
 
-            // 🔥 BORDA PARA DESTACAR O DIA ATUAL
-            const borderStyle = isHoje ? 'border-left:2px solid var(--primary);border-right:2px solid var(--primary);' : '';
-            const borderTop = isHoje && hora === horariosBase[0] ? 'border-top:2px solid var(--primary);' : '';
-            const borderBottom = isHoje && hora === horariosBase[horariosBase.length - 1] ? 'border-bottom:2px solid var(--primary);' : '';
+            const borderStyle = isHoje ? 'border-left:2px solid rgba(102,126,234,0.3);border-right:2px solid rgba(102,126,234,0.3);' : '';
+            const borderTop = isHoje && hora === horariosBase[0] ? 'border-top:2px solid rgba(102,126,234,0.3);' : '';
+            const borderBottom = isHoje && hora === horariosBase[horariosBase.length - 1] ? 'border-bottom:2px solid rgba(102,126,234,0.3);' : '';
 
             html += `
                 <td style="padding:4px 3px;
@@ -472,17 +633,18 @@ function renderizarAgendaInteligente() {
                            background:${bgColor};
                            text-align:center;
                            font-size:9px;
-                           min-height:38px;
+                           min-height:42px;
                            vertical-align:middle;
                            ${borderStyle}
                            ${borderTop}
                            ${borderBottom}
                            ${isHoje ? 'position:relative;' : ''}
-                           ${(isPassado || dataPassou) ? 'opacity:0.5;' : ''}
+                           ${cellStyle}
+                           transition: background 0.2s ease;
                            " 
                     title="${title}">
-                    ${isHoje && !cellContent.includes('—') && !cellContent.includes('🍽️') && !cellContent.includes('🔴') && !cellContent.includes('⏰') ? `
-                        <div style="position:absolute;top:0;left:0;right:0;bottom:0;border:1px solid rgba(102,126,234,0.15);border-radius:4px;pointer-events:none;"></div>
+                    ${isHoje && isFuturo && !cellContent.includes('—') && !cellContent.includes('🍽️') && !cellContent.includes('🔴') && !cellContent.includes('⏰') ? `
+                        <div style="position:absolute;top:0;left:0;right:0;bottom:0;border:1px solid rgba(102,126,234,0.08);border-radius:6px;pointer-events:none;"></div>
                     ` : ''}
                     ${cellContent}
                 </td>
@@ -495,59 +657,107 @@ function renderizarAgendaInteligente() {
     html += `
                 </tbody>
             </table>
+            
+            <div style="position:sticky;bottom:0;height:20px;background:linear-gradient(transparent,var(--bg-card));pointer-events:none;border-radius:0 0 12px 12px;"></div>
         </div>
     `;
 
     // ============================================
-    // NAVEGAÇÃO - MELHORADA
+    // NAVEGAÇÃO
     // ============================================
     html += `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 4px 0;border-top:1px solid var(--border-color);margin-top:10px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;gap:6px;">
-            <div style="display:flex;gap:4px;align-items:center;">
-                <button onclick="mudarAgendaSemana(-1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:6px 12px;color:var(--text-secondary);font-size:12px;transition:all 0.2s;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 4px 0;border-top:1px solid var(--border-color);margin-top:12px;font-size:11px;color:var(--text-muted);flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;gap:6px;align-items:center;">
+                <button onclick="mudarAgendaSemana(-7)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;padding:6px 14px;color:var(--text-secondary);font-size:13px;transition:all 0.2s;">
+                    ◀◀
+                </button>
+                <button onclick="mudarAgendaSemana(-1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;padding:6px 14px;color:var(--text-secondary);font-size:13px;transition:all 0.2s;">
                     ◀
                 </button>
-                <span style="font-weight:600;color:var(--text-primary);font-size:13px;background:var(--bg-hover);padding:4px 14px;border-radius:6px;">
+                <span style="font-weight:600;color:var(--text-primary);font-size:13px;background:linear-gradient(135deg,var(--bg-hover),var(--bg-card));padding:6px 18px;border-radius:8px;border:1px solid var(--border-color);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
                     📅 ${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })} - 
                     ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>
-                <button onclick="mudarAgendaSemana(1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:6px 12px;color:var(--text-secondary);font-size:12px;transition:all 0.2s;">
+                <button onclick="mudarAgendaSemana(1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;padding:6px 14px;color:var(--text-secondary);font-size:13px;transition:all 0.2s;">
                     ▶
                 </button>
-                <button onclick="irAgendaHoje()" style="background:var(--gradient-primary);border:none;border-radius:6px;cursor:pointer;padding:6px 16px;color:white;font-size:11px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 8px rgba(102,126,234,0.3);">
+                <button onclick="mudarAgendaSemana(7)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:8px;cursor:pointer;padding:6px 14px;color:var(--text-secondary);font-size:13px;transition:all 0.2s;">
+                    ▶▶
+                </button>
+                <button onclick="irAgendaHoje()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:8px;cursor:pointer;padding:6px 16px;color:white;font-size:11px;font-weight:600;transition:all 0.2s;box-shadow:0 2px 12px rgba(102,126,234,0.3);">
                     📌 Hoje
                 </button>
             </div>
-            <div style="display:flex;gap:10px;font-size:9px;flex-wrap:wrap;">
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#10b981;"></span>
-                    Disponível
+            <div style="display:flex;gap:8px;font-size:9px;flex-wrap:wrap;">
+                <span style="display:flex;align-items:center;gap:4px;background:var(--bg-hover);padding:3px 12px;border-radius:14px;border:1px solid rgba(34,197,94,0.2);">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#10b981);box-shadow:0 0 4px rgba(16,185,129,0.3);"></span>
+                    Livre
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;"></span>
+                <span style="display:flex;align-items:center;gap:4px;background:var(--bg-hover);padding:3px 12px;border-radius:14px;border:1px solid rgba(239,68,68,0.2);">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 0 4px rgba(239,68,68,0.3);"></span>
                     Ocupado
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#f59e0b;"></span>
+                <span style="display:flex;align-items:center;gap:4px;background:var(--bg-hover);padding:3px 12px;border-radius:14px;border:1px solid rgba(245,158,11,0.2);">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);box-shadow:0 0 4px rgba(245,158,11,0.3);"></span>
                     Almoço
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;"></span>
+                <span style="display:flex;align-items:center;gap:4px;background:var(--bg-hover);padding:3px 12px;border-radius:14px;border:1px solid rgba(107,114,128,0.2);">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;"></span>
                     Fechado
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;border:1px solid var(--primary);">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--primary);"></span>
+                <span style="display:flex;align-items:center;gap:4px;background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(118,75,162,0.1));padding:3px 12px;border-radius:14px;border:1px solid rgba(102,126,234,0.3);">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:3px;background:linear-gradient(135deg,#667eea,#764ba2);"></span>
                     Hoje
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;border:1px solid #6b7280;">
-                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#6b7280;"></span>
-                    ⏰ Passou
+                <span style="display:flex;align-items:center;gap:4px;background:var(--bg-hover);padding:3px 12px;border-radius:14px;border:1px dashed #6b7280;opacity:0.6;">
+                    <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#9ca3af;"></span>
+                    ⏰
                 </span>
             </div>
         </div>
     `;
 
     container.innerHTML = html;
+
+    // ============================================
+    // SCROLL PARA O HORÁRIO ATUAL (se estiver na semana atual)
+    // ============================================
+    setTimeout(() => {
+        const wrapper = document.getElementById('agendaScrollWrapper');
+        if (!wrapper) return;
+
+        const rows = wrapper.querySelectorAll('tbody tr');
+        let targetIndex = -1;
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (row.id === 'agenda-horario-atual' || row.textContent.includes('● AGORA')) {
+                targetIndex = i;
+                break;
+            }
+        }
+
+        if (targetIndex === -1) {
+            for (let i = 0; i < rows.length; i++) {
+                const text = rows[i].textContent;
+                if (!text.includes('PASSOU') && !text.includes('⏰') && !text.includes('🍽️') && text.includes(':')) {
+                    targetIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (targetIndex !== -1) {
+            const rowHeight = rows[targetIndex]?.offsetHeight || 40;
+            const wrapperHeight = wrapper.clientHeight;
+            const targetPosition = (targetIndex * rowHeight) - (wrapperHeight / 2) + (rowHeight / 2);
+
+            wrapper.scrollTo({
+                top: Math.max(0, targetPosition),
+                behavior: 'smooth'
+            });
+        }
+    }, 500);
 }
 
 // ============================================
@@ -555,7 +765,7 @@ function renderizarAgendaInteligente() {
 // ============================================
 
 function mudarAgendaSemana(direcao) {
-    agendaInteligenteDate.setDate(agendaInteligenteDate.getDate() + (direcao * 7));
+    agendaInteligenteDate.setDate(agendaInteligenteDate.getDate() + direcao);
     renderizarAgendaInteligente();
 }
 
@@ -564,14 +774,8 @@ function irAgendaHoje() {
     renderizarAgendaInteligente();
 }
 
-// ============================================
-// 🔥 ATUALIZAR AGENDA APÓS AGENDAMENTO
-// ============================================
-
 function atualizarAgendaAposAgendamento() {
     console.log('🔄 Atualizando agenda após agendamento...');
-
-    // Pequeno delay para garantir que o agendamento foi salvo
     setTimeout(() => {
         agendaInteligenteData = [];
         agendaInteligenteCarregando = false;
@@ -580,11 +784,10 @@ function atualizarAgendaAposAgendamento() {
 }
 
 // ============================================
-// ABRIR AGENDAMENTO - DIRETO PELA BOLINHA (VERSÃO COMPLETA E ESTÁVEL)
+// ABRIR AGENDAMENTO - DIRETO PELA BOLINHA
 // ============================================
 
 function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
-    // 🔥🔥🔥 VALIDAÇÃO FRONTEND: Verificar se data/hora não é passada 🔥🔥🔥
     const agora = new Date();
     const [ano, mes, dia] = data.split('-').map(Number);
     const [horaNum, minutoNum] = hora.split(':').map(Number);
@@ -605,8 +808,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
         try {
             const token = localStorage.getItem('token');
 
-            console.log('🔄 Carregando dados para o modal...');
-
             const [clientesRes, servicosRes, profissionaisRes] = await Promise.all([
                 fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
                 fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -619,21 +820,18 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 
             if (clientesData.success) {
                 window.clientesList = clientesData.data || [];
-                console.log(`✅ ${window.clientesList.length} clientes carregados`);
             } else {
                 window.clientesList = [];
             }
 
             if (servicosData.success) {
                 window.servicosList = servicosData.data || [];
-                console.log(`✅ ${window.servicosList.length} serviços carregados`);
             } else {
                 window.servicosList = [];
             }
 
             if (profissionaisData.success) {
                 window.profissionaisList = profissionaisData.data || [];
-                console.log(`✅ ${window.profissionaisList.length} profissionais carregados`);
             } else {
                 window.profissionaisList = [];
             }
@@ -644,16 +842,12 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 return;
             }
 
-            console.log('🔄 Abrindo modal de agendamento...');
             abrirModalAgendamentoDono();
 
             function preencherModalCompleto() {
-                console.log('📝 Preenchendo modal completo...');
-
                 const dataInput = document.getElementById('dataAgendamentoDono');
                 if (dataInput) {
                     dataInput.value = data;
-                    console.log(`✅ Data preenchida: ${data}`);
                     if (typeof dataInput.dispatchEvent === 'function') {
                         dataInput.dispatchEvent(new Event('change'));
                     }
@@ -668,7 +862,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                                 profSelect.innerHTML += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
                             }
                         });
-                        console.log(`✅ Profissionais recarregados: ${window.profissionaisList.length}`);
                     }
 
                     if (isDono) {
@@ -678,7 +871,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         for (let opt of profSelect.options) {
                             if (opt.value == profissionalId) {
                                 profSelect.value = profissionalId;
-                                console.log(`✅ Profissional ${profissionalId} selecionado`);
                                 break;
                             }
                         }
@@ -692,7 +884,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         window.clientesList.forEach(c => {
                             clienteSelect.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
                         });
-                        console.log(`✅ Clientes recarregados: ${window.clientesList.length}`);
                     }
                 }
 
@@ -703,7 +894,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         window.servicosList.forEach(s => {
                             servicoSelect.innerHTML += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}">${s.nome} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`;
                         });
-                        console.log(`✅ Serviços recarregados: ${window.servicosList.length}`);
                     }
                 }
 
@@ -714,7 +904,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     for (let opt of horaSelect.options) {
                         if (opt.value === hora) {
                             horaSelect.value = hora;
-                            console.log(`✅ Horário ${hora} selecionado`);
                             return true;
                         }
                     }
@@ -730,7 +919,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         newOption.textContent = hora;
                         horaSelect.appendChild(newOption);
                         horaSelect.value = hora;
-                        console.log(`✅ Horário ${hora} adicionado manualmente`);
                         return true;
                     }
 
@@ -753,7 +941,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 if (dataInput || tentativa >= maxTentativas) {
                     preencherModalCompleto();
                 } else {
-                    console.log(`⏳ Aguardando modal... (${tentativa + 1}/${maxTentativas})`);
                     setTimeout(() => aguardarModal(tentativa + 1), 200);
                 }
             }
@@ -771,14 +958,12 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 }
 
 // ============================================
-// FUNÇÃO AUXILIAR: FORMATAR MOEDA (CORRIGIDA)
+// FUNÇÃO AUXILIAR: FORMATAR MOEDA
 // ============================================
 function formatarMoeda(valor) {
-    // Verificar se valor é válido
     if (valor === undefined || valor === null || isNaN(valor)) {
         return '0,00';
     }
-    // Converter para número e formatar
     const num = parseFloat(valor);
     if (isNaN(num)) {
         return '0,00';
@@ -787,7 +972,7 @@ function formatarMoeda(valor) {
 }
 
 // ============================================
-// FUNÇÃO PRINCIPAL
+// FUNÇÃO PRINCIPAL - CARREGAR DASHBOARD
 // ============================================
 
 async function carregarDashboard() {
@@ -821,7 +1006,7 @@ async function carregarDashboard() {
 }
 
 // ============================================
-// DASHBOARD DO DONO - SEM AÇÕES RÁPIDAS, COM AGENDA EXPANDIDA
+// DASHBOARD DO DONO
 // ============================================
 async function carregarDashboardDono() {
     const token = localStorage.getItem('token');
@@ -882,11 +1067,10 @@ async function carregarDashboardDono() {
     }
 
     // ============================================
-    // CÁLCULOS - CORRIGIDOS
+    // CÁLCULOS
     // ============================================
     const totais = financeiro.totais || {};
 
-    // Garantir que os valores sejam números
     const faturamentoBruto = parseFloat(totais.faturamento_bruto) || 0;
     const totalComissoes = parseFloat(totais.total_comissoes) || 0;
     const faturamentoLiquido = parseFloat(totais.faturamento_liquido) || 0;
@@ -900,7 +1084,6 @@ async function carregarDashboardDono() {
     const dataAtual = new Date();
     const primeiroDiaMes = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1).toISOString().split('T')[0];
 
-    // Calcular faturamento do mês diretamente dos agendamentos
     const faturamentoMes = agendamentos.filter(a =>
         a.status === 'concluido' && a.data >= primeiroDiaMes
     ).reduce((sum, a) => {
@@ -908,7 +1091,6 @@ async function carregarDashboardDono() {
         return sum + valor;
     }, 0);
 
-    // Calcular ticket médio
     let ticketMedio = 0;
     if (concluidos.length > 0) {
         const total = concluidos.reduce((sum, a) => {
@@ -970,288 +1152,269 @@ async function carregarDashboardDono() {
     const nomeUsuario = usuarioAtual?.nome || 'Usuário';
 
     // ============================================
-    // HTML DO DASHBOARD - SEM AÇÕES RÁPIDAS, AGENDA EXPANDIDA
+    // HTML DO DASHBOARD
     // ============================================
     const html = `
         <div class="fade-in">
             ${mostrarAvisoTrial ? `
-                <div class="trial-banner">
-                    <div class="trial-content">
-                        <span>${mensagemTrial}</span>
-                        <button onclick="carregarPlanos()" class="btn-upgrade">Fazer upgrade →</button>
+                <div class="trial-banner" style="background:linear-gradient(135deg,#f59e0b,#d97706);padding:10px 20px;border-radius:12px;margin-bottom:16px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <span style="color:white;font-weight:600;font-size:14px;">${mensagemTrial}</span>
+                        <button onclick="carregarPlanos()" style="background:white;border:none;padding:6px 16px;border-radius:8px;font-weight:600;color:#d97706;cursor:pointer;">Fazer upgrade →</button>
                     </div>
                 </div>
             ` : ''}
             
             <!-- BANNER DE BOAS-VINDAS -->
-            <div class="welcome-banner">
-                <div class="welcome-content">
+            <div class="welcome-banner" style="background:linear-gradient(135deg,var(--bg-card),var(--bg-hover));border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
                     <div>
-                        <h2>👋 Olá, ${nomeUsuario}!</h2>
-                        <p>Bem-vindo ao See&Agende. Aqui está o resumo do seu negócio hoje.</p>
-                        <div class="welcome-tips">
-                            <i class="fas fa-lightbulb"></i> 
+                        <h2 style="font-size:20px;margin:0;display:flex;align-items:center;gap:8px;">👋 Olá, ${nomeUsuario}!</h2>
+                        <p style="margin:4px 0 0;color:var(--text-muted);font-size:14px;">Bem-vindo ao See&Agende. Aqui está o resumo do seu negócio hoje.</p>
+                        <div style="margin-top:6px;font-size:13px;color:var(--text-secondary);background:rgba(102,126,234,0.08);padding:4px 12px;border-radius:8px;display:inline-block;">
+                            <i class="fas fa-lightbulb" style="color:var(--primary);"></i> 
                             ${isNewUser ?
             '💡 Dica: Comece cadastrando seus serviços!' :
             '💡 Dica: Use a <strong>Agenda Inteligente</strong> abaixo para agendar rapidamente clicando nas bolinhas coloridas dos profissionais disponíveis.'}
                         </div>
                     </div>
-                    <div class="welcome-date">
-                        <span class="day">${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
-                        <span class="date">${dataAtual.toLocaleDateString('pt-BR')}</span>
+                    <div style="text-align:right;">
+                        <span style="display:block;font-weight:600;font-size:14px;color:var(--text-primary);">${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
+                        <span style="display:block;font-size:12px;color:var(--text-muted);">${dataAtual.toLocaleDateString('pt-BR')}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- ============================================ -->
-            <!-- AGENDA INTELIGENTE - EXPANDIDA (SEM AÇÕES RÁPIDAS) -->
-            <!-- ============================================ -->
-            <div class="card" style="padding: 14px 18px;">
-                <div class="card-header" style="margin-bottom: 6px;">
-                    <h3 style="font-size: 16px; margin:0;">
-                        <i class="fas fa-calendar-alt" style="color:var(--primary);"></i> 
+            <!-- AGENDA INTELIGENTE -->
+            <div class="card" style="padding: 16px 20px;background:var(--bg-card);border-radius:16px;border:1px solid var(--border-color);box-shadow:0 4px 24px rgba(0,0,0,0.04);margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <h3 style="font-size:17px; margin:0;display:flex;align-items:center;gap:10px;">
+                        <i class="fas fa-calendar-alt" style="color:var(--primary);font-size:20px;"></i> 
                         Agenda Inteligente
-                        <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:8px;">
-                            <i class="fas fa-info-circle"></i> Clique na bolinha 🟢 para agendar
+                        <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;background:var(--bg-hover);padding:2px 12px;border-radius:12px;border:1px solid var(--border-color);">
+                            <i class="fas fa-info-circle"></i> Clique 🟢
                         </span>
                     </h3>
-                    <button class="btn btn-sm btn-primary" onclick="carregarAgendamentos()" style="padding:3px 14px;font-size:11px;">
-                        <i class="fas fa-expand"></i> Ver Todos os Agendamentos
+                    <button onclick="carregarAgendamentos()" style="background:var(--primary);border:none;padding:5px 18px;border-radius:10px;color:white;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 8px rgba(102,126,234,0.3);">
+                        <i class="fas fa-expand"></i> Ver Todos
                     </button>
                 </div>
                 <div id="agendaInteligenteContainer">
-                    <div style="text-align:center;padding:20px;">
-                        <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:30px;height:30px;"></div>
-                        <p style="margin-top:8px;font-size:13px;color:var(--text-muted);">Carregando agenda...</p>
+                    <div style="text-align:center;padding:30px;">
+                        <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:32px;height:32px;"></div>
+                        <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Carregando agenda...</p>
                     </div>
                 </div>
             </div>
             
             <!-- ONBOARDING PARA NOVOS USUÁRIOS -->
             ${isNewUser ? `
-                <div class="onboarding-card">
-                    <div class="onboarding-content">
-                        <i class="fas fa-rocket"></i>
-                        <h3>🚀 Comece aqui!</h3>
-                        <p>Parece que você ainda não tem agendamentos. Vamos te ajudar a começar:</p>
-                        <div class="onboarding-steps">
-                            <div class="step">
-                                <span class="step-number">1</span>
-                                <span>Cadastre seus <strong>serviços</strong></span>
-                            </div>
-                            <div class="step">
-                                <span class="step-number">2</span>
-                                <span>Adicione seus <strong>profissionais</strong></span>
-                            </div>
-                            <div class="step">
-                                <span class="step-number">3</span>
-                                <span>Crie seu primeiro <strong>agendamento</strong> pela Agenda Inteligente</span>
+                <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid rgba(102,126,234,0.15);">
+                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                        <i class="fas fa-rocket" style="font-size:32px;color:var(--primary);"></i>
+                        <div style="flex:1;">
+                            <h3 style="margin:0 0 4px;font-size:16px;">🚀 Comece aqui!</h3>
+                            <p style="margin:0 0 8px;color:var(--text-muted);font-size:13px;">Parece que você ainda não tem agendamentos. Vamos te ajudar a começar:</p>
+                            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+                                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">1</span> Cadastre seus <strong>serviços</strong></span>
+                                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span> Adicione seus <strong>profissionais</strong></span>
+                                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">3</span> Crie seu primeiro <strong>agendamento</strong></span>
                             </div>
                         </div>
-                        <button class="btn btn-primary" onclick="carregarServicos()">
-                            <i class="fas fa-arrow-right"></i> Começar Agora
+                        <button onclick="carregarServicos()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;padding:8px 20px;border-radius:10px;color:white;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 12px rgba(102,126,234,0.3);">
+                            <i class="fas fa-arrow-right"></i> Começar
                         </button>
                     </div>
                 </div>
             ` : ''}
             
             <!-- Cards Principais - Linha 1 -->
-            <div class="card-grid">
-                <div class="stat-card premium">
-                    <div class="stat-icon">💰</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${formatarMoeda(faturamentoMes)}</div>
-                        <div class="stat-label">Faturamento do Mês</div>
-                        <div class="stat-trend ${variacaoClasse}">
-                            <i class="fas ${variacaoIcone}"></i> ${variacaoSinal}${variacaoPercentual}% vs mês anterior
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
+                <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:12px;padding:16px 20px;border:1px solid rgba(102,126,234,0.1);">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:24px;">💰</span>
+                        <div>
+                            <div style="font-size:20px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoMes)}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">Faturamento do Mês</div>
+                            <div style="font-size:11px;color:${variacaoPercentual >= 0 ? '#22c55e' : '#ef4444'};display:flex;align-items:center;gap:4px;">
+                                <i class="fas ${variacaoIcone}"></i> ${variacaoSinal}${variacaoPercentual}%
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon purple">✂️</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${agendamentos.length}</div>
-                        <div class="stat-label">Total de Atendimentos</div>
-                        <div class="stat-sub">
-                            <span class="text-success">${concluidos.length} concluídos</span>
-                            ${pendentes.length > 0 ? ` · <span class="text-warning">${pendentes.length} pendentes</span>` : ''}
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:24px;">✂️</span>
+                        <div>
+                            <div style="font-size:20px;font-weight:700;color:var(--text-primary);">${agendamentos.length}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">Total Atendimentos</div>
+                            <div style="font-size:11px;display:flex;gap:8px;color:var(--text-muted);">
+                                <span style="color:#22c55e;">${concluidos.length} ✅</span>
+                                ${pendentes.length > 0 ? `<span style="color:#f59e0b;">${pendentes.length} ⏳</span>` : ''}
+                            </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon blue">👥</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${clientes.length}</div>
-                        <div class="stat-label">Clientes</div>
-                        <div class="stat-sub">
-                            <span class="text-success">+${novosClientesMes || 0} novos</span> este mês
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:24px;">👥</span>
+                        <div>
+                            <div style="font-size:20px;font-weight:700;color:var(--text-primary);">${clientes.length}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">Clientes</div>
+                            <div style="font-size:11px;color:#22c55e;">+${novosClientesMes || 0} este mês</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stat-card ${pendentes.length > 5 ? 'warning' : ''}">
-                    <div class="stat-icon orange">⏳</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${pendentes.length}</div>
-                        <div class="stat-label">Pendentes</div>
-                        <div class="stat-sub">
-                            ${agendamentosHoje.length > 0 ?
-            `<span class="text-warning">${agendamentosHoje.length} hoje</span>` :
-            'Nenhum hoje'}
+                <div style="background:${pendentes.length > 5 ? 'rgba(239,68,68,0.08)' : 'var(--bg-card)'};border-radius:12px;padding:16px 20px;border:1px solid ${pendentes.length > 5 ? 'rgba(239,68,68,0.2)' : 'var(--border-color)'};">
+                    <div style="display:flex;align-items:center;gap:12px;">
+                        <span style="font-size:24px;">⏳</span>
+                        <div>
+                            <div style="font-size:20px;font-weight:700;color:${pendentes.length > 5 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">Pendentes</div>
+                            <div style="font-size:11px;color:${agendamentosHoje.length > 0 ? '#f59e0b' : 'var(--text-muted)'};">${agendamentosHoje.length > 0 ? `${agendamentosHoje.length} hoje` : 'Nenhum hoje'}</div>
                         </div>
                     </div>
                 </div>
             </div>
             
             <!-- Cards Performance - Linha 2 -->
-            <div class="card-grid">
-                <div class="stat-card">
-                    <div class="stat-icon teal">🎫</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${formatarMoeda(ticketMedio)}</div>
-                        <div class="stat-label">Ticket Médio</div>
-                        <div class="stat-sub">${concluidos.length} atendimentos</div>
-                    </div>
-                </div>
-                
-                <div class="stat-card">
-                    <div class="stat-icon green">✅</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${totalServicosConcluidos}</div>
-                        <div class="stat-label">Serviços Concluídos</div>
-                        <div class="stat-sub">
-                            ${agendamentos.length > 0 ?
-            ((totalServicosConcluidos / agendamentos.length) * 100).toFixed(1) : 0}% do total
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:12px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:20px;">🎫</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(ticketMedio)}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Ticket Médio</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon pink">💸</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${formatarMoeda(totalComissoes)}</div>
-                        <div class="stat-label">Comissões a Pagar</div>
-                        <div class="stat-sub">
-                            <i class="fas fa-users"></i> ${profissionaisAtivos} profissionais
+                <div style="background:var(--bg-card);border-radius:12px;padding:12px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:20px;">✅</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);">${totalServicosConcluidos}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Concluídos</div>
+                            <div style="font-size:10px;color:var(--text-muted);">${agendamentos.length > 0 ? ((totalServicosConcluidos / agendamentos.length) * 100).toFixed(1) : 0}% do total</div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon indigo">📦</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${servicos.length}</div>
-                        <div class="stat-label">Serviços</div>
-                        <div class="stat-sub">
-                            ${servicos.filter(s => s.ativo).length} ativos
+                <div style="background:var(--bg-card);border-radius:12px;padding:12px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:20px;">💸</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(totalComissoes)}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Comissões</div>
+                            <div style="font-size:10px;color:var(--text-muted);"><i class="fas fa-users"></i> ${profissionaisAtivos} profissionais</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background:var(--bg-card);border-radius:12px;padding:12px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:20px;">📦</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);">${servicos.length}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Serviços</div>
+                            <div style="font-size:10px;color:var(--text-muted);">${servicos.filter(s => s.ativo).length} ativos</div>
                         </div>
                     </div>
                 </div>
             </div>
             
             <!-- Cards Extras - Linha 3 -->
-            <div class="card-grid">
-                <div class="stat-card">
-                    <div class="stat-icon blue">📊</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${formatarMoeda(faturamentoBruto)}</div>
-                        <div class="stat-label">Faturamento Bruto</div>
-                        <div class="stat-sub">Total de serviços concluídos</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:12px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:20px;">📊</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoBruto)}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Faturamento Bruto</div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="stat-card premium">
-                    <div class="stat-icon">💎</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${formatarMoeda(faturamentoLiquido)}</div>
-                        <div class="stat-label">Faturamento Líquido</div>
-                        <div class="stat-sub">Bruto - Comissões</div>
+                <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:12px;padding:12px 16px;border:1px solid rgba(102,126,234,0.1);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <span style="font-size:20px;">💎</span>
+                        <div>
+                            <div style="font-size:16px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoLiquido)}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Faturamento Líquido</div>
+                            <div style="font-size:10px;color:var(--text-muted);">Bruto - Comissões</div>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <!-- Gráficos -->
-            <div class="card-grid-2">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-chart-line"></i> Agendamentos por Dia</h3>
-                    </div>
-                    <canvas id="chartAgendamentos" style="max-height: 280px; width: 100%"></canvas>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 12px;font-size:14px;"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Agendamentos por Dia</h4>
+                    <canvas id="chartAgendamentos" style="max-height:220px;width:100%;"></canvas>
                 </div>
                 
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-trophy"></i> Serviços Mais Populares</h3>
-                    </div>
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 12px;font-size:14px;"><i class="fas fa-trophy" style="color:var(--primary);"></i> Serviços Mais Populares</h4>
                     ${topServicos.length > 0 ? `
-                        <div class="top-servicos-list">
+                        <div style="display:flex;flex-direction:column;gap:8px;">
                             ${topServicos.map(([nome, qtd], idx) => `
-                                <div class="servico-rank-item">
-                                    <div class="rank-number ${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other'}">
-                                        ${idx + 1}º
-                                    </div>
-                                    <div class="servico-rank-info">
-                                        <div class="servico-rank-nome">${escapeHtml(nome)}</div>
-                                        <div class="servico-rank-stats">
-                                            <span class="qtd">${qtd} atendimento${qtd !== 1 ? 's' : ''}</span>
-                                            <span class="percent">${((qtd / (totalServicosConcluidos || 1)) * 100).toFixed(1)}%</span>
+                                <div style="display:flex;align-items:center;gap:10px;">
+                                    <span style="font-weight:700;font-size:13px;color:${idx === 0 ? '#d4af37' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--text-muted)'};">${idx + 1}º</span>
+                                    <div style="flex:1;">
+                                        <div style="display:flex;justify-content:space-between;font-size:12px;">
+                                            <span style="color:var(--text-primary);">${escapeHtml(nome)}</span>
+                                            <span style="color:var(--text-muted);">${qtd}</span>
                                         </div>
-                                    </div>
-                                    <div class="rank-bar">
-                                        <div class="fill" style="width: ${(qtd / (topServicos[0]?.[1] || 1)) * 100}%"></div>
+                                        <div style="height:6px;background:var(--bg-hover);border-radius:4px;overflow:hidden;margin-top:2px;">
+                                            <div style="height:100%;width:${(qtd / (topServicos[0]?.[1] || 1)) * 100}%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:4px;"></div>
+                                        </div>
                                     </div>
                                 </div>
                             `).join('')}
                         </div>
                     ` : `
-                        <div class="empty-state">
-                            <i class="fas fa-cut"></i>
-                            <h4>Nenhum serviço concluído</h4>
-                            <p>Os serviços aparecerão aqui quando forem concluídos</p>
+                        <div style="text-align:center;padding:20px;color:var(--text-muted);">
+                            <i class="fas fa-cut" style="font-size:24px;opacity:0.3;"></i>
+                            <p style="margin:8px 0 0;font-size:13px;">Nenhum serviço concluído</p>
                         </div>
                     `}
                 </div>
             </div>
             
             <!-- Próximos Agendamentos -->
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-calendar-alt"></i> Próximos Atendimentos</h3>
-                    <button class="btn btn-sm btn-primary" onclick="carregarAgendamentos()">
-                        Ver Todos <i class="fas fa-arrow-right"></i>
-                    </button>
+            <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Próximos Atendimentos</h4>
+                    <button onclick="carregarAgendamentos()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">Ver Todos →</button>
                 </div>
                 ${proximosAgendamentos.length > 0 ? `
-                    <div class="table-responsive">
-                        <table class="data-table">
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;">
                             <thead>
-                                <tr>
-                                    <th>Cliente</th>
-                                    <th>Serviço</th>
-                                    <th>Data</th>
-                                    <th>Horário</th>
-                                    <th>Profissional</th>
-                                    <th>Valor</th>
-                                    <th>Status</th>
+                                <tr style="border-bottom:1px solid var(--border-color);">
+                                    <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Cliente</th>
+                                    <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Serviço</th>
+                                    <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Data</th>
+                                    <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Horário</th>
+                                    <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Valor</th>
+                                    <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${proximosAgendamentos.map(ag => `
-                                    <tr>
-                                        <td><strong>${escapeHtml(ag.cliente_nome || 'Cliente')}</strong></td>
-                                        <td>${escapeHtml(ag.servico || '-')}</td>
-                                        <td>${formatarDataBr(ag.data)}</td>
-                                        <td><span class="hora-badge">${ag.hora || '-'}</span></td>
-                                        <td>${escapeHtml(ag.profissional_nome || '-')}</td>
-                                        <td><strong>R$ ${formatarMoeda(ag.valor)}</strong></td>
-                                        <td>
-                                            <span class="status-badge ${ag.status}">
-                                                <span class="dot"></span>
-                                                ${ag.status === 'agendado' ? 'Agendado' :
-                    ag.status === 'pendente' ? 'Pendente' :
-                        ag.status === 'concluido' ? 'Concluído' : 'Cancelado'}
+                                    <tr style="border-bottom:1px solid var(--border-color);">
+                                        <td style="padding:8px 8px;font-weight:600;font-size:12px;">${escapeHtml(ag.cliente_nome || 'Cliente')}</td>
+                                        <td style="padding:8px 8px;font-size:12px;color:var(--text-secondary);">${escapeHtml(ag.servico || '-')}</td>
+                                        <td style="padding:8px 8px;font-size:12px;color:var(--text-secondary);">${formatarDataBr(ag.data)}</td>
+                                        <td style="padding:8px 8px;font-size:12px;"><span style="background:var(--bg-hover);padding:2px 10px;border-radius:6px;font-weight:600;">${ag.hora || '-'}</span></td>
+                                        <td style="padding:8px 8px;font-size:12px;font-weight:600;">R$ ${formatarMoeda(ag.valor)}</td>
+                                        <td style="padding:8px 8px;">
+                                            <span style="font-size:11px;padding:2px 10px;border-radius:12px;${ag.status === 'pendente' ? 'background:#f59e0b;color:white;' : 'background:#22c55e;color:white;'}">
+                                                ${ag.status === 'pendente' ? '⏳ Pendente' : '✅ Agendado'}
                                             </span>
                                         </td>
                                     </tr>
@@ -1260,53 +1423,41 @@ async function carregarDashboardDono() {
                         </table>
                     </div>
                 ` : `
-                    <div class="empty-state">
-                        <i class="fas fa-calendar-check"></i>
-                        <h4>Nenhum agendamento pendente</h4>
-                        <p>Que tal criar um novo agendamento?</p>
-                        <button class="btn btn-primary btn-sm" onclick="carregarAgendamentos()">
-                            <i class="fas fa-plus"></i> Novo Agendamento
-                        </button>
+                    <div style="text-align:center;padding:20px;color:var(--text-muted);">
+                        <i class="fas fa-calendar-check" style="font-size:24px;opacity:0.3;"></i>
+                        <p style="margin:8px 0 0;font-size:13px;">Nenhum agendamento pendente</p>
+                        <button onclick="carregarAgendamentos()" style="background:var(--primary);border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;margin-top:8px;"><i class="fas fa-plus"></i> Novo</button>
                     </div>
                 `}
             </div>
             
             <!-- Últimos Clientes -->
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-users"></i> Últimos Clientes</h3>
-                    <button class="btn btn-sm btn-secondary" onclick="carregarClientes()">
-                        Ver Todos <i class="fas fa-arrow-right"></i>
-                    </button>
+            <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <h4 style="margin:0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Últimos Clientes</h4>
+                    <button onclick="carregarClientes()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">Ver Todos →</button>
                 </div>
                 ${clientes.length > 0 ? `
-                    <div class="ultimos-clientes-grid">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
                         ${clientes.slice(0, 6).map(cliente => `
-                            <div class="cliente-card-item" onclick="editarCliente(${cliente.id})">
-                                <div class="cliente-avatar-icon">
-                                    ${cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '👤'}
-                                </div>
-                                <div class="cliente-info-data">
-                                    <div class="cliente-nome-completo">${escapeHtml(cliente.nome)}</div>
-                                    <div class="cliente-contato-info">
-                                        ${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}
-                                    </div>
+                            <div onclick="editarCliente(${cliente.id})" style="display:flex;align-items:center;gap:10px;background:var(--bg-hover);padding:8px 12px;border-radius:10px;cursor:pointer;transition:all 0.2s;border:1px solid transparent;hover:border-color:var(--primary);">
+                                <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">${cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '👤'}</span>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.nome)}</div>
+                                    <div style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}</div>
                                 </div>
                                 ${cliente.bloqueado_chatbot === 1 ?
-                                '<span class="badge badge-danger">🔒</span>' :
-                                '<span class="badge badge-success">✅</span>'
-                            }
+                    '<span style="font-size:12px;">🔒</span>' :
+                    '<span style="font-size:12px;">✅</span>'
+                }
                             </div>
                         `).join('')}
                     </div>
                 ` : `
-                    <div class="empty-state">
-                        <i class="fas fa-user-plus"></i>
-                        <h4>Nenhum cliente cadastrado</h4>
-                        <p>Comece adicionando seus primeiros clientes</p>
-                        <button class="btn btn-primary btn-sm" onclick="abrirModalCliente()">
-                            <i class="fas fa-plus"></i> Novo Cliente
-                        </button>
+                    <div style="text-align:center;padding:20px;color:var(--text-muted);">
+                        <i class="fas fa-user-plus" style="font-size:24px;opacity:0.3;"></i>
+                        <p style="margin:8px 0 0;font-size:13px;">Nenhum cliente cadastrado</p>
+                        <button onclick="abrirModalCliente()" style="background:var(--primary);border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;margin-top:8px;"><i class="fas fa-plus"></i> Novo Cliente</button>
                     </div>
                 `}
             </div>
@@ -1319,9 +1470,6 @@ async function carregarDashboardDono() {
         renderizarGraficoAgendamentos(diasSemana, agendamentosPorDia);
     }, 100);
 
-    // ============================================
-    // CARREGAR A AGENDA INTELIGENTE
-    // ============================================
     setTimeout(() => {
         carregarAgendaInteligente();
     }, 150);
@@ -1347,90 +1495,92 @@ async function carregarDashboardSuperAdmin() {
 
         const html = `
             <div class="fade-in">
-                <div class="dashboard-header">
-                    <h2 class="page-title">🏢 Dashboard Super Admin</h2>
-                    <div class="date-range">
-                        <span class="badge badge-info">
-                            <i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}
-                        </span>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <h2 style="margin:0;font-size:22px;">🏢 Dashboard Super Admin</h2>
+                    <span style="background:var(--bg-hover);padding:4px 14px;border-radius:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}</span>
+                </div>
+                
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;">
+                    <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:12px;padding:16px 20px;border:1px solid rgba(102,126,234,0.1);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">🏢</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">${stats.empresas || 0}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Total de Empresas</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">👨‍💼</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">${stats.donos || 0}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Donos</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">👥</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">${stats.clientes || 0}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Total Clientes</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">✂️</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">${stats.agendamentos || 0}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Agendamentos</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="card-grid">
-                    <div class="stat-card premium">
-                        <div class="stat-icon">🏢</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${stats.empresas || 0}</div>
-                            <div class="stat-label">Total de Empresas</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon purple">👨‍💼</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${stats.donos || 0}</div>
-                            <div class="stat-label">Donos</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon blue">👥</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${stats.clientes || 0}</div>
-                            <div class="stat-label">Total Clientes</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon green">✂️</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${stats.agendamentos || 0}</div>
-                            <div class="stat-label">Agendamentos</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card-grid-2">
-                    <div class="card">
-                        <h3><i class="fas fa-chart-pie"></i> Distribuição de Planos</h3>
-                        <div style="padding: 20px;">
-                            <div class="progress-item">
-                                <div class="progress-label">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <h4 style="margin:0 0 12px;font-size:14px;"><i class="fas fa-chart-pie" style="color:var(--primary);"></i> Distribuição de Planos</h4>
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            <div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px;">
                                     <span>Trial</span>
-                                    <span>${empresasTrial}</span>
+                                    <span style="font-weight:600;">${empresasTrial}</span>
                                 </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: ${(empresasTrial / (empresas.length || 1)) * 100}%; background: #f59e0b;"></div>
+                                <div style="height:8px;background:var(--bg-hover);border-radius:4px;overflow:hidden;margin-top:2px;">
+                                    <div style="height:100%;width:${(empresasTrial / (empresas.length || 1)) * 100}%;background:#f59e0b;border-radius:4px;"></div>
                                 </div>
                             </div>
-                            <div class="progress-item">
-                                <div class="progress-label">
+                            <div>
+                                <div style="display:flex;justify-content:space-between;font-size:13px;">
                                     <span>Planos Pagos</span>
-                                    <span>${empresasPagas}</span>
+                                    <span style="font-weight:600;">${empresasPagas}</span>
                                 </div>
-                                <div class="progress-bar">
-                                    <div class="progress-fill" style="width: ${(empresasPagas / (empresas.length || 1)) * 100}%; background: #10b981;"></div>
+                                <div style="height:8px;background:var(--bg-hover);border-radius:4px;overflow:hidden;margin-top:2px;">
+                                    <div style="height:100%;width:${(empresasPagas / (empresas.length || 1)) * 100}%;background:linear-gradient(90deg,#22c55e,#10b981);border-radius:4px;"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-                    <div class="card">
-                        <h3><i class="fas fa-clock"></i> Empresas em Trial</h3>
-                        <div style="max-height: 300px; overflow-y: auto;">
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                        <h4 style="margin:0 0 12px;font-size:14px;"><i class="fas fa-clock" style="color:var(--primary);"></i> Empresas em Trial</h4>
+                        <div style="max-height:250px;overflow-y:auto;">
                             ${empresas.filter(e => e.plano === 'trial').slice(0, 5).map(emp => `
-                                <div class="empresa-trial-item" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e5e7eb;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border-color);">
                                     <div>
-                                        <strong>${escapeHtml(emp.nome)}</strong>
-                                        <div class="text-muted small">Expira: ${formatarDataBr(emp.trial_expira)}</div>
+                                        <div style="font-weight:600;font-size:13px;">${escapeHtml(emp.nome)}</div>
+                                        <div style="font-size:11px;color:var(--text-muted);">Expira: ${formatarDataBr(emp.trial_expira)}</div>
                                     </div>
-                                    <button class="btn btn-sm btn-primary" onclick="estenderTrial(${emp.id})">
-                                        +30 dias
-                                    </button>
+                                    <button onclick="estenderTrial(${emp.id})" style="background:var(--primary);border:none;padding:4px 14px;border-radius:6px;color:white;font-size:11px;cursor:pointer;">+30 dias</button>
                                 </div>
                             `).join('')}
                             ${empresas.filter(e => e.plano === 'trial').length === 0 ?
-                '<p class="text-muted" style="padding: 20px; text-align: center;">Nenhuma empresa em trial</p>' : ''}
+                '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Nenhuma empresa em trial</div>' : ''}
                         </div>
                     </div>
                 </div>
@@ -1471,77 +1621,84 @@ async function carregarDashboardProfissional() {
 
         const html = `
             <div class="fade-in">
-                <div class="dashboard-header">
-                    <h2 class="page-title">📊 Meu Dashboard</h2>
-                    <div class="date-range">
-                        <span class="badge badge-info">
-                            <i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}
-                        </span>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                    <h2 style="margin:0;font-size:22px;">📊 Meu Dashboard</h2>
+                    <span style="background:var(--bg-hover);padding:4px 14px;border-radius:8px;font-size:12px;color:var(--text-muted);"><i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}</span>
+                </div>
+                
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:20px;">
+                    <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:12px;padding:16px 20px;border:1px solid rgba(102,126,234,0.1);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">💰</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(totalComissoes)}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Total em Comissões</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">✂️</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">${agendamentos.length}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Total Atendimentos</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">⏳</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:${pendentes.length > 3 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Pendentes</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <span style="font-size:24px;">✅</span>
+                            <div>
+                                <div style="font-size:24px;font-weight:700;color:var(--text-primary);">${concluidos.length}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">Concluídos</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <div class="card-grid">
-                    <div class="stat-card premium">
-                        <div class="stat-icon">💰</div>
-                        <div class="stat-content">
-                            <div class="stat-value">R$ ${formatarMoeda(totalComissoes)}</div>
-                            <div class="stat-label">Total em Comissões</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon purple">✂️</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${agendamentos.length}</div>
-                            <div class="stat-label">Total Atendimentos</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon orange">⏳</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${pendentes.length}</div>
-                            <div class="stat-label">Pendentes</div>
-                        </div>
-                    </div>
-                    
-                    <div class="stat-card">
-                        <div class="stat-icon green">✅</div>
-                        <div class="stat-content">
-                            <div class="stat-value">${concluidos.length}</div>
-                            <div class="stat-label">Concluídos</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-calendar-alt"></i> Meus Próximos Atendimentos</h3>
-                        <button class="btn btn-sm btn-primary" onclick="carregarAgendamentosProfissional()">
-                            Ver Todos
-                        </button>
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Meus Próximos Atendimentos</h4>
+                        <button onclick="carregarAgendamentosProfissional()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">Ver Todos</button>
                     </div>
                     ${pendentes.length > 0 ? `
-                        <div class="table-responsive">
-                            <table class="data-table">
+                        <div style="overflow-x:auto;">
+                            <table style="width:100%;border-collapse:collapse;font-size:13px;">
                                 <thead>
-                                    <tr><th>Cliente</th><th>Serviço</th><th>Data</th><th>Hora</th><th>Valor</th><th>Comissão</th></tr>
+                                    <tr style="border-bottom:1px solid var(--border-color);">
+                                        <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Cliente</th>
+                                        <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Serviço</th>
+                                        <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Data/Hora</th>
+                                        <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Valor</th>
+                                        <th style="text-align:left;padding:8px 8px;font-size:11px;color:var(--text-muted);font-weight:600;">Comissão</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     ${pendentes.slice(0, 5).map(ag => `
-                                        <tr>
-                                            <td>${escapeHtml(ag.cliente_nome || 'Cliente')}</td>
-                                            <td>${escapeHtml(ag.servico || '-')}</td>
-                                            <td>${formatarDataBr(ag.data)}</td>
-                                            <td>${ag.hora || '-'}</td>
-                                            <td>R$ ${formatarMoeda(ag.valor)}</td>
-                                            <td>R$ ${formatarMoeda(ag.comissao || 0)}</td>
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:8px 8px;font-weight:600;font-size:12px;">${escapeHtml(ag.cliente_nome || 'Cliente')}</td>
+                                            <td style="padding:8px 8px;font-size:12px;color:var(--text-secondary);">${escapeHtml(ag.servico || '-')}</td>
+                                            <td style="padding:8px 8px;font-size:12px;color:var(--text-secondary);">${formatarDataBr(ag.data)} ${ag.hora || ''}</td>
+                                            <td style="padding:8px 8px;font-size:12px;font-weight:600;">R$ ${formatarMoeda(ag.valor)}</td>
+                                            <td style="padding:8px 8px;font-size:12px;color:#22c55e;font-weight:600;">R$ ${formatarMoeda(ag.comissao || 0)}</td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<p class="text-muted" style="padding: 40px; text-align: center;">Nenhum atendimento pendente</p>'}
+                    ` : '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px;">Nenhum atendimento pendente</div>'}
                 </div>
             </div>
         `;
@@ -1571,7 +1728,7 @@ function renderizarGraficoAgendamentos(dias, dados) {
         if (chartInstance) chartInstance.destroy();
 
         const ctx = canvas.getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        const gradient = ctx.createLinearGradient(0, 0, 0, 200);
         gradient.addColorStop(0, 'rgba(139, 92, 246, 0.8)');
         gradient.addColorStop(1, 'rgba(139, 92, 246, 0.1)');
 
@@ -1585,7 +1742,7 @@ function renderizarGraficoAgendamentos(dias, dados) {
                     backgroundColor: gradient,
                     borderColor: '#8b5cf6',
                     borderWidth: 2,
-                    borderRadius: 8,
+                    borderRadius: 6,
                     hoverBackgroundColor: 'rgba(139, 92, 246, 0.9)'
                 }]
             },
@@ -1604,10 +1761,13 @@ function renderizarGraficoAgendamentos(dias, dados) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { stepSize: 1, font: { size: 11 } },
+                        ticks: { stepSize: 1, font: { size: 10 } },
                         grid: { color: 'rgba(0,0,0,0.05)' }
                     },
-                    x: { grid: { display: false } }
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 } }
+                    }
                 },
                 animation: { duration: 800, easing: 'easeInOutQuart' }
             }
@@ -1632,13 +1792,11 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Atualizar dashboard (recarregar)
 window.atualizarDashboard = function () {
     showToast('🔄 Atualizando dados...', 'info');
     carregarDashboard();
 };
 
-// Função para estender trial (Super Admin)
 window.estenderTrial = async function (empresaId) {
     if (!confirm('Estender trial por mais 30 dias?')) return;
 
@@ -1662,10 +1820,6 @@ window.estenderTrial = async function (empresaId) {
     }
     hideLoading();
 };
-
-// ============================================
-// AÇÕES RÁPIDAS (mantidas para compatibilidade)
-// ============================================
 
 function abrirModalAgendamento() {
     console.log('🔄 Abrindo modal de agendamento...');
@@ -1704,12 +1858,6 @@ async function carregarDadosAgendamento() {
         if (profissionaisData.success) {
             window.profissionaisList = profissionaisData.data || [];
         }
-
-        console.log('✅ Dados carregados:', {
-            clientes: window.clientesList.length,
-            servicos: window.servicosList.length,
-            profissionais: window.profissionaisList.length
-        });
     } catch (error) {
         console.error('❌ Erro ao carregar dados:', error);
     }
@@ -1758,9 +1906,8 @@ window.irAgendaHoje = irAgendaHoje;
 window.renderizarAgendaInteligente = renderizarAgendaInteligente;
 window.atualizarAgendaAposAgendamento = atualizarAgendaAposAgendamento;
 
-// Garantir que as listas estejam disponíveis globalmente
 window.clientesList = window.clientesList || [];
 window.servicosList = window.servicosList || [];
 window.profissionaisList = window.profissionaisList || [];
 
-console.log('✅ dashboard.js carregado com AGENDA INTELIGENTE EXPANDIDA + VALIDAÇÃO DE HORÁRIOS PASSADOS!');
+console.log('✅ dashboard.js carregado com TODAS AS MELHORIAS VISUAIS!');

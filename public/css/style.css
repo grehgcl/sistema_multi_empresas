@@ -951,18 +951,22 @@ body {
 .menu-mobile-btn {
     display: none;
     position: fixed;
-    bottom: 24px;
-    right: 24px;
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
+    top: 16px;
+    /* 🔥 Mudado de bottom para top */
+    right: 16px;
+    /* 🔥 Mantido na direita */
+    width: 48px;
+    /* 🔥 Um pouco menor para ficar mais elegante */
+    height: 48px;
+    border-radius: 12px;
+    /* 🔥 Mudado de 50% para 12px (arredondado, não círculo) */
     background: var(--gradient);
     color: white;
     border: none;
     box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
     z-index: 1000;
     cursor: pointer;
-    font-size: 24px;
+    font-size: 20px;
     transition: var(--transition);
     align-items: center;
     justify-content: center;
@@ -973,6 +977,10 @@ body {
     box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
 }
 
+.menu-mobile-btn:active {
+    transform: scale(0.95);
+}
+
 .sidebar-overlay {
     display: none;
     position: fixed;
@@ -980,6 +988,11 @@ body {
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(4px);
     z-index: 98;
+}
+
+/* Quando o sidebar está aberto, o overlay aparece */
+.sidebar-overlay.active {
+    display: block !important;
 }
 
 /* ============================================
