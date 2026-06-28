@@ -420,21 +420,18 @@ function renderizarAgendaInteligente() {
     `;
 
     // ============================================
-    // RENDERIZAR HORÁRIOS
+    // 🔥 RENDERIZAR HORÁRIOS - CORRIGIDO
     // ============================================
+    // 🔥 VARIÁVEL PARA SABER SE O DIA ATUAL É HOJE
+    let isDiaHoje = false;
+
     for (let idx = 0; idx < horariosBase.length; idx++) {
         const hora = horariosBase[idx];
         const isHorarioAtual = (idx === horarioAtualIndex);
         const isAlmoco = hora >= almocoInicioPadrao && hora < almocoFimPadrao;
 
-        // 🔥 CORREÇÃO: Verifica se o dia atual está na semana
-        const diaAtualNaSemana = dias.some(d => {
-            const dataStr = d.toISOString().split('T')[0];
-            return dataStr === hojeStr;
-        });
-
-        // 🔥 SÓ MARCA COMO PASSADO SE FOR O DIA DE HOJE E O HORÁRIO JÁ PASSOU
-        const isPassadoGlobal = (diaAtualNaSemana && idx < horarioAtualIndex);
+        // 🔥 CORREÇÃO: SÓ MARCA COMO PASSADO SE FOR O DIA DE HOJE
+        const isPassadoGlobal = (isDiaHoje && idx < horarioAtualIndex);
 
         const rowId = isHorarioAtual ? 'agenda-horario-atual' : '';
 
@@ -510,6 +507,9 @@ function renderizarAgendaInteligente() {
             const diaSemana = d.getDay();
             const horarioDia = agendaInteligenteHorarios.find(h => h.dia_semana === diaSemana);
 
+            // 🔥 ATUALIZA A VARIÁVEL PARA O DIA ATUAL
+            isDiaHoje = isHoje;
+
             const estaAberto = horarioDia && horarioDia.aberto === 1;
             const almocoInicioDia = horarioDia?.almoco_inicio || '12:00';
             const almocoFimDia = horarioDia?.almoco_fim || '13:00';
@@ -551,6 +551,7 @@ function renderizarAgendaInteligente() {
             hojeObj.setHours(0, 0, 0, 0);
             const dataPassou = dataObj < hojeObj;
 
+            // 🔥 CORREÇÃO: SÓ BLOQUEIA HORÁRIO PASSADO SE FOR HOJE
             const isPassado = (isHoje && isPassadoGlobal) || dataPassou;
             const isFuturo = !isPassado && !noAlmoco && estaAberto && dentroExpediente;
 
@@ -574,7 +575,7 @@ function renderizarAgendaInteligente() {
                     if (p.is_dono === true) {
                         ocupado = temAgendamentoDono;
                     } else {
-                        ocupado = ocupadosIds.includes(p.id);
+                        ocupado = ocupadosIds.includes(p.id) || ocupadosIds.includes(String(p.id));
                     }
                     return { ...p, ocupado };
                 });
