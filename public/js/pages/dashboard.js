@@ -426,7 +426,15 @@ function renderizarAgendaInteligente() {
         const hora = horariosBase[idx];
         const isHorarioAtual = (idx === horarioAtualIndex);
         const isAlmoco = hora >= almocoInicioPadrao && hora < almocoFimPadrao;
-        const isPassadoGlobal = idx < horarioAtualIndex;
+
+        // 🔥 CORREÇÃO: Verifica se o dia atual está na semana
+        const diaAtualNaSemana = dias.some(d => {
+            const dataStr = d.toISOString().split('T')[0];
+            return dataStr === hojeStr;
+        });
+
+        // 🔥 SÓ MARCA COMO PASSADO SE FOR O DIA DE HOJE E O HORÁRIO JÁ PASSOU
+        const isPassadoGlobal = (diaAtualNaSemana && idx < horarioAtualIndex);
 
         const rowId = isHorarioAtual ? 'agenda-horario-atual' : '';
 
@@ -543,7 +551,7 @@ function renderizarAgendaInteligente() {
             hojeObj.setHours(0, 0, 0, 0);
             const dataPassou = dataObj < hojeObj;
 
-            const isPassado = isPassadoGlobal || dataPassou;
+            const isPassado = (isHoje && isPassadoGlobal) || dataPassou;
             const isFuturo = !isPassado && !noAlmoco && estaAberto && dentroExpediente;
 
             if (!estaAberto || !dentroExpediente) {
@@ -863,13 +871,8 @@ function atualizarAgendaAposAgendamento() {
 // ============================================
 
 function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
-    // 🔥 CORREÇÃO: Ajustar a data para compensar o timezone do backend
-    const dataParts = data.split('-').map(Number);
-    const dataObj = new Date(dataParts[0], dataParts[1] - 1, dataParts[2]);
-    dataObj.setDate(dataObj.getDate() + 1);
-    const dataCorrigida = dataObj.getFullYear() + '-' +
-        String(dataObj.getMonth() + 1).padStart(2, '0') + '-' +
-        String(dataObj.getDate()).padStart(2, '0');
+    // 🔥 CORREÇÃO: ENVIAR A DATA ORIGINAL (SEM +1 DIA)
+    const dataCorrigida = data; // 🔥 Envia a data exatamente como veio da agenda
 
     console.log(`📝 Data original: ${data} → Data enviada: ${dataCorrigida}`);
 
@@ -1023,8 +1026,8 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 setTimeout(forcarPreenchimentoHorario, 500);
                 setTimeout(forcarPreenchimentoHorario, 1000);
 
-                // 🔥 FUNÇÃO DE SALVAR COM DATA CORRIGIDA
-                function salvarAgendamentoComDataCorrigida(dataCorrigida, dataOriginal) {
+                // 🔥 FUNÇÃO DE SALVAR COM DATA ORIGINAL
+                function salvarAgendamentoComDataOriginal(dataOriginal) {
                     const cliente_id = document.getElementById('clienteIdDono').value;
                     const hora = document.getElementById('horaAgendamentoDono').value;
                     const servico_id = document.getElementById('servicoIdDono').value;
@@ -1047,7 +1050,7 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     const token = localStorage.getItem("token");
                     const body = {
                         cliente_id: parseInt(cliente_id),
-                        data: dataCorrigida,
+                        data: dataOriginal, // 🔥 ENVIA A DATA ORIGINAL
                         hora: hora,
                         valor: parseFloat(valor) || 0,
                         profissional_id: profissional_id ? parseInt(profissional_id) : null
@@ -1059,7 +1062,7 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         body.servico = servico_descricao.trim();
                     }
 
-                    console.log('📤 Enviando data corrigida:', dataCorrigida);
+                    console.log('📤 Enviando data original:', dataOriginal);
 
                     fetch("/api/agendamentos", {
                         method: "POST",
@@ -1078,8 +1081,8 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                                 fecharModalAgendamentoDono();
 
                                 // 🔥🔥🔥 FORÇAR RECARREGAMENTO DA AGENDA 🔥🔥🔥
-                                if (typeof window.forcarRecarregarAgenda === 'function') {
-                                    window.forcarRecarregarAgenda();
+                                if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                                    window.atualizarAgendaAposAgendamento();
                                 } else {
                                     // Fallback: recarregar direto
                                     agendaInteligenteData = [];
@@ -1123,8 +1126,8 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     botaoSalvar.parentNode.replaceChild(novoBotao, botaoSalvar);
 
                     novoBotao.onclick = function () {
-                        // 🔥 CHAMAR A FUNÇÃO DE SALVAR COM A DATA CORRIGIDA
-                        salvarAgendamentoComDataCorrigida(dataCorrigida, data);
+                        // 🔥 CHAMAR A FUNÇÃO DE SALVAR COM A DATA ORIGINAL
+                        salvarAgendamentoComDataOriginal(data);
                     };
                 }
 
@@ -1156,7 +1159,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 
     carregarDadosEAbrirModal();
 }
-
 // ============================================
 // FUNÇÃO PRINCIPAL - CARREGAR DASHBOARD
 // ============================================
@@ -2065,9 +2067,6 @@ function abrirModalCliente() {
     }
 }
 
-// ============================================
-// 🔥 FUNÇÃO PARA FORÇAR RECARREGAMENTO DA AGENDA
-// ============================================
 window.forcarRecarregarAgenda = function () {
     console.log('🔥 FORÇANDO RECARREGAMENTO DA AGENDA...');
     agendaInteligenteData = [];
@@ -2106,7 +2105,6 @@ window.mudarAgendaSemana = mudarAgendaSemana;
 window.irAgendaHoje = irAgendaHoje;
 window.renderizarAgendaInteligente = renderizarAgendaInteligente;
 window.atualizarAgendaAposAgendamento = atualizarAgendaAposAgendamento;
-window.forcarRecarregarAgenda = window.forcarRecarregarAgenda;
 
 window.clientesList = window.clientesList || [];
 window.servicosList = window.servicosList || [];
