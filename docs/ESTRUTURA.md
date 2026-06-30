@@ -1,4 +1,4 @@
-﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 24/06/2026
+﻿﻿﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 27/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite (desenvolvimento local)
@@ -11,7 +11,7 @@
 │   └── js/
 │       ├── ui.js             # UI Global (toasts, loading, modal)
 │       └── pages/
-│           ├── dashboard.js              # Dashboard com AGENDA INTELIGENTE
+│           ├── dashboard.js              # Dashboard com AGENDA INTELIGENTE (CORRIGIDO)
 │           ├── dashboard-profissional.js # Dashboard Profissional
 │           ├── clientes.js               # CRUD Clientes + DIAS_BLOQUEIO
 │           ├── agendamentos.js           # CRUD Agendamentos
@@ -55,19 +55,50 @@
 ├── test-limite.js           # Script para testar limite
 └── server.js                # Backend completo + rotas
 
+## 🔥 CORREÇÕES RECENTES (27/06/2026)
+
+### 1. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
+- **Arquivo:** `public/js/pages/dashboard.js`
+- **Função:** `abrirAgendamentoInteligente()`
+- **Mudança:** Data enviada com +1 dia para compensar UTC
+- **Resultado:** Data correta no modal e no banco
+
+### 2. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
+- **Arquivo:** `public/js/pages/dashboard.js`
+- **Função:** `window.forcarRecarregarAgenda()`
+- **Mudança:** Força recarregamento da agenda após agendamento
+- **Resultado:** Bolinha fica vermelha imediatamente
+
+### 3. DESIGN MODERNO DA AGENDA 🎨
+- Gradientes e sombras modernas
+- Efeito pulse nas bolinhas
+- Tamanho adaptativo
+- Tooltips ricos
+- Barra de progresso do dia
+- Ícones nos horários
+- Mini avatar dos profissionais
+- Indicador de scroll
+- Navegação ◀◀ ◀ ▶ ▶▶
+
+### 4. SEMANA COMEÇANDO NO DIA ATUAL 📅
+- A agenda sempre começa no dia atual
+- Navegação preserva a semana selecionada
+
 ## TEMA ESCURO
 - O sistema inicia com tema escuro por padrão
 - Toggle disponível nas Configurações > Tema
 - Estilo Instagram com transições suaves
 - Salvo automaticamente no localStorage
 
-## AGENDA INTELIGENTE
+## AGENDA INTELIGENTE (CORRIGIDA)
 - Card da Agenda dentro do Dashboard (abaixo de Ações Rápidas)
 - Visualização semanal com grade de horários (08:00 às 18:00)
 - Cada profissional tem uma cor única (Dono = dourado 👑)
 - Clique na bolinha colorida abre modal com data/hora pré-setados
 - Cores: 🟢 Disponível, 🔴 Ocupado, 🍽️ Almoço, 🔒 Fechado
 - Legenda de cores no topo do card
+- **NOVO:** Recarrega automaticamente após agendamento
+- **NOVO:** Correção de timezone nas datas
 
 ## DIAS_BLOQUEIO INDIVIDUAL POR CLIENTE
 - Campo `dias_bloqueio` na tabela `clientes` (padrão = 1)
@@ -119,7 +150,7 @@
 - Financeiro Global (todas comissoes)
 
 ### Dono
-- Dashboard (stats da empresa, gráficos, métricas + AGENDA INTELIGENTE)
+- Dashboard (stats da empresa, gráficos, métricas + AGENDA INTELIGENTE CORRIGIDA)
 - Agendamentos (CRUD com filtros, edicao, horarios 30/30min)
 - Servicos (CRUD completo)
 - Financeiro (cards por profissional + totais)
@@ -137,5 +168,5 @@
 - PUT /api/empresa/bloqueio-geral - Atualiza o bloqueio geral
 
 =========================================
-ULTIMA ATUALIZACAO: 24/06/2026
+ULTIMA ATUALIZACAO: 27/06/2026
 =========================================

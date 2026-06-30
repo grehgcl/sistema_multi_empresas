@@ -310,7 +310,7 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 });
 
 // ============================================================
-// AUTENTICAÇÃO
+// AUTENTICAÇÃO - COM REGISTRO DE ACESSOS
 // ============================================================
 
 app.post('/api/login', (req, res) => {
@@ -348,6 +348,22 @@ app.post('/api/login', (req, res) => {
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+
+            // 🔥 REGISTRAR ACESSO DO PROFISSIONAL
+            const ip = req.ip || req.connection.remoteAddress || null;
+            const user_agent = req.headers['user-agent'] || null;
+
+            const sqlAcesso = isProduction
+                ? `INSERT INTO acessos (empresa_id, usuario_id, ip, user_agent) VALUES ($1, $2, $3, $4)`
+                : `INSERT INTO acessos (empresa_id, usuario_id, ip, user_agent) VALUES (?, ?, ?, ?)`;
+
+            db.run(sqlAcesso, [profissional.empresa_id, profissional.id, ip, user_agent], (err) => {
+                if (err) {
+                    console.error('⚠️ Erro ao registrar acesso do profissional:', err.message);
+                } else {
+                    console.log(`📊 Acesso registrado para profissional ${profissional.nome} (empresa ${profissional.empresa_id})`);
+                }
+            });
 
             return res.json({
                 success: true,
@@ -418,6 +434,22 @@ app.post('/api/login', (req, res) => {
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
+
+            // 🔥 REGISTRAR ACESSO DO USUÁRIO
+            const ip = req.ip || req.connection.remoteAddress || null;
+            const user_agent = req.headers['user-agent'] || null;
+
+            const sqlAcesso = isProduction
+                ? `INSERT INTO acessos (empresa_id, usuario_id, ip, user_agent) VALUES ($1, $2, $3, $4)`
+                : `INSERT INTO acessos (empresa_id, usuario_id, ip, user_agent) VALUES (?, ?, ?, ?)`;
+
+            db.run(sqlAcesso, [user.empresa_id, user.id, ip, user_agent], (err) => {
+                if (err) {
+                    console.error('⚠️ Erro ao registrar acesso do usuário:', err.message);
+                } else {
+                    console.log(`📊 Acesso registrado para ${user.nome} (empresa ${user.empresa_id})`);
+                }
+            });
 
             console.log('✅ Login bem sucedido:', email);
 
@@ -939,22 +971,88 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
 });
 
 // ============================================================
-// SUPER ADMIN
+// 🏢 SUPER ADMIN - GESTÃO COMPLETA
 // ============================================================
 
+// ============================================
+// 1. ESTATÍSTICAS GERAIS (MELHORADA)
+// ============================================
 app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
-    db.get("SELECT COUNT(*) as total FROM empresas", (err, empresas) => {
-        db.get("SELECT COUNT(*) as total FROM usuarios WHERE role = 'dono'", (err2, donos) => {
-            db.get("SELECT COUNT(*) as total FROM clientes", (err3, clientes) => {
-                db.get("SELECT COUNT(*) as total FROM agendamentos", (err4, agendamentos) => {
-                    res.json({
-                        success: true,
-                        data: {
-                            empresas: empresas?.total || 0,
-                            donos: donos?.total || 0,
-                            clientes: clientes?.total || 0,
-                            agendamentos: agendamentos?.total || 0
+    console.log('📊 Super Admin - Buscando estatísticas gerais...');
+
+    // Total de empresas
+    db.get(`SELECT COUNT(*) as total FROM empresas`, (err, empresas) => {
+        if (err) {
+            console.error('❌ Erro ao contar empresas:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        // Total de donos
+        db.get(`SELECT COUNT(*) as total FROM usuarios WHERE role = 'dono'`, (err2, donos) => {
+            if (err2) {
+                console.error('❌ Erro ao contar donos:', err2);
+                return res.json({ success: false, message: err2.message });
+            }
+
+            // Total de profissionais
+            db.get(`SELECT COUNT(*) as total FROM usuarios WHERE role = 'profissional'`, (err3, profissionais) => {
+                if (err3) {
+                    console.error('❌ Erro ao contar profissionais:', err3);
+                    return res.json({ success: false, message: err3.message });
+                }
+
+                // Total de clientes
+                db.get(`SELECT COUNT(*) as total FROM clientes`, (err4, clientes) => {
+                    if (err4) {
+                        console.error('❌ Erro ao contar clientes:', err4);
+                        return res.json({ success: false, message: err4.message });
+                    }
+
+                    // Total de agendamentos
+                    db.get(`SELECT COUNT(*) as total FROM agendamentos`, (err5, agendamentos) => {
+                        if (err5) {
+                            console.error('❌ Erro ao contar agendamentos:', err5);
+                            return res.json({ success: false, message: err5.message });
                         }
+
+                        // Agendamentos do mês
+                        const mesAtual = new Date().toISOString().slice(0, 7);
+                        const sqlMes = isProduction
+                            ? `SELECT COUNT(*) as total FROM agendamentos WHERE strftime('%Y-%m', data) = $1`
+                            : `SELECT COUNT(*) as total FROM agendamentos WHERE strftime('%Y-%m', data) = ?`;
+
+                        db.get(sqlMes, [mesAtual], (err6, agendamentosMes) => {
+                            if (err6) {
+                                console.error('❌ Erro ao contar agendamentos do mês:', err6);
+                                return res.json({ success: false, message: err6.message });
+                            }
+
+                            // Faturamento do mês
+                            const sqlFaturamento = isProduction
+                                ? `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = $1`
+                                : `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = ?`;
+
+                            db.get(sqlFaturamento, [mesAtual], (err7, faturamento) => {
+                                if (err7) {
+                                    console.error('❌ Erro ao calcular faturamento:', err7);
+                                    return res.json({ success: false, message: err7.message });
+                                }
+
+                                console.log('✅ Estatísticas carregadas com sucesso!');
+                                res.json({
+                                    success: true,
+                                    data: {
+                                        empresas: empresas?.total || 0,
+                                        donos: donos?.total || 0,
+                                        profissionais: profissionais?.total || 0,
+                                        total_clientes: clientes?.total || 0,
+                                        total_agendamentos: agendamentos?.total || 0,
+                                        agendamentos_mes: agendamentosMes?.total || 0,
+                                        faturamento_mes: faturamento?.total || 0
+                                    }
+                                });
+                            });
+                        });
                     });
                 });
             });
@@ -962,42 +1060,830 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 
+// ============================================
+// 2. LISTAR EMPRESAS COM MÉTRICAS (MELHORADA)
+// ============================================
 app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
-    db.all(`
-        SELECT e.*, 
-               COUNT(DISTINCT u.id) as total_usuarios,
-               COUNT(DISTINCT c.id) as total_clientes,
-               COUNT(DISTINCT a.id) as total_agendamentos
-        FROM empresas e
-        LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
-        LEFT JOIN clientes c ON c.empresa_id = e.id
-        LEFT JOIN agendamentos a ON a.empresa_id = e.id
-        GROUP BY e.id
-        ORDER BY e.created_at DESC
-    `, (err, empresas) => {
-        if (err) return res.json({ success: false, message: err.message });
+    console.log('🏢 Super Admin - Listando todas as empresas...');
+
+    const sql = isProduction
+        ? `SELECT e.*, 
+           u.nome as dono_nome,
+           u.email as dono_email,
+           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais,
+           (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as total_concluidos,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as total_pendentes
+           FROM empresas e
+           LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+           ORDER BY e.created_at DESC`
+        : `SELECT e.*, 
+           u.nome as dono_nome,
+           u.email as dono_email,
+           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais,
+           (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as total_concluidos,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as total_pendentes
+           FROM empresas e
+           LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+           ORDER BY e.created_at DESC`;
+
+    db.all(sql, [], (err, empresas) => {
+        if (err) {
+            console.error('❌ Erro ao listar empresas:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log(`✅ ${empresas.length} empresas encontradas`);
         res.json({ success: true, data: empresas });
     });
 });
 
-app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
-    const { id } = req.params;
+// ============================================
+// 3. LISTAR TODOS OS USUÁRIOS (CORRIGIDO - COM TELEFONE)
+// ============================================
+app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
+    console.log('👤 Super Admin - Listando todos os usuários...');
 
-    const dataTrialExpira = new Date();
-    dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
-
+    // 🔥 CORRIGIDO: Buscar também telefone dos profissionais
     const sql = isProduction
-        ? `UPDATE empresas SET trial_expira = $1 WHERE id = $2`
-        : `UPDATE empresas SET trial_expira = ? WHERE id = ?`;
+        ? `SELECT 
+            u.id, 
+            u.nome, 
+            u.email, 
+            u.role, 
+            u.empresa_id, 
+            u.created_at, 
+            e.nome as empresa_nome,
+            p.telefone,
+            p.comissao_percent
+           FROM usuarios u
+           LEFT JOIN empresas e ON u.empresa_id = e.id
+           LEFT JOIN profissionais p ON u.email = p.email AND u.empresa_id = p.empresa_id
+           ORDER BY u.created_at DESC`
+        : `SELECT 
+            u.id, 
+            u.nome, 
+            u.email, 
+            u.role, 
+            u.empresa_id, 
+            u.created_at, 
+            e.nome as empresa_nome,
+            p.telefone,
+            p.comissao_percent
+           FROM usuarios u
+           LEFT JOIN empresas e ON u.empresa_id = e.id
+           LEFT JOIN profissionais p ON u.email = p.email AND u.empresa_id = p.empresa_id
+           ORDER BY u.created_at DESC`;
 
-    db.run(sql, [dataTrialExpira.toISOString(), id], function (err) {
+    db.all(sql, [], (err, usuarios) => {
         if (err) {
-            return res.json({ success: false, message: 'Erro ao estender trial' });
+            console.error('❌ Erro ao listar usuários:', err);
+            return res.json({ success: false, message: err.message });
         }
-        res.json({ success: true, message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
+
+        // Remover senhas e formatar
+        const usuariosSemSenha = usuarios.map(u => {
+            const { senha, ...rest } = u;
+            return {
+                ...rest,
+                telefone: u.telefone || '-',
+                comissao_percent: u.comissao_percent || 0
+            };
+        });
+
+        console.log(`✅ ${usuariosSemSenha.length} usuários encontrados`);
+        res.json({ success: true, data: usuariosSemSenha });
     });
 });
 
+// ============================================
+// 4. DETALHES DE UMA EMPRESA (CORRIGIDO)
+// ============================================
+app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`🏢 Super Admin - Buscando empresa ${id}...`);
+
+    // 🔥 CORRIGIDO: Remover u.telefone se não existir
+    const sql = isProduction
+        ? `SELECT e.*, 
+           u.nome as dono_nome,
+           u.email as dono_email,
+           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais,
+           (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
+           FROM empresas e
+           LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+           WHERE e.id = $1`
+        : `SELECT e.*, 
+           u.nome as dono_nome,
+           u.email as dono_email,
+           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais,
+           (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
+           FROM empresas e
+           LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+           WHERE e.id = ?`;
+
+    db.get(sql, [id], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao buscar empresa:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        res.json({ success: true, data: empresa });
+    });
+});
+
+// ============================================
+// 5. USUÁRIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO)
+// ============================================
+app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`👤 Super Admin - Buscando usuários e profissionais da empresa ${id}...`);
+
+    // 🔥 CORRIGIDO: Buscar DONOS da tabela usuarios e PROFISSIONAIS da tabela profissionais
+    const sql = isProduction
+        ? `SELECT 
+            'dono' as tipo,
+            u.id, 
+            u.nome, 
+            u.email, 
+            u.role, 
+            u.created_at,
+            NULL as telefone,
+            NULL as comissao_percent,
+            u.empresa_id
+           FROM usuarios u
+           WHERE u.empresa_id = $1 AND u.role = 'dono'
+           
+           UNION ALL
+           
+           SELECT 
+            'profissional' as tipo,
+            p.id, 
+            p.nome, 
+            p.email, 
+            'profissional' as role,
+            p.created_at,
+            p.telefone,
+            p.comissao_percent,
+            p.empresa_id
+           FROM profissionais p
+           WHERE p.empresa_id = $2 AND p.ativo = 1
+           
+           ORDER BY tipo, nome`
+        : `SELECT 
+            'dono' as tipo,
+            u.id, 
+            u.nome, 
+            u.email, 
+            u.role, 
+            u.created_at,
+            NULL as telefone,
+            NULL as comissao_percent,
+            u.empresa_id
+           FROM usuarios u
+           WHERE u.empresa_id = ? AND u.role = 'dono'
+           
+           UNION ALL
+           
+           SELECT 
+            'profissional' as tipo,
+            p.id, 
+            p.nome, 
+            p.email, 
+            'profissional' as role,
+            p.created_at,
+            p.telefone,
+            p.comissao_percent,
+            p.empresa_id
+           FROM profissionais p
+           WHERE p.empresa_id = ? AND p.ativo = 1
+           
+           ORDER BY tipo, nome`;
+
+    db.all(sql, [id, id], (err, usuarios) => {
+        if (err) {
+            console.error('❌ Erro ao buscar usuários e profissionais:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        // Formatar dados
+        const dadosFormatados = usuarios.map(u => {
+            const { senha, ...rest } = u;
+            return {
+                ...rest,
+                telefone: u.telefone || '-',
+                comissao_percent: u.tipo === 'dono' ? null : (u.comissao_percent || 0)
+            };
+        });
+
+        console.log(`✅ ${dadosFormatados.length} usuários/profissionais encontrados`);
+        console.log(`   - Donos: ${dadosFormatados.filter(u => u.tipo === 'dono').length}`);
+        console.log(`   - Profissionais: ${dadosFormatados.filter(u => u.tipo === 'profissional').length}`);
+
+        res.json({ success: true, data: dadosFormatados });
+    });
+});
+
+// ============================================
+// ROTA: ACESSOS DE UMA EMPRESA
+// ============================================
+app.get('/api/admin/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`📊 Super Admin - Buscando acessos da empresa ${id}...`);
+
+    const sql = isProduction
+        ? `SELECT a.*, u.nome as usuario_nome
+           FROM acessos a
+           LEFT JOIN usuarios u ON a.usuario_id = u.id
+           WHERE a.empresa_id = $1
+           ORDER BY a.data_acesso DESC
+           LIMIT 50`
+        : `SELECT a.*, u.nome as usuario_nome
+           FROM acessos a
+           LEFT JOIN usuarios u ON a.usuario_id = u.id
+           WHERE a.empresa_id = ?
+           ORDER BY a.data_acesso DESC
+           LIMIT 50`;
+
+    db.all(sql, [id], (err, acessos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar acessos:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log(`✅ ${acessos.length} acessos encontrados`);
+        res.json({ success: true, data: acessos });
+    });
+});
+// ============================================
+// ROTA: ESTATÍSTICAS DAS EMPRESAS (SIMPLES E CONFIÁVEL)
+// ============================================
+app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
+    console.log('📊 Super Admin - Buscando empresas com estatísticas...');
+
+    // Primeiro, buscar todas as empresas
+    const sqlEmpresas = isProduction
+        ? `SELECT * FROM empresas ORDER BY created_at DESC`
+        : `SELECT * FROM empresas ORDER BY created_at DESC`;
+
+    db.all(sqlEmpresas, [], (err, empresas) => {
+        if (err) {
+            console.error('❌ Erro ao buscar empresas:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log(`📊 ${empresas.length} empresas encontradas`);
+
+        // Para cada empresa, buscar as métricas separadamente
+        const promises = empresas.map((e) => {
+            return new Promise((resolve) => {
+                // Buscar total de usuários
+                const sqlUsuarios = isProduction
+                    ? `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = $1`
+                    : `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = ?`;
+
+                db.get(sqlUsuarios, [e.id], (err, usuarios) => {
+                    // Buscar total de profissionais
+                    const sqlProfissionais = isProduction
+                        ? `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = $1 AND ativo = 1`
+                        : `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = ? AND ativo = 1`;
+
+                    db.get(sqlProfissionais, [e.id], (err, profissionais) => {
+                        // Buscar total de clientes
+                        const sqlClientes = isProduction
+                            ? `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = $1`
+                            : `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = ?`;
+
+                        db.get(sqlClientes, [e.id], (err, clientes) => {
+                            // Buscar total de agendamentos
+                            const sqlAgendamentos = isProduction
+                                ? `SELECT COUNT(*) as total FROM agendamentos WHERE empresa_id = $1`
+                                : `SELECT COUNT(*) as total FROM agendamentos WHERE empresa_id = ?`;
+
+                            db.get(sqlAgendamentos, [e.id], (err, agendamentos) => {
+                                // Buscar total de acessos
+                                const sqlAcessos = isProduction
+                                    ? `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = $1`
+                                    : `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ?`;
+
+                                db.get(sqlAcessos, [e.id], (err, acessos) => {
+                                    // Buscar último acesso
+                                    const sqlUltimoAcesso = isProduction
+                                        ? `SELECT data_acesso FROM acessos WHERE empresa_id = $1 ORDER BY data_acesso DESC LIMIT 1`
+                                        : `SELECT data_acesso FROM acessos WHERE empresa_id = ? ORDER BY data_acesso DESC LIMIT 1`;
+
+                                    db.get(sqlUltimoAcesso, [e.id], (err, ultimoAcesso) => {
+                                        // Buscar acessos hoje
+                                        const sqlAcessosHoje = isProduction
+                                            ? `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = $1 AND DATE(data_acesso) = CURRENT_DATE`
+                                            : `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ? AND DATE(data_acesso) = DATE('now')`;
+
+                                        db.get(sqlAcessosHoje, [e.id], (err, acessosHoje) => {
+                                            // Calcular dias restantes do trial
+                                            let diasRestantes = null;
+                                            if (e.plano === 'trial' && e.trial_expira) {
+                                                const hoje = new Date();
+                                                const expira = new Date(e.trial_expira);
+                                                diasRestantes = Math.ceil((expira - hoje) / (1000 * 60 * 60 * 24));
+                                            }
+
+                                            resolve({
+                                                ...e,
+                                                total_usuarios: usuarios?.total || 0,
+                                                total_profissionais: profissionais?.total || 0,
+                                                total_clientes: clientes?.total || 0,
+                                                total_agendamentos: agendamentos?.total || 0,
+                                                total_acessos: acessos?.total || 0,
+                                                ultimo_acesso: ultimoAcesso?.data_acesso || null,
+                                                acessos_hoje: acessosHoje?.total || 0,
+                                                dias_restantes_trial: diasRestantes,
+                                                ultimo_acesso_formatado: ultimoAcesso?.data_acesso ?
+                                                    new Date(ultimoAcesso.data_acesso).toLocaleString('pt-BR') : 'Nunca'
+                                            });
+                                        });
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+
+        Promise.all(promises).then((empresasCompletas) => {
+            console.log(`✅ ${empresasCompletas.length} empresas com estatísticas carregadas`);
+            res.json({ success: true, data: empresasCompletas });
+        });
+    });
+});
+
+// Função auxiliar para formatar data/hora
+function formatarDataHora(dataStr) {
+    if (!dataStr) return 'Nunca';
+    try {
+        const data = new Date(dataStr);
+        if (isNaN(data.getTime())) return 'Nunca';
+        return data.toLocaleString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch {
+        return dataStr;
+    }
+}
+
+// ============================================
+// 6. CLIENTES DE UMA EMPRESA
+// ============================================
+app.get('/api/admin/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`👥 Super Admin - Buscando clientes da empresa ${id}...`);
+
+    const sql = isProduction
+        ? `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
+           FROM clientes 
+           WHERE empresa_id = $1 
+           ORDER BY created_at DESC`
+        : `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
+           FROM clientes 
+           WHERE empresa_id = ? 
+           ORDER BY created_at DESC`;
+
+    db.all(sql, [id], (err, clientes) => {
+        if (err) {
+            console.error('❌ Erro ao buscar clientes:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        res.json({ success: true, data: clientes });
+    });
+});
+
+// ============================================
+// 7. AGENDAMENTOS DE UMA EMPRESA
+// ============================================
+app.get('/api/admin/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`📅 Super Admin - Buscando agendamentos da empresa ${id}...`);
+
+    const sql = isProduction
+        ? `SELECT a.*, 
+           c.nome as cliente_nome,
+           p.nome as profissional_nome,
+           s.nome as servico_nome,
+           to_char(a.data, 'YYYY-MM-DD') as data_formatada
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN profissionais p ON a.profissional_id = p.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.empresa_id = $1 
+           ORDER BY a.data DESC, a.hora DESC
+           LIMIT 50`
+        : `SELECT a.*, 
+           c.nome as cliente_nome,
+           p.nome as profissional_nome,
+           s.nome as servico_nome,
+           date(a.data) as data_formatada
+           FROM agendamentos a
+           LEFT JOIN clientes c ON a.cliente_id = c.id
+           LEFT JOIN profissionais p ON a.profissional_id = p.id
+           LEFT JOIN servicos s ON a.servico_id = s.id
+           WHERE a.empresa_id = ? 
+           ORDER BY a.data DESC, a.hora DESC
+           LIMIT 50`;
+
+    db.all(sql, [id], (err, agendamentos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar agendamentos:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        const dadosFormatados = agendamentos.map(a => ({
+            ...a,
+            data: a.data_formatada || a.data,
+            data_formatada: undefined
+        }));
+
+        res.json({ success: true, data: dadosFormatados });
+    });
+});
+
+// ============================================
+// 8. ATUALIZAR EMPRESA
+// ============================================
+app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { nome, plano } = req.body;
+    console.log(`📝 Super Admin - Atualizando empresa ${id}:`, { nome, plano });
+
+    if (!nome) {
+        return res.json({ success: false, message: 'Nome da empresa é obrigatório' });
+    }
+
+    const sql = isProduction
+        ? `UPDATE empresas SET nome = $1, plano = $2 WHERE id = $3`
+        : `UPDATE empresas SET nome = ?, plano = ? WHERE id = ?`;
+
+    db.run(sql, [nome, plano || 'trial', id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao atualizar empresa:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log('✅ Empresa atualizada com sucesso!');
+        res.json({ success: true, message: 'Empresa atualizada com sucesso' });
+    });
+});
+
+// ============================================
+// 9. BUSCAR USUÁRIO PARA EDIÇÃO (CORRIGIDO)
+// ============================================
+app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`👤 Super Admin - Buscando usuário ${id}...`);
+
+    // 🔥 CORRIGIDO: Remover comissao_percent da query
+    const sql = isProduction
+        ? `SELECT id, nome, email, role, empresa_id, created_at 
+           FROM usuarios 
+           WHERE id = $1`
+        : `SELECT id, nome, email, role, empresa_id, created_at 
+           FROM usuarios 
+           WHERE id = ?`;
+
+    db.get(sql, [id], (err, usuario) => {
+        if (err) {
+            console.error('❌ Erro ao buscar usuário:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!usuario) {
+            return res.json({ success: false, message: 'Usuário não encontrado' });
+        }
+
+        // Remover senha por segurança
+        delete usuario.senha;
+
+        // Se for profissional, buscar comissão da tabela profissionais
+        if (usuario.role === 'profissional') {
+            const sqlProf = isProduction
+                ? `SELECT comissao_percent FROM profissionais WHERE email = $1`
+                : `SELECT comissao_percent FROM profissionais WHERE email = ?`;
+
+            db.get(sqlProf, [usuario.email], (err, prof) => {
+                if (!err && prof) {
+                    usuario.comissao_percent = prof.comissao_percent || 30;
+                } else {
+                    usuario.comissao_percent = 30;
+                }
+                console.log('✅ Usuário encontrado:', usuario.nome);
+                res.json({ success: true, data: usuario });
+            });
+        } else {
+            usuario.comissao_percent = null;
+            console.log('✅ Usuário encontrado:', usuario.nome);
+            res.json({ success: true, data: usuario });
+        }
+    });
+});
+// ============================================
+// EDITAR USUÁRIO (CORRIGIDO - SEM TELEFONE)
+// ============================================
+
+async function editarUsuario(id) {
+    console.log('👤 Editando usuário ID:', id);
+
+    if (!id) {
+        showToast('ID do usuário não informado', 'error');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        showToast('Token não encontrado. Faça login novamente.', 'error');
+        return;
+    }
+
+    showLoading();
+
+    try {
+        console.log(`📡 Buscando usuário ${id}...`);
+
+        const res = await fetch(`/api/admin/usuarios/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('📡 Resposta recebida, status:', res.status);
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+
+        const data = await res.json();
+        console.log('📡 Dados recebidos:', data);
+
+        hideLoading();
+
+        if (!data.success) {
+            showToast(data.message || 'Erro ao carregar usuário', 'error');
+            return;
+        }
+
+        if (!data.data) {
+            showToast('Usuário não encontrado', 'error');
+            return;
+        }
+
+        const usuario = data.data;
+        console.log('👤 Usuário carregado:', usuario.nome);
+
+        // 🔥 CORRIGIDO: Remover campo telefone se não existir
+        const modalContent = `
+            <div style="padding: 10px 0;">
+                <form id="formEditarUsuario" style="display:flex;flex-direction:column;gap:12px;">
+                    <input type="hidden" id="editUsuarioId" value="${usuario.id}">
+                    
+                    <div class="form-group">
+                        <label>Nome *</label>
+                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuario.nome || '')}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Email *</label>
+                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuario.email || '')}" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Role (Função)</label>
+                        <select id="editUsuarioRole" class="form-control">
+                            <option value="dono" ${usuario.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
+                            <option value="profissional" ${usuario.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
+                        </select>
+                        <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissões do usuário</small>
+                    </div>
+                    
+                    ${usuario.role === 'profissional' ? `
+                        <div class="form-group">
+                            <label>Comissão (%)</label>
+                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuario.comissao_percent || 30}" min="0" max="100">
+                            <small style="color:var(--text-muted);font-size:11px;">Percentual de comissão para profissionais</small>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="form-group">
+                        <label>Nova Senha (opcional)</label>
+                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Digite nova senha (mínimo 6 caracteres)">
+                        <small style="color:var(--text-muted);font-size:11px;">Deixe em branco para manter a senha atual</small>
+                    </div>
+                    
+                    <div style="display:flex;gap:8px;margin-top:8px;">
+                        <button type="submit" class="btn-3d" style="flex:1;">
+                            <i class="fas fa-save"></i> Salvar
+                        </button>
+                        <button type="button" onclick="fecharModalEditarUsuario()" class="btn-secondary">
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        // Mostrar modal
+        showModal('✏️ Editar Usuário', modalContent, null);
+
+        // Conectar formulário
+        setTimeout(() => {
+            const form = document.getElementById('formEditarUsuario');
+            if (form) {
+                const newForm = form.cloneNode(true);
+                form.parentNode.replaceChild(newForm, form);
+
+                newForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    salvarUsuario();
+                });
+
+                console.log('✅ Formulário de usuário conectado!');
+            } else {
+                console.warn('⚠️ Formulário não encontrado');
+            }
+
+            const modal = document.querySelector('.modal');
+            if (modal) {
+                modal.style.maxWidth = '500px';
+                const modalContent = modal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.style.maxHeight = '90vh';
+                    modalContent.style.overflowY = 'auto';
+                }
+            }
+        }, 200);
+
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao editar usuário:', error);
+        showToast('Erro ao carregar dados do usuário: ' + error.message, 'error');
+    }
+}
+
+// ============================================
+// 11. ESTENDER TRIAL (MANTIDO)
+// ============================================
+app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    console.log(`📝 Super Admin - Estendendo trial da empresa ${id}...`);
+
+    const dataTrialExpira = new Date();
+    dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
+    const dataStr = dataTrialExpira.toISOString().split('T')[0];
+
+    const sql = isProduction
+        ? `UPDATE empresas SET trial_expira = $1, assinatura_ativa = 0, plano = 'trial' WHERE id = $2`
+        : `UPDATE empresas SET trial_expira = ?, assinatura_ativa = 0, plano = 'trial' WHERE id = ?`;
+
+    db.run(sql, [dataStr, id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao estender trial:', err);
+            return res.json({ success: false, message: 'Erro ao estender trial' });
+        }
+
+        console.log(`✅ Trial estendido até ${dataStr}`);
+        res.json({
+            success: true,
+            message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}`,
+            data: { nova_data: dataStr }
+        });
+    });
+});
+
+// ============================================
+// 12. CONTAGEM DE ACESSOS (OPCIONAL)
+// ============================================
+// Criar tabela de acessos se não existir
+const sqlCriarAcessos = isProduction
+    ? `CREATE TABLE IF NOT EXISTS acessos (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER NOT NULL,
+        empresa_id INTEGER,
+        data_acesso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ip VARCHAR(45),
+        user_agent TEXT
+    )`
+    : `CREATE TABLE IF NOT EXISTS acessos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario_id INTEGER NOT NULL,
+        empresa_id INTEGER,
+        data_acesso DATETIME DEFAULT CURRENT_TIMESTAMP,
+        ip VARCHAR(45),
+        user_agent TEXT
+    )`;
+
+db.run(sqlCriarAcessos, [], (err) => {
+    if (err) {
+        console.error('❌ Erro ao criar tabela acessos:', err);
+    } else {
+        console.log('✅ Tabela acessos verificada/criada');
+    }
+});
+
+// Rota para registrar acesso (chamada no login)
+app.post('/api/admin/registrar-acesso', auth, (req, res) => {
+    const usuario_id = req.usuario.id;
+    const empresa_id = req.usuario.empresa_id || null;
+    const ip = req.ip || req.connection.remoteAddress || null;
+    const user_agent = req.headers['user-agent'] || null;
+
+    const sql = isProduction
+        ? `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES ($1, $2, $3, $4)`
+        : `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES (?, ?, ?, ?)`;
+
+    db.run(sql, [usuario_id, empresa_id, ip, user_agent], (err) => {
+        if (err) {
+            console.error('❌ Erro ao registrar acesso:', err);
+        }
+        res.json({ success: true });
+    });
+});
+
+// Rota para estatísticas de acessos
+app.get('/api/admin/acessos', auth, verificarSuperAdmin, (req, res) => {
+    const sql = isProduction
+        ? `SELECT 
+            COUNT(*) as total_acessos,
+            COUNT(DISTINCT usuario_id) as total_usuarios_ativos,
+            COUNT(DISTINCT empresa_id) as total_empresas_ativas,
+            date(data_acesso) as data
+           FROM acessos
+           WHERE data_acesso >= datetime('now', '-30 days')
+           GROUP BY date(data_acesso)
+           ORDER BY data DESC`
+        : `SELECT 
+            COUNT(*) as total_acessos,
+            COUNT(DISTINCT usuario_id) as total_usuarios_ativos,
+            COUNT(DISTINCT empresa_id) as total_empresas_ativas,
+            date(data_acesso) as data
+           FROM acessos
+           WHERE data_acesso >= datetime('now', '-30 days')
+           GROUP BY date(data_acesso)
+           ORDER BY data DESC`;
+
+    db.all(sql, [], (err, acessos) => {
+        if (err) {
+            console.error('❌ Erro ao buscar acessos:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        // Totais gerais
+        const sqlTotais = isProduction
+            ? `SELECT 
+                COUNT(*) as total_acessos,
+                COUNT(DISTINCT usuario_id) as total_usuarios_ativos,
+                COUNT(DISTINCT empresa_id) as total_empresas_ativas
+               FROM acessos
+               WHERE data_acesso >= datetime('now', '-30 days')`
+            : `SELECT 
+                COUNT(*) as total_acessos,
+                COUNT(DISTINCT usuario_id) as total_usuarios_ativos,
+                COUNT(DISTINCT empresa_id) as total_empresas_ativas
+               FROM acessos
+               WHERE data_acesso >= datetime('now', '-30 days')`;
+
+        db.get(sqlTotais, [], (err, totais) => {
+            if (err) {
+                console.error('❌ Erro ao buscar totais de acessos:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    ultimos_30_dias: acessos || [],
+                    totais: totais || { total_acessos: 0, total_usuarios_ativos: 0, total_empresas_ativas: 0 }
+                }
+            });
+        });
+    });
+});
+
+console.log('✅ Super Admin - Todas as rotas carregadas com sucesso!');
 // ============================================================
 // SERVIÇOS
 // ============================================================

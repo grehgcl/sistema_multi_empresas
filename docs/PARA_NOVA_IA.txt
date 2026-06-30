@@ -157,3 +157,108 @@ http://localhost:3000
 =========================================
 ULTIMA ATUALIZACAO: 24/06/2026
 =========================================
+
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 27/06/2026
+=========================================
+
+LEIA OS ARQUIVOS NA ORDEM:
+1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
+2. docs/IA_CONTEXT.md - Contexto completo
+3. docs/ESTRUTURA.md - Onde fica cada coisa
+4. docs/DEV_GUIDE.md - Como desenvolver
+
+COMANDO: npm start
+
+USUARIOS:
+  Super Admin: super@admin.com / super123
+  Dono: admin@teste.com / 123456
+  Profissional: (criar pelo dono) - senha definida pelo dono
+
+=========================================
+✅ IMPLEMENTADO (27/06/2026)
+=========================================
+
+### 1. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
+- Data do agendamento agora é enviada com +1 dia para compensar conversão UTC do backend
+- Modal mostra a data correta para o usuário
+- Validação de data/hora passada no frontend e backend
+
+### 2. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
+- Função `window.forcarRecarregarAgenda()` criada para forçar recarregamento
+- Agenda recarrega automaticamente após criar um agendamento
+- Bolinha fica VERMELHA (ocupada) imediatamente após o agendamento
+
+### 3. DESIGN MODERNO DA AGENDA 🎨
+- Gradientes e sombras modernas
+- Efeito pulse nas bolinhas
+- Tamanho adaptativo das bolinhas
+- Tooltips ricos com informações
+- Barra de progresso do dia
+- Indicador de agendamentos por dia
+- Ícones nos horários
+- Mini avatar dos profissionais
+- Indicador de scroll
+- Navegação com botões ◀◀ ◀ ▶ ▶▶
+
+### 4. SEMANA COMEÇANDO NO DIA ATUAL 📅
+- A agenda sempre começa no dia atual (hoje)
+- Navegação preserva a semana selecionada
+
+### 5. BLOQUEIO GERAL DE AGENDAMENTOS 🔒
+- Configuração coletiva (afeta TODOS os clientes)
+- Dono configura nas Configurações > Bloqueio Geral
+- Opções: 0, 7, 14, 30 dias
+- Chatbot respeita o bloqueio geral
+
+### 6. SIDEBAR MELHORADO
+- Botão de fechar movido para abaixo do nome do proprietário
+- Botão hambúrguer movido para o topo (mobile)
+- Design responsivo
+
+=========================================
+🔄 O QUE JÁ EXISTE
+=========================================
+
+1. Autenticacao (Super Admin, Dono, Profissional)
+2. CRUD Clientes (apenas Dono) com dias_bloqueio
+3. CRUD Agendamentos (Dono e Profissional)
+4. Sistema de Comissoes (configurável, padrao 30%)
+5. Financeiro com:
+   - Faturamento Bruto
+   - Comissoes a Pagar
+   - Faturamento Liquido
+   - Cards por profissional
+6. Super Admin: gestao de empresas
+7. Sistema de Profissionais (com limite por plano)
+8. Sistema de Servicos
+9. Chatbot Inteligente
+10. Sistema de Planos de Assinatura
+11. Sistema de Pagamentos (Mercado Pago)
+12. Landing Page tela dividida
+13. Dashboard com métricas
+14. Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
+15. Tema escuro por padrão
+16. Limite de 100 agendamentos/mês para Starter
+17. Agenda Inteligente no Dashboard
+18. Dias de bloqueio individual por cliente
+19. BLOQUEIO GERAL (coletivo)
+20. Correção de timezone nas datas
+21. Recarregamento automático da agenda
+
+=========================================
+📋 PLANOS COMPLETOS
+=========================================
+
+| Plano | Valor | Profissionais | Agendamentos/Mês |
+|-------|-------|---------------|------------------|
+| Trial | Grátis (45 dias) | 1 | 100 |
+| Starter | R$ 29,90/mês | 1 | 100 |
+| Pro | R$ 59,90/mês | 5 | Ilimitado |
+| Business | R$ 119,90/mês | 15 | Ilimitado |
+| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
+
+=========================================
+ULTIMA ATUALIZACAO: 27/06/2026
+=========================================

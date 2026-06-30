@@ -73,3 +73,9 @@ Corrigir o arquivo public/js/pages/agendamentos-profissional.js
 7. Touch targets otimizados (44px+)
 8. Scrollbar customizada com gradiente
 =========================================
+
+
+🔧 COMO RESETAR O CONTADOR DE AGENDAMENTOS
+⚡ SOLUÇÃO RÁPIDA (COPIAR E COLAR)
+bash
+node -e "const sqlite3=require('sqlite3');const db=new sqlite3.Database('./database/barbearia.db');db.run('UPDATE empresas SET agendamentos_mes=0 WHERE id=3',function(e){if(e)console.error(e);else console.log('✅ Resetado!');db.close()});"

@@ -322,6 +322,134 @@ function inserirHorariosPadrao(empresaId) {
     }
 }
 
+// Adicione esta função dentro do arquivo database.js
+
+// ============================================
+// MIGRAÇÃO: Adicionar coluna telefone na tabela usuarios
+// ============================================
+function migrarTelefoneUsuarios() {
+    console.log('🔍 Verificando coluna telefone em usuarios...');
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    if (isProduction) {
+        // PostgreSQL
+        const sqlCheck = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'usuarios' 
+            AND column_name = 'telefone'
+        `;
+
+        db.get(sqlCheck, [], (err, row) => {
+            if (err) {
+                console.error('❌ Erro ao verificar telefone em usuarios:', err.message);
+                return;
+            }
+
+            if (row) {
+                console.log('✅ Coluna telefone já existe em usuarios!');
+                return;
+            }
+
+            console.log('📝 Criando coluna telefone em usuarios (PostgreSQL)...');
+            const sqlAdd = `ALTER TABLE usuarios ADD COLUMN telefone VARCHAR(20)`;
+
+            db.run(sqlAdd, [], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao criar telefone em usuarios:', err.message);
+                    return;
+                }
+                console.log('✅ Coluna telefone criada em usuarios!');
+            });
+        });
+    } else {
+        // SQLite
+        db.get("PRAGMA table_info(usuarios)", [], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro ao verificar telefone em usuarios:', err.message);
+                return;
+            }
+
+            // rows é um array de objetos
+            db.all("PRAGMA table_info(usuarios)", [], (err, columns) => {
+                if (err) {
+                    console.error('❌ Erro ao listar colunas:', err.message);
+                    return;
+                }
+
+                const existe = columns.some(col => col.name === 'telefone');
+
+                if (existe) {
+                    console.log('✅ Coluna telefone já existe em usuarios!');
+                    return;
+                }
+
+                console.log('📝 Criando coluna telefone em usuarios (SQLite)...');
+                const sqlAdd = `ALTER TABLE usuarios ADD COLUMN telefone VARCHAR(20)`;
+
+                db.run(sqlAdd, [], (err) => {
+                    if (err) {
+                        console.error('❌ Erro ao criar telefone em usuarios:', err.message);
+                        return;
+                    }
+                    console.log('✅ Coluna telefone criada em usuarios!');
+                });
+            });
+        });
+    }
+}
+
+// Chame a função após a inicialização do banco
+// No final do arquivo database.js, adicione:
+// setTimeout(migrarTelefoneUsuarios, 3000);
+
+// ============================================
+// MIGRAÇÃO: Tabela de acessos
+// ============================================
+// ============================================
+// MIGRAÇÃO: Tabela de acessos
+// ============================================
+function migrarTabelaAcessos() {
+    console.log('🔍 Verificando tabela acessos...');
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    const sql = isProduction
+        ? `CREATE TABLE IF NOT EXISTS acessos (
+            id SERIAL PRIMARY KEY,
+            empresa_id INTEGER NOT NULL,
+            usuario_id INTEGER,
+            data_acesso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            ip VARCHAR(45),
+            user_agent TEXT,
+            FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+        )`
+        : `CREATE TABLE IF NOT EXISTS acessos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empresa_id INTEGER NOT NULL,
+            usuario_id INTEGER,
+            data_acesso DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ip VARCHAR(45),
+            user_agent TEXT,
+            FOREIGN KEY (empresa_id) REFERENCES empresas(id)
+        )`;
+
+    db.run(sql, [], (err) => {
+        if (err) {
+            console.error('❌ Erro ao criar tabela acessos:', err.message);
+        } else {
+            console.log('✅ Tabela acessos verificada/criada');
+        }
+    });
+}
+
+// Chame a função após a inicialização do banco
+setTimeout(migrarTabelaAcessos, 1500);
+
+// Chame a função após a inicialização do banco
+setTimeout(migrarTabelaAcessos, 1000);
+
 // ============================================================
 // EXPORTAR FUNÇÕES
 // ============================================================
