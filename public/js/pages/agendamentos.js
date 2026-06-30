@@ -637,20 +637,55 @@ async function salvarNovoCliente(event) {
 }
 
 // ============================================
-// HORÁRIOS DISPONÍVEIS - CORRIGIDO (variável h renomeada)
+// CARREGAR HORÁRIOS DISPONÍVEIS (COM DURAÇÃO E PRESERVANDO HORÁRIO)
 // ============================================
 
-async function carregarHorariosDisponiveisDono() {
+async function carregarHorariosDisponiveisDono(manterHorario = false) {
     const data = document.getElementById("dataAgendamentoDono").value;
     const profissional_id = document.getElementById("profissionalIdDono").value;
+    const servicoSelect = document.getElementById("servicoIdDono");
+    const servicoId = servicoSelect ? servicoSelect.value : null;
     const horaSelect = document.getElementById("horaAgendamentoDono");
+
+    // 🔥 Guardar o horário atual se existir
+    const horarioAtual = horaSelect ? horaSelect.value : null;
+
+    // Buscar duração do serviço selecionado
+    let duracao = 30;
+    let servicoNome = '';
+
+    if (servicoId && servicoId !== '') {
+        const servico = servicosList.find(s => s.id == servicoId);
+        if (servico) {
+            duracao = servico.duracao || 30;
+            servicoNome = servico.nome;
+            console.log(`📝 Serviço selecionado: ${servicoNome} - ${duracao}min`);
+        }
+    }
+
+    if (duracao === 30) {
+        const descricao = document.getElementById("servicoDescricaoDono")?.value;
+        if (descricao && descricao.trim() !== '') {
+            const servicoEncontrado = servicosList.find(s =>
+                s.nome.toLowerCase() === descricao.trim().toLowerCase()
+            );
+            if (servicoEncontrado) {
+                duracao = servicoEncontrado.duracao || 30;
+                console.log(`📝 Serviço manual encontrado: ${servicoEncontrado.nome} - ${duracao}min`);
+            }
+        }
+    }
+
+    const infoDuracao = document.getElementById('infoDuracaoHorario');
+    if (infoDuracao) {
+        infoDuracao.textContent = `⏱️ Duração do serviço: ${duracao}min - Horários disponíveis consideram este tempo`;
+    }
 
     if (!data) {
         horaSelect.innerHTML = '<option value="">Selecione uma data primeiro</option>';
         return;
     }
 
-    // 🔥 VALIDAR SE DATA NÃO É PASSADA
     const hoje = new Date();
     const hojeStr = hoje.toISOString().split('T')[0];
 
@@ -673,7 +708,8 @@ async function carregarHorariosDisponiveisDono() {
             body: JSON.stringify({
                 empresaId: JSON.parse(atob(token.split('.')[1])).empresa_id,
                 profissionalId: profissional_id || null,
-                data: data
+                data: data,
+                duracao: duracao
             })
         });
 
@@ -687,7 +723,7 @@ async function carregarHorariosDisponiveisDono() {
                 horarios = result.data;
             }
 
-            // 🔥 FILTRAR HORÁRIOS QUE JÁ PASSARAM (SE FOR HOJE)
+            // Filtrar horários que já passaram (se for hoje)
             const agora = new Date();
             const hojeStr = agora.toISOString().split('T')[0];
             let horariosFiltrados = horarios;
@@ -708,15 +744,32 @@ async function carregarHorariosDisponiveisDono() {
                     const horaNum = parseInt(horaItem.split(':')[0]);
                     const isAlmoco = horaNum >= 12 && horaNum < 13;
                     const emoji = isAlmoco ? ' 🍽️' : '';
-                    options += `<option value="${horaItem}">${horaItem}${emoji}</option>`;
+                    options += `<option value="${horaItem}">${horaItem}${emoji} (${duracao}min)</option>`;
                 }
                 horaSelect.innerHTML = options;
+
+                // 🔥 TENTAR RESTAURAR O HORÁRIO ANTERIOR
+                if (manterHorario && horarioAtual) {
+                    console.log(`🔄 Tentando restaurar horário: ${horarioAtual}`);
+                    for (let opt of horaSelect.options) {
+                        if (opt.value === horarioAtual) {
+                            horaSelect.value = horarioAtual;
+                            console.log(`✅ Horário ${horarioAtual} restaurado!`);
+                            break;
+                        }
+                    }
+                    // Se não encontrou, mostrar mensagem
+                    if (horaSelect.value !== horarioAtual) {
+                        console.log(`⚠️ Horário ${horarioAtual} não está mais disponível`);
+                        showToast(`⏰ O horário ${horarioAtual} não está mais disponível para este serviço`, 'warning');
+                    }
+                }
             } else {
                 if (data === hojeStr) {
                     horaSelect.innerHTML = '<option value="">⏰ Todos os horários de hoje já passaram</option>';
                     showToast('⏰ Todos os horários de hoje já passaram. Escolha outro dia.', 'warning');
                 } else {
-                    horaSelect.innerHTML = '<option value="">Nenhum horário disponível neste dia</option>';
+                    horaSelect.innerHTML = `<option value="">Nenhum horário disponível para serviço de ${duracao}min</option>`;
                 }
             }
         } else {
@@ -729,10 +782,10 @@ async function carregarHorariosDisponiveisDono() {
 }
 
 // ============================================
-// ABRIR MODAL NOVO AGENDAMENTO
+// ABRIR MODAL NOVO AGENDAMENTO (COM DURAÇÃO)
 // ============================================
 
-async function abrirModalAgendamentoDono() {
+async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     const clientes = Array.isArray(clientesList) ? clientesList : [];
     const servicos = Array.isArray(servicosList) ? servicosList : [];
     const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
@@ -749,7 +802,7 @@ async function abrirModalAgendamentoDono() {
     let servicosOptions = '<option value="">Selecione um serviço</option>';
     if (servicos.length > 0) {
         for (let s of servicos) {
-            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}">${escapeHtml(s.nome)} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`;
+            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${s.valor.toFixed(2)} (${s.duracao || 30}min)</option>`;
         }
     }
 
@@ -790,7 +843,7 @@ async function abrirModalAgendamentoDono() {
                     <select id="horaAgendamentoDono" class="form-control">
                         <option value="">Selecione uma data primeiro</option>
                     </select>
-                    <small class="text-muted">Horários disponíveis de 30 em 30 minutos</small>
+                    <small class="text-muted" id="infoDuracaoHorario">Horários disponíveis considerando a duração do serviço</small>
                 </div>
 
                 <div class="form-group">
@@ -798,7 +851,7 @@ async function abrirModalAgendamentoDono() {
                     <select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()">
                         ${servicosOptions}
                     </select>
-                    <input type="text" id="servicoDescricaoDono" class="form-control" style="margin-top: 10px;" placeholder="Ou digite o serviço manualmente">
+                    <input type="text" id="servicoDescricaoDono" class="form-control" style="margin-top: 10px;" placeholder="Ou digite o serviço manualmente" onchange="carregarHorariosDisponiveisDono()">
                 </div>
 
                 <div class="form-group">
@@ -811,7 +864,7 @@ async function abrirModalAgendamentoDono() {
                     <select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono()">
                         ${profissionaisOptions}
                     </select>
-                    <small class="text-muted">Se não escolher, o agendamento ficará sem profissional</small>
+                    <small class="text-muted">Se não escolher, o sistema buscará um profissional disponível</small>
                 </div>
 
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
@@ -833,20 +886,34 @@ function fecharModalAgendamentoDono() {
     if (modal) modal.remove();
 }
 
+// ============================================
+// ATUALIZAR VALOR POR SERVIÇO (COM PRESERVAÇÃO DO HORÁRIO)
+// ============================================
+
 function atualizarValorPorServicoDono() {
     const select = document.getElementById("servicoIdDono");
     const selectedOption = select.options[select.selectedIndex];
     const valor = selectedOption.getAttribute("data-valor");
     const nome = selectedOption.getAttribute("data-nome");
+    const duracao = selectedOption.getAttribute("data-duracao");
 
     if (valor) {
         document.getElementById("valorAgendamentoDono").value = parseFloat(valor).toFixed(2);
         document.getElementById("servicoDescricaoDono").value = nome;
+
+        const infoDuracao = document.getElementById('infoDuracaoHorario');
+        if (infoDuracao && duracao) {
+            infoDuracao.textContent = `⏱️ Duração do serviço: ${duracao}min - Horários disponíveis consideram este tempo`;
+        }
+
+        // 🔥 RECARREGAR HORÁRIOS MANTENDO O HORÁRIO SELECIONADO
+        console.log('🔄 Recarregando horários após seleção de serviço...');
+        carregarHorariosDisponiveisDono(true); // <-- true = manter horário
     }
 }
 
 // ============================================
-// SALVAR AGENDAMENTO (COM VALIDAÇÃO DE 1 POR DIA)
+// SALVAR AGENDAMENTO (CORRIGIDO)
 // ============================================
 
 async function salvarAgendamentoDono() {
@@ -858,6 +925,8 @@ async function salvarAgendamentoDono() {
     const valor = document.getElementById("valorAgendamentoDono").value;
     const profissional_id = document.getElementById("profissionalIdDono").value;
 
+    console.log('📝 Salvar agendamento:', { cliente_id, data, hora, servico_id, profissional_id });
+
     if (!cliente_id || !data) {
         showToast("Cliente e data são obrigatórios", "warning");
         return;
@@ -868,17 +937,15 @@ async function salvarAgendamentoDono() {
         return;
     }
 
-    // 🔥🔥🔥 VALIDAÇÃO FRONTEND - DATA/HORA PASSADA 🔥🔥🔥
+    // 🔥 VALIDAÇÃO FRONTEND - DATA/HORA PASSADA
     const agora = new Date();
     const hojeStr = agora.toISOString().split('T')[0];
 
-    // Verificar se a data é passada
     if (data < hojeStr) {
         showToast('⏰ Não é possível agendar em datas que já passaram!', 'warning');
         return;
     }
 
-    // Verificar se é hoje e horário já passou
     const [ano, mes, dia] = data.split('-').map(Number);
     const [horaNum, minutoNum] = hora.split(':').map(Number);
     const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum, minutoNum, 0, 0);
@@ -888,7 +955,6 @@ async function salvarAgendamentoDono() {
         return;
     }
 
-    // Verificação extra para hoje
     if (data === hojeStr) {
         const horaAtual = agora.getHours();
         const minutoAtual = agora.getMinutes();
@@ -915,6 +981,8 @@ async function salvarAgendamentoDono() {
         body.servico = servico_descricao.trim();
     }
 
+    console.log('📤 Enviando body:', body);
+
     try {
         const res = await fetch("/api/agendamentos", {
             method: "POST",
@@ -926,9 +994,10 @@ async function salvarAgendamentoDono() {
         });
 
         const result = await res.json();
+        console.log('📥 Resposta:', result);
 
         if (result.success) {
-            showToast("Agendamento criado com sucesso!", "success");
+            showToast("✅ Agendamento criado com sucesso!", "success");
             fecharModalAgendamentoDono();
 
             // 🔥 ATUALIZAR A AGENDA INTELIGENTE
@@ -936,20 +1005,21 @@ async function salvarAgendamentoDono() {
                 window.atualizarAgendaAposAgendamento();
             }
 
-            carregarAgendamentos();
+            if (typeof carregarAgendamentos === 'function') {
+                carregarAgendamentos();
+            }
         } else {
-            // Verificar se é o erro de cliente já tem agendamento
             if (result.message && result.message.includes('já possui um agendamento para este dia')) {
                 showToast('⚠️ ' + result.message, 'warning');
             } else if (result.message && result.message.includes('Não é possível agendar em datas')) {
                 showToast('⏰ ' + result.message, 'warning');
             } else {
-                showToast("Erro: " + result.message, "error");
+                showToast("❌ Erro: " + result.message, "error");
             }
         }
     } catch (error) {
         console.error("❌ Erro ao criar agendamento:", error);
-        showToast("Erro ao criar agendamento", "error");
+        showToast("❌ Erro ao criar agendamento", "error");
     }
 
     hideLoading();

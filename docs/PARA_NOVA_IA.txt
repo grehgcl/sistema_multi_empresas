@@ -262,3 +262,141 @@ USUARIOS:
 =========================================
 ULTIMA ATUALIZACAO: 27/06/2026
 =========================================
+
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 30/06/2026
+=========================================
+
+LEIA OS ARQUIVOS NA ORDEM:
+1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
+2. docs/IA_CONTEXT.md - Contexto completo
+3. docs/ESTRUTURA.md - Onde fica cada coisa
+4. docs/DEV_GUIDE.md - Como desenvolver
+
+COMANDO: npm start
+
+USUARIOS:
+  Super Admin: super@admin.com / super123
+  Dono: admin@teste.com / 123456
+  Profissional: (criar pelo dono) - senha definida pelo dono
+
+=========================================
+✅ IMPLEMENTADO (30/06/2026)
+=========================================
+
+### 1. SUPER ADMIN - DASHBOARD COMPLETO 🏢
+- Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
+- Lista completa de todas as empresas
+- Status do trial (dias restantes, expirado, ativo)
+- Total de usuários, profissionais, clientes e agendamentos por empresa
+- Botões de ação (Ver detalhes, Editar, Estender trial)
+- Filtro de busca de empresas em tempo real
+
+### 2. SUPER ADMIN - GESTÃO DE EMPRESAS 👨‍💼
+- Ver detalhes completos da empresa
+- Donos da empresa (nome, email, telefone, cadastro)
+- Profissionais da empresa (nome, email, telefone, comissão, cadastro)
+- Clientes da empresa (nome, telefone, email, status)
+- Agendamentos da empresa (cliente, serviço, data, hora, valor, status)
+- Estatísticas de acessos (total, hoje, último acesso)
+- Editar nome e plano da empresa
+- Estender trial com 1 clique (+30 dias)
+
+### 3. SUPER ADMIN - GESTÃO DE USUÁRIOS 👤
+- Lista de todos os usuários do sistema
+- Editar usuários (nome, email, telefone, role, senha, comissão)
+- Ver acessos por usuário
+- Donos e profissionais separados por empresa
+
+### 4. SISTEMA DE ACESSOS 📊
+- Registro automático de acessos no login
+- Captura de IP e User-Agent
+- Estatísticas de acessos por empresa
+- Último acesso com data/hora
+
+### 5. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
+- Data do agendamento agora é enviada com +1 dia para compensar conversão UTC do backend
+- Modal mostra a data correta para o usuário
+- Validação de data/hora passada no frontend e backend
+
+### 6. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
+- Função `window.forcarRecarregarAgenda()` criada para forçar recarregamento
+- Agenda recarrega automaticamente após criar um agendamento
+- Bolinha fica VERMELHA (ocupada) imediatamente após o agendamento
+
+### 7. DESIGN MODERNO DA AGENDA 🎨
+- Gradientes e sombras modernas
+- Efeito pulse nas bolinhas
+- Tamanho adaptativo das bolinhas
+- Tooltips ricos com informações
+- Barra de progresso do dia
+- Indicador de agendamentos por dia
+- Ícones nos horários
+- Mini avatar dos profissionais
+- Indicador de scroll
+- Navegação com botões ◀◀ ◀ ▶ ▶▶
+
+### 8. SEMANA COMEÇANDO NO DIA ATUAL 📅
+- A agenda sempre começa no dia atual (hoje)
+- Navegação preserva a semana selecionada
+
+### 9. BLOQUEIO GERAL DE AGENDAMENTOS 🔒
+- Configuração coletiva (afeta TODOS os clientes)
+- Dono configura nas Configurações > Bloqueio Geral
+- Opções: 0, 7, 14, 30 dias
+- Chatbot respeita o bloqueio geral
+
+### 10. SIDEBAR MELHORADO
+- Botão de fechar movido para abaixo do nome do proprietário
+- Botão hambúrguer movido para o topo (mobile)
+- Design responsivo
+
+=========================================
+🔄 O QUE JÁ EXISTE
+=========================================
+
+1. Autenticacao (Super Admin, Dono, Profissional)
+2. CRUD Clientes (apenas Dono) com dias_bloqueio
+3. CRUD Agendamentos (Dono e Profissional)
+4. Sistema de Comissoes (configurável, padrao 30%)
+5. Financeiro com:
+   - Faturamento Bruto
+   - Comissoes a Pagar
+   - Faturamento Liquido
+   - Cards por profissional
+6. Super Admin: gestao de empresas (COMPLETO)
+7. Sistema de Profissionais (com limite por plano)
+8. Sistema de Servicos
+9. Chatbot Inteligente
+10. Sistema de Planos de Assinatura
+11. Sistema de Pagamentos (Mercado Pago)
+12. Landing Page tela dividida
+13. Dashboard com métricas
+14. Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
+15. Tema escuro por padrão
+16. Limite de 100 agendamentos/mês para Starter
+17. Agenda Inteligente no Dashboard
+18. Dias de bloqueio individual por cliente
+19. BLOQUEIO GERAL (coletivo)
+20. Correção de timezone nas datas
+21. Recarregamento automático da agenda
+22. Dashboard Super Admin completo
+23. Gestão de empresas e usuários
+24. Sistema de acessos
+
+=========================================
+📋 PLANOS COMPLETOS
+=========================================
+
+| Plano | Valor | Profissionais | Agendamentos/Mês |
+|-------|-------|---------------|------------------|
+| Trial | Grátis (45 dias) | 1 | 100 |
+| Starter | R$ 29,90/mês | 1 | 100 |
+| Pro | R$ 59,90/mês | 5 | Ilimitado |
+| Business | R$ 119,90/mês | 15 | Ilimitado |
+| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
+
+=========================================
+ULTIMA ATUALIZACAO: 30/06/2026
+=========================================

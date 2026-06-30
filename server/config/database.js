@@ -31,20 +31,14 @@ if (isProduction || isRender) {
         ssl: { rejectUnauthorized: false }
     });
 
-    // 🔥 CORRIGIDO: NÃO converte se já tiver $1
     function convertPlaceholders(sql) {
-        // Se já tem $1, $2... NÃO CONVERTE
         if (sql.includes('$1')) {
             return sql;
         }
-        // Se tem ?, converte para $1, $2...
         let i = 0;
         return sql.replace(/\?/g, () => `$${++i}`);
     }
 
-    // ============================================================
-    // 🔥 WRAPPER COM TRATAMENTO DE CALLBACK
-    // ============================================================
     db = {
         get: (sql, params, callback) => {
             if (typeof params === 'function') {
@@ -58,10 +52,8 @@ if (isProduction || isRender) {
                 params = [params];
             }
 
-            // 🔥 SÓ CONVERTE SE TIVER ?
             const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
 
-            // Log para depuração
             console.log(`📝 GET SQL: ${sqlFinal.substring(0, 100)}...`);
 
             pool.query(sqlFinal, params, (err, result) => {
@@ -322,8 +314,6 @@ function inserirHorariosPadrao(empresaId) {
     }
 }
 
-// Adicione esta função dentro do arquivo database.js
-
 // ============================================
 // MIGRAÇÃO: Adicionar coluna telefone na tabela usuarios
 // ============================================
@@ -333,7 +323,6 @@ function migrarTelefoneUsuarios() {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (isProduction) {
-        // PostgreSQL
         const sqlCheck = `
             SELECT column_name 
             FROM information_schema.columns 
@@ -364,49 +353,33 @@ function migrarTelefoneUsuarios() {
             });
         });
     } else {
-        // SQLite
-        db.get("PRAGMA table_info(usuarios)", [], (err, rows) => {
+        db.all("PRAGMA table_info(usuarios)", [], (err, columns) => {
             if (err) {
-                console.error('❌ Erro ao verificar telefone em usuarios:', err.message);
+                console.error('❌ Erro ao listar colunas:', err.message);
                 return;
             }
 
-            // rows é um array de objetos
-            db.all("PRAGMA table_info(usuarios)", [], (err, columns) => {
+            const existe = columns.some(col => col.name === 'telefone');
+
+            if (existe) {
+                console.log('✅ Coluna telefone já existe em usuarios!');
+                return;
+            }
+
+            console.log('📝 Criando coluna telefone em usuarios (SQLite)...');
+            const sqlAdd = `ALTER TABLE usuarios ADD COLUMN telefone VARCHAR(20)`;
+
+            db.run(sqlAdd, [], (err) => {
                 if (err) {
-                    console.error('❌ Erro ao listar colunas:', err.message);
+                    console.error('❌ Erro ao criar telefone em usuarios:', err.message);
                     return;
                 }
-
-                const existe = columns.some(col => col.name === 'telefone');
-
-                if (existe) {
-                    console.log('✅ Coluna telefone já existe em usuarios!');
-                    return;
-                }
-
-                console.log('📝 Criando coluna telefone em usuarios (SQLite)...');
-                const sqlAdd = `ALTER TABLE usuarios ADD COLUMN telefone VARCHAR(20)`;
-
-                db.run(sqlAdd, [], (err) => {
-                    if (err) {
-                        console.error('❌ Erro ao criar telefone em usuarios:', err.message);
-                        return;
-                    }
-                    console.log('✅ Coluna telefone criada em usuarios!');
-                });
+                console.log('✅ Coluna telefone criada em usuarios!');
             });
         });
     }
 }
 
-// Chame a função após a inicialização do banco
-// No final do arquivo database.js, adicione:
-// setTimeout(migrarTelefoneUsuarios, 3000);
-
-// ============================================
-// MIGRAÇÃO: Tabela de acessos
-// ============================================
 // ============================================
 // MIGRAÇÃO: Tabela de acessos
 // ============================================
@@ -444,11 +417,78 @@ function migrarTabelaAcessos() {
     });
 }
 
-// Chame a função após a inicialização do banco
-setTimeout(migrarTabelaAcessos, 1500);
+// ============================================
+// 🔥 MIGRAÇÃO: Adicionar coluna duracao na tabela agendamentos
+// ============================================
+function migrarDuracaoAgendamentos() {
+    console.log('🔍 Verificando coluna duracao em agendamentos...');
 
-// Chame a função após a inicialização do banco
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    if (isProduction) {
+        const sqlCheck = `
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'agendamentos' 
+            AND column_name = 'duracao'
+        `;
+
+        db.get(sqlCheck, [], (err, row) => {
+            if (err) {
+                console.error('❌ Erro ao verificar duracao:', err.message);
+                return;
+            }
+
+            if (row) {
+                console.log('✅ Coluna duracao já existe em agendamentos!');
+                return;
+            }
+
+            console.log('📝 Criando coluna duracao em agendamentos (PostgreSQL)...');
+            const sqlAdd = `ALTER TABLE agendamentos ADD COLUMN duracao INTEGER DEFAULT 30`;
+
+            db.run(sqlAdd, [], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao criar duracao:', err.message);
+                    return;
+                }
+                console.log('✅ Coluna duracao criada em agendamentos!');
+            });
+        });
+    } else {
+        db.all("PRAGMA table_info(agendamentos)", [], (err, columns) => {
+            if (err) {
+                console.error('❌ Erro ao listar colunas:', err.message);
+                return;
+            }
+
+            const existe = columns.some(col => col.name === 'duracao');
+
+            if (existe) {
+                console.log('✅ Coluna duracao já existe em agendamentos!');
+                return;
+            }
+
+            console.log('📝 Criando coluna duracao em agendamentos (SQLite)...');
+            const sqlAdd = `ALTER TABLE agendamentos ADD COLUMN duracao INTEGER DEFAULT 30`;
+
+            db.run(sqlAdd, [], (err) => {
+                if (err) {
+                    console.error('❌ Erro ao criar duracao:', err.message);
+                    return;
+                }
+                console.log('✅ Coluna duracao criada em agendamentos!');
+            });
+        });
+    }
+}
+
+// ============================================
+// EXECUTAR MIGRAÇÕES
+// ============================================
 setTimeout(migrarTabelaAcessos, 1000);
+setTimeout(migrarTelefoneUsuarios, 2000);
+setTimeout(migrarDuracaoAgendamentos, 2500); // 🔥 NOVA MIGRAÇÃO
 
 // ============================================================
 // EXPORTAR FUNÇÕES
@@ -459,3 +499,5 @@ module.exports = {
     inserirHorariosPadrao,
     verificarColunaDiasBloqueio
 };
+
+console.log('✅ database.js carregado com migração de duracao!');

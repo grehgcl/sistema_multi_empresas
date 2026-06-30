@@ -89,6 +89,82 @@ function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
 }
 
 // ============================================================
+// FUNÇÃO AUXILIAR: VERIFICAR DISPONIBILIDADE COM DURAÇÃO
+// ============================================================
+async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data, hora, duracao) {
+    // Se não tiver profissional definido, considerar todos os profissionais
+    let sqlAgendamentos;
+    let paramsAgendamentos;
+
+    if (profissional_id) {
+        sqlAgendamentos = isProduction
+            ? `SELECT a.hora, a.id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = $1 
+               AND a.data = $2 
+               AND a.profissional_id = $3 
+               AND a.status != 'cancelado'`
+            : `SELECT a.hora, a.id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = ? 
+               AND a.data = ? 
+               AND a.profissional_id = ? 
+               AND a.status != 'cancelado'`;
+        paramsAgendamentos = [empresa_id, data, profissional_id];
+    } else {
+        // Se não tem profissional específico, verificar todos os profissionais
+        sqlAgendamentos = isProduction
+            ? `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = $1 
+               AND a.data = $2 
+               AND a.status != 'cancelado'`
+            : `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = ? 
+               AND a.data = ? 
+               AND a.status != 'cancelado'`;
+        paramsAgendamentos = [empresa_id, data];
+    }
+
+    const agendamentos = await new Promise((resolve) => {
+        db.all(sqlAgendamentos, paramsAgendamentos, (err, rows) => {
+            if (err) {
+                console.error('❌ Erro ao buscar agendamentos:', err);
+                resolve([]);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+
+    // Converter hora para minutos
+    const horaInicioMin = horaParaMinutos(hora);
+    const horaFimMin = horaInicioMin + duracao;
+
+    // Verificar conflitos
+    for (let ag of agendamentos) {
+        if (!ag.hora) continue;
+
+        const agHoraMin = horaParaMinutos(ag.hora);
+        const agDuracao = ag.servico_duracao || 30;
+        const agFimMin = agHoraMin + agDuracao;
+
+        // Verificar sobreposição
+        if (horaInicioMin < agFimMin && horaFimMin > agHoraMin) {
+            console.log(`❌ Conflito: ${hora} (${duracao}min) com ${ag.hora} (${agDuracao}min)`);
+            return false; // Conflito
+        }
+    }
+
+    return true; // Disponível
+}
+
+// ============================================================
 // INICIALIZAÇÃO DO BANCO E USUÁRIOS PADRÃO
 // ============================================================
 
@@ -2233,7 +2309,7 @@ app.get('/api/agendamentos', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL)
+// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL E DURAÇÃO)
 // ============================================
 app.post('/api/agendamentos',
     auth,
@@ -2266,7 +2342,6 @@ app.post('/api/agendamentos',
         console.log('📅 Data/Hora agendamento:', dataHoraAgendamento);
         console.log('🕐 Agora:', agora);
 
-        // VALIDAÇÃO PRINCIPAL: Data/hora já passou?
         if (dataHoraAgendamento < agora) {
             console.log('❌ Tentativa de agendar em data/hora passada');
             return res.json({
@@ -2275,7 +2350,6 @@ app.post('/api/agendamentos',
             });
         }
 
-        // VALIDAÇÃO EXTRA: Se for hoje, verificar se o horário já passou
         const hojeStr = agora.toISOString().split('T')[0];
         if (data === hojeStr) {
             const horaAtual = agora.getHours();
@@ -2350,25 +2424,22 @@ app.post('/api/agendamentos',
         const diasBloqueioGeral = empresaInfo?.dias_bloqueio_geral || 0;
         console.log(`📋 Empresa ${empresa_id} - Dias de bloqueio geral: ${diasBloqueioGeral}`);
 
-        // ============================================
-        // 🔥 VALIDAÇÃO: BUSCAR ÚLTIMO AGENDAMENTO (se dias_bloqueio_geral > 0)
-        // ============================================
         if (diasBloqueioGeral > 0) {
             console.log(`🔍 Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
 
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
-           WHERE cliente_id = $1 
-           AND empresa_id = $2 
-           AND status != 'cancelado'
-           ORDER BY data DESC
-           LIMIT 1`
+                   WHERE cliente_id = $1 
+                   AND empresa_id = $2 
+                   AND status != 'cancelado'
+                   ORDER BY data DESC
+                   LIMIT 1`
                 : `SELECT data FROM agendamentos 
-           WHERE cliente_id = ? 
-           AND empresa_id = ? 
-           AND status != 'cancelado'
-           ORDER BY data DESC
-           LIMIT 1`;
+                   WHERE cliente_id = ? 
+                   AND empresa_id = ? 
+                   AND status != 'cancelado'
+                   ORDER BY data DESC
+                   LIMIT 1`;
 
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
@@ -2384,33 +2455,27 @@ app.post('/api/agendamentos',
 
             if (ultimoAgendamento && ultimoAgendamento.data) {
                 try {
-                    // 🔥 CORRIGIDO: Converter corretamente a data
                     let dataUltimo;
 
-                    // Verificar se já é um objeto Date ou string
                     if (typeof ultimoAgendamento.data === 'string') {
                         dataUltimo = new Date(ultimoAgendamento.data + 'T00:00:00');
                     } else if (ultimoAgendamento.data instanceof Date) {
                         dataUltimo = new Date(ultimoAgendamento.data);
                         dataUltimo.setHours(0, 0, 0, 0);
                     } else {
-                        // Tentar converter de qualquer forma
                         dataUltimo = new Date(ultimoAgendamento.data);
                         dataUltimo.setHours(0, 0, 0, 0);
                     }
 
                     console.log(`📅 Data do último agendamento convertida:`, dataUltimo);
 
-                    if (isNaN(dataUltimo.getTime())) {
-                        console.log(`⚠️ Data inválida no último agendamento: ${ultimoAgendamento.data}`);
-                    } else {
+                    if (!isNaN(dataUltimo.getTime())) {
                         const dataMinima = new Date(dataUltimo);
                         dataMinima.setDate(dataMinima.getDate() + diasBloqueioGeral);
                         dataMinima.setHours(0, 0, 0, 0);
 
                         const dataMinimaStr = dataMinima.toISOString().split('T')[0];
 
-                        // 🔥 CORRIGIDO: Converter data do novo agendamento
                         let dataAgendamento;
                         if (typeof data === 'string') {
                             dataAgendamento = new Date(data + 'T00:00:00');
@@ -2425,7 +2490,6 @@ app.post('/api/agendamentos',
                         console.log(`📅 Último agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
                         console.log(`📅 Data mínima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
                         console.log(`📅 Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
-                        console.log(`📅 Data agendamento >= Data mínima? ${dataAgendamento >= dataMinima}`);
 
                         if (dataAgendamento < dataMinima) {
                             console.log(`❌ BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
@@ -2439,7 +2503,6 @@ app.post('/api/agendamentos',
                     }
                 } catch (error) {
                     console.error('❌ Erro ao processar data do último agendamento:', error);
-                    console.error('❌ Stack:', error.stack);
                 }
             } else {
                 console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores - pode agendar livremente`);
@@ -2447,45 +2510,74 @@ app.post('/api/agendamentos',
         } else {
             console.log(`ℹ️ Bloqueio geral DESATIVADO (0 dias) - Sem validação extra`);
         }
-        // ============================================
-        // VERIFICAR SE HORÁRIO ESTÁ OCUPADO (PROFISSIONAL)
-        // ============================================
-        let sqlCheckHorario = isProduction
-            ? `SELECT id FROM agendamentos 
-               WHERE empresa_id = $1 
-               AND data = $2 
-               AND hora = $3 
-               AND status != 'cancelado'`
-            : `SELECT id FROM agendamentos 
-               WHERE empresa_id = ? 
-               AND data = ? 
-               AND hora = ? 
-               AND status != 'cancelado'`;
 
-        let paramsCheck = [parseInt(empresa_id), data, hora];
+        // ============================================
+        // 🔥 VALIDAÇÃO: BUSCAR DURAÇÃO DO SERVIÇO
+        // ============================================
+        let duracaoServico = 30;
+        let nomeServico = '';
+        let valorServico = 0;
 
-        if (profissional_id) {
-            sqlCheckHorario += isProduction ? ` AND profissional_id = $4` : ` AND profissional_id = ?`;
-            paramsCheck.push(parseInt(profissional_id));
+        if (servico_id && servico_id !== '' && servico_id !== 'null') {
+            const sqlServico = isProduction
+                ? `SELECT duracao, nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2`
+                : `SELECT duracao, nome, valor FROM servicos WHERE id = ? AND empresa_id = ?`;
+
+            const servicoInfo = await new Promise((resolve) => {
+                db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, row) => {
+                    if (err) {
+                        console.error('❌ Erro ao buscar serviço:', err);
+                        resolve(null);
+                    } else {
+                        resolve(row);
+                    }
+                });
+            });
+
+            if (servicoInfo) {
+                duracaoServico = servicoInfo.duracao || 30;
+                nomeServico = servicoInfo.nome;
+                valorServico = servicoInfo.valor || 0;
+                console.log(`📝 Serviço encontrado: ${nomeServico} - ${duracaoServico}min - R$ ${valorServico}`);
+            } else {
+                console.log(`⚠️ Serviço ${servico_id} não encontrado, usando padrão 30min`);
+            }
+        } else {
+            nomeServico = req.body.servico || 'Serviço';
+            valorServico = parseFloat(req.body.valor) || 0;
+            duracaoServico = 30;
         }
 
-        const horarioOcupado = await new Promise((resolve) => {
-            db.get(sqlCheckHorario, paramsCheck, (err, row) => {
-                if (err) {
-                    console.error('❌ Erro ao verificar horário:', err);
-                    resolve(null);
-                } else {
-                    resolve(row);
-                }
-            });
-        });
+        // ============================================
+        // 🔥 VERIFICAR PROFISSIONAL - CORRIGIDO
+        // ============================================
+        let profissionalIdFinal = null;
 
-        if (horarioOcupado) {
-            console.log(`❌ Horário ${hora} já está ocupado`);
-            return res.json({
-                success: false,
-                message: 'Este horário já está ocupado. Escolha outro horário.'
-            });
+        // Verificar se o usuário especificou um profissional
+        if (profissional_id && profissional_id !== '' && profissional_id !== 'null') {
+            profissionalIdFinal = parseInt(profissional_id);
+            console.log(`👤 Profissional especificado: ${profissionalIdFinal}`);
+
+            // Verificar se o profissional está disponível
+            const disponivel = await verificarDisponibilidadeHorario(
+                empresa_id,
+                profissionalIdFinal,
+                data,
+                hora,
+                duracaoServico
+            );
+
+            if (!disponivel) {
+                console.log(`❌ Horário ${hora} ocupado para o profissional ${profissionalIdFinal}`);
+                return res.json({
+                    success: false,
+                    message: `Este horário já está ocupado para este profissional. O serviço dura ${duracaoServico}min.`
+                });
+            }
+        } else {
+            // 🔥 QUANDO É DONO (sem profissional), NÃO ATRIBUI A NINGUÉM
+            profissionalIdFinal = null;
+            console.log(`👑 Agendamento como Dono (sem profissional)`);
         }
 
         // ============================================
@@ -2493,10 +2585,10 @@ app.post('/api/agendamentos',
         // ============================================
         async function criarAgendamento(servicoNome, servicoValor, servicoId) {
             const sqlInsert = isProduction
-                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                   VALUES ($1, $2, $3, $4, $5, $6, 'pendente', $7, $8) RETURNING id`
-                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, status, empresa_id, profissional_id) 
-                   VALUES (?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', $8, $9) RETURNING id`
+                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
 
             const params = [
                 parseInt(cliente_id),
@@ -2505,8 +2597,9 @@ app.post('/api/agendamentos',
                 servicoId || null,
                 servicoNome || '',
                 parseFloat(servicoValor) || 0,
+                duracaoServico,
                 parseInt(empresa_id),
-                profissional_id ? parseInt(profissional_id) : null
+                profissionalIdFinal
             ];
 
             console.log('📝 SQL Insert:', sqlInsert);
@@ -2548,9 +2641,9 @@ app.post('/api/agendamentos',
                     });
 
                     let profissional = null;
-                    if (profissional_id) {
+                    if (profissionalIdFinal) {
                         profissional = await new Promise((resolve, reject) => {
-                            db.get('SELECT * FROM profissionais WHERE id = ?', [parseInt(profissional_id)], (err, row) => {
+                            db.get('SELECT * FROM profissionais WHERE id = ?', [profissionalIdFinal], (err, row) => {
                                 if (err) reject(err);
                                 else resolve(row);
                             });
@@ -2587,36 +2680,19 @@ app.post('/api/agendamentos',
                     console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
                 }
 
-                res.json({ success: true, data: { id: id }, message: 'Agendamento criado com sucesso!' });
+                res.json({
+                    success: true,
+                    data: { id: id, profissional_id: profissionalIdFinal },
+                    message: 'Agendamento criado com sucesso!'
+                });
             });
         }
 
+        // Chamar a função de criação
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
-            const sqlServico = isProduction
-                ? `SELECT valor, nome FROM servicos WHERE id = $1 AND empresa_id = $2`
-                : `SELECT valor, nome FROM servicos WHERE id = ? AND empresa_id = ?`;
-
-            console.log('📝 Buscando serviço:', { servico_id, empresa_id });
-
-            db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, servicoData) => {
-                if (err) {
-                    console.error('❌ Erro ao buscar serviço:', err.message);
-                    return res.json({ success: false, message: 'Erro ao buscar serviço: ' + err.message });
-                }
-
-                if (!servicoData) {
-                    console.log('❌ Serviço não encontrado:', servico_id);
-                    return res.json({ success: false, message: 'Serviço não encontrado' });
-                }
-
-                console.log('📝 Serviço encontrado:', servicoData);
-                criarAgendamento(servicoData.nome, servicoData.valor, parseInt(servico_id));
-            });
+            criarAgendamento(nomeServico, valorServico, parseInt(servico_id));
         } else {
-            console.log('📝 Criando agendamento sem serviço_id (manual)');
-            const servicoNome = req.body.servico || '';
-            const servicoValor = parseFloat(req.body.valor) || 0;
-            criarAgendamento(servicoNome, servicoValor, null);
+            criarAgendamento(nomeServico, valorServico, null);
         }
     }
 );
@@ -3761,12 +3837,12 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
 });
 
 // ============================================
-// ROTA: /api/chatbot/horarios-disponiveis
+// ROTA: /api/chatbot/horarios-disponiveis (COM DURAÇÃO)
 // ============================================
 app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
-    const { empresaId, profissionalId, data } = req.body;
+    const { empresaId, profissionalId, data, duracao } = req.body;
 
-    console.log(`🔍 Buscando horários para ${data} - Profissional: ${profissionalId || 'todos'}`);
+    console.log(`🔍 Buscando horários para ${data} - Profissional: ${profissionalId || 'todos'} - Duração: ${duracao || 30}min`);
 
     let profissionalIdNum = null;
 
@@ -3784,19 +3860,21 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
         }
     }
 
-    console.log(`📝 profissionalId normalizado: ${profissionalIdNum}`);
+    const duracaoMin = duracao || 30;
 
+    // Buscar agendamentos do dia com duração dos serviços
     let sqlAgendamentos = `
-        SELECT hora 
-        FROM agendamentos 
-        WHERE empresa_id = ? 
-        AND data = ? 
-        AND status != 'cancelado'
+        SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
+        FROM agendamentos a
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.empresa_id = ? 
+        AND a.data = ? 
+        AND a.status != 'cancelado'
     `;
     let params = [empresaId, data];
 
     if (profissionalIdNum && profissionalIdNum > 0) {
-        sqlAgendamentos += ` AND profissional_id = ?`;
+        sqlAgendamentos += ` AND a.profissional_id = ?`;
         params.push(profissionalIdNum);
     }
 
@@ -3806,8 +3884,17 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
             return res.json({ success: false, message: err.message });
         }
 
-        const horariosOcupados = agendamentos.map(a => a.hora).filter(h => h);
+        // Converter agendamentos para intervalos ocupados
+        const ocupados = [];
+        for (let ag of agendamentos) {
+            if (!ag.hora) continue;
+            const inicioMin = horaParaMinutos(ag.hora);
+            const duracaoAg = ag.servico_duracao || 30;
+            const fimMin = inicioMin + duracaoAg;
+            ocupados.push({ inicio: inicioMin, fim: fimMin });
+        }
 
+        // Buscar horário de funcionamento do dia
         const dataObj = new Date(data + 'T00:00:00');
         const diaSemana = dataObj.getDay();
 
@@ -3818,7 +3905,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
             [empresaId, diaSemana],
             (err, horario) => {
                 if (err) {
-                    console.error('❌ Erro ao buscar horário de funcionamento:', err);
+                    console.error('❌ Erro ao buscar horário:', err);
                     return res.json({ success: false, message: err.message });
                 }
 
@@ -3826,20 +3913,42 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
                     return res.json({ success: true, horarios: [] });
                 }
 
-                const todosHorarios = gerarHorariosDoDia(
-                    horario.hora_inicio,
-                    horario.hora_fim,
-                    horario.almoco_inicio,
-                    horario.almoco_fim
-                );
+                const inicioMin = horaParaMinutos(horario.hora_inicio);
+                const fimMin = horaParaMinutos(horario.hora_fim);
+                const almocoInicioMin = horaParaMinutos(horario.almoco_inicio || '12:00');
+                const almocoFimMin = horaParaMinutos(horario.almoco_fim || '13:00');
+                const intervalo = 30;
 
-                const horariosLivres = todosHorarios.filter(h => !horariosOcupados.includes(h));
+                const horariosDisponiveis = [];
 
-                console.log(`✅ ${horariosLivres.length} horários disponíveis para ${data}`);
+                for (let minutos = inicioMin; minutos + duracaoMin <= fimMin; minutos += intervalo) {
+                    // Pular almoço
+                    if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
+                        continue;
+                    }
+
+                    // Verificar se o horário + duração não conflita com agendamentos
+                    const fimProposto = minutos + duracaoMin;
+                    let conflito = false;
+
+                    for (let ocupado of ocupados) {
+                        if (minutos < ocupado.fim && fimProposto > ocupado.inicio) {
+                            conflito = true;
+                            break;
+                        }
+                    }
+
+                    if (!conflito) {
+                        horariosDisponiveis.push(minutosParaHora(minutos));
+                    }
+                }
+
+                console.log(`✅ ${horariosDisponiveis.length} horários disponíveis para ${data} (duração: ${duracaoMin}min)`);
 
                 res.json({
                     success: true,
-                    horarios: horariosLivres
+                    horarios: horariosDisponiveis,
+                    duracao: duracaoMin
                 });
             }
         );

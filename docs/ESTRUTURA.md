@@ -1,4 +1,4 @@
-﻿﻿﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 27/06/2026
+﻿﻿# ESTRUTURA DO PROJETO - Atualizada em 30/06/2026
 
 ├── database/
 │   └── barbearia.db          # SQLite (desenvolvimento local)
@@ -18,7 +18,7 @@
 │           ├── agendamentos-profissional.js # Agendamentos (Profissional)
 │           ├── servicos.js               # CRUD Servicos
 │           ├── financeiro.js             # Financeiro
-│           ├── empresas.js               # Gestao empresas (Super Admin)
+│           ├── empresas.js               # Gestao empresas (Super Admin) - COMPLETO
 │           ├── configuracoes.js          # Configuracoes + Tema + Chatbot + BLOQUEIO GERAL
 │           └── planos.js                 # Página de Planos e Upgrade
 ├── docs/                    # Documentacao
@@ -28,7 +28,7 @@
 │   └── PARA_NOVA_IA.txt
 ├── server/
 │   ├── config/
-│   │   └── database.js      # Conexão com banco + criação das tabelas
+│   │   └── database.js      # Conexão com banco + criação das tabelas + MIGRAÇÕES
 │   ├── middlewares/
 │   │   └── auth.js          # Middlewares de autenticação + LIMITE AGENDAMENTOS
 │   ├── services/
@@ -54,6 +54,44 @@
 ├── README.md                # Documentação do projeto
 ├── test-limite.js           # Script para testar limite
 └── server.js                # Backend completo + rotas
+
+## 🔥 NOVIDADES (30/06/2026)
+
+### 1. SUPER ADMIN COMPLETO 🏢
+- **Arquivo:** `public/js/pages/empresas.js`
+- **Funcionalidades:**
+  - Dashboard com cards de métricas
+  - Lista de todas as empresas com status do trial
+  - Ver detalhes completos da empresa
+  - Editar nome e plano da empresa
+  - Estender trial (+30 dias)
+  - Gerenciar usuários (editar nome, email, telefone, role, senha, comissão)
+  - Filtrar empresas por nome
+  - Alertas de trials prestes a vencer
+
+### 2. SISTEMA DE ACESSOS 📊
+- **Arquivo:** `server.js` e `server/config/database.js`
+- **Funcionalidades:**
+  - Registro automático de acessos no login
+  - Captura de IP e User-Agent
+  - Estatísticas por empresa (total, hoje, semana, mês)
+  - Último acesso com data/hora formatada
+  - Tabela `acessos` no banco de dados
+
+### 3. ROTAS DO SUPER ADMIN (NOVAS)
+- GET `/api/admin/stats` - Estatísticas gerais
+- GET `/api/admin/empresas` - Listar empresas com métricas
+- GET `/api/admin/empresas/estatisticas` - Estatísticas completas
+- GET `/api/admin/usuarios` - Listar todos os usuários
+- GET `/api/admin/empresas/:id` - Detalhes da empresa
+- GET `/api/admin/empresas/:id/usuarios` - Usuários da empresa
+- GET `/api/admin/empresas/:id/clientes` - Clientes da empresa
+- GET `/api/admin/empresas/:id/agendamentos` - Agendamentos da empresa
+- GET `/api/admin/empresas/:id/acessos` - Acessos da empresa
+- PUT `/api/admin/empresas/:id` - Atualizar empresa
+- GET `/api/admin/usuarios/:id` - Buscar usuário
+- PUT `/api/admin/usuarios/:id` - Atualizar usuário
+- POST `/api/admin/empresas/:id/extender-trial` - Estender trial
 
 ## 🔥 CORREÇÕES RECENTES (27/06/2026)
 
@@ -145,8 +183,9 @@
 ## FLUXO DE TELAS POR ROLE
 
 ### Super Admin
-- Dashboard (stats globais)
-- Empresas (listar, editar, estender trial)
+- Dashboard (stats globais, cards, lista de empresas) - COMPLETO
+- Empresas (listar, editar, estender trial, ver detalhes)
+- Usuários (listar, editar)
 - Financeiro Global (todas comissoes)
 
 ### Dono
@@ -166,7 +205,15 @@
 ## ROTAS ADICIONADAS (NOVAS)
 - GET /api/empresa/dados - Busca dados da empresa (com dias_bloqueio_geral)
 - PUT /api/empresa/bloqueio-geral - Atualiza o bloqueio geral
+- GET /api/admin/empresas/estatisticas - Estatísticas completas (Super Admin)
+- GET /api/admin/empresas/:id/usuarios - Usuários da empresa (Super Admin)
+- GET /api/admin/empresas/:id/clientes - Clientes da empresa (Super Admin)
+- GET /api/admin/empresas/:id/agendamentos - Agendamentos da empresa (Super Admin)
+- GET /api/admin/empresas/:id/acessos - Acessos da empresa (Super Admin)
+- PUT /api/admin/empresas/:id - Atualizar empresa (Super Admin)
+- GET /api/admin/usuarios/:id - Buscar usuário (Super Admin)
+- PUT /api/admin/usuarios/:id - Atualizar usuário (Super Admin)
 
 =========================================
-ULTIMA ATUALIZACAO: 27/06/2026
+ULTIMA ATUALIZACAO: 30/06/2026
 =========================================

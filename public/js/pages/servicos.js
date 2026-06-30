@@ -1,4 +1,4 @@
-// pages/servicos.js - Versão Mobile Friendly com Cards
+// pages/servicos.js - Versão Mobile Friendly com Cards e Duração
 let listaServicosGlobal = [];
 
 async function carregarServicos() {
@@ -174,7 +174,7 @@ async function carregarListaServicos() {
                                     <th>Nome</th>
                                     <th>Descrição</th>
                                     <th>Valor</th>
-                                    <th>Duração</th>
+                                    <th>⏱️ Duração</th>
                                     <th>Status</th>
                                     <th>Ações</th>
                                 </tr>
@@ -185,7 +185,7 @@ async function carregarListaServicos() {
                                         <td><strong>${escapeHtml(s.nome)}</strong></td>
                                         <td>${escapeHtml(s.descricao || '-')}</td>
                                         <td><span class="valor">R$ ${(s.valor || 0).toFixed(2)}</span></td>
-                                        <td>${s.duracao || 30} min</td>
+                                        <td><span style="background:var(--bg-hover);padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">${s.duracao || 30} min</span></td>
                                         <td>
                                             <span class="status-badge ${s.ativo === 1 ? 'ativo' : 'inativo'}">
                                                 <span class="dot"></span>
@@ -242,7 +242,7 @@ function escapeHtml(text) {
 }
 
 // ============================================
-// ABRIR MODAL SERVIÇO
+// ABRIR MODAL SERVIÇO (COM DURAÇÃO)
 // ============================================
 
 function abrirModalServico(servico = null) {
@@ -273,9 +273,23 @@ function abrirModalServico(servico = null) {
                 <input type="number" id="servicoValor" class="form-control" step="0.01" value="${isEdit ? servico.valor : ''}" placeholder="0,00">
             </div>
 
+            <!-- 🔥 CAMPO DURAÇÃO - MELHORADO -->
             <div class="form-group">
-                <label>Duração (minutos)</label>
-                <input type="number" id="servicoDuracao" class="form-control" value="${isEdit ? (servico.duracao || 30) : 30}" placeholder="30">
+                <label>⏱️ Duração (minutos) *</label>
+                <select id="servicoDuracao" class="form-control">
+                    <option value="15" ${isEdit && servico.duracao === 15 ? 'selected' : ''}>15 minutos</option>
+                    <option value="30" ${isEdit && (servico.duracao === 30 || !servico) ? 'selected' : ''}>30 minutos</option>
+                    <option value="45" ${isEdit && servico.duracao === 45 ? 'selected' : ''}>45 minutos</option>
+                    <option value="50" ${isEdit && servico.duracao === 50 ? 'selected' : ''}>50 minutos</option>
+                    <option value="60" ${isEdit && servico.duracao === 60 ? 'selected' : ''}>1 hora (60 min)</option>
+                    <option value="90" ${isEdit && servico.duracao === 90 ? 'selected' : ''}>1 hora e 30 min (90 min)</option>
+                    <option value="120" ${isEdit && servico.duracao === 120 ? 'selected' : ''}>2 horas (120 min)</option>
+                    <option value="180" ${isEdit && servico.duracao === 180 ? 'selected' : ''}>3 horas (180 min)</option>
+                </select>
+                <small class="text-muted" style="display:block;margin-top:4px;color:var(--text-muted);">
+                    <i class="fas fa-info-circle"></i> 
+                    A agenda respeitará este tempo, bloqueando os horários necessários (ex: 50min bloqueia 1 hora)
+                </small>
             </div>
 
             ${isEdit ? `
@@ -304,7 +318,7 @@ function fecharModalServico() {
 }
 
 // ============================================
-// SALVAR SERVIÇO
+// SALVAR SERVIÇO (COM DURAÇÃO)
 // ============================================
 
 async function salvarServico() {
@@ -312,10 +326,15 @@ async function salvarServico() {
     const nome = document.getElementById('servicoNome').value;
     const descricao = document.getElementById('servicoDescricao').value;
     const valor = document.getElementById('servicoValor').value;
-    const duracao = document.getElementById('servicoDuracao').value;
+    const duracao = document.getElementById('servicoDuracao').value; // 🔥 PEGAR DURAÇÃO
 
     if (!nome || !valor) {
         showToast('Nome e valor são obrigatórios', 'warning');
+        return;
+    }
+
+    if (!duracao || parseInt(duracao) < 5) {
+        showToast('Duração deve ser pelo menos 5 minutos', 'warning');
         return;
     }
 
@@ -329,7 +348,7 @@ async function salvarServico() {
         nome: nome,
         descricao: descricao,
         valor: parseFloat(valor),
-        duracao: parseInt(duracao) || 30
+        duracao: parseInt(duracao) // 🔥 ENVIAR DURAÇÃO
     };
 
     if (id) {
@@ -399,7 +418,7 @@ async function toggleServico(id) {
                 nome: servico.nome,
                 descricao: servico.descricao,
                 valor: servico.valor,
-                duracao: servico.duracao,
+                duracao: servico.duracao || 30, // 🔥 MANTER DURAÇÃO
                 ativo: servico.ativo === 1 ? 0 : 1
             })
         });
@@ -479,3 +498,5 @@ window.salvarServico = salvarServico;
 window.editarServico = editarServico;
 window.toggleServico = toggleServico;
 window.excluirServico = excluirServico;
+
+console.log('✅ servicos.js carregado com campo DURAÇÃO!');
