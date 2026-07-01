@@ -4251,9 +4251,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
 
         const result = await new Promise((resolve, reject) => {
             const params = [clienteIdNum, servicoIdNum, servico.nome, servico.valor, profissionalIdNum, data, hora, empresaIdNum];
-            db.run(sqlInsert, params, function (err) {
+            db.get(sqlInsert, params, function (err, row) {
                 if (err) reject(err);
-                else resolve({ lastID: this.lastID });
+                else resolve({ lastID: row?.id || this?.lastID });
             });
         });
 
@@ -4278,6 +4278,18 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
         console.log('✅ CHATBOT - Agendamento criado! ID:', result.lastID);
+
+        try {
+            const sqlCliente = isProduction ? `SELECT nome, telefone FROM clientes WHERE id = $1` : `SELECT nome, telefone FROM clientes WHERE id = ?`;
+            const clienteData = await new Promise((resolve) => { db.get(sqlCliente, [clienteIdNum], (err, row) => resolve(row)); });
+            const sqlEmpresa = isProduction ? `SELECT nome, endereco FROM empresas WHERE id = $1` : `SELECT nome, endereco FROM empresas WHERE id = ?`;
+            const empresaData = await new Promise((resolve) => { db.get(sqlEmpresa, [empresaIdNum], (err, row) => resolve(row)); });
+            const sqlProfFull = isProduction ? `SELECT nome, telefone FROM profissionais WHERE id = $1` : `SELECT nome, telefone FROM profissionais WHERE id = ?`;
+            const profissionalFull = await new Promise((resolve) => { db.get(sqlProfFull, [profissionalIdNum], (err, row) => resolve(row)); });
+            const dadosNotificacao = { cliente: { nome: clienteData?.nome || 'Cliente', telefone: clienteData?.telefone || null }, servico: { nome: servico.nome, valor: servico.valor }, profissional: profissionalFull ? { nome: profissionalFull.nome, telefone: profissionalFull.telefone || null } : null, data: data, hora: hora, empresa: { nome: empresaData?.nome || 'Estabelecimento', endereco: empresaData?.endereco || '' } };
+            if (dadosNotificacao.cliente.telefone) { await whatsappService.enviarConfirmacao(dadosNotificacao); console.log('✅ CHATBOT WPP confirmação enviada'); }
+            if (profissionalFull?.telefone) { await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao); console.log('✅ CHATBOT WPP profissional notificado'); }
+        } catch (wpErr) { console.error('❌ CHATBOT WhatsApp erro:', wpErr.message); }
         res.json({
             success: true,
             agendamentoId: result.lastID,
