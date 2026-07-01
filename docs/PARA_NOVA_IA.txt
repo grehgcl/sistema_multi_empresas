@@ -1,402 +1,310 @@
-﻿=========================================
+﻿---
+
+## 📄 PARA_NOVA_IA.txt
+
+```markdown
+=========================================
   GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 24/06/2026
+  ULTIMA ATUALIZACAO: 01/07/2026
 =========================================
 
-LEIA OS ARQUIVOS NA ORDEM:
-1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
-2. docs/IA_CONTEXT.md - Contexto completo
-3. docs/ESTRUTURA.md - Onde fica cada coisa
-4. docs/DEV_GUIDE.md - Como desenvolver
+## 🚀 COMO EXECUTAR O PROJETO
 
-COMANDO: npm start
+### Modo Local (Sem WhatsApp real - apenas LOG)
+```bash
+npm start
+Usa o arquivo .env padrão
+
+WhatsApp em modo LOG (só mostra logs, não envia mensagens)
+
+Banco SQLite local
+
+Acesse: http://localhost:3000
 
 USUARIOS:
-  Super Admin: super@admin.com / super123
-  Dono: admin@teste.com / 123456
-  Profissional: (criar pelo dono) - senha definida pelo dono
+
+Super Admin: super@admin.com / super123
+
+Dono: admin@teste.com / 123456
+
+Modo com WhatsApp Evolution (Envia mensagens reais!)
+bash
+node -r dotenv/config server.js dotenv_config_path=.env.local
+Usa o arquivo .env.local
+
+WhatsApp Evolution conectado ao servidor externo (163.176.218.131:8080)
+
+Banco SQLite local
+
+Envia mensagens reais para os clientes
+
+Acesse: http://localhost:3000
 
 =========================================
-✅ IMPLEMENTADO (24/06/2026)
+✅ IMPLEMENTADO (01/07/2026)
 =========================================
 
-### 1. BLOQUEIO GERAL DE AGENDAMENTOS 🔒 (NOVO!)
-- Configuração coletiva (afeta TODOS os clientes)
-- Dono configura nas Configurações > Bloqueio Geral
-- Opções: 0, 7, 14, 30 dias
-- 0 dias = cliente pode agendar no dia seguinte (mas não no mesmo dia)
-- 7 dias = 1 vez por semana
-- 14 dias = 1 vez a cada 2 semanas
-- 30 dias = 1 vez por mês
-- Chatbot respeita o bloqueio geral
-- Validação no backend (POST /api/agendamentos)
-- Validação no chatbot (POST /api/chatbot/agendar)
+1. WHATSAPP EVOLUTION - SISTEMA COMPLETO 📱
+Provedor: Evolution API (servidor externo: http://163.176.218.131:8080)
 
-### 2. AGENDA INTELIGENTE DENTRO DO DASHBOARD 📅
-- Card da Agenda Visual dentro do Dashboard (abaixo de Ações Rápidas)
-- Visualização semanal com cores por profissional
-- Dono aparece como profissional (bolinha dourada 👑)
-- Clique na bolinha abre modal com data/hora/pré-setados
-- Cores: 🟢 Disponível, 🔴 Ocupado, 🍽️ Almoço, 🔒 Fechado
+Confirmação de Agendamento: Enviada automaticamente ao criar
 
-### 3. SISTEMA DE DIAS_BLOQUEIO POR CLIENTE (INDIVIDUAL)
-- Nova coluna `dias_bloqueio` na tabela `clientes` (padrão = 1)
-- Dono pode configurar no modal de edição do cliente
-- Validação no backend e no chatbot
+Lembrete 24h: Job automático às 09:00
 
-### 4. TEMA ESCURO POR PADRÃO 🌙
-- Sistema inicia com tema escuro estilo Instagram
-- Transição suave entre temas
-- Salvo no localStorage
-- Aba "Tema" nas configurações
+Cancelamento: Notifica o cliente
 
-### 5. SISTEMA DE NOTIFICAÇÕES WHATSAPP 📱
-- Confirmação de agendamento
-- Lembrete 24h antes (job às 09:00)
-- Agradecimento após conclusão
-- Notificação de cancelamento
-- Modo LOG funcionando
+Conclusão: Agradecimento automático
+
+Telefone do Dono: Aparece em todas as mensagens (campo telefone_dono)
+
+Endereço: Aparece nas mensagens (campo endereco)
+
+Formatação: Telefone formatado como (XX) XXXXX-XXXX
+
+2. SUPER ADMIN - DASHBOARD COMPLETO 🏢
+Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
+
+Lista completa de todas as empresas
+
+Status do trial (dias restantes, expirado, ativo)
+
+Total de usuários, profissionais, clientes e agendamentos por empresa
+
+Botões de ação (Ver detalhes, Editar, Estender trial)
+
+Filtro de busca de empresas em tempo real
+
+3. SUPER ADMIN - GESTÃO DE EMPRESAS 👨‍💼
+Ver detalhes completos da empresa
+
+Donos da empresa (nome, email, telefone, cadastro)
+
+Profissionais da empresa (nome, email, telefone, comissão, cadastro)
+
+Clientes da empresa (nome, telefone, email, status)
+
+Agendamentos da empresa (cliente, serviço, data, hora, valor, status)
+
+Estatísticas de acessos (total, hoje, último acesso)
+
+Editar nome e plano da empresa
+
+Estender trial com 1 clique (+30 dias)
+
+4. SUPER ADMIN - GESTÃO DE USUÁRIOS 👤
+Lista de todos os usuários do sistema
+
+Editar usuários (nome, email, telefone, role, senha, comissão)
+
+Ver acessos por usuário
+
+Donos e profissionais separados por empresa
+
+5. SISTEMA DE ACESSOS 📊
+Registro automático de acessos no login
+
+Captura de IP e User-Agent
+
+Estatísticas de acessos por empresa
+
+Último acesso com data/hora
+
+6. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
+Data do agendamento agora é enviada com +1 dia para compensar conversão UTC do backend
+
+Modal mostra a data correta para o usuário
+
+Validação de data/hora passada no frontend e backend
+
+7. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
+Função window.forcarRecarregarAgenda() criada para forçar recarregamento
+
+Agenda recarrega automaticamente após criar um agendamento
+
+Bolinha fica VERMELHA (ocupada) imediatamente após o agendamento
+
+8. DESIGN MODERNO DA AGENDA 🎨
+Gradientes e sombras modernas
+
+Efeito pulse nas bolinhas
+
+Tamanho adaptativo das bolinhas
+
+Tooltips ricos com informações
+
+Barra de progresso do dia
+
+Indicador de agendamentos por dia
+
+Ícones nos horários
+
+Mini avatar dos profissionais
+
+Indicador de scroll
+
+Navegação com botões ◀◀ ◀ ▶ ▶▶
+
+9. SEMANA COMEÇANDO NO DIA ATUAL 📅
+A agenda sempre começa no dia atual (hoje)
+
+Navegação preserva a semana selecionada
+
+10. BLOQUEIO GERAL DE AGENDAMENTOS 🔒
+Configuração coletiva (afeta TODOS os clientes)
+
+Dono configura nas Configurações > Bloqueio Geral
+
+Opções: 0, 7, 14, 30 dias
+
+Chatbot respeita o bloqueio geral
+
+11. SIDEBAR MELHORADO
+Botão de fechar movido para abaixo do nome do proprietário
+
+Botão hambúrguer movido para o topo (mobile)
+
+Design responsivo
 
 =========================================
 🔄 O QUE JÁ EXISTE
 =========================================
 
-1. Autenticacao (Super Admin, Dono, Profissional)
-2. CRUD Clientes (apenas Dono) com dias_bloqueio
-3. CRUD Agendamentos (Dono e Profissional)
-4. Sistema de Comissoes (configurável, padrao 30%)
-5. Financeiro com:
-   - Faturamento Bruto
-   - Comissoes a Pagar
-   - Faturamento Liquido
-   - Cards por profissional
-6. Super Admin: gestao de empresas
-7. Sistema de Profissionais (com limite por plano)
-8. Sistema de Servicos
-9. Chatbot Inteligente
-10. Sistema de Planos de Assinatura
-11. Sistema de Pagamentos (Mercado Pago)
-12. Landing Page tela dividida
-13. Dashboard com métricas
-14. Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
-15. Tema escuro por padrão
-16. Limite de 100 agendamentos/mês para Starter
-17. Agenda Inteligente no Dashboard
-18. Dias de bloqueio individual por cliente
-19. BLOQUEIO GERAL (coletivo) - NOVO!
+Autenticacao (Super Admin, Dono, Profissional)
+
+CRUD Clientes (apenas Dono) com dias_bloqueio
+
+CRUD Agendamentos (Dono e Profissional)
+
+Sistema de Comissoes (configurável, padrao 30%)
+
+Financeiro com:
+
+Faturamento Bruto
+
+Comissoes a Pagar
+
+Faturamento Liquido
+
+Cards por profissional
+
+Super Admin: gestao de empresas (COMPLETO)
+
+Sistema de Profissionais (com limite por plano)
+
+Sistema de Servicos
+
+Chatbot Inteligente
+
+Sistema de Planos de Assinatura
+
+Sistema de Pagamentos (Mercado Pago)
+
+Landing Page tela dividida
+
+Dashboard com métricas
+
+Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
+
+Tema escuro por padrão
+
+Limite de 100 agendamentos/mês para Starter
+
+Agenda Inteligente no Dashboard
+
+Dias de bloqueio individual por cliente
+
+BLOQUEIO GERAL (coletivo)
+
+Correção de timezone nas datas
+
+Recarregamento automático da agenda
+
+Dashboard Super Admin completo
+
+Gestão de empresas e usuários
+
+Sistema de acessos
+
+WhatsApp Evolution com telefone do dono nas mensagens
 
 =========================================
 📋 PLANOS COMPLETOS
 =========================================
 
-| Plano | Valor | Profissionais | Agendamentos/Mês |
-|-------|-------|---------------|------------------|
-| Trial | Grátis (45 dias) | 1 | 100 |
-| Starter | R$ 29,90/mês | 1 | 100 |
-| Pro | R$ 59,90/mês | 5 | Ilimitado |
-| Business | R$ 119,90/mês | 15 | Ilimitado |
-| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
-
+Plano	Valor	Profissionais	Agendamentos/Mês
+Trial	Grátis (45 dias)	1	100
+Starter	R$ 29,90/mês	1	100
+Pro	R$ 59,90/mês	5	Ilimitado
+Business	R$ 119,90/mês	15	Ilimitado
+Enterprise	R$ 249,90/mês	Ilimitado	Ilimitado
 =========================================
 📁 ESTRUTURA DOS ARQUIVOS
 =========================================
 
 server/
 ├── config/
-│   └── database.js
+│ ├── database.js
+│ └── whatsapp.js # Configuração do WhatsApp
 ├── middlewares/
-│   └── auth.js (com verificarLimiteAgendamentos)
+│ └── auth.js (com verificarLimiteAgendamentos)
 ├── services/
-│   └── whatsapp.js
+│ └── whatsapp.js # Serviço WhatsApp (Evolution API)
 ├── jobs/
-│   ├── lembretes.js
-│   └── reset-contador.js
+│ ├── lembretes.js # Job de lembretes 24h (09:00)
+│ └── reset-contador.js
 └── utils/
-    ├── constants.js
-    └── helpers.js
+├── constants.js
+└── helpers.js
 
 public/
 ├── index.html
 ├── chatbot.html
 ├── css/
-│   ├── style.css
-│   └── chatbot.css
+│ ├── style.css
+│ └── chatbot.css
 └── js/
-    ├── ui.js
-    └── pages/
-        ├── dashboard.js (com Agenda Inteligente)
-        ├── dashboard-profissional.js
-        ├── clientes.js (com dias_bloqueio)
-        ├── agendamentos.js
-        ├── agendamentos-profissional.js
-        ├── servicos.js
-        ├── financeiro.js
-        ├── empresas.js
-        ├── configuracoes.js (com BLOQUEIO GERAL)
-        └── planos.js (com barra de progresso)
+├── ui.js
+└── pages/
+├── dashboard.js (com Agenda Inteligente)
+├── dashboard-profissional.js
+├── clientes.js (com dias_bloqueio)
+├── agendamentos.js
+├── agendamentos-profissional.js
+├── servicos.js
+├── financeiro.js
+├── empresas.js # Super Admin (COMPLETO)
+├── configuracoes.js (com BLOQUEIO GERAL)
+└── planos.js (com barra de progresso)
 
 =========================================
 🔧 COMANDOS ÚTEIS
 =========================================
 
-# Iniciar servidor
+Iniciar servidor (modo local - LOG)
 npm start
 
-# Migração do banco (dias_bloqueio individual)
+Iniciar com WhatsApp Evolution (envia mensagens reais!)
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+Migração do banco (dias_bloqueio individual)
 node scripts/migrate-dias-bloqueio.js
 
-# Migração do banco (dias_bloqueio_geral)
+Migração do banco (dias_bloqueio_geral)
 ALTER TABLE empresas ADD COLUMN IF NOT EXISTS dias_bloqueio_geral INTEGER DEFAULT 0;
 
-# Ver logs do servidor
+Adicionar telefone do dono e endereço
+ALTER TABLE empresas ADD COLUMN telefone_dono VARCHAR(20);
+ALTER TABLE empresas ADD COLUMN endereco TEXT;
+
+Testar job de lembretes manualmente
+node -e "require('./server/jobs/lembretes.js').enviarLembretes()"
+
+Ver logs do servidor
 npm start
 
-# Acessar sistema
+Acessar sistema
 http://localhost:3000
 
 =========================================
-ULTIMA ATUALIZACAO: 24/06/2026
-=========================================
-
-=========================================
-  GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 27/06/2026
-=========================================
-
-LEIA OS ARQUIVOS NA ORDEM:
-1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
-2. docs/IA_CONTEXT.md - Contexto completo
-3. docs/ESTRUTURA.md - Onde fica cada coisa
-4. docs/DEV_GUIDE.md - Como desenvolver
-
-COMANDO: npm start
-
-USUARIOS:
-  Super Admin: super@admin.com / super123
-  Dono: admin@teste.com / 123456
-  Profissional: (criar pelo dono) - senha definida pelo dono
-
-=========================================
-✅ IMPLEMENTADO (27/06/2026)
-=========================================
-
-### 1. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
-- Data do agendamento agora é enviada com +1 dia para compensar conversão UTC do backend
-- Modal mostra a data correta para o usuário
-- Validação de data/hora passada no frontend e backend
-
-### 2. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
-- Função `window.forcarRecarregarAgenda()` criada para forçar recarregamento
-- Agenda recarrega automaticamente após criar um agendamento
-- Bolinha fica VERMELHA (ocupada) imediatamente após o agendamento
-
-### 3. DESIGN MODERNO DA AGENDA 🎨
-- Gradientes e sombras modernas
-- Efeito pulse nas bolinhas
-- Tamanho adaptativo das bolinhas
-- Tooltips ricos com informações
-- Barra de progresso do dia
-- Indicador de agendamentos por dia
-- Ícones nos horários
-- Mini avatar dos profissionais
-- Indicador de scroll
-- Navegação com botões ◀◀ ◀ ▶ ▶▶
-
-### 4. SEMANA COMEÇANDO NO DIA ATUAL 📅
-- A agenda sempre começa no dia atual (hoje)
-- Navegação preserva a semana selecionada
-
-### 5. BLOQUEIO GERAL DE AGENDAMENTOS 🔒
-- Configuração coletiva (afeta TODOS os clientes)
-- Dono configura nas Configurações > Bloqueio Geral
-- Opções: 0, 7, 14, 30 dias
-- Chatbot respeita o bloqueio geral
-
-### 6. SIDEBAR MELHORADO
-- Botão de fechar movido para abaixo do nome do proprietário
-- Botão hambúrguer movido para o topo (mobile)
-- Design responsivo
-
-=========================================
-🔄 O QUE JÁ EXISTE
-=========================================
-
-1. Autenticacao (Super Admin, Dono, Profissional)
-2. CRUD Clientes (apenas Dono) com dias_bloqueio
-3. CRUD Agendamentos (Dono e Profissional)
-4. Sistema de Comissoes (configurável, padrao 30%)
-5. Financeiro com:
-   - Faturamento Bruto
-   - Comissoes a Pagar
-   - Faturamento Liquido
-   - Cards por profissional
-6. Super Admin: gestao de empresas
-7. Sistema de Profissionais (com limite por plano)
-8. Sistema de Servicos
-9. Chatbot Inteligente
-10. Sistema de Planos de Assinatura
-11. Sistema de Pagamentos (Mercado Pago)
-12. Landing Page tela dividida
-13. Dashboard com métricas
-14. Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
-15. Tema escuro por padrão
-16. Limite de 100 agendamentos/mês para Starter
-17. Agenda Inteligente no Dashboard
-18. Dias de bloqueio individual por cliente
-19. BLOQUEIO GERAL (coletivo)
-20. Correção de timezone nas datas
-21. Recarregamento automático da agenda
-
-=========================================
-📋 PLANOS COMPLETOS
-=========================================
-
-| Plano | Valor | Profissionais | Agendamentos/Mês |
-|-------|-------|---------------|------------------|
-| Trial | Grátis (45 dias) | 1 | 100 |
-| Starter | R$ 29,90/mês | 1 | 100 |
-| Pro | R$ 59,90/mês | 5 | Ilimitado |
-| Business | R$ 119,90/mês | 15 | Ilimitado |
-| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
-
-=========================================
-ULTIMA ATUALIZACAO: 27/06/2026
-=========================================
-
-=========================================
-  GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 30/06/2026
-=========================================
-
-LEIA OS ARQUIVOS NA ORDEM:
-1. docs/PARA_NOVA_IA.txt - Resumo rapido (este)
-2. docs/IA_CONTEXT.md - Contexto completo
-3. docs/ESTRUTURA.md - Onde fica cada coisa
-4. docs/DEV_GUIDE.md - Como desenvolver
-
-COMANDO: npm start
-
-USUARIOS:
-  Super Admin: super@admin.com / super123
-  Dono: admin@teste.com / 123456
-  Profissional: (criar pelo dono) - senha definida pelo dono
-
-=========================================
-✅ IMPLEMENTADO (30/06/2026)
-=========================================
-
-### 1. SUPER ADMIN - DASHBOARD COMPLETO 🏢
-- Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
-- Lista completa de todas as empresas
-- Status do trial (dias restantes, expirado, ativo)
-- Total de usuários, profissionais, clientes e agendamentos por empresa
-- Botões de ação (Ver detalhes, Editar, Estender trial)
-- Filtro de busca de empresas em tempo real
-
-### 2. SUPER ADMIN - GESTÃO DE EMPRESAS 👨‍💼
-- Ver detalhes completos da empresa
-- Donos da empresa (nome, email, telefone, cadastro)
-- Profissionais da empresa (nome, email, telefone, comissão, cadastro)
-- Clientes da empresa (nome, telefone, email, status)
-- Agendamentos da empresa (cliente, serviço, data, hora, valor, status)
-- Estatísticas de acessos (total, hoje, último acesso)
-- Editar nome e plano da empresa
-- Estender trial com 1 clique (+30 dias)
-
-### 3. SUPER ADMIN - GESTÃO DE USUÁRIOS 👤
-- Lista de todos os usuários do sistema
-- Editar usuários (nome, email, telefone, role, senha, comissão)
-- Ver acessos por usuário
-- Donos e profissionais separados por empresa
-
-### 4. SISTEMA DE ACESSOS 📊
-- Registro automático de acessos no login
-- Captura de IP e User-Agent
-- Estatísticas de acessos por empresa
-- Último acesso com data/hora
-
-### 5. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
-- Data do agendamento agora é enviada com +1 dia para compensar conversão UTC do backend
-- Modal mostra a data correta para o usuário
-- Validação de data/hora passada no frontend e backend
-
-### 6. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
-- Função `window.forcarRecarregarAgenda()` criada para forçar recarregamento
-- Agenda recarrega automaticamente após criar um agendamento
-- Bolinha fica VERMELHA (ocupada) imediatamente após o agendamento
-
-### 7. DESIGN MODERNO DA AGENDA 🎨
-- Gradientes e sombras modernas
-- Efeito pulse nas bolinhas
-- Tamanho adaptativo das bolinhas
-- Tooltips ricos com informações
-- Barra de progresso do dia
-- Indicador de agendamentos por dia
-- Ícones nos horários
-- Mini avatar dos profissionais
-- Indicador de scroll
-- Navegação com botões ◀◀ ◀ ▶ ▶▶
-
-### 8. SEMANA COMEÇANDO NO DIA ATUAL 📅
-- A agenda sempre começa no dia atual (hoje)
-- Navegação preserva a semana selecionada
-
-### 9. BLOQUEIO GERAL DE AGENDAMENTOS 🔒
-- Configuração coletiva (afeta TODOS os clientes)
-- Dono configura nas Configurações > Bloqueio Geral
-- Opções: 0, 7, 14, 30 dias
-- Chatbot respeita o bloqueio geral
-
-### 10. SIDEBAR MELHORADO
-- Botão de fechar movido para abaixo do nome do proprietário
-- Botão hambúrguer movido para o topo (mobile)
-- Design responsivo
-
-=========================================
-🔄 O QUE JÁ EXISTE
-=========================================
-
-1. Autenticacao (Super Admin, Dono, Profissional)
-2. CRUD Clientes (apenas Dono) com dias_bloqueio
-3. CRUD Agendamentos (Dono e Profissional)
-4. Sistema de Comissoes (configurável, padrao 30%)
-5. Financeiro com:
-   - Faturamento Bruto
-   - Comissoes a Pagar
-   - Faturamento Liquido
-   - Cards por profissional
-6. Super Admin: gestao de empresas (COMPLETO)
-7. Sistema de Profissionais (com limite por plano)
-8. Sistema de Servicos
-9. Chatbot Inteligente
-10. Sistema de Planos de Assinatura
-11. Sistema de Pagamentos (Mercado Pago)
-12. Landing Page tela dividida
-13. Dashboard com métricas
-14. Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
-15. Tema escuro por padrão
-16. Limite de 100 agendamentos/mês para Starter
-17. Agenda Inteligente no Dashboard
-18. Dias de bloqueio individual por cliente
-19. BLOQUEIO GERAL (coletivo)
-20. Correção de timezone nas datas
-21. Recarregamento automático da agenda
-22. Dashboard Super Admin completo
-23. Gestão de empresas e usuários
-24. Sistema de acessos
-
-=========================================
-📋 PLANOS COMPLETOS
-=========================================
-
-| Plano | Valor | Profissionais | Agendamentos/Mês |
-|-------|-------|---------------|------------------|
-| Trial | Grátis (45 dias) | 1 | 100 |
-| Starter | R$ 29,90/mês | 1 | 100 |
-| Pro | R$ 59,90/mês | 5 | Ilimitado |
-| Business | R$ 119,90/mês | 15 | Ilimitado |
-| Enterprise | R$ 249,90/mês | Ilimitado | Ilimitado |
-
-=========================================
-ULTIMA ATUALIZACAO: 30/06/2026
+ULTIMA ATUALIZACAO: 01/07/2026
 =========================================

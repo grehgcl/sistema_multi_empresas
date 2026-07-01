@@ -762,7 +762,7 @@ app.get('/api/empresa/plano', auth, (req, res) => {
 });
 
 // ============================================================
-// 🔥 NOVA ROTA: DADOS DA EMPRESA (COM DIAS_BLOQUEIO_GERAL)
+// 🔥 ROTA: DADOS DA EMPRESA (COM TELEFONE_DONO E ENDERECO)
 // ============================================================
 app.get('/api/empresa/dados', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
@@ -771,15 +771,19 @@ app.get('/api/empresa/dados', auth, (req, res) => {
         return res.json({ success: false, message: 'Empresa não identificada' });
     }
 
-    // 🔥 CORRIGIDO: Garantir que o campo existe
+    // 🔥 ADICIONADO: telefone_dono e endereco
     const sql = isProduction
         ? `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
            assinatura_valida_ate, ultima_cobranca, created_at, 
-           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral 
+           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral,
+           COALESCE(telefone_dono, '') as telefone_dono,
+           COALESCE(endereco, '') as endereco
            FROM empresas WHERE id = $1`
         : `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
            assinatura_valida_ate, ultima_cobranca, created_at, 
-           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral 
+           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral,
+           COALESCE(telefone_dono, '') as telefone_dono,
+           COALESCE(endereco, '') as endereco
            FROM empresas WHERE id = ?`;
 
     db.get(sql, [empresaId], (err, empresa) => {
@@ -791,8 +795,72 @@ app.get('/api/empresa/dados', auth, (req, res) => {
             return res.json({ success: false, message: 'Empresa não encontrada' });
         }
 
-        console.log('📋 Dados da empresa retornados:', empresa);
+        console.log('📋 Dados da empresa retornados:', {
+            id: empresa.id,
+            nome: empresa.nome,
+            telefone_dono: empresa.telefone_dono,
+            endereco: empresa.endereco
+        });
         res.json({ success: true, data: empresa });
+    });
+});
+
+// ============================================================
+// 🔥 ROTA: ATUALIZAR ENDERECO DA EMPRESA
+// ============================================================
+app.put('/api/empresa/endereco', auth, verificarDono, (req, res) => {
+    const { endereco } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    console.log('📝 Atualizando endereço:', { empresaId, endereco });
+
+    const sql = isProduction
+        ? `UPDATE empresas SET endereco = $1 WHERE id = $2`
+        : `UPDATE empresas SET endereco = ? WHERE id = ?`;
+
+    db.run(sql, [endereco || '', empresaId], function (err) {
+        if (err) {
+            console.error('❌ Erro ao atualizar endereço:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log('✅ Endereço atualizado:', endereco);
+        res.json({
+            success: true,
+            message: '📍 Endereço atualizado com sucesso!',
+            data: { endereco: endereco }
+        });
+    });
+});
+
+// ============================================================
+// 🔥 ROTA: ATUALIZAR TELEFONE DO DONO
+// ============================================================
+app.put('/api/empresa/telefone-dono', auth, verificarDono, (req, res) => {
+    const { telefone_dono } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    console.log('📝 Atualizando telefone do dono:', { empresaId, telefone_dono });
+
+    // Remover tudo que não é número
+    const telefoneLimpo = telefone_dono ? telefone_dono.replace(/\D/g, '') : '';
+
+    const sql = isProduction
+        ? `UPDATE empresas SET telefone_dono = $1 WHERE id = $2`
+        : `UPDATE empresas SET telefone_dono = ? WHERE id = ?`;
+
+    db.run(sql, [telefoneLimpo, empresaId], function (err) {
+        if (err) {
+            console.error('❌ Erro ao atualizar telefone do dono:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log('✅ Telefone do dono atualizado:', telefoneLimpo);
+        res.json({
+            success: true,
+            message: '📞 Telefone do dono atualizado com sucesso!',
+            data: { telefone_dono: telefoneLimpo }
+        });
     });
 });
 
@@ -1047,9 +1115,111 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
 });
 
 // ============================================================
-// 🏢 SUPER ADMIN - GESTÃO COMPLETA
+// 🔥 ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
 // ============================================================
+app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
 
+    console.log(`👤 Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
+
+    const sqlCheck = isProduction
+        ? `SELECT id, empresa_id FROM profissionais WHERE id = $1`
+        : `SELECT id, empresa_id FROM profissionais WHERE id = ?`;
+
+    db.get(sqlCheck, [id], (err, profissional) => {
+        if (err) {
+            console.error('❌ Erro ao verificar profissional:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!profissional) {
+            return res.json({ success: false, message: 'Profissional não encontrado' });
+        }
+
+        let query = isProduction
+            ? `UPDATE profissionais SET 
+               nome = COALESCE($1, nome), 
+               email = COALESCE($2, email)`
+            : `UPDATE profissionais SET 
+               nome = COALESCE(?, nome), 
+               email = COALESCE(?, email)`;
+
+        let params = [nome || null, email || null];
+        let counter = 3;
+
+        if (comissao_percent !== undefined && comissao_percent !== null && comissao_percent !== '') {
+            query += isProduction ? `, comissao_percent = $${counter++}` : `, comissao_percent = ?`;
+            params.push(parseFloat(comissao_percent));
+        }
+
+        if (telefone !== undefined) {
+            const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
+            query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
+            params.push(telefoneLimpo);
+        }
+
+        if (ativo !== undefined && ativo !== null) {
+            query += isProduction ? `, ativo = $${counter++}` : `, ativo = ?`;
+            params.push(ativo ? 1 : 0);
+        }
+
+        if (senha && senha.trim() !== '') {
+            const senhaHash = bcrypt.hashSync(senha, 10);
+            query += isProduction ? `, senha = $${counter++}` : `, senha = ?`;
+            params.push(senhaHash);
+        }
+
+        query += isProduction ? ` WHERE id = $${counter++}` : ` WHERE id = ?`;
+        params.push(id);
+
+        db.run(query, params, function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar profissional:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            console.log('✅ Profissional atualizado com sucesso!');
+            res.json({
+                success: true,
+                message: 'Profissional atualizado com sucesso!'
+            });
+        });
+    });
+});
+
+
+
+// ============================================================
+// 🔥 ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
+// ============================================================
+app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+
+    console.log(`👤 Super Admin - Buscando profissional ${id}...`);
+
+    const sql = isProduction
+        ? `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
+           FROM profissionais 
+           WHERE id = $1`
+        : `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
+           FROM profissionais 
+           WHERE id = ?`;
+
+    db.get(sql, [id], (err, profissional) => {
+        if (err) {
+            console.error('❌ Erro ao buscar profissional:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!profissional) {
+            return res.json({ success: false, message: 'Profissional não encontrado' });
+        }
+
+        console.log('✅ Profissional encontrado:', profissional.nome);
+        res.json({ success: true, data: profissional });
+    });
+});
 // ============================================
 // 1. ESTATÍSTICAS GERAIS (MELHORADA)
 // ============================================
@@ -1183,7 +1353,7 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
 app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
     console.log('👤 Super Admin - Listando todos os usuários...');
 
-    // 🔥 CORRIGIDO: Buscar também telefone dos profissionais
+    // 🔥 CORRIGIDO: Buscar telefone da tabela usuarios
     const sql = isProduction
         ? `SELECT 
             u.id, 
@@ -1193,7 +1363,7 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
             u.empresa_id, 
             u.created_at, 
             e.nome as empresa_nome,
-            p.telefone,
+            u.telefone,  -- 🔥 ADICIONADO: telefone do usuário
             p.comissao_percent
            FROM usuarios u
            LEFT JOIN empresas e ON u.empresa_id = e.id
@@ -1207,7 +1377,7 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
             u.empresa_id, 
             u.created_at, 
             e.nome as empresa_nome,
-            p.telefone,
+            u.telefone,  -- 🔥 ADICIONADO: telefone do usuário
             p.comissao_percent
            FROM usuarios u
            LEFT JOIN empresas e ON u.empresa_id = e.id
@@ -1234,7 +1404,6 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
         res.json({ success: true, data: usuariosSemSenha });
     });
 });
-
 // ============================================
 // 4. DETALHES DE UMA EMPRESA (CORRIGIDO)
 // ============================================
@@ -1278,13 +1447,13 @@ app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// 5. USUÁRIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO)
+// 5. USUÁRIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO - COM TELEFONE)
 // ============================================
 app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`👤 Super Admin - Buscando usuários e profissionais da empresa ${id}...`);
 
-    // 🔥 CORRIGIDO: Buscar DONOS da tabela usuarios e PROFISSIONAIS da tabela profissionais
+    // 🔥 CORRIGIDO: Buscar TELEFONE tanto de donos quanto de profissionais
     const sql = isProduction
         ? `SELECT 
             'dono' as tipo,
@@ -1293,7 +1462,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             u.email, 
             u.role, 
             u.created_at,
-            NULL as telefone,
+            u.telefone,  -- 🔥 ADICIONADO: telefone do dono
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
@@ -1308,7 +1477,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             p.email, 
             'profissional' as role,
             p.created_at,
-            p.telefone,
+            p.telefone,  -- 🔥 JÁ ESTAVA: telefone do profissional
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
@@ -1322,7 +1491,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             u.email, 
             u.role, 
             u.created_at,
-            NULL as telefone,
+            u.telefone,  -- 🔥 ADICIONADO: telefone do dono
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
@@ -1337,7 +1506,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             p.email, 
             'profissional' as role,
             p.created_at,
-            p.telefone,
+            p.telefone,  -- 🔥 JÁ ESTAVA: telefone do profissional
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
@@ -1368,7 +1537,6 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
         res.json({ success: true, data: dadosFormatados });
     });
 });
-
 // ============================================
 // ROTA: ACESSOS DE UMA EMPRESA
 // ============================================
@@ -1596,6 +1764,8 @@ app.get('/api/admin/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req,
     });
 });
 
+
+
 // ============================================
 // 8. ATUALIZAR EMPRESA
 // ============================================
@@ -1630,7 +1800,6 @@ app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`👤 Super Admin - Buscando usuário ${id}...`);
 
-    // 🔥 CORRIGIDO: Remover comissao_percent da query
     const sql = isProduction
         ? `SELECT id, nome, email, role, empresa_id, created_at 
            FROM usuarios 
@@ -1649,10 +1818,8 @@ app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
             return res.json({ success: false, message: 'Usuário não encontrado' });
         }
 
-        // Remover senha por segurança
         delete usuario.senha;
 
-        // Se for profissional, buscar comissão da tabela profissionais
         if (usuario.role === 'profissional') {
             const sqlProf = isProduction
                 ? `SELECT comissao_percent FROM profissionais WHERE email = $1`
@@ -1675,7 +1842,72 @@ app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 // ============================================
-// EDITAR USUÁRIO (CORRIGIDO - SEM TELEFONE)
+// 10. ATUALIZAR USUÁRIO (COM TELEFONE)
+// ============================================
+app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { nome, email, role, senha, telefone } = req.body;
+
+    console.log(`👤 Super Admin - Atualizando usuário ${id}:`, { nome, email, role, telefone });
+
+    const sqlCheck = isProduction
+        ? `SELECT id, empresa_id FROM usuarios WHERE id = $1`
+        : `SELECT id, empresa_id FROM usuarios WHERE id = ?`;
+
+    db.get(sqlCheck, [id], (err, usuario) => {
+        if (err) {
+            console.error('❌ Erro ao verificar usuário:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!usuario) {
+            return res.json({ success: false, message: 'Usuário não encontrado' });
+        }
+
+        let query = isProduction
+            ? `UPDATE usuarios SET 
+               nome = COALESCE($1, nome), 
+               email = COALESCE($2, email),
+               role = COALESCE($3, role)`
+            : `UPDATE usuarios SET 
+               nome = COALESCE(?, nome), 
+               email = COALESCE(?, email),
+               role = COALESCE(?, role)`;
+
+        let params = [nome || null, email || null, role || null];
+        let counter = 4;
+
+        if (telefone !== undefined) {
+            const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
+            query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
+            params.push(telefoneLimpo);
+        }
+
+        if (senha && senha.trim() !== '') {
+            const senhaHash = bcrypt.hashSync(senha, 10);
+            query += isProduction ? `, senha = $${counter++}` : `, senha = ?`;
+            params.push(senhaHash);
+        }
+
+        query += isProduction ? ` WHERE id = $${counter++}` : ` WHERE id = ?`;
+        params.push(id);
+
+        db.run(query, params, function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar usuário:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            console.log('✅ Usuário atualizado com sucesso!');
+            res.json({
+                success: true,
+                message: 'Usuário atualizado com sucesso!'
+            });
+        });
+    });
+});
+// ============================================
+// EDITAR USUÁRIO (COM TELEFONE - ATUALIZADO)
 // ============================================
 
 async function editarUsuario(id) {
@@ -1696,9 +1928,8 @@ async function editarUsuario(id) {
     showLoading();
 
     try {
-        console.log(`📡 Buscando usuário ${id}...`);
-
-        const res = await fetch(`/api/admin/usuarios/${id}`, {
+        // 🔥 PRIMEIRO, BUSCAR O USUÁRIO PARA SABER O ROLE
+        const resUser = await fetch(`/api/admin/usuarios/${id}`, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -1706,7 +1937,40 @@ async function editarUsuario(id) {
             }
         });
 
-        console.log('📡 Resposta recebida, status:', res.status);
+        if (!resUser.ok) {
+            throw new Error(`HTTP ${resUser.status}: ${resUser.statusText}`);
+        }
+
+        const userData = await resUser.json();
+        console.log('📡 Dados do usuário:', userData);
+
+        hideLoading();
+
+        if (!userData.success || !userData.data) {
+            showToast('Usuário não encontrado', 'error');
+            return;
+        }
+
+        const usuario = userData.data;
+        console.log('👤 Usuário carregado:', usuario.nome, 'Role:', usuario.role);
+
+        // 🔥 DECIDIR A ROTA BASEADA NO ROLE, NÃO NO ID!
+        let url;
+        if (usuario.role === 'profissional') {
+            url = `/api/admin/profissionais/${id}`;  // ← ROTA PARA PROFISSIONAL
+        } else {
+            url = `/api/admin/usuarios/${id}`;       // ← ROTA PARA DONO/SUPERADMIN
+        }
+
+        console.log(`📡 Buscando ${url}...`);
+
+        const res = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
 
         if (!res.ok) {
             throw new Error(`HTTP ${res.status}: ${res.statusText}`);
@@ -1714,8 +1978,6 @@ async function editarUsuario(id) {
 
         const data = await res.json();
         console.log('📡 Dados recebidos:', data);
-
-        hideLoading();
 
         if (!data.success) {
             showToast(data.message || 'Erro ao carregar usuário', 'error');
@@ -1727,41 +1989,55 @@ async function editarUsuario(id) {
             return;
         }
 
-        const usuario = data.data;
-        console.log('👤 Usuário carregado:', usuario.nome);
+        const usuarioCompleto = data.data;
+        console.log('👤 Usuário carregado:', usuarioCompleto.nome);
 
-        // 🔥 CORRIGIDO: Remover campo telefone se não existir
+        // 🔥 DETECTAR SE É PROFISSIONAL OU USUÁRIO
+        const isProfissional = usuarioCompleto.role === 'profissional';
+
+        // 🔥 PEGAR O TELEFONE (se existir)
+        const telefone = usuarioCompleto.telefone || '';
+
         const modalContent = `
             <div style="padding: 10px 0;">
                 <form id="formEditarUsuario" style="display:flex;flex-direction:column;gap:12px;">
-                    <input type="hidden" id="editUsuarioId" value="${usuario.id}">
+                    <input type="hidden" id="editUsuarioId" value="${usuarioCompleto.id}">
+                    <input type="hidden" id="editUsuarioTipo" value="${isProfissional ? 'profissional' : 'usuario'}">
                     
                     <div class="form-group">
                         <label>Nome *</label>
-                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuario.nome || '')}" required>
+                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuarioCompleto.nome || '')}" required>
                     </div>
                     
                     <div class="form-group">
                         <label>Email *</label>
-                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuario.email || '')}" required>
+                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuarioCompleto.email || '')}" required>
                     </div>
                     
+                    <!-- 🔥 CAMPO TELEFONE PARA TODOS OS USUÁRIOS -->
                     <div class="form-group">
-                        <label>Role (Função)</label>
-                        <select id="editUsuarioRole" class="form-control">
-                            <option value="dono" ${usuario.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
-                            <option value="profissional" ${usuario.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
-                        </select>
-                        <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissões do usuário</small>
+                        <label>📱 Telefone</label>
+                        <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(telefone)}" placeholder="(11) 99999-9999">
+                        <small style="color:var(--text-muted);font-size:11px;">Este número aparecerá nas mensagens do WhatsApp</small>
                     </div>
                     
-                    ${usuario.role === 'profissional' ? `
+                    ${isProfissional ? `
                         <div class="form-group">
                             <label>Comissão (%)</label>
-                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuario.comissao_percent || 30}" min="0" max="100">
+                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuarioCompleto.comissao_percent || 30}" min="0" max="100">
                             <small style="color:var(--text-muted);font-size:11px;">Percentual de comissão para profissionais</small>
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div class="form-group">
+                            <label>Role (Função)</label>
+                            <select id="editUsuarioRole" class="form-control">
+                                <option value="dono" ${usuarioCompleto.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
+                                <option value="profissional" ${usuarioCompleto.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
+                                <option value="superadmin" ${usuarioCompleto.role === 'superadmin' ? 'selected' : ''}>🔴 Super Admin</option>
+                            </select>
+                            <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissões do usuário</small>
+                        </div>
+                    `}
                     
                     <div class="form-group">
                         <label>Nova Senha (opcional)</label>
@@ -1781,10 +2057,8 @@ async function editarUsuario(id) {
             </div>
         `;
 
-        // Mostrar modal
         showModal('✏️ Editar Usuário', modalContent, null);
 
-        // Conectar formulário
         setTimeout(() => {
             const form = document.getElementById('formEditarUsuario');
             if (form) {
@@ -1798,18 +2072,6 @@ async function editarUsuario(id) {
                 });
 
                 console.log('✅ Formulário de usuário conectado!');
-            } else {
-                console.warn('⚠️ Formulário não encontrado');
-            }
-
-            const modal = document.querySelector('.modal');
-            if (modal) {
-                modal.style.maxWidth = '500px';
-                const modalContent = modal.querySelector('.modal-content');
-                if (modalContent) {
-                    modalContent.style.maxHeight = '90vh';
-                    modalContent.style.overflowY = 'auto';
-                }
             }
         }, 200);
 
@@ -1849,7 +2111,114 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
         });
     });
 });
+// ============================================================
+// 🔥 ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
+// ============================================================
+app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
 
+    console.log(`👤 Super Admin - Buscando profissional ${id}...`);
+
+    const sql = isProduction
+        ? `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
+           FROM profissionais 
+           WHERE id = $1`
+        : `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
+           FROM profissionais 
+           WHERE id = ?`;
+
+    db.get(sql, [id], (err, profissional) => {
+        if (err) {
+            console.error('❌ Erro ao buscar profissional:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!profissional) {
+            console.log(`❌ Profissional ID ${id} não encontrado`);
+            return res.json({ success: false, message: 'Profissional não encontrado' });
+        }
+
+        console.log(`✅ Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
+        res.json({ success: true, data: profissional });
+    });
+});
+
+// ============================================================
+// 🔥 ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
+// ============================================================
+app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
+
+    console.log(`👤 Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
+
+    // Verificar se o profissional existe
+    const sqlCheck = isProduction
+        ? `SELECT id, empresa_id FROM profissionais WHERE id = $1`
+        : `SELECT id, empresa_id FROM profissionais WHERE id = ?`;
+
+    db.get(sqlCheck, [id], (err, profissional) => {
+        if (err) {
+            console.error('❌ Erro ao verificar profissional:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        if (!profissional) {
+            console.log(`❌ Profissional ID ${id} não encontrado para atualizar`);
+            return res.json({ success: false, message: 'Profissional não encontrado' });
+        }
+
+        // Construir query de atualização
+        let query = isProduction
+            ? `UPDATE profissionais SET 
+               nome = COALESCE($1, nome), 
+               email = COALESCE($2, email)`
+            : `UPDATE profissionais SET 
+               nome = COALESCE(?, nome), 
+               email = COALESCE(?, email)`;
+
+        let params = [nome || null, email || null];
+        let counter = 3;
+
+        if (comissao_percent !== undefined && comissao_percent !== null && comissao_percent !== '') {
+            query += isProduction ? `, comissao_percent = $${counter++}` : `, comissao_percent = ?`;
+            params.push(parseFloat(comissao_percent));
+        }
+
+        if (telefone !== undefined) {
+            const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
+            query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
+            params.push(telefoneLimpo);
+        }
+
+        if (ativo !== undefined && ativo !== null) {
+            query += isProduction ? `, ativo = $${counter++}` : `, ativo = ?`;
+            params.push(ativo ? 1 : 0);
+        }
+
+        if (senha && senha.trim() !== '') {
+            const senhaHash = bcrypt.hashSync(senha, 10);
+            query += isProduction ? `, senha = $${counter++}` : `, senha = ?`;
+            params.push(senhaHash);
+        }
+
+        query += isProduction ? ` WHERE id = $${counter++}` : ` WHERE id = ?`;
+        params.push(id);
+
+        db.run(query, params, function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar profissional:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            console.log(`✅ Profissional ${id} atualizado com sucesso!`);
+            res.json({
+                success: true,
+                message: 'Profissional atualizado com sucesso!'
+            });
+        });
+    });
+});
 // ============================================
 // 12. CONTAGEM DE ACESSOS (OPCIONAL)
 // ============================================
@@ -2663,8 +3032,18 @@ app.post('/api/agendamentos',
                         profissional: profissional ? { nome: profissional.nome, telefone: profissional.telefone || null } : null,
                         data: data,
                         hora: hora,
-                        empresa: { nome: empresa?.nome || 'Barbearia', endereco: empresa?.endereco || '' },
+                        empresa: {
+                            nome: empresa?.nome || 'Barbearia',
+                            endereco: empresa?.endereco || '',
+                            telefone_dono: empresa?.telefone_dono || ''  // 🔥 ADICIONE ESTA LINHA!
+                        },
                     };
+                    console.log('📱 Dados do WhatsApp:', {
+                        cliente: dadosNotificacao.cliente.telefone,
+                        empresa: dadosNotificacao.empresa.nome,
+                        telefone_dono: dadosNotificacao.empresa.telefone_dono,
+                        endereco: dadosNotificacao.empresa.endereco
+                    });
 
                     if (dadosNotificacao.cliente.telefone) {
                         await whatsappService.enviarConfirmacao(dadosNotificacao);

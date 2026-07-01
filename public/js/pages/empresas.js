@@ -717,7 +717,7 @@ async function editarEmpresa(id) {
 }
 
 // ============================================
-// EDITAR USUÁRIO (CORRIGIDO - COM TELEFONE)
+// EDITAR USUÁRIO (CORRIGIDO)
 // ============================================
 
 async function editarUsuario(id) {
@@ -738,9 +738,40 @@ async function editarUsuario(id) {
     showLoading();
 
     try {
-        console.log(`📡 Buscando usuário ${id}...`);
+        // 🔥 PRIMEIRO, BUSCAR O USUÁRIO PARA SABER O ROLE
+        const resUser = await fetch(`/api/admin/usuarios/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
 
-        const res = await fetch(`/api/admin/usuarios/${id}`, {
+        if (!resUser.ok) {
+            throw new Error(`HTTP ${resUser.status}: ${resUser.statusText}`);
+        }
+
+        const userData = await resUser.json();
+
+        if (!userData.success || !userData.data) {
+            showToast('Usuário não encontrado', 'error');
+            return;
+        }
+
+        const usuario = userData.data;
+        console.log('👤 Usuário carregado:', usuario.nome, 'Role:', usuario.role);
+
+        // 🔥 DECIDIR A ROTA BASEADA NO ROLE, NÃO NO ID!
+        let url;
+        if (usuario.role === 'profissional') {
+            url = `/api/admin/profissionais/${id}`;  // ← ROTA PARA PROFISSIONAL
+        } else {
+            url = `/api/admin/usuarios/${id}`;       // ← ROTA PARA DONO/SUPERADMIN
+        }
+
+        console.log(`📡 Buscando ${url}...`);
+
+        const res = await fetch(url, {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -767,47 +798,55 @@ async function editarUsuario(id) {
             return;
         }
 
-        const usuario = data.data;
-        console.log('👤 Usuário carregado:', usuario.nome);
+        const usuarioCompleto = data.data;
+        console.log('👤 Usuário carregado:', usuarioCompleto.nome);
 
-        // 🔥 CORRIGIDO: Incluir telefone se existir
+        // 🔥 DETECTAR SE É PROFISSIONAL OU USUÁRIO
+        const isProfissional = usuarioCompleto.role === 'profissional';
+
+        // 🔥 PEGAR O TELEFONE (se existir)
+        const telefone = usuarioCompleto.telefone || '';
+
         const modalContent = `
             <div style="padding: 10px 0;">
                 <form id="formEditarUsuario" style="display:flex;flex-direction:column;gap:12px;">
-                    <input type="hidden" id="editUsuarioId" value="${usuario.id}">
+                    <input type="hidden" id="editUsuarioId" value="${usuarioCompleto.id}">
+                    <input type="hidden" id="editUsuarioTipo" value="${isProfissional ? 'profissional' : 'usuario'}">
                     
                     <div class="form-group">
                         <label>Nome *</label>
-                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuario.nome || '')}" required>
+                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuarioCompleto.nome || '')}" required>
                     </div>
                     
                     <div class="form-group">
                         <label>Email *</label>
-                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuario.email || '')}" required>
+                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuarioCompleto.email || '')}" required>
                     </div>
                     
+                    <!-- 🔥 CAMPO TELEFONE PARA TODOS OS USUÁRIOS -->
                     <div class="form-group">
-                        <label>Telefone</label>
-                        <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(usuario.telefone || '')}" placeholder="(41) 99999-9999">
-                        <small style="color:var(--text-muted);font-size:11px;">Telefone do profissional (se aplicável)</small>
+                        <label>📱 Telefone</label>
+                        <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(telefone)}" placeholder="(11) 99999-9999">
+                        <small style="color:var(--text-muted);font-size:11px;">Este número aparecerá nas mensagens do WhatsApp</small>
                     </div>
                     
-                    <div class="form-group">
-                        <label>Role (Função)</label>
-                        <select id="editUsuarioRole" class="form-control">
-                            <option value="dono" ${usuario.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
-                            <option value="profissional" ${usuario.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
-                        </select>
-                        <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissões do usuário</small>
-                    </div>
-                    
-                    ${usuario.role === 'profissional' ? `
+                    ${isProfissional ? `
                         <div class="form-group">
                             <label>Comissão (%)</label>
-                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuario.comissao_percent || 30}" min="0" max="100">
+                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuarioCompleto.comissao_percent || 30}" min="0" max="100">
                             <small style="color:var(--text-muted);font-size:11px;">Percentual de comissão para profissionais</small>
                         </div>
-                    ` : ''}
+                    ` : `
+                        <div class="form-group">
+                            <label>Role (Função)</label>
+                            <select id="editUsuarioRole" class="form-control">
+                                <option value="dono" ${usuarioCompleto.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
+                                <option value="profissional" ${usuarioCompleto.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
+                                <option value="superadmin" ${usuarioCompleto.role === 'superadmin' ? 'selected' : ''}>🔴 Super Admin</option>
+                            </select>
+                            <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissões do usuário</small>
+                        </div>
+                    `}
                     
                     <div class="form-group">
                         <label>Nova Senha (opcional)</label>
@@ -843,16 +882,6 @@ async function editarUsuario(id) {
 
                 console.log('✅ Formulário de usuário conectado!');
             }
-
-            const modal = document.querySelector('.modal');
-            if (modal) {
-                modal.style.maxWidth = '500px';
-                const modalContent = modal.querySelector('.modal-content');
-                if (modalContent) {
-                    modalContent.style.maxHeight = '90vh';
-                    modalContent.style.overflowY = 'auto';
-                }
-            }
         }, 200);
 
     } catch (error) {
@@ -868,81 +897,76 @@ function fecharModalEditarUsuario() {
 }
 
 // ============================================
-// SALVAR USUÁRIO (CORRIGIDO)
+// SALVAR USUÁRIO (ATUALIZADO)
 // ============================================
-
 async function salvarUsuario() {
-    console.log('📝 Salvando usuário...');
-
     const id = document.getElementById('editUsuarioId')?.value;
+    const tipo = document.getElementById('editUsuarioTipo')?.value || 'usuario';
     const nome = document.getElementById('editUsuarioNome')?.value;
     const email = document.getElementById('editUsuarioEmail')?.value;
-    const telefone = document.getElementById('editUsuarioTelefone')?.value || '';
-    const role = document.getElementById('editUsuarioRole')?.value || 'dono';
-    const senha = document.getElementById('editUsuarioSenha')?.value || '';
+    const senha = document.getElementById('editUsuarioSenha')?.value;
     const comissao = document.getElementById('editUsuarioComissao')?.value;
+    const telefone = document.getElementById('editUsuarioTelefone')?.value;
+    const role = document.getElementById('editUsuarioRole')?.value;
 
-    if (!id) {
-        showToast('ID do usuário não encontrado', 'error');
+    if (!id || !nome || !email) {
+        showToast('Nome e email são obrigatórios', 'error');
         return;
     }
 
-    if (!nome || !email) {
-        showToast('Nome e email são obrigatórios', 'warning');
-        return;
+    console.log('📝 Salvando usuário...');
+
+    const dados = {
+        nome,
+        email,
+        senha: senha || undefined,
+        telefone: telefone || ''
+    };
+
+    if (tipo === 'profissional') {
+        if (comissao !== undefined && comissao !== '') {
+            dados.comissao_percent = parseFloat(comissao);
+        }
+    } else {
+        if (role) {
+            dados.role = role;
+        }
     }
 
-    if (senha && senha.length < 6) {
-        showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
-        return;
-    }
-
-    showLoading();
-    const token = localStorage.getItem('token');
+    console.log('📤 Enviando dados:', dados);
 
     try {
-        const body = {
-            nome: nome.trim(),
-            email: email.trim(),
-            telefone: telefone.trim(),
-            role: role
-        };
-
-        if (senha && senha.length >= 6) {
-            body.senha = senha;
+        let url;
+        if (tipo === 'profissional') {
+            url = `/api/admin/profissionais/${id}`;
+        } else {
+            url = `/api/admin/usuarios/${id}`;
         }
 
-        if (comissao && role === 'profissional') {
-            body.comissao_percent = parseFloat(comissao);
-        }
+        console.log(`📡 Enviando para: ${url}`);
 
-        console.log('📤 Enviando dados:', body);
-
-        const res = await fetch(`/api/admin/usuarios/${id}`, {
+        const response = await fetch(url, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
+                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(dados)
         });
 
-        const data = await res.json();
-        hideLoading();
+        const data = await response.json();
 
         if (data.success) {
             showToast('✅ Usuário atualizado com sucesso!', 'success');
-            fecharModalEditarUsuario();
-            setTimeout(() => {
-                carregarDashboardSuperAdmin();
-            }, 500);
+            fecharModal();
+            // 🔥 CORRIGIDO: usar a função correta
+            carregarDashboardSuperAdmin(); // ← ALTERADO AQUI!
         } else {
-            showToast(data.message || 'Erro ao atualizar usuário', 'error');
+            showToast('❌ ' + data.message, 'error');
         }
     } catch (error) {
-        hideLoading();
         console.error('❌ Erro ao salvar usuário:', error);
-        showToast('Erro ao atualizar usuário: ' + error.message, 'error');
+        showToast('Erro ao salvar usuário', 'error');
     }
 }
 
@@ -1021,11 +1045,10 @@ async function salvarEmpresa() {
 }
 
 // ============================================
-// FUNÇÃO PARA FECHAR MODAL GENÉRICA
+// FECHAR MODAL DE EDIÇÃO DE USUÁRIO
 // ============================================
-
-function fecharModal(modalId) {
-    const modal = document.getElementById(modalId);
+function fecharModal() {
+    const modal = document.querySelector('.modal');
     if (modal) {
         modal.style.display = 'none';
     }
