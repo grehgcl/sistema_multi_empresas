@@ -170,6 +170,55 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
 
 initDatabase();
 
+// ============================================
+// ============================================
+// 🔥 MIGRAÇÃO AUTOMÁTICA PARA POSTGRESQL (RENDER)
+// ============================================
+// ============================================
+
+setTimeout(() => {
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    // Só executa no Render (PostgreSQL)
+    if (!isProduction) {
+        console.log('ℹ️ Ambiente local - Migrações PostgreSQL ignoradas');
+        return;
+    }
+
+    console.log('🔍 [RENDER] Verificando colunas no PostgreSQL...');
+
+    const colunas = [
+        { tabela: 'empresas', coluna: 'telefone_dono', tipo: 'VARCHAR(20)' },
+        { tabela: 'empresas', coluna: 'endereco', tipo: 'TEXT' },
+        { tabela: 'empresas', coluna: 'dias_bloqueio_geral', tipo: 'INTEGER DEFAULT 0' },
+        { tabela: 'usuarios', coluna: 'telefone', tipo: 'VARCHAR(20)' },
+        { tabela: 'profissionais', coluna: 'telefone', tipo: 'VARCHAR(20)' }
+    ];
+
+    let executadas = 0;
+
+    colunas.forEach(({ tabela, coluna, tipo }) => {
+        const sql = `ALTER TABLE ${tabela} ADD COLUMN IF NOT EXISTS ${coluna} ${tipo}`;
+        db.run(sql, [], (err) => {
+            if (err) {
+                // Ignora erro se a coluna já existe
+                if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
+                    console.error(`❌ Erro ao criar ${coluna} em ${tabela}:`, err.message);
+                } else {
+                    console.log(`✅ ${coluna} já existe em ${tabela}`);
+                }
+            } else {
+                console.log(`✅ ${coluna} criada em ${tabela}!`);
+            }
+            executadas++;
+
+            if (executadas === colunas.length) {
+                console.log('✅ Todas as migrações verificadas!');
+            }
+        });
+    });
+}, 5000);
+
 // ============================================================
 // 🔥 MIGRAÇÕES AUTOMÁTICAS
 // ============================================================
