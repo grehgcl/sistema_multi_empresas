@@ -551,15 +551,15 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/cadastro', (req, res) => {
-    const { nome, email, senha, empresa_nome } = req.body;
+    const { nome, email, senha, empresa_nome, telefone } = req.body; // ← ADICIONEI telefone
 
     if (!nome || !email || !senha || !empresa_nome) {
         return res.json({ success: false, message: 'Todos os campos são obrigatórios' });
     }
 
-    console.log('📝 Tentando cadastrar no Render:', { nome, email, empresa_nome });
+    console.log('📝 Tentando cadastrar:', { nome, email, empresa_nome, telefone });
 
-    // 🔥 VERIFICAR SE EMAIL JÁ EXISTE (adaptado para PostgreSQL)
+    // 🔥 VERIFICAR SE EMAIL JÁ EXISTE
     const sqlCheck = isProduction
         ? 'SELECT id FROM usuarios WHERE email = $1'
         : 'SELECT id FROM usuarios WHERE email = ?';
@@ -574,20 +574,24 @@ app.post('/api/cadastro', (req, res) => {
             return res.json({ success: false, message: 'Email já cadastrado' });
         }
 
-        // 🔥 CRIAR EMPRESA (adaptado para PostgreSQL)
-        const sqlEmpresa = isProduction
-            ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
-               VALUES ($1, 'trial', 1, (CURRENT_TIMESTAMP + INTERVAL '45 days'), 1) RETURNING id`
-            : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa) 
-               VALUES (?, 'trial', 1, datetime('now', '+45 days'), 1)`;
+        // 🔥 LIMPAR O TELEFONE (APENAS NÚMEROS)
+        const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
+        console.log('📱 Telefone limpo:', telefoneLimpo);
 
-        db.run(sqlEmpresa, [empresa_nome], function (err) {
+        // 🔥 CRIAR EMPRESA (COM TELEFONE_DONO)
+        const sqlEmpresa = isProduction
+            ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa, telefone_dono) 
+               VALUES ($1, 'trial', 1, (CURRENT_TIMESTAMP + INTERVAL '45 days'), 1, $2) RETURNING id`
+            : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa, telefone_dono) 
+               VALUES (?, 'trial', 1, datetime('now', '+45 days'), 1, ?)`;
+
+        db.run(sqlEmpresa, [empresa_nome, telefoneLimpo], function (err) {
             if (err) {
                 console.error('❌ Erro ao criar empresa:', err.message);
                 return res.json({ success: false, message: 'Erro ao criar empresa' });
             }
 
-            // 🔥 BUSCAR ID DA EMPRESA (adaptado para PostgreSQL)
+            // 🔥 BUSCAR ID DA EMPRESA
             let sqlFind;
             let paramsFind;
 
@@ -607,26 +611,26 @@ app.post('/api/cadastro', (req, res) => {
 
                 const empresa_id = row.id;
                 console.log('✅ Empresa criada com ID:', empresa_id);
+                console.log('📱 Telefone do dono salvo:', telefoneLimpo);
 
-                // 🔥 CRIAR USUÁRIO (adaptado para PostgreSQL)
+                // 🔥 CRIAR USUÁRIO (COM TELEFONE)
                 const senhaHash = bcrypt.hashSync(senha, 10);
                 const sqlUsuario = isProduction
-                    ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
-                       VALUES ($1, $2, $3, 'dono', $4)`
-                    : `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
-                       VALUES (?, ?, ?, 'dono', ?)`;
+                    ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone) 
+                       VALUES ($1, $2, $3, 'dono', $4, $5)`
+                    : `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone) 
+                       VALUES (?, ?, ?, 'dono', ?, ?)`;
 
-                db.run(sqlUsuario, [nome, email, senhaHash, empresa_id], function (err) {
+                db.run(sqlUsuario, [nome, email, senhaHash, empresa_id, telefoneLimpo], function (err) {
                     if (err) {
                         console.error('❌ Erro ao criar usuário:', err.message);
                         return res.json({ success: false, message: 'Erro ao criar usuário' });
                     }
 
                     console.log('✅ Usuário criado com sucesso!');
+                    console.log('📱 Telefone do usuário salvo:', telefoneLimpo);
 
-                    // 🔥🔥🔥 INSERIR HORÁRIOS (ADAPTADO PARA POSTGRESQL) 🔥🔥🔥
-                    // Na rota POST /api/cadastro, após criar a empresa e o usuário:
-
+                    // 🔥 INSERIR HORÁRIOS PADRÃO
                     console.log('📝 Inserindo horários padrão para empresa:', empresa_id);
 
                     const diasSemana = [0, 1, 2, 3, 4, 5, 6];
@@ -636,16 +640,16 @@ app.post('/api/cadastro', (req, res) => {
                     for (const dia of diasSemana) {
                         const sqlHorario = isProduction
                             ? `
-            INSERT INTO horarios_funcionamento 
-            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-            VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)
-            ON CONFLICT (empresa_id, dia_semana) DO NOTHING
-        `
+                            INSERT INTO horarios_funcionamento 
+                            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                            VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)
+                            ON CONFLICT (empresa_id, dia_semana) DO NOTHING
+                        `
                             : `
-            INSERT OR IGNORE INTO horarios_funcionamento 
-            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-            VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
-        `;
+                            INSERT OR IGNORE INTO horarios_funcionamento 
+                            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                            VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
+                        `;
 
                         db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
                             if (err) {
@@ -656,9 +660,7 @@ app.post('/api/cadastro', (req, res) => {
                                 console.log(`✅ Horário dia ${dia} inserido (${horariosInseridos}/7)`);
                             }
 
-                            // Quando todos os 7 dias forem processados OU houver erro
                             if (horariosInseridos + totalErros === 7 || horariosInseridos === 7) {
-                                // Verificar se realmente foram inseridos
                                 const sqlCheck = isProduction
                                     ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
                                     : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
@@ -668,13 +670,13 @@ app.post('/api/cadastro', (req, res) => {
                                         console.log(`✅ ${result.total} horários confirmados no banco`);
                                     }
 
-                                    // RESPOSTA FINAL
                                     res.json({
                                         success: true,
                                         message: 'Cadastro realizado! Você tem 45 dias de teste.',
                                         data: {
                                             empresa_id: empresa_id,
-                                            horarios_inseridos: horariosInseridos
+                                            horarios_inseridos: horariosInseridos,
+                                            telefone_dono: telefoneLimpo
                                         }
                                     });
                                 });
@@ -694,13 +696,12 @@ app.post('/api/cadastro', (req, res) => {
                                 console.log(`✅ ${result.total} horários encontrados`);
                             } else {
                                 console.warn('⚠️ Inserindo horários manualmente...');
-                                // Inserir manualmente se não tiver nenhum
                                 for (const dia of [0, 1, 2, 3, 4, 5, 6]) {
                                     const sqlManual = isProduction
                                         ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                       VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30) ON CONFLICT DO NOTHING`
+                                           VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30) ON CONFLICT DO NOTHING`
                                         : `INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                       VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
+                                           VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
 
                                     db.run(sqlManual, isProduction ? [empresa_id, dia] : [empresa_id, dia]);
                                 }
@@ -1842,7 +1843,7 @@ app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 // ============================================
-// 10. ATUALIZAR USUÁRIO (COM TELEFONE)
+// PUT /api/admin/usuarios/:id - ATUALIZAR USUÁRIO (COM TELEFONE DA EMPRESA)
 // ============================================
 app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
@@ -1850,9 +1851,10 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
     console.log(`👤 Super Admin - Atualizando usuário ${id}:`, { nome, email, role, telefone });
 
+    // 🔥 BUSCAR O USUÁRIO ATUAL
     const sqlCheck = isProduction
-        ? `SELECT id, empresa_id FROM usuarios WHERE id = $1`
-        : `SELECT id, empresa_id FROM usuarios WHERE id = ?`;
+        ? `SELECT id, empresa_id, role FROM usuarios WHERE id = $1`
+        : `SELECT id, empresa_id, role FROM usuarios WHERE id = ?`;
 
     db.get(sqlCheck, [id], (err, usuario) => {
         if (err) {
@@ -1864,6 +1866,9 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
             return res.json({ success: false, message: 'Usuário não encontrado' });
         }
 
+        // ============================================
+        // ATUALIZAR USUÁRIO
+        // ============================================
         let query = isProduction
             ? `UPDATE usuarios SET 
                nome = COALESCE($1, nome), 
@@ -1877,6 +1882,7 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
         let params = [nome || null, email || null, role || null];
         let counter = 4;
 
+        // 🔥 SALVAR TELEFONE DO USUÁRIO
         if (telefone !== undefined) {
             const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
             query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
@@ -1896,6 +1902,29 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
             if (err) {
                 console.error('❌ Erro ao atualizar usuário:', err);
                 return res.json({ success: false, message: err.message });
+            }
+
+            // ============================================
+            // 🔥🔥🔥 CORREÇÃO: SE FOR DONO, ATUALIZAR O TELEFONE NA EMPRESA
+            // ============================================
+            const novaRole = role || usuario.role;
+            const empresaId = usuario.empresa_id;
+            const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
+
+            if (novaRole === 'dono' && telefoneLimpo && empresaId) {
+                console.log(`🔥 Atualizando telefone do dono na empresa ${empresaId}: ${telefoneLimpo}`);
+
+                const sqlEmpresa = isProduction
+                    ? `UPDATE empresas SET telefone_dono = $1 WHERE id = $2`
+                    : `UPDATE empresas SET telefone_dono = ? WHERE id = ?`;
+
+                db.run(sqlEmpresa, [telefoneLimpo, empresaId], function (err) {
+                    if (err) {
+                        console.error('❌ Erro ao atualizar telefone da empresa:', err);
+                    } else {
+                        console.log(`✅ Telefone do dono atualizado na empresa ${empresaId}: ${telefoneLimpo}`);
+                    }
+                });
             }
 
             console.log('✅ Usuário atualizado com sucesso!');
