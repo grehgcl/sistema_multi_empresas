@@ -1,0 +1,558 @@
+// ============================================================
+// ?? ATENÇÃO: PARTES EXTRAÍDAS PARA OUTROS ARQUIVOS ??
+// ============================================================
+// 
+// As seguintes partes NÃO ESTÃO MAIS AQUI e NÃO DEVEM SER MEXIDAS:
+//
+// ?? server\config\database.js - Criação das tabelas
+// ?? server\middlewares\auth.js - Middlewares de autenticação
+// ?? server\utils\constants.js - Constantes dos planos
+// ?? server\utils\helpers.js - Funções auxiliares
+//
+// ============================================================
+// O CÓDIGO ABAIXO SÃO AS ROTAS - AQUI VOCÊS MEXEM!
+// ============================================================
+
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+
+// ============================================================
+// IMPORTS DAS PARTES EXTRAÍDAS
+// ============================================================
+
+const { db, initDatabase, inserirHorariosPadrao } = require('./server/config/database');
+const agendamentosRoutes = require('./server/routes/agendamentos');
+const chatbotRoutes = require('./server/routes/chatbot');
+const planosRoutes = require('./server/routes/planos');
+const profissionaisRoutes = require('./server/routes/profissionais');
+const horariosRoutes = require('./server/routes/horarios');
+const authRoutes = require('./server/routes/auth');
+const servicosRoutes = require('./server/routes/servicos');
+const clientesRoutes = require('./server/routes/clientes');
+const empresasRoutes = require('./server/routes/empresas');
+const financeiroRoutes = require('./server/routes/financeiro');
+const whatsappRoutes = require('./server/routes/whatsapp');
+const {
+    auth,
+    verificarSuperAdmin,
+    verificarDono,
+    verificarLimiteProfissionais,
+    verificarAcessoAgendamentos,
+    verificarLimiteAgendamentos,
+    incrementarContadorAgendamentos,
+} = require('./server/middlewares/auth');
+const { PLANOS, PLANOS_NOMES, JWT_SECRET } = require('./server/utils/constants');
+const {
+    horaParaMinutos,
+    minutosParaHora,
+    getDiaSemanaFromDate,
+    gerarSenhaTemporaria
+} = require('./server/utils/helpers');
+
+// ============================================================
+// NOVO: IMPORT DO SERVIÇO WHATSAPP
+// ============================================================
+const whatsappService = require('./server/services/whatsapp');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static('public'));
+
+// ============================================================
+// FUNÇÃO AUXILIAR: FORMATAR DATA (BACKEND)
+// ============================================================
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        const data = new Date(dataStr + 'T00:00:00');
+        return data.toLocaleDateString('pt-BR');
+    } catch {
+        return dataStr;
+    }
+}
+
+// ============================================================
+// FUNÇÃO AUXILIAR: GERAR HORÁRIOS DO DIA
+// ============================================================
+function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
+    const horarios = [];
+    if (!horaInicio || !horaFim) return horarios;
+
+    const inicioMin = horaParaMinutos(horaInicio);
+    const fimMin = horaParaMinutos(horaFim);
+    const almocoInicioMin = horaParaMinutos(almocoInicio || '12:00');
+    const almocoFimMin = horaParaMinutos(almocoFim || '13:00');
+    const intervalo = 30;
+
+    for (let minutos = inicioMin; minutos < fimMin; minutos += intervalo) {
+        if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
+            continue;
+        }
+        horarios.push(minutosParaHora(minutos));
+    }
+    return horarios;
+}
+
+// ============================================================
+// FUNÇÃO AUXILIAR: VERIFICAR DISPONIBILIDADE COM DURAÇÃO
+// ============================================================
+async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data, hora, duracao) {
+    // Se não tiver profissional definido, considerar todos os profissionais
+    let sqlAgendamentos;
+    let paramsAgendamentos;
+
+    if (profissional_id) {
+        sqlAgendamentos = isProduction
+            ? SELECT a.hora, a.id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id =  
+               AND a.data =  
+               AND a.profissional_id =  
+               AND a.status != 'cancelado'
+            : SELECT a.hora, a.id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = ? 
+               AND a.data = ? 
+               AND a.profissional_id = ? 
+               AND a.status != 'cancelado';
+        paramsAgendamentos = [empresa_id, data, profissional_id];
+    } else {
+        // Se não tem profissional específico, verificar todos os profissionais
+        sqlAgendamentos = isProduction
+            ? SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id =  
+               AND a.data =  
+               AND a.status != 'cancelado'
+            : SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
+               FROM agendamentos a
+               LEFT JOIN servicos s ON a.servico_id = s.id
+               WHERE a.empresa_id = ? 
+               AND a.data = ? 
+               AND a.status != 'cancelado';
+        paramsAgendamentos = [empresa_id, data];
+    }
+
+    const agendamentos = await new Promise((resolve) => {
+        db.all(sqlAgendamentos, paramsAgendamentos, (err, rows) => {
+            if (err) {
+                console.error('? Erro ao buscar agendamentos:', err);
+                resolve([]);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+
+    // Converter hora para minutos
+    const horaInicioMin = horaParaMinutos(hora);
+    const horaFimMin = horaInicioMin + duracao;
+
+    // Verificar conflitos
+    for (let ag of agendamentos) {
+        if (!ag.hora) continue;
+
+        const agHoraMin = horaParaMinutos(ag.hora);
+        const agDuracao = ag.servico_duracao || 30;
+        const agFimMin = agHoraMin + agDuracao;
+
+        // Verificar sobreposição
+        if (horaInicioMin < agFimMin && horaFimMin > agHoraMin) {
+            console.log(? Conflito:  (min) com  (min));
+            return false; // Conflito
+        }
+    }
+
+    return true; // Disponível
+}
+
+// ============================================================
+// INICIALIZAÇÃO DO BANCO E USUÁRIOS PADRÃO
+// ============================================================
+
+initDatabase();
+
+// ============================================
+// ============================================
+// ?? MIGRAÇÃO AUTOMÁTICA PARA POSTGRESQL (RENDER)
+// ============================================
+// ============================================
+
+setTimeout(() => {
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    // Só executa no Render (PostgreSQL)
+    if (!isProduction) {
+        console.log('?? Ambiente local - Migrações PostgreSQL ignoradas');
+        return;
+    }
+
+    console.log('?? [RENDER] Verificando colunas no PostgreSQL...');
+
+    const colunas = [
+        { tabela: 'empresas', coluna: 'telefone_dono', tipo: 'VARCHAR(20)' },
+        { tabela: 'empresas', coluna: 'endereco', tipo: 'TEXT' },
+        { tabela: 'empresas', coluna: 'dias_bloqueio_geral', tipo: 'INTEGER DEFAULT 0' },
+        { tabela: 'usuarios', coluna: 'telefone', tipo: 'VARCHAR(20)' },
+        { tabela: 'profissionais', coluna: 'telefone', tipo: 'VARCHAR(20)' }
+    ];
+
+    let executadas = 0;
+
+    colunas.forEach(({ tabela, coluna, tipo }) => {
+        const sql = ALTER TABLE  ADD COLUMN IF NOT EXISTS  ;
+        db.run(sql, [], (err) => {
+            if (err) {
+                // Ignora erro se a coluna já existe
+                if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
+                    console.error(? Erro ao criar  em :, err.message);
+                } else {
+                    console.log(?  já existe em );
+                }
+            } else {
+                console.log(?  criada em !);
+            }
+            executadas++;
+
+            if (executadas === colunas.length) {
+                console.log('? Todas as migrações verificadas!');
+            }
+        });
+    });
+}, 5000);
+
+// ============================================================
+// ?? MIGRAÇÕES AUTOMÁTICAS
+// ============================================================
+
+// 1. Verificar e criar coluna dias_bloqueio na tabela clientes
+setTimeout(() => {
+    const { verificarColunaDiasBloqueio } = require('./server/config/database');
+    verificarColunaDiasBloqueio();
+}, 2000);
+
+// ============================================================
+// ?? MIGRAÇÃO: dias_bloqueio_geral (CORRIGIDA PARA POSTGRESQL)
+// ============================================================
+setTimeout(() => {
+    console.log('?? Verificando coluna dias_bloqueio_geral em empresas...');
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    if (isProduction) {
+        // PostgreSQL - Verificar se a coluna existe
+        const sqlCheck = 
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name = 'empresas' 
+            AND column_name = 'dias_bloqueio_geral'
+        ;
+
+        db.get(sqlCheck, [], (err, row) => {
+            if (err) {
+                console.error('? Erro ao verificar dias_bloqueio_geral:', err.message);
+                return;
+            }
+
+            if (row) {
+                console.log('? Coluna dias_bloqueio_geral já existe!');
+                return;
+            }
+
+            console.log('?? Criando coluna dias_bloqueio_geral no PostgreSQL...');
+
+            const sqlAdd = ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0;
+
+            db.run(sqlAdd, [], (err) => {
+                if (err) {
+                    console.error('? Erro ao criar dias_bloqueio_geral:', err.message);
+                    return;
+                }
+                console.log('? Coluna dias_bloqueio_geral criada com sucesso!');
+
+                // Atualizar empresas existentes
+                const sqlUpdate = UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL;
+                db.run(sqlUpdate, [], (err) => {
+                    if (err) {
+                        console.error('?? Erro ao atualizar empresas:', err.message);
+                    } else {
+                        console.log('? Empresas atualizadas com dias_bloqueio_geral = 0');
+                    }
+                });
+            });
+        });
+    } else {
+        // SQLite
+        const sqlCheck = PRAGMA table_info(empresas);
+
+        db.all(sqlCheck, [], (err, rows) => {
+            if (err) {
+                console.error('? Erro ao verificar dias_bloqueio_geral:', err.message);
+                return;
+            }
+
+            const existe = rows && rows.some(r => r.name === 'dias_bloqueio_geral');
+
+            if (existe) {
+                console.log('? Coluna dias_bloqueio_geral já existe!');
+                return;
+            }
+
+            console.log('?? Criando coluna dias_bloqueio_geral no SQLite...');
+
+            const sqlAdd = ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0;
+
+            db.run(sqlAdd, [], (err) => {
+                if (err) {
+                    console.error('? Erro ao criar dias_bloqueio_geral:', err.message);
+                    return;
+                }
+                console.log('? Coluna dias_bloqueio_geral criada com sucesso!');
+
+                const sqlUpdate = UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL;
+                db.run(sqlUpdate, [], (err) => {
+                    if (err) {
+                        console.error('?? Erro ao atualizar empresas:', err.message);
+                    } else {
+                        console.log('? Empresas atualizadas com dias_bloqueio_geral = 0');
+                    }
+                });
+            });
+        });
+    }
+}, 2500);
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+// ============================================================
+// 1. CRIAR/ATUALIZAR SUPER ADMIN (SEM FORÇAR ID)
+// ============================================================
+console.log('?? Verificando/Criando Super Admin...');
+
+const superAdminSenha = bcrypt.hashSync('super123', 10);
+
+db.get(SELECT id FROM usuarios WHERE email = 'super@admin.com', [], (err, existing) => {
+    if (err) {
+        console.error('? Erro ao verificar Super Admin:', err.message);
+    } else if (existing) {
+        console.log('?? Atualizando senha do Super Admin...');
+        const sqlUpdate = isProduction
+            ? UPDATE usuarios SET senha =  WHERE email = 'super@admin.com'
+            : UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com';
+
+        db.run(sqlUpdate, [superAdminSenha], function (err) {
+            if (err) {
+                console.error('? Erro ao atualizar Super Admin:', err.message);
+            } else {
+                console.log('? Super Admin atualizado: super@admin.com / super123');
+            }
+        });
+    } else {
+        console.log('?? Criando Super Admin...');
+        const sqlInsert = isProduction
+            ? INSERT INTO usuarios (nome, email, senha, role) 
+               VALUES (, , , 'superadmin')
+            : INSERT INTO usuarios (nome, email, senha, role) 
+               VALUES (?, ?, ?, 'superadmin');
+
+        db.run(sqlInsert, ['Super Admin', 'super@admin.com', superAdminSenha], function (err) {
+            if (err) {
+                console.error('? Erro ao criar Super Admin:', err.message);
+            } else {
+                console.log('? Super Admin criado: super@admin.com / super123');
+            }
+        });
+    }
+});
+
+// ============================================================
+// 2. CRIAR/ATUALIZAR EMPRESA DE TESTE E DONO
+// ============================================================
+console.log('?? Verificando/Criando empresa de teste...');
+
+db.get(SELECT id FROM empresas WHERE nome = 'Barbearia Teste', (err, empresa) => {
+    if (err) {
+        console.error('? Erro ao verificar empresa teste:', err.message);
+        return;
+    }
+
+    if (!empresa) {
+        const sqlEmpresa = isProduction
+            ? INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira) 
+               VALUES ('Barbearia Teste', 'trial', 1, datetime('now', '+45 days')) RETURNING id
+            : INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira) 
+               VALUES ('Barbearia Teste', 'trial', 1, datetime('now', '+45 days'));
+
+        db.run(sqlEmpresa, [], function (err) {
+            if (err) {
+                console.error('? Erro ao criar empresa teste:', err.message);
+                return;
+            }
+
+            const sqlFind = isProduction
+                ? SELECT id FROM empresas WHERE nome = 'Barbearia Teste' ORDER BY id DESC LIMIT 1
+                : SELECT id FROM empresas WHERE nome = 'Barbearia Teste' ORDER BY id DESC LIMIT 1;
+
+            db.get(sqlFind, [], (err, row) => {
+                if (err || !row) {
+                    console.error('? Erro ao buscar ID da empresa:', err?.message);
+                    return;
+                }
+
+                const empresaId = row.id;
+                console.log(? Empresa teste criada (ID: ));
+                inserirHorariosPadrao(empresaId);
+
+                const donoSenha = bcrypt.hashSync('123456', 10);
+
+                db.get(SELECT id FROM usuarios WHERE email = 'admin@teste.com', [], (err, existingDono) => {
+                    if (err) {
+                        console.error('? Erro ao verificar dono:', err.message);
+                        return;
+                    }
+
+                    if (!existingDono) {
+                        const sqlInsertDono = isProduction
+                            ? INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
+                               VALUES (, , , 'dono', )
+                            : INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
+                               VALUES (?, ?, ?, 'dono', ?);
+
+                        db.run(sqlInsertDono, ['Admin Teste', 'admin@teste.com', donoSenha, empresaId], function (err) {
+                            if (err) {
+                                console.error('? Erro ao criar dono:', err.message);
+                            } else {
+                                console.log('? Dono criado: admin@teste.com / 123456');
+                            }
+                        });
+                    } else {
+                        console.log('? Dono já existe');
+                    }
+                });
+            });
+        });
+    } else {
+        console.log('? Empresa teste já existe');
+    }
+});
+
+// ============================================================
+// REGISTRAR TODAS AS ROTAS
+// ============================================================
+authRoutes(app, db, isProduction, bcrypt, jwt, JWT_SECRET);
+agendamentosRoutes(app, db, isProduction, auth, verificarDono, verificarLimiteAgendamentos, verificarAcessoAgendamentos, whatsappService, formatarDataBr, horaParaMinutos, minutosParaHora, gerarHorariosDoDia, verificarDisponibilidadeHorario, incrementarContadorAgendamentos);
+chatbotRoutes(app, db, isProduction, auth, verificarDono, verificarLimiteAgendamentos, whatsappService, formatarDataBr, horaParaMinutos, minutosParaHora, gerarHorariosDoDia);
+planosRoutes(app, db, isProduction, auth, verificarDono, PLANOS, PLANOS_NOMES, bcrypt);
+profissionaisRoutes(app, db, isProduction, auth, verificarDono, verificarLimiteProfissionais, bcrypt, gerarSenhaTemporaria);
+horariosRoutes(app, db, isProduction, auth, verificarDono);
+servicosRoutes(app, db, isProduction, auth, verificarDono);
+clientesRoutes(app, db, isProduction, auth, verificarDono);
+empresasRoutes(app, db, isProduction, auth, verificarDono);
+financeiroRoutes(app, db, isProduction, auth);
+whatsappRoutes(app);
+
+console.log('? Super Admin - Todas as rotas carregadas com sucesso!');
+
+// ============================================================
+// JOBS E SERVIÇOS
+// ============================================================
+
+// Inicia o job de lembretes WhatsApp
+const lembreteJob = require('./server/jobs/lembretes');
+
+if (process.env.WHATSAPP_ENABLED === 'true') {
+    lembreteJob.start();
+    console.log('? Job de lembretes WhatsApp iniciado');
+} else {
+    console.log('?? WhatsApp desabilitado (WHATSAPP_ENABLED=false)');
+}
+
+// ============================================================
+// INICIAR WPPCONNECT LOCAL (SE HABILITADO)
+// ============================================================
+if (process.env.WHATSAPP_ENABLED === 'true' && process.env.WHATSAPP_PROVIDER === 'wppconnect') {
+    try {
+        const { getClient } = require('./server/services/wppconnect-local');
+        setTimeout(async () => {
+            try {
+                await getClient();
+                console.log('? WhatsApp WPPConnect iniciado com sucesso!');
+            } catch (err) {
+                console.error('? Erro ao iniciar WPPConnect:', err.message);
+            }
+        }, 2000);
+    } catch (error) {
+        console.error('? Erro ao carregar wppconnect-local:', error.message);
+    }
+}
+
+// ============================================================
+// INICIALIZAÇÃO DO SERVIDOR
+// ============================================================
+
+const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
+
+app.listen(PORT, HOST, () => {
+    console.log(?? Servidor rodando em http://System.Management.Automation.Internal.Host.InternalHost:);
+    console.log(?? Super Admin: super@admin.com / super123);
+    console.log(?? Dono: admin@teste.com / 123456);
+    console.log(\n?? PLANOS DISPONÍVEIS:);
+    console.log(   Starter: R$ 24,90/mês - 1 profissional);
+    console.log(   Pro: R$ 49,90/mês - 5 profissionais);
+    console.log(   Business: R$ 99,90/mês - 12 profissionais);
+    console.log(   Enterprise: R$ 199,90/mês - Profissionais ilimitados);
+    console.log(\n?? WhatsApp: );
+});
+
+// ============================================================
+// KEEP ALIVE (Evita dormir no Render)
+// ============================================================
+
+if (process.env.RENDER === 'true') {
+    try {
+        const { keepAlive } = require('./keep_alive');
+        keepAlive();
+        console.log('?? Keep Alive ativado para o Render!');
+    } catch (error) {
+        console.log('?? Erro ao carregar keep_alive:', error.message);
+        // Fallback: ping simples
+        const http = require('http');
+        setInterval(() => {
+            http.get(http://localhost:, (res) => {
+                console.log(?? Keep Alive ping - Status: );
+            }).on('error', () => { });
+        }, 4 * 60 * 1000);
+        console.log('?? Keep Alive fallback ativado!');
+    }
+}
+
+// Também criar um cron job separado para garantir
+if (process.env.RENDER === 'true') {
+    try {
+        require('./cron');
+        console.log('?? Cron job ativado!');
+    } catch (error) {
+        console.log('?? Cron job não encontrado, continuando...');
+    }
+}
+
+// ============================================
+// JOB DE RESET DE CONTADORES
+// ============================================
+
+try {
+    const resetJob = require('./server/jobs/reset-contador');
+    resetJob.start();
+    console.log('? Job de reset de contadores iniciado');
+} catch (error) {
+    console.log('?? Erro ao iniciar job de reset:', error.message);
+}
