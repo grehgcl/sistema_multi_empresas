@@ -4031,7 +4031,374 @@ app.get('/api/financeiro', auth, (req, res) => {
         message: 'Acesso negado'
     });
 });
+// ============================================================
+// 📊 ROTAS DE DESPESAS
+// ============================================================
 
+// ============================================
+// GET /api/despesas - LISTAR DESPESAS COM FILTROS
+// ============================================
+app.get('/api/despesas', auth, (req, res) => {
+    const usuario = req.usuario;
+
+    // Profissional NÃO vê despesas
+    if (usuario.role === 'profissional') {
+        return res.json({
+            success: true,
+            data: {
+                despesas: [],
+                totais: { total: 0, pago: 0, pendente: 0, quantidade: 0 }
+            }
+        });
+    }
+
+    const empresaId = usuario.empresa_id;
+    const { mes, ano, categoria, pago } = req.query;
+    let params = [empresaId];
+    let sql = `
+        SELECT d.*
+        FROM despesas d
+        WHERE d.empresa_id = ?
+    `;
+
+    if (mes && ano) {
+        sql += ` AND strftime('%m', d.data) = ? AND strftime('%Y', d.data) = ?`;
+        params.push(mes.padStart(2, '0'), ano);
+    }
+
+    if (categoria) {
+        sql += ` AND d.categoria = ?`;
+        params.push(categoria);
+    }
+
+    if (pago !== undefined && pago !== '') {
+        const pagoBool = pago === 'true' ? 1 : 0;
+        sql += ` AND d.pago = ?`;
+        params.push(pagoBool);
+    }
+
+    sql += ` ORDER BY d.data DESC, d.created_at DESC`;
+
+    db.all(sql, params, (err, despesas) => {
+        if (err) {
+            console.error('❌ Erro ao buscar despesas:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        // Calcular totais
+        const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor || 0), 0);
+        const totalPago = despesas.filter(d => d.pago).reduce((acc, d) => acc + (d.valor || 0), 0);
+        const totalPendente = despesas.filter(d => !d.pago).reduce((acc, d) => acc + (d.valor || 0), 0);
+
+        res.json({
+            success: true,
+            data: {
+                despesas: despesas,
+                totais: {
+                    total: totalDespesas,
+                    pago: totalPago,
+                    pendente: totalPendente,
+                    quantidade: despesas.length
+                }
+            }
+        });
+    });
+});
+
+// ============================================
+// GET /api/despesas/categorias - LISTAR CATEGORIAS
+// ============================================
+app.get('/api/despesas/categorias', auth, (req, res) => {
+    const usuario = req.usuario;
+
+    if (usuario.role === 'profissional') {
+        return res.json({ success: true, data: [] });
+    }
+
+    const empresaId = usuario.empresa_id;
+
+    const defaultCategorias = [
+        'Aluguel', 'Água', 'Energia Elétrica', 'Internet', 'Telefone',
+        'Material de Consumo', 'Equipamentos', 'Manutenção', 'Impostos',
+        'Salários', 'Comissões', 'Marketing', 'Limpeza', 'Alimentação',
+        'Transporte', 'Outros'
+    ];
+
+    db.all(
+        `SELECT DISTINCT categoria FROM despesas WHERE empresa_id = ? ORDER BY categoria`,
+        [empresaId],
+        (err, categorias) => {
+            if (err) {
+                console.error('❌ Erro ao buscar categorias:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
+            const categoriasExistentes = categorias.map(c => c.categoria);
+            const todasCategorias = [...new Set([...defaultCategorias, ...categoriasExistentes])].sort();
+
+            res.json({ success: true, data: todasCategorias });
+        }
+    );
+});
+
+// ============================================
+// POST /api/despesas - CRIAR DESPESA
+// ============================================
+app.post('/api/despesas', auth, (req, res) => {
+    const usuario = req.usuario;
+
+    if (usuario.role === 'profissional') {
+        return res.status(403).json({
+            success: false,
+            message: 'Profissionais não podem criar despesas'
+        });
+    }
+
+    const empresaId = usuario.empresa_id;
+    const { descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao } = req.body;
+
+    if (!descricao || !categoria || !valor || !data) {
+        return res.status(400).json({
+            success: false,
+            message: 'Descrição, categoria, valor e data são obrigatórios'
+        });
+    }
+
+    if (valor <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: 'O valor deve ser maior que zero'
+        });
+    }
+
+    const sql = `
+        INSERT INTO despesas (
+            empresa_id, descricao, categoria, valor, data,
+            data_vencimento, pago, forma_pagamento, observacao
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+        empresaId,
+        descricao.trim(),
+        categoria.trim(),
+        valor,
+        data,
+        data_vencimento || null,
+        pago ? 1 : 0,
+        forma_pagamento || null,
+        observacao || null
+    ];
+
+    db.run(sql, params, function (err) {
+        if (err) {
+            console.error('❌ Erro ao criar despesa:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        db.get(`SELECT * FROM despesas WHERE id = ?`, [this.lastID], (err, despesa) => {
+            if (err) {
+                console.error('❌ Erro ao buscar despesa:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
+            res.json({
+                success: true,
+                data: despesa,
+                message: 'Despesa criada com sucesso!'
+            });
+        });
+    });
+});
+
+// ============================================
+// PUT /api/despesas/:id - ATUALIZAR DESPESA
+// ============================================
+app.put('/api/despesas/:id', auth, (req, res) => {
+    const usuario = req.usuario;
+    const { id } = req.params;
+
+    if (usuario.role === 'profissional') {
+        return res.status(403).json({
+            success: false,
+            message: 'Profissionais não podem editar despesas'
+        });
+    }
+
+    const empresaId = usuario.empresa_id;
+    const { descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao } = req.body;
+
+    db.get(`SELECT * FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], (err, existing) => {
+        if (err) {
+            console.error('❌ Erro ao verificar despesa:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Despesa não encontrada' });
+        }
+
+        if (!descricao || !categoria || !valor || !data) {
+            return res.status(400).json({
+                success: false,
+                message: 'Descrição, categoria, valor e data são obrigatórios'
+            });
+        }
+
+        if (valor <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'O valor deve ser maior que zero'
+            });
+        }
+
+        const sql = `
+            UPDATE despesas 
+            SET descricao = ?, categoria = ?, valor = ?, data = ?,
+                data_vencimento = ?, pago = ?, forma_pagamento = ?,
+                observacao = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND empresa_id = ?
+        `;
+
+        const params = [
+            descricao.trim(),
+            categoria.trim(),
+            valor,
+            data,
+            data_vencimento || null,
+            pago ? 1 : 0,
+            forma_pagamento || null,
+            observacao || null,
+            id,
+            empresaId
+        ];
+
+        db.run(sql, params, function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar despesa:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
+            db.get(`SELECT * FROM despesas WHERE id = ?`, [id], (err, despesa) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar despesa:', err);
+                    return res.status(500).json({ success: false, message: err.message });
+                }
+
+                res.json({
+                    success: true,
+                    data: despesa,
+                    message: 'Despesa atualizada com sucesso!'
+                });
+            });
+        });
+    });
+});
+
+// ============================================
+// DELETE /api/despesas/:id - EXCLUIR DESPESA
+// ============================================
+app.delete('/api/despesas/:id', auth, (req, res) => {
+    const usuario = req.usuario;
+    const { id } = req.params;
+
+    if (usuario.role === 'profissional') {
+        return res.status(403).json({
+            success: false,
+            message: 'Profissionais não podem excluir despesas'
+        });
+    }
+
+    const empresaId = usuario.empresa_id;
+
+    db.get(`SELECT * FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], (err, existing) => {
+        if (err) {
+            console.error('❌ Erro ao verificar despesa:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        if (!existing) {
+            return res.status(404).json({ success: false, message: 'Despesa não encontrada' });
+        }
+
+        db.run(`DELETE FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], function (err) {
+            if (err) {
+                console.error('❌ Erro ao excluir despesa:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
+            res.json({ success: true, message: 'Despesa excluída com sucesso!' });
+        });
+    });
+});
+
+// ============================================
+// GET /api/despesas/resumo - RESUMO DO MÊS
+// ============================================
+app.get('/api/despesas/resumo', auth, (req, res) => {
+    const usuario = req.usuario;
+
+    if (usuario.role === 'profissional') {
+        return res.json({
+            success: true,
+            data: {
+                total_despesas: 0,
+                total_pago: 0,
+                total_pendente: 0,
+                por_categoria: []
+            }
+        });
+    }
+
+    const empresaId = usuario.empresa_id;
+    const hoje = new Date();
+    const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = String(hoje.getFullYear());
+
+    const sql = `
+        SELECT 
+            COALESCE(SUM(CASE WHEN pago = 1 THEN valor ELSE 0 END), 0) as total_pago,
+            COALESCE(SUM(CASE WHEN pago = 0 THEN valor ELSE 0 END), 0) as total_pendente,
+            COALESCE(SUM(valor), 0) as total_despesas,
+            COUNT(*) as total_quantidade
+        FROM despesas
+        WHERE empresa_id = ?
+        AND strftime('%m', data) = ?
+        AND strftime('%Y', data) = ?
+    `;
+
+    db.get(sql, [empresaId, mes, ano], (err, resumo) => {
+        if (err) {
+            console.error('❌ Erro ao buscar resumo:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        const catSql = `
+            SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
+            FROM despesas
+            WHERE empresa_id = ?
+            AND strftime('%m', data) = ?
+            AND strftime('%Y', data) = ?
+            GROUP BY categoria
+            ORDER BY total_valor DESC
+        `;
+
+        db.all(catSql, [empresaId, mes, ano], (err, categorias) => {
+            if (err) {
+                console.error('❌ Erro ao buscar categorias:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    ...resumo,
+                    por_categoria: categorias || []
+                }
+            });
+        });
+    });
+});
 // ============================================================
 // ROTAS DO CHATBOT (PÚBLICAS)
 // ============================================================

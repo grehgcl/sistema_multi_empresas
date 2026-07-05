@@ -1451,7 +1451,7 @@ async function carregarDashboard() {
 }
 
 // ============================================
-// DASHBOARD DO DONO
+// DASHBOARD DO DONO - SIMPLIFICADO (CORRIGIDO)
 // ============================================
 async function carregarDashboardDono() {
     const token = localStorage.getItem('token');
@@ -1468,6 +1468,20 @@ async function carregarDashboardDono() {
         }
     } catch (error) {
         console.warn('Não foi possível buscar dados da empresa:', error);
+    }
+
+    // 🔥 BUSCAR DESPESAS DO MÊS
+    let despesasMes = { total_despesas: 0, total_pago: 0, total_pendente: 0, por_categoria: [] };
+    try {
+        const despesasRes = await fetch('/api/despesas/resumo', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const despesasData = await despesasRes.json();
+        if (despesasData.success) {
+            despesasMes = despesasData.data || despesasMes;
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro ao buscar despesas:', error);
     }
 
     const [agendamentosRes, clientesRes, servicosRes, financeiroRes, profissionaisRes] = await Promise.all([
@@ -1512,7 +1526,6 @@ async function carregarDashboardDono() {
 
     const faturamentoBruto = parseFloat(totais.faturamento_bruto) || 0;
     const totalComissoes = parseFloat(totais.total_comissoes) || 0;
-    const faturamentoLiquido = parseFloat(totais.faturamento_liquido) || 0;
     const totalServicosConcluidos = parseInt(totais.total_servicos) || 0;
 
     const hoje = new Date().toISOString().split('T')[0];
@@ -1530,6 +1543,22 @@ async function carregarDashboardDono() {
         return sum + valor;
     }, 0);
 
+    // 🔥 DADOS DAS DESPESAS
+    const totalDespesas = despesasMes.total_despesas || 0;
+    const totalPago = despesasMes.total_pago || 0;
+    const totalPendente = despesasMes.total_pendente || 0;
+    const categoriasDespesas = despesasMes.por_categoria || [];
+
+    // 🔥 CÁLCULOS FINANCEIROS
+    const lucroReal = faturamentoMes - totalDespesas;
+    const lucroAposComissoes = faturamentoMes - totalComissoes;
+    const margemLucro = faturamentoMes > 0 ? ((lucroReal / faturamentoMes) * 100).toFixed(1) : 0;
+
+    // 🔥 PROJEÇÃO
+    const diasComDados = concluidos.length > 0 ? Math.min(concluidos.length, 30) : 1;
+    const mediaDiaria = diasComDados > 0 ? faturamentoMes / diasComDados : 0;
+    const projecao30Dias = mediaDiaria * 30;
+
     let ticketMedio = 0;
     if (concluidos.length > 0) {
         const total = concluidos.reduce((sum, a) => {
@@ -1546,42 +1575,11 @@ async function carregarDashboardDono() {
         return dataCriacao >= new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1);
     }).length;
 
-    const diasSemana = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-    const agendamentosPorDia = [0, 0, 0, 0, 0, 0, 0];
-    agendamentos.forEach(ag => {
-        const data = new Date(ag.data + 'T00:00:00');
-        const diaSemana = data.getDay();
-        agendamentosPorDia[diaSemana]++;
-    });
-
-    const servicosPopulares = {};
-    concluidos.forEach(ag => {
-        const nomeServico = ag.servico || 'Serviço';
-        servicosPopulares[nomeServico] = (servicosPopulares[nomeServico] || 0) + 1;
-    });
-    const topServicos = Object.entries(servicosPopulares)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-
+    // 🔥 PRÓXIMOS AGENDAMENTOS
     const proximosAgendamentos = agendamentos
         .filter(a => a.status === 'pendente' && a.data >= hoje)
         .sort((a, b) => (a.data + ' ' + a.hora).localeCompare(b.data + ' ' + b.hora))
         .slice(0, 5);
-
-    const mesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1);
-    const primeiroDiaMesAnterior = mesAnterior.toISOString().split('T')[0];
-    const ultimoDiaMesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 0).toISOString().split('T')[0];
-    const faturamentoMesAnterior = agendamentos.filter(a =>
-        a.status === 'concluido' && a.data >= primeiroDiaMesAnterior && a.data <= ultimoDiaMesAnterior
-    ).reduce((sum, a) => {
-        const valor = parseFloat(a.valor) || 0;
-        return sum + valor;
-    }, 0);
-
-    const variacaoPercentual = faturamentoMesAnterior > 0 ?
-        ((faturamentoMes - faturamentoMesAnterior) / faturamentoMesAnterior * 100).toFixed(1) : 0;
-    const variacaoSinal = variacaoPercentual >= 0 ? '+' : '';
-    const variacaoIcone = variacaoPercentual >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
 
     const isNewUser = agendamentos.length === 0 && clientes.length === 0;
 
@@ -1590,7 +1588,7 @@ async function carregarDashboardDono() {
     const nomeUsuario = usuarioAtual?.nome || 'Usuário';
 
     // ============================================
-    // HTML DO DASHBOARD
+    // HTML DO DASHBOARD - SIMPLIFICADO
     // ============================================
     const html = `
         <div class="fade-in">
@@ -1619,11 +1617,227 @@ async function carregarDashboardDono() {
                     <div style="text-align:right;">
                         <span style="display:block;font-weight:600;font-size:14px;color:var(--text-primary);">${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
                         <span style="display:block;font-size:12px;color:var(--text-muted);">${dataAtual.toLocaleDateString('pt-BR')}</span>
+                        <span style="display:block;font-size:11px;color:var(--text-muted);margin-top:4px;">💰 ${faturamentoMes > 0 ? `R$ ${formatarMoeda(faturamentoMes)} este mês` : 'Nenhum faturamento ainda'}</span>
                     </div>
                 </div>
             </div>
 
-            <!-- AGENDA INTELIGENTE -->
+            <!-- ============================================ -->
+            <!-- 🔥 CARDS FINANCEIROS - VISÃO GERAL           -->
+            <!-- ============================================ -->
+            <div style="margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 style="font-size:15px;margin:0;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-chart-pie" style="color:var(--primary);"></i> 
+                        📊 Financeiro - Visão Geral
+                        <span style="font-size:10px;font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
+                            ${dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                        </span>
+                    </h3>
+                    <button onclick="carregarFinanceiro()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 12px;border-radius:8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">
+                        <i class="fas fa-arrow-right"></i> Ver detalhes
+                    </button>
+                </div>
+                
+                <!-- Cards de 4 colunas financeiras -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
+                    <!-- Card: Faturamento -->
+                    <div style="background:linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.06));border-radius:12px;padding:14px 16px;border:1px solid rgba(102,126,234,0.15);">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:22px;">💰</span>
+                            <div style="flex:1;">
+                                <div style="font-size:18px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoMes)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">Faturamento do Mês</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Card: Despesas -->
+                    <div style="background:linear-gradient(135deg,rgba(239,68,68,0.08),rgba(220,38,38,0.04));border-radius:12px;padding:14px 16px;border:1px solid rgba(239,68,68,0.12);">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:22px;">📉</span>
+                            <div style="flex:1;">
+                                <div style="font-size:18px;font-weight:700;color:#ef4444;">- R$ ${formatarMoeda(totalDespesas)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">Total de Despesas</div>
+                                <div style="font-size:10px;color:var(--text-muted);display:flex;gap:8px;margin-top:2px;">
+                                    <span style="color:#22c55e;">✅ R$ ${formatarMoeda(totalPago)}</span>
+                                    <span style="color:#f59e0b;">⏳ R$ ${formatarMoeda(totalPendente)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Card: Lucro Real -->
+                    <div style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(16,185,129,0.05));border-radius:12px;padding:14px 16px;border:1px solid rgba(34,197,94,0.15);">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:22px;">💎</span>
+                            <div style="flex:1;">
+                                <div style="font-size:18px;font-weight:700;color:#22c55e;">R$ ${formatarMoeda(lucroReal)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">Lucro Real</div>
+                                <div style="font-size:10px;color:var(--text-muted);display:flex;gap:6px;margin-top:2px;">
+                                    <span>📊 ${margemLucro}% margem</span>
+                                    <span>💼 R$ ${formatarMoeda(totalComissoes)} comissões</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Card: Ticket Médio -->
+                    <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <span style="font-size:22px;">📈</span>
+                            <div style="flex:1;">
+                                <div style="font-size:18px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(ticketMedio)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">Ticket Médio</div>
+                                <div style="font-size:10px;color:var(--text-muted);display:flex;gap:6px;margin-top:2px;">
+                                    <span>✂️ ${totalServicosConcluidos} serviços</span>
+                                    <span>👥 ${clientes.length} clientes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- 🔥 RESULTADO DETALHADO + DESPESAS CATEGORIA  -->
+            <!-- ============================================ -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                <!-- Card: Resultado Detalhado -->
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 12px;font-size:13px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-calculator" style="color:var(--primary);"></i> Resultado Detalhado
+                    </h4>
+                    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
+                            <span style="color:var(--text-muted);">📊 Faturamento Bruto</span>
+                            <span style="font-weight:600;">R$ ${formatarMoeda(faturamentoMes)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
+                            <span style="color:var(--text-muted);">👨‍💼 Comissões Pagas</span>
+                            <span style="font-weight:600;color:#f59e0b;">- R$ ${formatarMoeda(totalComissoes)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
+                            <span style="color:var(--text-muted);">= Faturamento Líquido</span>
+                            <span style="font-weight:700;color:#8b5cf6;">R$ ${formatarMoeda(lucroAposComissoes)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
+                            <span style="color:var(--text-muted);">📉 Despesas Totais</span>
+                            <span style="font-weight:600;color:#ef4444;">- R$ ${formatarMoeda(totalDespesas)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:6px 0;margin-top:4px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(16,185,129,0.04));border-radius:8px;padding:8px 12px;">
+                            <span style="font-weight:700;color:#22c55e;">🎯 Lucro Real</span>
+                            <span style="font-weight:700;font-size:16px;color:#22c55e;">R$ ${formatarMoeda(lucroReal)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:var(--text-muted);">
+                            <span>📊 Margem de Lucro</span>
+                            <span style="font-weight:600;color:${margemLucro >= 50 ? '#22c55e' : margemLucro >= 30 ? '#f59e0b' : '#ef4444'};">${margemLucro}%</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card: Despesas por Categoria -->
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 12px;font-size:13px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-tags" style="color:var(--primary);"></i> Despesas por Categoria
+                        ${totalDespesas > 0 ? `<span style="font-size:10px;font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:0 10px;border-radius:12px;">${categoriasDespesas.length} categorias</span>` : ''}
+                    </h4>
+                    ${categoriasDespesas.length > 0 ? `
+                        <div style="display:flex;flex-direction:column;gap:8px;">
+                            ${categoriasDespesas.slice(0, 6).map((cat, idx) => {
+                const percentual = totalDespesas > 0 ? ((cat.total_valor / totalDespesas) * 100) : 0;
+                const cores = ['#667eea', '#764ba2', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6'];
+                const cor = cores[idx % cores.length];
+                return `
+                                    <div>
+                                        <div style="display:flex;justify-content:space-between;font-size:12px;">
+                                            <span style="color:var(--text-primary);">${escapeHtml(cat.categoria)}</span>
+                                            <span style="font-weight:600;color:${cor};">R$ ${formatarMoeda(cat.total_valor)} (${Math.round(percentual)}%)</span>
+                                        </div>
+                                        <div style="height:6px;background:var(--bg-hover);border-radius:4px;overflow:hidden;margin-top:2px;">
+                                            <div style="height:100%;width:${Math.min(percentual, 100)}%;background:linear-gradient(90deg,${cor},${cor}dd);border-radius:4px;transition:width 1s ease;"></div>
+                                        </div>
+                                    </div>
+                                `;
+            }).join('')}
+                            ${categoriasDespesas.length > 6 ? `
+                                <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;">
+                                    + ${categoriasDespesas.length - 6} outras categorias
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : `
+                        <div style="text-align:center;padding:20px;color:var(--text-muted);">
+                            <i class="fas fa-receipt" style="font-size:24px;opacity:0.3;"></i>
+                            <p style="margin:8px 0 0;font-size:13px;">Nenhuma despesa cadastrada este mês</p>
+                            <button onclick="carregarFinanceiro()" style="background:var(--primary);border:none;padding:4px 14px;border-radius:8px;color:white;font-size:11px;cursor:pointer;margin-top:6px;">
+                                <i class="fas fa-plus"></i> Adicionar despesa
+                            </button>
+                        </div>
+                    `}
+                </div>
+            </div>
+
+            <!-- ============================================ -->
+            <!-- 🔥 PROJEÇÃO DE FATURAMENTO                  -->
+            <!-- ============================================ -->
+            ${!isNewUser ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                <!-- Card: Projeção -->
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 10px;font-size:13px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-rocket" style="color:var(--primary);"></i> Projeção de Faturamento
+                    </h4>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border-color);">
+                            <span style="color:var(--text-muted);">📊 Média diária</span>
+                            <span style="font-weight:600;">R$ ${formatarMoeda(mediaDiaria)}</span>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:15px;padding:8px 0;background:linear-gradient(135deg,rgba(102,126,234,0.06),rgba(118,75,162,0.03));border-radius:8px;padding:8px 12px;">
+                            <span style="font-weight:600;color:var(--text-primary);">📈 Projeção 30 dias</span>
+                            <span style="font-weight:700;font-size:17px;color:#8b5cf6;">R$ ${formatarMoeda(projecao30Dias)}</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-muted);display:flex;gap:12px;margin-top:4px;">
+                            <span>📅 ${diasComDados} dias de dados</span>
+                            <span>${projecao30Dias > faturamentoMes ? '📈 Tendência de crescimento' : '📉 Manter média atual'}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Card: Resumo do Negócio -->
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 10px;font-size:13px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-chart-simple" style="color:var(--primary);"></i> Resumo do Negócio
+                    </h4>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${agendamentos.length}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Total Atendimentos</div>
+                            <div style="font-size:10px;color:#22c55e;">${concluidos.length} concluídos</div>
+                        </div>
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${clientes.length}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Total Clientes</div>
+                            <div style="font-size:10px;color:#22c55e;">+${novosClientesMes || 0} este mês</div>
+                        </div>
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:${pendentes.length > 5 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Pendentes</div>
+                            <div style="font-size:10px;color:${agendamentosHoje.length > 0 ? '#f59e0b' : 'var(--text-muted)'};">${agendamentosHoje.length > 0 ? `${agendamentosHoje.length} hoje` : 'Nenhum hoje'}</div>
+                        </div>
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
+                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${profissionaisAtivos}</div>
+                            <div style="font-size:11px;color:var(--text-muted);">Profissionais Ativos</div>
+                            <div style="font-size:10px;color:var(--text-muted);">${profissionais.length - profissionaisAtivos > 0 ? `${profissionais.length - profissionaisAtivos} inativos` : 'Todos ativos'}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+
+            <!-- ============================================ -->
+            <!-- AGENDA INTELIGENTE                          -->
+            <!-- ============================================ -->
             <div class="card" style="padding: 16px 20px;background:var(--bg-card);border-radius:16px;border:1px solid var(--border-color);box-shadow:0 4px 24px rgba(0,0,0,0.04);margin-bottom:20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                     <h3 style="font-size:17px; margin:0;display:flex;align-items:center;gap:10px;">
@@ -1665,93 +1879,7 @@ async function carregarDashboardDono() {
                 </div>
             ` : ''}
             
-            <!-- CARDS PRINCIPAIS (MANTIDOS IGUAIS) -->
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
-                <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:12px;padding:16px 20px;border:1px solid rgba(102,126,234,0.1);">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <span style="font-size:24px;">💰</span>
-                        <div>
-                            <div style="font-size:20px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoMes)}</div>
-                            <div style="font-size:12px;color:var(--text-muted);">Faturamento do Mês</div>
-                            <div style="font-size:11px;color:${variacaoPercentual >= 0 ? '#22c55e' : '#ef4444'};display:flex;align-items:center;gap:4px;">
-                                <i class="fas ${variacaoIcone}"></i> ${variacaoSinal}${variacaoPercentual}%
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <span style="font-size:24px;">✂️</span>
-                        <div>
-                            <div style="font-size:20px;font-weight:700;color:var(--text-primary);">${agendamentos.length}</div>
-                            <div style="font-size:12px;color:var(--text-muted);">Total Atendimentos</div>
-                            <div style="font-size:11px;display:flex;gap:8px;color:var(--text-muted);">
-                                <span style="color:#22c55e;">${concluidos.length} ✅</span>
-                                ${pendentes.length > 0 ? `<span style="color:#f59e0b;">${pendentes.length} ⏳</span>` : ''}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px 20px;border:1px solid var(--border-color);">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <span style="font-size:24px;">👥</span>
-                        <div>
-                            <div style="font-size:20px;font-weight:700;color:var(--text-primary);">${clientes.length}</div>
-                            <div style="font-size:12px;color:var(--text-muted);">Clientes</div>
-                            <div style="font-size:11px;color:#22c55e;">+${novosClientesMes || 0} este mês</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="background:${pendentes.length > 5 ? 'rgba(239,68,68,0.08)' : 'var(--bg-card)'};border-radius:12px;padding:16px 20px;border:1px solid ${pendentes.length > 5 ? 'rgba(239,68,68,0.2)' : 'var(--border-color)'};">
-                    <div style="display:flex;align-items:center;gap:12px;">
-                        <span style="font-size:24px;">⏳</span>
-                        <div>
-                            <div style="font-size:20px;font-weight:700;color:${pendentes.length > 5 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
-                            <div style="font-size:12px;color:var(--text-muted);">Pendentes</div>
-                            <div style="font-size:11px;color:${agendamentosHoje.length > 0 ? '#f59e0b' : 'var(--text-muted)'};">${agendamentosHoje.length > 0 ? `${agendamentosHoje.length} hoje` : 'Nenhum hoje'}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- GRÁFICOS E PRÓXIMOS AGENDAMENTOS (MANTIDOS IGUAIS) -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
-                    <h4 style="margin:0 0 12px;font-size:14px;"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Agendamentos por Dia</h4>
-                    <canvas id="chartAgendamentos" style="max-height:220px;width:100%;"></canvas>
-                </div>
-                
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
-                    <h4 style="margin:0 0 12px;font-size:14px;"><i class="fas fa-trophy" style="color:var(--primary);"></i> Serviços Mais Populares</h4>
-                    ${topServicos.length > 0 ? `
-                        <div style="display:flex;flex-direction:column;gap:8px;">
-                            ${topServicos.map(([nome, qtd], idx) => `
-                                <div style="display:flex;align-items:center;gap:10px;">
-                                    <span style="font-weight:700;font-size:13px;color:${idx === 0 ? '#d4af37' : idx === 1 ? '#c0c0c0' : idx === 2 ? '#cd7f32' : 'var(--text-muted)'};">${idx + 1}º</span>
-                                    <div style="flex:1;">
-                                        <div style="display:flex;justify-content:space-between;font-size:12px;">
-                                            <span style="color:var(--text-primary);">${escapeHtml(nome)}</span>
-                                            <span style="color:var(--text-muted);">${qtd}</span>
-                                        </div>
-                                        <div style="height:6px;background:var(--bg-hover);border-radius:4px;overflow:hidden;margin-top:2px;">
-                                            <div style="height:100%;width:${(qtd / (topServicos[0]?.[1] || 1)) * 100}%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:4px;"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : `
-                        <div style="text-align:center;padding:20px;color:var(--text-muted);">
-                            <i class="fas fa-cut" style="font-size:24px;opacity:0.3;"></i>
-                            <p style="margin:8px 0 0;font-size:13px;">Nenhum serviço concluído</p>
-                        </div>
-                    `}
-                </div>
-            </div>
-            
+            <!-- PRÓXIMOS ATENDIMENTOS -->
             <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                     <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Próximos Atendimentos</h4>
@@ -1833,14 +1961,9 @@ async function carregarDashboardDono() {
     document.getElementById('content').innerHTML = html;
 
     setTimeout(() => {
-        renderizarGraficoAgendamentos(diasSemana, agendamentosPorDia);
-    }, 100);
-
-    setTimeout(() => {
         carregarAgendaInteligente();
     }, 150);
 }
-
 // ============================================
 // DASHBOARD SUPER ADMIN
 // ============================================
