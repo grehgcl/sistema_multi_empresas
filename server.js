@@ -320,6 +320,149 @@ setTimeout(() => {
     }
 }, 2500);
 
+// ============================================================
+// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL)
+// ============================================================
+setTimeout(() => {
+    console.log('🔍 Verificando tabela despesas no PostgreSQL...');
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    if (!isProduction) {
+        console.log('ℹ️ Ambiente local - Migração despesas ignorada');
+        return;
+    }
+
+    // Verificar se a tabela existe no PostgreSQL
+    const sqlCheck = `
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'despesas'
+        );
+    `;
+
+    db.get(sqlCheck, [], (err, result) => {
+        if (err) {
+            console.error('❌ Erro ao verificar tabela despesas:', err.message);
+            return;
+        }
+
+        const existe = result?.exists || false;
+
+        if (existe) {
+            console.log('✅ Tabela despesas já existe!');
+            return;
+        }
+
+        console.log('📝 Criando tabela despesas no PostgreSQL...');
+
+        const sqlCreate = `
+            CREATE TABLE despesas (
+                id SERIAL PRIMARY KEY,
+                empresa_id INTEGER NOT NULL,
+                descricao TEXT NOT NULL,
+                categoria TEXT NOT NULL,
+                valor DECIMAL(10,2) NOT NULL,
+                data DATE NOT NULL,
+                data_vencimento DATE,
+                pago BOOLEAN DEFAULT FALSE,
+                forma_pagamento TEXT,
+                observacao TEXT,
+                anexo TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_despesas_empresa ON despesas(empresa_id);
+            CREATE INDEX IF NOT EXISTS idx_despesas_data ON despesas(data);
+            CREATE INDEX IF NOT EXISTS idx_despesas_categoria ON despesas(categoria);
+            CREATE INDEX IF NOT EXISTS idx_despesas_pago ON despesas(pago);
+        `;
+
+        // Executar a criação da tabela
+        db.exec(sqlCreate, (err) => {
+            if (err) {
+                console.error('❌ Erro ao criar tabela despesas:', err.message);
+                return;
+            }
+            console.log('✅ Tabela despesas criada com sucesso!');
+
+            // Verificar se a tabela foi criada
+            db.get("SELECT COUNT(*) as total FROM despesas", [], (err, count) => {
+                if (err) {
+                    console.error('❌ Erro ao verificar tabela:', err.message);
+                } else {
+                    console.log(`📊 Tabela despesas pronta! (${count?.total || 0} registros)`);
+                }
+            });
+        });
+    });
+}, 12000); // Aguardar 12 segundos para garantir que o banco está pronto
+
+// ============================================================
+// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL)
+// ============================================================
+setTimeout(() => {
+    console.log('🔍 Verificando tabela metas no PostgreSQL...');
+
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    if (!isProduction) {
+        console.log('ℹ️ Ambiente local - Migração metas ignorada');
+        return;
+    }
+
+    const sqlCheck = `
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'metas'
+        );
+    `;
+
+    db.get(sqlCheck, [], (err, result) => {
+        if (err) {
+            console.error('❌ Erro ao verificar tabela metas:', err.message);
+            return;
+        }
+
+        const existe = result?.exists || false;
+
+        if (existe) {
+            console.log('✅ Tabela metas já existe!');
+            return;
+        }
+
+        console.log('📝 Criando tabela metas no PostgreSQL...');
+
+        const sqlCreate = `
+            CREATE TABLE metas (
+                id SERIAL PRIMARY KEY,
+                empresa_id INTEGER NOT NULL,
+                mes INTEGER NOT NULL,
+                ano INTEGER NOT NULL,
+                meta_faturamento DECIMAL(10,2) DEFAULT 0,
+                meta_clientes INTEGER DEFAULT 0,
+                meta_atendimentos INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
+                UNIQUE(empresa_id, mes, ano)
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_metas_empresa ON metas(empresa_id);
+            CREATE INDEX IF NOT EXISTS idx_metas_data ON metas(mes, ano);
+        `;
+
+        db.exec(sqlCreate, (err) => {
+            if (err) {
+                console.error('❌ Erro ao criar tabela metas:', err.message);
+                return;
+            }
+            console.log('✅ Tabela metas criada com sucesso!');
+        });
+    });
+}, 14000); // Aguardar 14 segundos
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================================
