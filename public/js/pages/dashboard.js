@@ -181,7 +181,7 @@ async function carregarAgendaInteligente() {
 
         agendaInteligenteHorarios = (await horariosRes.json()).data || [];
 
-        const profs = (await profissionaisRes.json()).data?.filter(p => p.ativo === 1) || [];
+        const profs = (await profissionaisRes.json()).data?.filter(p => (p.ativo == 1 || p.ativo == true)) || [];
 
         const dono = {
             id: 'dono_' + (usuario.empresa_id || 0),
@@ -338,7 +338,7 @@ function renderizarAgendaInteligente() {
     let almocoInicioPadrao = '12:00';
     let almocoFimPadrao = '13:00';
 
-    if (horarioConfiguradoHoje && horarioConfiguradoHoje.aberto === 1) {
+    if (horarioConfiguradoHoje && (horarioConfiguradoHoje.aberto == 1 || horarioConfiguradoHoje.aberto == true)) {
         horarioInicioPadrao = horarioConfiguradoHoje.hora_inicio || '08:00';
         horarioFimPadrao = horarioConfiguradoHoje.hora_fim || '18:00';
         almocoInicioPadrao = horarioConfiguradoHoje.almoco_inicio || '12:00';
@@ -677,7 +677,7 @@ function renderizarAgendaInteligente() {
 
             isDiaHoje = isHoje;
 
-            const estaAberto = horarioDia && horarioDia.aberto === 1;
+            const estaAberto = horarioDia && (horarioDia.aberto == 1 || horarioDia.aberto == true);
             const almocoInicioDia = horarioDia?.almoco_inicio || '12:00';
             const almocoFimDia = horarioDia?.almoco_fim || '13:00';
             const noAlmoco = estaAberto && isHorarioAlmoco(hora, almocoInicioDia, almocoFimDia);
@@ -1153,7 +1153,7 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     // Adicionar profissionais da lista
                     if (window.profissionaisList && window.profissionaisList.length > 0) {
                         window.profissionaisList.forEach(p => {
-                            if (p.ativo === 1) {
+                            if ((p.ativo == 1 || p.ativo == true)) {
                                 profSelect.innerHTML += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
                             }
                         });
@@ -1499,7 +1499,7 @@ async function carregarDashboardDono() {
     const profissionais = (await profissionaisRes.json()).data || [];
 
     const planoAtual = empresa.plano || 'trial';
-    const assinaturaAtiva = empresa.assinatura_ativa === 1;
+    const assinaturaAtiva = (empresa.assinatura_ativa == 1 || empresa.assinatura_ativa == true);
 
     let mostrarAvisoTrial = false;
     let diasRestantes = 0;
@@ -1568,7 +1568,7 @@ async function carregarDashboardDono() {
         ticketMedio = total / concluidos.length;
     }
 
-    const profissionaisAtivos = profissionais.filter(p => p.ativo === 1 || p.ativo === true).length;
+    const profissionaisAtivos = profissionais.filter(p => (p.ativo == 1 || p.ativo == true) || p.ativo === true).length;
 
     const novosClientesMes = clientes.filter(c => {
         const dataCriacao = new Date(c.created_at);
@@ -1940,7 +1940,7 @@ async function carregarDashboardDono() {
                                     <div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.nome)}</div>
                                     <div style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}</div>
                                 </div>
-                                ${cliente.bloqueado_chatbot === 1 ?
+                                ${(cliente.bloqueado_chatbot == 1 || cliente.bloqueado_chatbot == true) ?
                     '<span style="font-size:12px;">🔒</span>' :
                     '<span style="font-size:12px;">✅</span>'
                 }
