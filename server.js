@@ -299,7 +299,7 @@ setTimeout(() => {
 }, 2500);
 
 // ============================================================
-// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL) - TRY-CATCH
+// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL) - USANDO db.run
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando tabela despesas no PostgreSQL...');
@@ -311,6 +311,7 @@ setTimeout(() => {
         return;
     }
 
+    // Verificar se a tabela existe no PostgreSQL
     const sqlCheck = `
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -333,8 +334,9 @@ setTimeout(() => {
 
         console.log('📝 Criando tabela despesas no PostgreSQL...');
 
-        const sqlCreate = `
-            CREATE TABLE IF NOT EXISTS despesas (
+        // 🔥 USAR db.run para cada comando separadamente
+        const commands = [
+            `CREATE TABLE IF NOT EXISTS despesas (
                 id SERIAL PRIMARY KEY,
                 empresa_id INTEGER NOT NULL,
                 descricao TEXT NOT NULL,
@@ -348,26 +350,35 @@ setTimeout(() => {
                 anexo TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
+            )`,
+            `CREATE INDEX IF NOT EXISTS idx_despesas_empresa ON despesas(empresa_id)`,
+            `CREATE INDEX IF NOT EXISTS idx_despesas_data ON despesas(data)`,
+            `CREATE INDEX IF NOT EXISTS idx_despesas_categoria ON despesas(categoria)`,
+            `CREATE INDEX IF NOT EXISTS idx_despesas_pago ON despesas(pago)`
+        ];
 
-            CREATE INDEX IF NOT EXISTS idx_despesas_empresa ON despesas(empresa_id);
-            CREATE INDEX IF NOT EXISTS idx_despesas_data ON despesas(data);
-            CREATE INDEX IF NOT EXISTS idx_despesas_categoria ON despesas(categoria);
-            CREATE INDEX IF NOT EXISTS idx_despesas_pago ON despesas(pago);
-        `;
+        let executados = 0;
+        const totalComandos = commands.length;
 
-        db.query(sqlCreate, [], (err) => {
-            if (err) {
-                console.log('⚠️ Não foi possível criar tabela despesas:', err.message);
-                return;
-            }
-            console.log('✅ Tabela despesas criada com sucesso!');
-
-            db.get("SELECT COUNT(*) as total FROM despesas", [], (err, count) => {
+        commands.forEach((cmd, index) => {
+            db.run(cmd, [], (err) => {
                 if (err) {
-                    console.log('⚠️ Erro ao verificar tabela:', err.message);
+                    console.log(`⚠️ Erro no comando ${index + 1}: ${err.message}`);
                 } else {
-                    console.log(`📊 Tabela despesas pronta! (${count?.total || 0} registros)`);
+                    console.log(`✅ Comando ${index + 1}/${totalComandos} executado`);
+                }
+                executados++;
+
+                if (executados === totalComandos) {
+                    console.log('✅ Tabela despesas criada com sucesso!');
+                    // Verificar
+                    db.get("SELECT COUNT(*) as total FROM despesas", [], (err, count) => {
+                        if (err) {
+                            console.log('⚠️ Erro ao verificar tabela:', err.message);
+                        } else {
+                            console.log(`📊 Tabela despesas pronta! (${count?.total || 0} registros)`);
+                        }
+                    });
                 }
             });
         });
@@ -375,7 +386,7 @@ setTimeout(() => {
 }, 15000);
 
 // ============================================================
-// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL) - TRY-CATCH
+// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL) - USANDO db.run
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando tabela metas no PostgreSQL...');
@@ -409,8 +420,9 @@ setTimeout(() => {
 
         console.log('📝 Criando tabela metas no PostgreSQL...');
 
-        const sqlCreate = `
-            CREATE TABLE IF NOT EXISTS metas (
+        // 🔥 USAR db.run para cada comando separadamente
+        const commands = [
+            `CREATE TABLE IF NOT EXISTS metas (
                 id SERIAL PRIMARY KEY,
                 empresa_id INTEGER NOT NULL,
                 mes INTEGER NOT NULL,
@@ -419,21 +431,28 @@ setTimeout(() => {
                 meta_clientes INTEGER DEFAULT 0,
                 meta_atendimentos INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,
-                UNIQUE(empresa_id, mes, ano)
-            );
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )`,
+            `CREATE INDEX IF NOT EXISTS idx_metas_empresa ON metas(empresa_id)`,
+            `CREATE INDEX IF NOT EXISTS idx_metas_data ON metas(mes, ano)`
+        ];
 
-            CREATE INDEX IF NOT EXISTS idx_metas_empresa ON metas(empresa_id);
-            CREATE INDEX IF NOT EXISTS idx_metas_data ON metas(mes, ano);
-        `;
+        let executados = 0;
+        const totalComandos = commands.length;
 
-        db.query(sqlCreate, [], (err) => {
-            if (err) {
-                console.log('⚠️ Não foi possível criar tabela metas:', err.message);
-                return;
-            }
-            console.log('✅ Tabela metas criada com sucesso!');
+        commands.forEach((cmd, index) => {
+            db.run(cmd, [], (err) => {
+                if (err) {
+                    console.log(`⚠️ Erro no comando ${index + 1}: ${err.message}`);
+                } else {
+                    console.log(`✅ Comando ${index + 1}/${totalComandos} executado`);
+                }
+                executados++;
+
+                if (executados === totalComandos) {
+                    console.log('✅ Tabela metas criada com sucesso!');
+                }
+            });
         });
     });
 }, 17000);
