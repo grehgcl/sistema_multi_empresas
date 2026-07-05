@@ -4173,12 +4173,11 @@ app.get('/api/financeiro', auth, (req, res) => {
 // ============================================================
 
 // ============================================
-// GET /api/despesas - LISTAR DESPESAS COM FILTROS
+// GET /api/despesas - LISTAR DESPESAS (CORRIGIDO)
 // ============================================
 app.get('/api/despesas', auth, (req, res) => {
     const usuario = req.usuario;
 
-    // Profissional NÃO vê despesas
     if (usuario.role === 'profissional') {
         return res.json({
             success: true,
@@ -4191,6 +4190,8 @@ app.get('/api/despesas', auth, (req, res) => {
 
     const empresaId = usuario.empresa_id;
     const { mes, ano, categoria, pago } = req.query;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
     let params = [empresaId];
     let sql = `
         SELECT d.*
@@ -4198,23 +4199,50 @@ app.get('/api/despesas', auth, (req, res) => {
         WHERE d.empresa_id = ?
     `;
 
-    if (mes && ano) {
-        sql += ` AND strftime('%m', d.data) = ? AND strftime('%Y', d.data) = ?`;
-        params.push(mes.padStart(2, '0'), ano);
-    }
+    if (isProduction) {
+        // PostgreSQL
+        if (mes && ano) {
+            sql += ` AND EXTRACT(MONTH FROM d.data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM d.data) = $${params.length + 2}::int`;
+            params.push(parseInt(mes), parseInt(ano));
+        }
 
-    if (categoria) {
-        sql += ` AND d.categoria = ?`;
-        params.push(categoria);
-    }
+        if (categoria) {
+            sql += ` AND d.categoria = $${params.length + 1}`;
+            params.push(categoria);
+        }
 
-    if (pago !== undefined && pago !== '') {
-        const pagoBool = pago === 'true' ? 1 : 0;
-        sql += ` AND d.pago = ?`;
-        params.push(pagoBool);
+        if (pago !== undefined && pago !== '') {
+            const pagoBool = pago === 'true';
+            sql += ` AND d.pago = $${params.length + 1}`;
+            params.push(pagoBool);
+        }
+    } else {
+        // SQLite
+        if (mes && ano) {
+            sql += ` AND strftime('%m', d.data) = ? AND strftime('%Y', d.data) = ?`;
+            params.push(mes.padStart(2, '0'), ano);
+        }
+
+        if (categoria) {
+            sql += ` AND d.categoria = ?`;
+            params.push(categoria);
+        }
+
+        if (pago !== undefined && pago !== '') {
+            const pagoBool = pago === 'true' ? 1 : 0;
+            sql += ` AND d.pago = ?`;
+            params.push(pagoBool);
+        }
     }
 
     sql += ` ORDER BY d.data DESC, d.created_at DESC`;
+
+    // Ajustar placeholders para PostgreSQL
+    if (isProduction) {
+        sql = sql.replace(/\?/g, (match, offset) => {
+            return `$${params.indexOf(match) + 1}`;
+        });
+    }
 
     db.all(sql, params, (err, despesas) => {
         if (err) {
@@ -4222,7 +4250,6 @@ app.get('/api/despesas', auth, (req, res) => {
             return res.status(500).json({ success: false, message: err.message });
         }
 
-        // Calcular totais
         const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor || 0), 0);
         const totalPago = despesas.filter(d => d.pago).reduce((acc, d) => acc + (d.valor || 0), 0);
         const totalPendente = despesas.filter(d => !d.pago).reduce((acc, d) => acc + (d.valor || 0), 0);
@@ -4470,7 +4497,7 @@ app.delete('/api/despesas/:id', auth, (req, res) => {
 });
 
 // ============================================
-// GET /api/despesas/resumo - RESUMO DO MÊS
+// GET /api/despesas/resumo - RESUMO DO MÊS (CORRIGIDO PARA POSTGRESQL)
 // ============================================
 app.get('/api/despesas/resumo', auth, (req, res) => {
     const usuario = req.usuario;
@@ -4492,35 +4519,72 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
     const mes = String(hoje.getMonth() + 1).padStart(2, '0');
     const ano = String(hoje.getFullYear());
 
-    const sql = `
-        SELECT 
-            COALESCE(SUM(CASE WHEN pago = 1 THEN valor ELSE 0 END), 0) as total_pago,
-            COALESCE(SUM(CASE WHEN pago = 0 THEN valor ELSE 0 END), 0) as total_pendente,
-            COALESCE(SUM(valor), 0) as total_despesas,
-            COUNT(*) as total_quantidade
-        FROM despesas
-        WHERE empresa_id = ?
-        AND strftime('%m', data) = ?
-        AND strftime('%Y', data) = ?
-    `;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.get(sql, [empresaId, mes, ano], (err, resumo) => {
+    let sql;
+    let params = [empresaId, mes, ano];
+
+    if (isProduction) {
+        // PostgreSQL - usar TRUE/FALSE e EXTRACT
+        sql = `
+            SELECT 
+                COALESCE(SUM(CASE WHEN pago = true THEN valor ELSE 0 END), 0) as total_pago,
+                COALESCE(SUM(CASE WHEN pago = false THEN valor ELSE 0 END), 0) as total_pendente,
+                COALESCE(SUM(valor), 0) as total_despesas,
+                COUNT(*) as total_quantidade
+            FROM despesas
+            WHERE empresa_id = $1
+            AND EXTRACT(MONTH FROM data) = $2::int
+            AND EXTRACT(YEAR FROM data) = $3::int
+        `;
+    } else {
+        // SQLite
+        sql = `
+            SELECT 
+                COALESCE(SUM(CASE WHEN pago = 1 THEN valor ELSE 0 END), 0) as total_pago,
+                COALESCE(SUM(CASE WHEN pago = 0 THEN valor ELSE 0 END), 0) as total_pendente,
+                COALESCE(SUM(valor), 0) as total_despesas,
+                COUNT(*) as total_quantidade
+            FROM despesas
+            WHERE empresa_id = ?
+            AND strftime('%m', data) = ?
+            AND strftime('%Y', data) = ?
+        `;
+    }
+
+    db.get(sql, params, (err, resumo) => {
         if (err) {
             console.error('❌ Erro ao buscar resumo:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
-        const catSql = `
-            SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
-            FROM despesas
-            WHERE empresa_id = ?
-            AND strftime('%m', data) = ?
-            AND strftime('%Y', data) = ?
-            GROUP BY categoria
-            ORDER BY total_valor DESC
-        `;
+        // Buscar por categoria
+        let catSql;
+        let catParams = [empresaId, mes, ano];
 
-        db.all(catSql, [empresaId, mes, ano], (err, categorias) => {
+        if (isProduction) {
+            catSql = `
+                SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
+                FROM despesas
+                WHERE empresa_id = $1
+                AND EXTRACT(MONTH FROM data) = $2::int
+                AND EXTRACT(YEAR FROM data) = $3::int
+                GROUP BY categoria
+                ORDER BY total_valor DESC
+            `;
+        } else {
+            catSql = `
+                SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
+                FROM despesas
+                WHERE empresa_id = ?
+                AND strftime('%m', data) = ?
+                AND strftime('%Y', data) = ?
+                GROUP BY categoria
+                ORDER BY total_valor DESC
+            `;
+        }
+
+        db.all(catSql, catParams, (err, categorias) => {
             if (err) {
                 console.error('❌ Erro ao buscar categorias:', err);
                 return res.status(500).json({ success: false, message: err.message });
