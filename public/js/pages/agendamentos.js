@@ -802,7 +802,7 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     let servicosOptions = '<option value="">Selecione um serviço</option>';
     if (servicos.length > 0) {
         for (let s of servicos) {
-            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${s.valor.toFixed(2)} (${s.duracao || 30}min)</option>`;
+            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)} (${s.duracao || 30}min)</option>`;
         }
     }
 
@@ -1140,7 +1140,7 @@ async function editarAgendamento(id) {
         let servicosOptions = '<option value="">Selecione um serviço</option>';
         for (let s of servicos) {
             const selected = s.id === agendamento.servico_id ? "selected" : "";
-            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${s.nome} - R$ ${s.valor.toFixed(2)} (${s.duracao}min)</option>`;
+            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${s.nome} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)} (${s.duracao}min)</option>`;
         }
 
         let profissionaisOptions = '<option value="">Não atribuir</option>';
