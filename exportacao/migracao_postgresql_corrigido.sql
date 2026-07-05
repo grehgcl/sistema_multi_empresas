@@ -1,6 +1,6 @@
 -- ============================================
 -- SCRIPT DE MIGRAÇÃO PARA POSTGRESQL
--- GERADO EM: 05/07/2026, 12:00:14
+-- GERADO EM: 05/07/2026, 14:54:16
 -- ============================================
 
 -- Tabela: acessos
@@ -14,7 +14,7 @@ CREATE TABLE acessos (
     user_agent TEXT
 );
 
--- Inserindo 30 registros em acessos
+-- Inserindo 33 registros em acessos
 INSERT INTO acessos (id, usuario_id, empresa_id, ip, user_agent) VALUES
 (1, 1001, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
 (2, 999, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
@@ -45,7 +45,10 @@ INSERT INTO acessos (id, usuario_id, empresa_id, ip, user_agent) VALUES
 (27, 1001, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
 (28, 1003, 5, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
 (29, 1001, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
-(30, 3, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36')
+(30, 3, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
+(31, 1001, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
+(32, 999, NULL, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36'),
+(33, 1001, 3, '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36')
 ;
 
 -- Resetar sequência da tabela acessos
@@ -399,7 +402,7 @@ CREATE TABLE usuarios (
 -- Inserindo 7 registros em usuarios
 INSERT INTO usuarios (id, nome, email, senha, role, empresa_id, ativo, telefone) VALUES
 (1, 'Admin Teste', 'admin@teste.com', '$2a$10$O01AI7y7it9v6A3oIQwOpOf.sMEnD018e/XpWYNCZjDo/wyzcGpnu', 'dono', 1, TRUE, NULL),
-(999, 'Super Admin', 'super@admin.com', '$2a$10$M.RsANdTzGAP5eUhxoZLGeMdtEu/yW3L7Ab3e9ru84hU/TAY1IyKe', 'superadmin', NULL, TRUE, NULL),
+(999, 'Super Admin', 'super@admin.com', '$2a$10$IRIr2QP3BysxgxFJfh7UZ.vVbqLkFMthhJvb9pYCMuloeDUYthhlm', 'superadmin', NULL, TRUE, NULL),
 (1000, 'gregorio ', 'grehgcl@hotmail.com', '$2a$10$Naz/tSTGcXWRBlbevwvjLe/tt4le3k0nP6abD5rLbAoEkiCtmdzyy', 'dono', 2, TRUE, NULL),
 (1001, 'gregorio ', 'digregorioleal@gmail.com', '$2a$10$iH18pk4WvC2Ba2n3Ntjjd.z9BmzpINunbsdIVCOgck0eAwWpgISVS', 'dono', 3, TRUE, '41999003903'),
 (1002, 'edson carlos ', 'edson@gmail.com', '$2a$10$.ViIoGVu61woaEr2.y/LEeLPYqDcEYnlS0mjaKHnDFzrAZHMnMr3G', 'dono', 4, TRUE, NULL),

@@ -2,12 +2,12 @@
 RELATÓRIO DE EXPORTAÇÃO DO BANCO SQLITE
 ============================================================
 
-Data de exportação: 05/07/2026, 12:00:14
+Data de exportação: 05/07/2026, 14:54:16
 Total de tabelas: 11
 
 TABELAS E REGISTROS:
 ----------------------------------------
-  acessos                       30 registros  (6 colunas)
+  acessos                       33 registros  (6 colunas)
   agendamentos                  19 registros  (13 colunas)
   clientes                      25 registros  (8 colunas)
   despesas                       2 registros  (13 colunas)
