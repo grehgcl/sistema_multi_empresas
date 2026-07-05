@@ -585,7 +585,7 @@ app.post('/api/login', (req, res) => {
         ? `SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
            FROM profissionais p 
            LEFT JOIN empresas e ON p.empresa_id = e.id 
-           WHERE p.email = $1 AND p.ativo = 1`
+           WHERE p.email = $1 AND p.ativo = true`
         : `SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
            FROM profissionais p 
            LEFT JOIN empresas e ON p.empresa_id = e.id 
@@ -681,7 +681,7 @@ app.post('/api/login', (req, res) => {
                         return res.json({ success: false, message: 'Seu período de teste expirou. Faça upgrade para continuar usando o sistema.' });
                     }
                     diasRestantes = Math.ceil((trialExpira - hoje) / (1000 * 60 * 60 * 24));
-                } else if (user.plano !== 'trial' && user.assinatura_ativa === 1 && user.assinatura_valida_ate) {
+                } else if (user.plano !== 'trial' && user.assinatura_ativa === true && user.assinatura_valida_ate) {
                     const hoje = new Date();
                     const validaAte = new Date(user.assinatura_valida_ate);
                     if (hoje > validaAte) {
@@ -2554,7 +2554,7 @@ app.get('/api/servicos', auth, (req, res) => {
     if (!empresa_id) return res.json({ success: true, data: [] });
 
     const sql = isProduction
-        ? `SELECT * FROM servicos WHERE empresa_id = $1 AND ativo = 1 ORDER BY nome`
+        ? `SELECT * FROM servicos WHERE empresa_id = $1 AND ativo = true ORDER BY nome`
         : `SELECT * FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome`;
 
     db.all(sql, [empresa_id], (err, servicos) => {
