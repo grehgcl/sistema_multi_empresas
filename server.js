@@ -321,7 +321,7 @@ setTimeout(() => {
 }, 2500);
 
 // ============================================================
-// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL)
+// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL) - CORRIGIDA
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando tabela despesas no PostgreSQL...');
@@ -357,7 +357,7 @@ setTimeout(() => {
         console.log('📝 Criando tabela despesas no PostgreSQL...');
 
         const sqlCreate = `
-            CREATE TABLE despesas (
+            CREATE TABLE IF NOT EXISTS despesas (
                 id SERIAL PRIMARY KEY,
                 empresa_id INTEGER NOT NULL,
                 descricao TEXT NOT NULL,
@@ -379,8 +379,8 @@ setTimeout(() => {
             CREATE INDEX IF NOT EXISTS idx_despesas_pago ON despesas(pago);
         `;
 
-        // Executar a criação da tabela
-        db.exec(sqlCreate, (err) => {
+        // 🔥 CORRIGIDO: usar db.query em vez de db.exec
+        db.query(sqlCreate, [], (err) => {
             if (err) {
                 console.error('❌ Erro ao criar tabela despesas:', err.message);
                 return;
@@ -397,10 +397,10 @@ setTimeout(() => {
             });
         });
     });
-}, 12000); // Aguardar 12 segundos para garantir que o banco está pronto
+}, 15000); // Aguardar 15 segundos
 
 // ============================================================
-// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL)
+// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL) - CORRIGIDA
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando tabela metas no PostgreSQL...');
@@ -435,7 +435,7 @@ setTimeout(() => {
         console.log('📝 Criando tabela metas no PostgreSQL...');
 
         const sqlCreate = `
-            CREATE TABLE metas (
+            CREATE TABLE IF NOT EXISTS metas (
                 id SERIAL PRIMARY KEY,
                 empresa_id INTEGER NOT NULL,
                 mes INTEGER NOT NULL,
@@ -453,7 +453,8 @@ setTimeout(() => {
             CREATE INDEX IF NOT EXISTS idx_metas_data ON metas(mes, ano);
         `;
 
-        db.exec(sqlCreate, (err) => {
+        // 🔥 CORRIGIDO: usar db.query em vez de db.exec
+        db.query(sqlCreate, [], (err) => {
             if (err) {
                 console.error('❌ Erro ao criar tabela metas:', err.message);
                 return;
@@ -461,7 +462,7 @@ setTimeout(() => {
             console.log('✅ Tabela metas criada com sucesso!');
         });
     });
-}, 14000); // Aguardar 14 segundos
+}, 17000); // Aguardar 17 segundos
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
