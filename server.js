@@ -3766,11 +3766,11 @@ app.get('/api/clientes', auth, (req, res) => {
     }
 
     const sql = isProduction
-        ? `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+        ? `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, false) as bloqueado_chatbot 
            FROM clientes 
            WHERE empresa_id = $1 
            ORDER BY nome`
-        : `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+        : `SELECT id, nome, telefone, email, created_at, COALESCE(bloqueado_chatbot, false) as bloqueado_chatbot 
            FROM clientes 
            WHERE empresa_id = ? 
            ORDER BY nome`;
@@ -4664,7 +4664,7 @@ app.post('/api/chatbot/cliente/buscar', (req, res) => {
 
     const telefoneLimpo = telefone.replace(/\D/g, '');
 
-    db.get(`SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+    db.get(`SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, false) as bloqueado_chatbot 
             FROM clientes 
             WHERE empresa_id = ? AND (telefone = ? OR telefone = ?)`,
         [empresaId, telefoneLimpo, telefone],
