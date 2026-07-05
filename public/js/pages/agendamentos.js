@@ -1,34 +1,3 @@
-
-// ============================================
-// FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
-// ============================================
-
-// Converter aberto (true/false ou 1/0)
-function isAberto(valor) {
-    if (typeof valor === 'boolean') return valor;
-    if (typeof valor === 'number') return valor === 1;
-    if (typeof valor === 'string') return valor === '1' || valor === 'true';
-    return false;
-}
-
-// Converter ativo (true/false ou 1/0)
-function isAtivo(valor) {
-    if (typeof valor === 'boolean') return valor;
-    if (typeof valor === 'number') return valor === 1;
-    if (typeof valor === 'string') return valor === '1' || valor === 'true';
-    return false;
-}
-
-// Converter valor para número
-function toNumber(valor) {
-    return parseFloat(valor) || 0;
-}
-
-// Formatar moeda
-function formatMoney(valor) {
-    return toNumber(valor).toFixed(2).replace('.', ',');
-}
-
 ﻿// pages/agendamentos.js - Versão Completa com Filtros, Edição e Horários Disponíveis
 let profissionaisList = [];
 let clientesList = [];
@@ -74,7 +43,7 @@ async function carregarAgendamentos() {
     let profissionaisOptions = "";
     if (profissionaisList.length > 0) {
         for (let p of profissionaisList) {
-            if (p.ativo === true || .ativo === true || .ativo === 1) {
+            if (p.ativo === 1) {
                 profissionaisOptions += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
             }
         }
@@ -247,7 +216,7 @@ function renderizarLinhaAgendamento(item) {
                 <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
             </td>
             <td>
-                <span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
+                <span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span>
             </td>
             <td>
                 <span class="status-badge ${statusInfo.class}">
@@ -399,7 +368,7 @@ async function carregarListaAgendamentosComFiltro() {
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">💰 Valor</span>
-                                        <span class="info-value valor-mobile">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
+                                        <span class="info-value valor-mobile">R$ ${(item.valor || 0).toFixed(2)}</span>
                                     </div>
                                 </div>
                                 <div class="card-actions-mobile">
@@ -474,7 +443,7 @@ function renderizarLinhaAgendamento(item) {
                 <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
             </td>
             <td>
-                <span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
+                <span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span>
             </td>
             <td>
                 <span class="status-badge ${statusInfo.class}">
@@ -840,7 +809,7 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     let profissionaisOptions = '<option value="">Não atribuir</option>';
     if (profissionais.length > 0) {
         for (let p of profissionais) {
-            if (p.ativo === true || .ativo === true || .ativo === 1) {
+            if (p.ativo === 1) {
                 profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)} (${p.comissao_percent}%)</option>`;
             }
         }
@@ -1176,7 +1145,7 @@ async function editarAgendamento(id) {
 
         let profissionaisOptions = '<option value="">Não atribuir</option>';
         for (let p of profissionais) {
-            if (p.ativo === true || .ativo === true || .ativo === 1) {
+            if (p.ativo === 1) {
                 const selected = p.id === agendamento.profissional_id ? "selected" : "";
                 profissionaisOptions += `<option value="${p.id}" ${selected}>${p.nome} (${p.comissao_percent}%)</option>`;
             }
