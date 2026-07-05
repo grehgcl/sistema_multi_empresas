@@ -1,3 +1,34 @@
+
+// ============================================
+// FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
+// ============================================
+
+// Converter aberto (true/false ou 1/0)
+function isAberto(valor) {
+    if (typeof valor === 'boolean') return valor;
+    if (typeof valor === 'number') return valor === 1;
+    if (typeof valor === 'string') return valor === '1' || valor === 'true';
+    return false;
+}
+
+// Converter ativo (true/false ou 1/0)
+function isAtivo(valor) {
+    if (typeof valor === 'boolean') return valor;
+    if (typeof valor === 'number') return valor === 1;
+    if (typeof valor === 'string') return valor === '1' || valor === 'true';
+    return false;
+}
+
+// Converter valor para número
+function toNumber(valor) {
+    return parseFloat(valor) || 0;
+}
+
+// Formatar moeda
+function formatMoney(valor) {
+    return toNumber(valor).toFixed(2).replace('.', ',');
+}
+
 ﻿// Agendamentos do Profissional - COM FILTROS, EDIÇÃO E HORÁRIOS DISPONÍVEIS
 let clientesListProf = [];
 let servicosListProf = [];
