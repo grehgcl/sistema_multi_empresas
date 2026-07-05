@@ -212,7 +212,7 @@ async function carregarAgendaInteligente() {
 
         agendaInteligenteHorarios = (await horariosRes.json()).data || [];
 
-        const profs = (await profissionaisRes.json()).data?.filter(p => p.ativo === true || .ativo === 1) || [];
+        const profs = (await profissionaisRes.json()).data?.filter(p => p.ativo === true || .ativo === true || .ativo === 1) || [];
 
         const dono = {
             id: 'dono_' + (usuario.empresa_id || 0),
@@ -369,7 +369,7 @@ function renderizarAgendaInteligente() {
     let almocoInicioPadrao = '12:00';
     let almocoFimPadrao = '13:00';
 
-    if (horarioConfiguradoHoje && horarioConfiguradoHoje.aberto === true || .aberto === 1) {
+    if (horarioConfiguradoHoje && horarioConfiguradoHoje.aberto === true || .aberto === true || .aberto === 1) {
         horarioInicioPadrao = horarioConfiguradoHoje.hora_inicio || '08:00';
         horarioFimPadrao = horarioConfiguradoHoje.hora_fim || '18:00';
         almocoInicioPadrao = horarioConfiguradoHoje.almoco_inicio || '12:00';
@@ -708,7 +708,7 @@ function renderizarAgendaInteligente() {
 
             isDiaHoje = isHoje;
 
-            const estaAberto = horarioDia && horarioDia.aberto === true || .aberto === 1;
+            const estaAberto = horarioDia && horarioDia.aberto === true || .aberto === true || .aberto === 1;
             const almocoInicioDia = horarioDia?.almoco_inicio || '12:00';
             const almocoFimDia = horarioDia?.almoco_fim || '13:00';
             const noAlmoco = estaAberto && isHorarioAlmoco(hora, almocoInicioDia, almocoFimDia);
@@ -1184,7 +1184,7 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     // Adicionar profissionais da lista
                     if (window.profissionaisList && window.profissionaisList.length > 0) {
                         window.profissionaisList.forEach(p => {
-                            if (p.ativo === true || .ativo === 1) {
+                            if (p.ativo === true || .ativo === true || .ativo === 1) {
                                 profSelect.innerHTML += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
                             }
                         });
@@ -1599,7 +1599,7 @@ async function carregarDashboardDono() {
         ticketMedio = total / concluidos.length;
     }
 
-    const profissionaisAtivos = profissionais.filter(p => p.ativo === true || .ativo === 1 || p.ativo === true).length;
+    const profissionaisAtivos = profissionais.filter(p => p.ativo === true || .ativo === true || .ativo === 1 || p.ativo === true).length;
 
     const novosClientesMes = clientes.filter(c => {
         const dataCriacao = new Date(c.created_at);

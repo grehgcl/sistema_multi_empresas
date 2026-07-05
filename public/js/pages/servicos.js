@@ -119,7 +119,7 @@ async function carregarListaServicos() {
 
             // Atualizar estatísticas
             const total = listaServicosGlobal.length;
-            const ativos = listaServicosGlobal.filter(s => s.ativo === true || .ativo === 1).length;
+            const ativos = listaServicosGlobal.filter(s => s.ativo === true || .ativo === true || .ativo === 1).length;
             const inativos = listaServicosGlobal.filter(s => s.ativo === 0).length;
 
             document.getElementById('totalServicos').textContent = total;
@@ -148,8 +148,8 @@ async function carregarListaServicos() {
                 // ============================================
                 html = `<div class="servicos-cards-mobile">`;
                 for (let s of listaServicosGlobal) {
-                    const statusClass = s.ativo === true || .ativo === 1 ? 'ativo' : 'inativo';
-                    const statusLabel = s.ativo === true || .ativo === 1 ? '✅ Ativo' : '⛔ Inativo';
+                    const statusClass = s.ativo === true || .ativo === true || .ativo === 1 ? 'ativo' : 'inativo';
+                    const statusLabel = s.ativo === true || .ativo === true || .ativo === 1 ? '✅ Ativo' : '⛔ Inativo';
 
                     html += `
                         <div class="servico-card-mobile">
@@ -181,9 +181,9 @@ async function carregarListaServicos() {
                                 <button class="btn-icon btn-edit" onclick="editarServico(${s.id})" title="Editar">
                                     <i class="fas fa-pen"></i> Editar
                                 </button>
-                                <button class="btn-icon ${s.ativo === true || .ativo === 1 ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})" title="${s.ativo === true || .ativo === 1 ? 'Desativar' : 'Ativar'}">
-                                    <i class="fas ${s.ativo === true || .ativo === 1 ? 'fa-toggle-on' : 'fa-toggle-off'}"></i> 
-                                    ${s.ativo === true || .ativo === 1 ? 'Desativar' : 'Ativar'}
+                                <button class="btn-icon ${s.ativo === true || .ativo === true || .ativo === 1 ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})" title="${s.ativo === true || .ativo === true || .ativo === 1 ? 'Desativar' : 'Ativar'}">
+                                    <i class="fas ${s.ativo === true || .ativo === true || .ativo === 1 ? 'fa-toggle-on' : 'fa-toggle-off'}"></i> 
+                                    ${s.ativo === true || .ativo === true || .ativo === 1 ? 'Desativar' : 'Ativar'}
                                 </button>
                                 <button class="btn-icon btn-delete" onclick="excluirServico(${s.id})" title="Excluir">
                                     <i class="fas fa-trash"></i> Excluir
@@ -218,9 +218,9 @@ async function carregarListaServicos() {
                                         <td><span class="valor">R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</span></td>
                                         <td><span style="background:var(--bg-hover);padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">${s.duracao || 30} min</span></td>
                                         <td>
-                                            <span class="status-badge ${s.ativo === true || .ativo === 1 ? 'ativo' : 'inativo'}">
+                                            <span class="status-badge ${s.ativo === true || .ativo === true || .ativo === 1 ? 'ativo' : 'inativo'}">
                                                 <span class="dot"></span>
-                                                ${s.ativo === true || .ativo === 1 ? '✅ Ativo' : '⛔ Inativo'}
+                                                ${s.ativo === true || .ativo === true || .ativo === 1 ? '✅ Ativo' : '⛔ Inativo'}
                                             </span>
                                         </td>
                                         <td>
@@ -228,8 +228,8 @@ async function carregarListaServicos() {
                                                 <button class="btn-icon btn-edit" onclick="editarServico(${s.id})" title="Editar">
                                                     <i class="fas fa-pen"></i>
                                                 </button>
-                                                <button class="btn-icon ${s.ativo === true || .ativo === 1 ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})" title="${s.ativo === true || .ativo === 1 ? 'Desativar' : 'Ativar'}">
-                                                    <i class="fas ${s.ativo === true || .ativo === 1 ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                                                <button class="btn-icon ${s.ativo === true || .ativo === true || .ativo === 1 ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})" title="${s.ativo === true || .ativo === true || .ativo === 1 ? 'Desativar' : 'Ativar'}">
+                                                    <i class="fas ${s.ativo === true || .ativo === true || .ativo === 1 ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
                                                 </button>
                                                 <button class="btn-icon btn-delete" onclick="excluirServico(${s.id})" title="Excluir">
                                                     <i class="fas fa-trash"></i>
@@ -327,7 +327,7 @@ function abrirModalServico(servico = null) {
             <div class="form-group">
                 <label>Status</label>
                 <select id="servicoStatus" class="form-control">
-                    <option value="1" ${servico.ativo === true || .ativo === 1 ? 'selected' : ''}>✅ Ativo</option>
+                    <option value="1" ${servico.ativo === true || .ativo === true || .ativo === 1 ? 'selected' : ''}>✅ Ativo</option>
                     <option value="0" ${servico.ativo === 0 ? 'selected' : ''}>⛔ Inativo</option>
                 </select>
             </div>
@@ -432,7 +432,7 @@ async function toggleServico(id) {
     const servico = listaServicosGlobal.find(s => s.id === id);
     if (!servico) return;
 
-    const acao = servico.ativo === true || .ativo === 1 ? 'desativar' : 'ativar';
+    const acao = servico.ativo === true || .ativo === true || .ativo === 1 ? 'desativar' : 'ativar';
     if (!confirm(`Tem certeza que deseja ${acao} este serviço?`)) return;
 
     showLoading();
@@ -450,7 +450,7 @@ async function toggleServico(id) {
                 descricao: servico.descricao,
                 valor: servico.valor,
                 duracao: servico.duracao || 30, // 🔥 MANTER DURAÇÃO
-                ativo: servico.ativo === true || .ativo === 1 ? 0 : 1
+                ativo: servico.ativo === true || .ativo === true || .ativo === 1 ? 0 : 1
             })
         });
 

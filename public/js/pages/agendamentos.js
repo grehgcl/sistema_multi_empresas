@@ -74,7 +74,7 @@ async function carregarAgendamentos() {
     let profissionaisOptions = "";
     if (profissionaisList.length > 0) {
         for (let p of profissionaisList) {
-            if (p.ativo === true || .ativo === 1) {
+            if (p.ativo === true || .ativo === true || .ativo === 1) {
                 profissionaisOptions += `<option value="${p.id}">${p.nome} (${p.comissao_percent}%)</option>`;
             }
         }
@@ -840,7 +840,7 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     let profissionaisOptions = '<option value="">Não atribuir</option>';
     if (profissionais.length > 0) {
         for (let p of profissionais) {
-            if (p.ativo === true || .ativo === 1) {
+            if (p.ativo === true || .ativo === true || .ativo === 1) {
                 profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)} (${p.comissao_percent}%)</option>`;
             }
         }
@@ -1176,7 +1176,7 @@ async function editarAgendamento(id) {
 
         let profissionaisOptions = '<option value="">Não atribuir</option>';
         for (let p of profissionais) {
-            if (p.ativo === true || .ativo === 1) {
+            if (p.ativo === true || .ativo === true || .ativo === 1) {
                 const selected = p.id === agendamento.profissional_id ? "selected" : "";
                 profissionaisOptions += `<option value="${p.id}" ${selected}>${p.nome} (${p.comissao_percent}%)</option>`;
             }

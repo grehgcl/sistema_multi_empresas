@@ -61,7 +61,7 @@ async function carregarConfiguracoes() {
         }
 
         if (planoData.success && planoData.data) {
-            const ativos = profissionaisData.filter(p => p.ativo === true || .ativo === 1).length;
+            const ativos = profissionaisData.filter(p => p.ativo === true || .ativo === true || .ativo === 1).length;
             planoInfo = {
                 plano: planoData.data.plano,
                 plano_nome: planoData.data.plano_nome || (planoData.data.plano === 'trial' ? 'Trial' : planoData.data.plano),
@@ -457,12 +457,12 @@ function renderProfissionaisList() {
             <td><strong>${escapeHtml(prof.nome)}</strong></td>
             <td>${escapeHtml(prof.email)}</td>
             <td><span class="badge">${prof.comissao_percent}%</span></td>
-            <td>${prof.ativo === true || .ativo === 1 ? '<span class="badge-success">✅ Ativo</span>' : '<span class="badge-danger">❌ Inativo</span>'}</td>
+            <td>${prof.ativo === true || .ativo === true || .ativo === 1 ? '<span class="badge-success">✅ Ativo</span>' : '<span class="badge-danger">❌ Inativo</span>'}</td>
             <td>${formatarData(prof.created_at)}</td>
             <td class="actions-cell">
                 <button class="btn-icon btn-edit" onclick="editarProfissional(${prof.id})">✏️</button>
                 <button class="btn-icon btn-key" onclick="resetarSenhaProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🔑</button>
-                <button class="btn-icon btn-toggle" onclick="alternarStatusProfissional(${prof.id}, ${prof.ativo === true || .ativo === 1 ? 'false' : 'true'})">${prof.ativo === true || .ativo === 1 ? '🔴' : '🟢'}</button>
+                <button class="btn-icon btn-toggle" onclick="alternarStatusProfissional(${prof.id}, ${prof.ativo === true || .ativo === true || .ativo === 1 ? 'false' : 'true'})">${prof.ativo === true || .ativo === true || .ativo === 1 ? '🔴' : '🟢'}</button>
                 <button class="btn-icon btn-delete" onclick="excluirProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🗑️</button>
             </td>
         </tr>
