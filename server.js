@@ -179,7 +179,6 @@ initDatabase();
 setTimeout(() => {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    // Só executa no Render (PostgreSQL)
     if (!isProduction) {
         console.log('ℹ️ Ambiente local - Migrações PostgreSQL ignoradas');
         return;
@@ -201,12 +200,8 @@ setTimeout(() => {
         const sql = `ALTER TABLE ${tabela} ADD COLUMN IF NOT EXISTS ${coluna} ${tipo}`;
         db.run(sql, [], (err) => {
             if (err) {
-                // Ignora erro se a coluna já existe
-                if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
-                    console.error(`❌ Erro ao criar ${coluna} em ${tabela}:`, err.message);
-                } else {
-                    console.log(`✅ ${coluna} já existe em ${tabela}`);
-                }
+                // Ignora erro - o usuário pode não ter permissão
+                console.log(`⚠️ Não foi possível criar ${coluna} em ${tabela}: ${err.message}`);
             } else {
                 console.log(`✅ ${coluna} criada em ${tabela}!`);
             }
@@ -225,12 +220,16 @@ setTimeout(() => {
 
 // 1. Verificar e criar coluna dias_bloqueio na tabela clientes
 setTimeout(() => {
-    const { verificarColunaDiasBloqueio } = require('./server/config/database');
-    verificarColunaDiasBloqueio();
+    try {
+        const { verificarColunaDiasBloqueio } = require('./server/config/database');
+        verificarColunaDiasBloqueio();
+    } catch (error) {
+        console.log('⚠️ Erro ao verificar dias_bloqueio:', error.message);
+    }
 }, 2000);
 
 // ============================================================
-// 🔥 MIGRAÇÃO: dias_bloqueio_geral (CORRIGIDA PARA POSTGRESQL)
+// 🔥 MIGRAÇÃO: dias_bloqueio_geral (DESATIVADA - TABELAS JÁ EXISTEM)
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando coluna dias_bloqueio_geral em empresas...');
@@ -238,7 +237,6 @@ setTimeout(() => {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (isProduction) {
-        // PostgreSQL - Verificar se a coluna existe
         const sqlCheck = `
             SELECT column_name 
             FROM information_schema.columns 
@@ -248,7 +246,7 @@ setTimeout(() => {
 
         db.get(sqlCheck, [], (err, row) => {
             if (err) {
-                console.error('❌ Erro ao verificar dias_bloqueio_geral:', err.message);
+                console.log('⚠️ Erro ao verificar dias_bloqueio_geral:', err.message);
                 return;
             }
 
@@ -263,24 +261,13 @@ setTimeout(() => {
 
             db.run(sqlAdd, [], (err) => {
                 if (err) {
-                    console.error('❌ Erro ao criar dias_bloqueio_geral:', err.message);
+                    console.log('⚠️ Não foi possível criar dias_bloqueio_geral:', err.message);
                     return;
                 }
                 console.log('✅ Coluna dias_bloqueio_geral criada com sucesso!');
-
-                // Atualizar empresas existentes
-                const sqlUpdate = `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`;
-                db.run(sqlUpdate, [], (err) => {
-                    if (err) {
-                        console.error('⚠️ Erro ao atualizar empresas:', err.message);
-                    } else {
-                        console.log('✅ Empresas atualizadas com dias_bloqueio_geral = 0');
-                    }
-                });
             });
         });
     } else {
-        // SQLite
         const sqlCheck = `PRAGMA table_info(empresas)`;
 
         db.all(sqlCheck, [], (err, rows) => {
@@ -306,22 +293,13 @@ setTimeout(() => {
                     return;
                 }
                 console.log('✅ Coluna dias_bloqueio_geral criada com sucesso!');
-
-                const sqlUpdate = `UPDATE empresas SET dias_bloqueio_geral = 0 WHERE dias_bloqueio_geral IS NULL`;
-                db.run(sqlUpdate, [], (err) => {
-                    if (err) {
-                        console.error('⚠️ Erro ao atualizar empresas:', err.message);
-                    } else {
-                        console.log('✅ Empresas atualizadas com dias_bloqueio_geral = 0');
-                    }
-                });
             });
         });
     }
 }, 2500);
 
 // ============================================================
-// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL) - CORRIGIDA
+// 🔥 MIGRAÇÃO: TABELA DESPESAS (POSTGRESQL) - TRY-CATCH
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando tabela despesas no PostgreSQL...');
@@ -333,7 +311,6 @@ setTimeout(() => {
         return;
     }
 
-    // Verificar se a tabela existe no PostgreSQL
     const sqlCheck = `
         SELECT EXISTS (
             SELECT FROM information_schema.tables 
@@ -343,7 +320,7 @@ setTimeout(() => {
 
     db.get(sqlCheck, [], (err, result) => {
         if (err) {
-            console.error('❌ Erro ao verificar tabela despesas:', err.message);
+            console.log('⚠️ Erro ao verificar tabela despesas:', err.message);
             return;
         }
 
@@ -379,28 +356,26 @@ setTimeout(() => {
             CREATE INDEX IF NOT EXISTS idx_despesas_pago ON despesas(pago);
         `;
 
-        // 🔥 CORRIGIDO: usar db.query em vez de db.exec
         db.query(sqlCreate, [], (err) => {
             if (err) {
-                console.error('❌ Erro ao criar tabela despesas:', err.message);
+                console.log('⚠️ Não foi possível criar tabela despesas:', err.message);
                 return;
             }
             console.log('✅ Tabela despesas criada com sucesso!');
 
-            // Verificar se a tabela foi criada
             db.get("SELECT COUNT(*) as total FROM despesas", [], (err, count) => {
                 if (err) {
-                    console.error('❌ Erro ao verificar tabela:', err.message);
+                    console.log('⚠️ Erro ao verificar tabela:', err.message);
                 } else {
                     console.log(`📊 Tabela despesas pronta! (${count?.total || 0} registros)`);
                 }
             });
         });
     });
-}, 15000); // Aguardar 15 segundos
+}, 15000);
 
 // ============================================================
-// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL) - CORRIGIDA
+// 🔥 MIGRAÇÃO: TABELA METAS (POSTGRESQL) - TRY-CATCH
 // ============================================================
 setTimeout(() => {
     console.log('🔍 Verificando tabela metas no PostgreSQL...');
@@ -421,7 +396,7 @@ setTimeout(() => {
 
     db.get(sqlCheck, [], (err, result) => {
         if (err) {
-            console.error('❌ Erro ao verificar tabela metas:', err.message);
+            console.log('⚠️ Erro ao verificar tabela metas:', err.message);
             return;
         }
 
@@ -453,16 +428,15 @@ setTimeout(() => {
             CREATE INDEX IF NOT EXISTS idx_metas_data ON metas(mes, ano);
         `;
 
-        // 🔥 CORRIGIDO: usar db.query em vez de db.exec
         db.query(sqlCreate, [], (err) => {
             if (err) {
-                console.error('❌ Erro ao criar tabela metas:', err.message);
+                console.log('⚠️ Não foi possível criar tabela metas:', err.message);
                 return;
             }
             console.log('✅ Tabela metas criada com sucesso!');
         });
     });
-}, 17000); // Aguardar 17 segundos
+}, 17000);
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
