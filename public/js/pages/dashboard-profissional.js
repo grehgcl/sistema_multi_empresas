@@ -74,7 +74,7 @@ async function carregarDashboardProfissional() {
             const totais = financeiro.data.totais;
             const comissoes = financeiro.data.comissoes || [];
 
-            document.getElementById('totalComissoes').innerHTML = `R$ ${(totais.total_comissoes || 0).toFixed(2)}`;
+            document.getElementById('totalComissoes').innerHTML = `R$ ${(parseFloat(totais.total_comissoes) || 0).toFixed(2)}`;
             document.getElementById('totalServicos').innerHTML = totais.total_servicos || 0;
 
             // Últimas 5 comissões
@@ -95,8 +95,8 @@ async function carregarDashboardProfissional() {
                             <td>${dataFormatada}</td>
                             <td><strong>${escapeHtml(clienteNome)}</strong></td>
                             <td>${escapeHtml(servicoNome)}</td>
-                            <td>R$ ${(c.valor || 0).toFixed(2)}</td>
-                            <td><strong class="text-success">R$ ${(c.comissao || 0).toFixed(2)}</strong></td>
+                            <td>R$ ${(parseFloat(c.valor) || 0).toFixed(2)}</td>
+                            <td><strong class="text-success">R$ ${(parseFloat(c.comissao) || 0).toFixed(2)}</strong></td>
                         </tr>
                     `;
                 }).join('');

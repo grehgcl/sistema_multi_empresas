@@ -117,7 +117,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                     <div class="stat-card premium">
                         <div class="stat-icon">📊</div>
                         <div class="stat-content">
-                            <div class="stat-value">R$ ${(totais.faturamento_bruto || 0).toFixed(2)}</div>
+                            <div class="stat-value">R$ ${(parseFloat(totais.faturamento_bruto) || 0).toFixed(2)}</div>
                             <div class="stat-label">Faturamento Bruto</div>
                             <div class="stat-sub">📈 Total de serviços</div>
                         </div>
@@ -146,7 +146,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                     <div class="stat-card">
                         <div class="stat-icon green">💎</div>
                         <div class="stat-content">
-                            <div class="stat-value">R$ ${(totais.faturamento_liquido || 0).toFixed(2)}</div>
+                            <div class="stat-value">R$ ${(parseFloat(totais.faturamento_liquido) || 0).toFixed(2)}</div>
                             <div class="stat-label">Lucro após Comissões</div>
                             <div class="stat-sub">Bruto - Comissões</div>
                         </div>
@@ -163,7 +163,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-arrow-up" style="color:#16a34a;"></i> Receitas</h3>
-                        <span class="badge badge-success">R$ ${(totais.faturamento_bruto || 0).toFixed(2)}</span>
+                        <span class="badge badge-success">R$ ${(parseFloat(totais.faturamento_bruto) || 0).toFixed(2)}</span>
                     </div>
                     <div style="padding:12px;">
                         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
@@ -220,7 +220,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                                     <tr>
                                         <td><strong>${escapeHtml(prof.nome)}</strong></td>
                                         <td>${prof.total_servicos} serviço(s)</td>
-                                        <td><span class="valor">R$ ${(prof.total_comissao || 0).toFixed(2)}</span></td>
+                                        <td><span class="valor">R$ ${(parseFloat(prof.total_comissao) || 0).toFixed(2)}</span></td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -296,7 +296,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                                     <td>${formatarDataBr(d.data)}</td>
                                     <td>${escapeHtml(d.descricao)}</td>
                                     <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
-                                    <td><span class="valor">R$ ${(d.valor || 0).toFixed(2)}</span></td>
+                                    <td><span class="valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</span></td>
                                     <td>
                                         ${d.pago
                     ? '<span class="badge badge-success">✅ Paga</span>'
@@ -335,7 +335,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                 <div class="stat-card premium">
                     <div class="stat-icon">💰</div>
                     <div class="stat-content">
-                        <div class="stat-value">R$ ${(totais.total_comissoes || 0).toFixed(2)}</div>
+                        <div class="stat-value">R$ ${(parseFloat(totais.total_comissoes) || 0).toFixed(2)}</div>
                         <div class="stat-label">Total em Comissões</div>
                         <div class="stat-sub">Todos os serviços concluídos</div>
                     </div>
@@ -381,7 +381,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
             const profissionalDisplay = item.profissional_nome || 'Sem profissional';
             let comissaoDisplay = '<span style="color: var(--gray);">R$ 0,00</span>';
             if (temProfissional) {
-                comissaoDisplay = `R$ ${(item.comissao || 0).toFixed(2)}`;
+                comissaoDisplay = `R$ ${(parseFloat(item.comissao) || 0).toFixed(2)}`;
             }
 
             html += `
@@ -396,7 +396,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                     <div class="historico-card-body">
                         <div class="info-row">
                             <span class="info-label">💰 Valor</span>
-                            <span class="info-value valor-mobile">R$ ${(item.valor || 0).toFixed(2)}</span>
+                            <span class="info-value valor-mobile">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">👨‍💼 Profissional</span>
@@ -430,14 +430,14 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
             const temProfissional = item.profissional_id ? true : false;
             let comissaoDisplay = '<span style="color: var(--gray);">R$ 0,00</span>';
             if (temProfissional) {
-                comissaoDisplay = `<span class="valor">R$ ${(item.comissao || 0).toFixed(2)}</span>`;
+                comissaoDisplay = `<span class="valor">R$ ${(parseFloat(item.comissao) || 0).toFixed(2)}</span>`;
             }
             return `
                                 <tr>
                                     <td>${formatarDataBr(item.data)}</td>
                                     <td>${escapeHtml(item.cliente_nome || 'N/A')}</td>
                                     <td>${escapeHtml(item.servico_nome || item.servico || 'N/A')}</td>
-                                    <td><span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span></td>
+                                    <td><span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span></td>
                                     <td class="${!temProfissional ? 'text-muted' : ''}">${escapeHtml(item.profissional_nome || 'Sem profissional')}</td>
                                     <td>${comissaoDisplay}</td>
                                 </tr>

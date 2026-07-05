@@ -216,7 +216,7 @@ function renderizarLinhaAgendamento(item) {
                 <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
             </td>
             <td>
-                <span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span>
+                <span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
             </td>
             <td>
                 <span class="status-badge ${statusInfo.class}">
@@ -368,7 +368,7 @@ async function carregarListaAgendamentosComFiltro() {
                                     </div>
                                     <div class="info-row">
                                         <span class="info-label">💰 Valor</span>
-                                        <span class="info-value valor-mobile">R$ ${(item.valor || 0).toFixed(2)}</span>
+                                        <span class="info-value valor-mobile">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
                                     </div>
                                 </div>
                                 <div class="card-actions-mobile">
@@ -443,7 +443,7 @@ function renderizarLinhaAgendamento(item) {
                 <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
             </td>
             <td>
-                <span class="valor">R$ ${(item.valor || 0).toFixed(2)}</span>
+                <span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
             </td>
             <td>
                 <span class="status-badge ${statusInfo.class}">

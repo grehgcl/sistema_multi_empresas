@@ -139,7 +139,7 @@ async function carregarListaServicos() {
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">💰 Valor</span>
-                                    <span class="info-value valor-mobile">R$ ${(s.valor || 0).toFixed(2)}</span>
+                                    <span class="info-value valor-mobile">R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</span>
                                 </div>
                                 <div class="info-row">
                                     <span class="info-label">⏱️ Duração</span>
@@ -184,7 +184,7 @@ async function carregarListaServicos() {
                                     <tr>
                                         <td><strong>${escapeHtml(s.nome)}</strong></td>
                                         <td>${escapeHtml(s.descricao || '-')}</td>
-                                        <td><span class="valor">R$ ${(s.valor || 0).toFixed(2)}</span></td>
+                                        <td><span class="valor">R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</span></td>
                                         <td><span style="background:var(--bg-hover);padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">${s.duracao || 30} min</span></td>
                                         <td>
                                             <span class="status-badge ${s.ativo === 1 ? 'ativo' : 'inativo'}">

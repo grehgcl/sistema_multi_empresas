@@ -112,7 +112,7 @@ async function carregarListaAgendamentosProfComFiltro() {
                             <td>${formatarDataBr(a.data)} ${a.hora || ""}</td>
                             <td><strong>${escapeHtml(a.cliente_nome || "N/A")}</strong></td>
                             <td>${escapeHtml(a.servico_nome || a.servico || "N/A")}</td>
-                            <td>R$ ${(a.valor || 0).toFixed(2)}</td>
+                            <td>R$ ${(parseFloat(a.valor) || 0).toFixed(2)}</td>
                             <td>${a.status === "concluido" ? "<strong>R$ " + comissaoProfissional.toFixed(2) + "</strong>" : "--"}</td>
                             <td>${a.status === "concluido" ? '<span class="badge badge-success">Concluído</span>' : '<span class="badge badge-warning">Pendente</span>'}</td>
                             <td class="actions-cell">
