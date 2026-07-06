@@ -641,144 +641,163 @@ async function salvarNovoCliente(event) {
 // ============================================
 
 async function carregarHorariosDisponiveisDono(manterHorario = false) {
-    const data = document.getElementById("dataAgendamentoDono").value;
-    const profissional_id = document.getElementById("profissionalIdDono").value;
-    const servicoSelect = document.getElementById("servicoIdDono");
-    const servicoId = servicoSelect ? servicoSelect.value : null;
-    const horaSelect = document.getElementById("horaAgendamentoDono");
+    console.log('🔍 ===== INICIANDO CARREGAMENTO DE HORÁRIOS =====');
 
-    // 🔥 Guardar o horário atual se existir
-    const horarioAtual = horaSelect ? horaSelect.value : null;
+    try {
+        const data = document.getElementById("dataAgendamentoDono").value;
+        const profissional_id = document.getElementById("profissionalIdDono").value;
+        const servicoSelect = document.getElementById("servicoIdDono");
+        const servicoId = servicoSelect ? servicoSelect.value : null;
+        const horaSelect = document.getElementById("horaAgendamentoDono");
 
-    // Buscar duração do serviço selecionado
-    let duracao = 30;
-    let servicoNome = '';
+        console.log('📝 Dados recebidos:', { data, profissional_id, servicoId, manterHorario });
 
-    if (servicoId && servicoId !== '') {
-        const servico = servicosList.find(s => s.id == servicoId);
-        if (servico) {
-            duracao = servico.duracao || 30;
-            servicoNome = servico.nome;
-            console.log(`📝 Serviço selecionado: ${servicoNome} - ${duracao}min`);
+        if (!data) {
+            console.log('⚠️ Data vazia');
+            horaSelect.innerHTML = '<option value="">Selecione uma data primeiro</option>';
+            return;
         }
-    }
 
-    if (duracao === 30) {
-        const descricao = document.getElementById("servicoDescricaoDono")?.value;
-        if (descricao && descricao.trim() !== '') {
-            const servicoEncontrado = servicosList.find(s =>
-                s.nome.toLowerCase() === descricao.trim().toLowerCase()
-            );
-            if (servicoEncontrado) {
-                duracao = servicoEncontrado.duracao || 30;
-                console.log(`📝 Serviço manual encontrado: ${servicoEncontrado.nome} - ${duracao}min`);
+        // Buscar duração do serviço selecionado
+        let duracao = 30;
+        let servicoNome = '';
+
+        if (servicoId && servicoId !== '') {
+            console.log('🔍 Buscando serviço ID:', servicoId);
+            const servico = servicosList.find(s => s.id == servicoId);
+            if (servico) {
+                duracao = servico.duracao || 30;
+                servicoNome = servico.nome;
+                console.log(`📝 Serviço encontrado: ${servicoNome} - ${duracao}min`);
+            } else {
+                console.log('⚠️ Serviço não encontrado na lista');
             }
         }
-    }
 
-    const infoDuracao = document.getElementById('infoDuracaoHorario');
-    if (infoDuracao) {
-        infoDuracao.textContent = `⏱️ Duração do serviço: ${duracao}min - Horários disponíveis consideram este tempo`;
-    }
+        const infoDuracao = document.getElementById('infoDuracaoHorario');
+        if (infoDuracao) {
+            infoDuracao.textContent = `⏱️ Duração do serviço: ${duracao}min - Horários disponíveis consideram este tempo`;
+        }
 
-    if (!data) {
-        horaSelect.innerHTML = '<option value="">Selecione uma data primeiro</option>';
-        return;
-    }
+        const hoje = new Date();
+        const hojeStr = hoje.toISOString().split('T')[0];
 
-    const hoje = new Date();
-    const hojeStr = hoje.toISOString().split('T')[0];
+        if (data < hojeStr) {
+            console.log('⚠️ Data passada');
+            horaSelect.innerHTML = '<option value="">⚠️ Esta data já passou</option>';
+            showToast('⚠️ Não é possível agendar em datas passadas', 'warning');
+            return;
+        }
 
-    if (data < hojeStr) {
-        horaSelect.innerHTML = '<option value="">⚠️ Esta data já passou</option>';
-        showToast('⚠️ Não é possível agendar em datas passadas', 'warning');
-        return;
-    }
+        console.log('📤 Preparando requisição para API...');
+        horaSelect.innerHTML = '<option value="">Carregando...</option>';
 
-    horaSelect.innerHTML = '<option value="">Carregando...</option>';
+        const token = localStorage.getItem("token");
+        console.log('🔑 Token existe?', !!token);
 
-    const token = localStorage.getItem("token");
-    try {
-        const res = await fetch("/api/chatbot/horarios-disponiveis", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify({
-                empresaId: JSON.parse(atob(token.split('.')[1])).empresa_id,
+        if (!token) {
+            console.error('❌ Token não encontrado!');
+            horaSelect.innerHTML = '<option value="">Erro: Token não encontrado</option>';
+            return;
+        }
+
+        // Decodificar token para pegar empresaId
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const empresaId = payload.empresa_id;
+            console.log('🏢 Empresa ID:', empresaId);
+
+            const body = {
+                empresaId: empresaId,
                 profissionalId: profissional_id || null,
                 data: data,
                 duracao: duracao
-            })
-        });
+            };
+            console.log('📤 Body da requisição:', body);
 
-        const result = await res.json();
+            const response = await fetch("/api/chatbot/horarios-disponiveis", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer " + token
+                },
+                body: JSON.stringify(body)
+            });
 
-        if (result.success) {
-            let horarios = [];
-            if (Array.isArray(result.horarios)) {
-                horarios = result.horarios;
-            } else if (Array.isArray(result.data)) {
-                horarios = result.data;
+            console.log('📥 Status da resposta:', response.status);
+
+            if (!response.ok) {
+                console.error('❌ Erro HTTP:', response.status, response.statusText);
+                horaSelect.innerHTML = `<option value="">Erro HTTP: ${response.status}</option>`;
+                return;
             }
 
-            // Filtrar horários que já passaram (se for hoje)
-            const agora = new Date();
-            const hojeStr = agora.toISOString().split('T')[0];
-            let horariosFiltrados = horarios;
+            const result = await response.json();
+            console.log('📦 Resultado da API:', result);
 
-            if (data === hojeStr) {
-                const horaAtual = agora.getHours();
-                const minutoAtual = agora.getMinutes();
-                horariosFiltrados = horarios.filter(horaItem => {
-                    const [horaNum, minutoNum] = horaItem.split(':').map(Number);
-                    return horaNum > horaAtual || (horaNum === horaAtual && minutoNum > minutoAtual);
-                });
-                console.log(`⏰ Filtrando horários: ${horarios.length} → ${horariosFiltrados.length} disponíveis`);
-            }
-
-            if (horariosFiltrados.length > 0) {
-                let options = '<option value="">Selecione um horário</option>';
-                for (let horaItem of horariosFiltrados) {
-                    const horaNum = parseInt(horaItem.split(':')[0]);
-                    const isAlmoco = horaNum >= 12 && horaNum < 13;
-                    const emoji = isAlmoco ? ' 🍽️' : '';
-                    options += `<option value="${horaItem}">${horaItem}${emoji} (${duracao}min)</option>`;
+            if (result.success) {
+                let horarios = [];
+                if (Array.isArray(result.horarios)) {
+                    horarios = result.horarios;
+                } else if (Array.isArray(result.data)) {
+                    horarios = result.data;
                 }
-                horaSelect.innerHTML = options;
 
-                // 🔥 TENTAR RESTAURAR O HORÁRIO ANTERIOR
-                if (manterHorario && horarioAtual) {
-                    console.log(`🔄 Tentando restaurar horário: ${horarioAtual}`);
-                    for (let opt of horaSelect.options) {
-                        if (opt.value === horarioAtual) {
-                            horaSelect.value = horarioAtual;
-                            console.log(`✅ Horário ${horarioAtual} restaurado!`);
-                            break;
-                        }
+                console.log(`📋 ${horarios.length} horários recebidos`);
+
+                // Filtrar horários que já passaram (se for hoje)
+                const agora = new Date();
+                const hojeStr = agora.toISOString().split('T')[0];
+                let horariosFiltrados = horarios;
+
+                if (data === hojeStr) {
+                    const horaAtual = agora.getHours();
+                    const minutoAtual = agora.getMinutes();
+                    horariosFiltrados = horarios.filter(horaItem => {
+                        const [horaNum, minutoNum] = horaItem.split(':').map(Number);
+                        return horaNum > horaAtual || (horaNum === horaAtual && minutoNum > minutoAtual);
+                    });
+                    console.log(`⏰ Filtrando horários: ${horarios.length} → ${horariosFiltrados.length} disponíveis`);
+                }
+
+                if (horariosFiltrados.length > 0) {
+                    let options = '<option value="">Selecione um horário</option>';
+                    for (let horaItem of horariosFiltrados) {
+                        const horaNum = parseInt(horaItem.split(':')[0]);
+                        const isAlmoco = horaNum >= 12 && horaNum < 13;
+                        const emoji = isAlmoco ? ' 🍽️' : '';
+                        options += `<option value="${horaItem}">${horaItem}${emoji} (${duracao}min)</option>`;
                     }
-                    // Se não encontrou, mostrar mensagem
-                    if (horaSelect.value !== horarioAtual) {
-                        console.log(`⚠️ Horário ${horarioAtual} não está mais disponível`);
-                        showToast(`⏰ O horário ${horarioAtual} não está mais disponível para este serviço`, 'warning');
+                    horaSelect.innerHTML = options;
+                    console.log(`✅ ${horariosFiltrados.length} horários exibidos`);
+                } else {
+                    if (data === hojeStr) {
+                        horaSelect.innerHTML = '<option value="">⏰ Todos os horários de hoje já passaram</option>';
+                        showToast('⏰ Todos os horários de hoje já passaram. Escolha outro dia.', 'warning');
+                    } else {
+                        horaSelect.innerHTML = `<option value="">Nenhum horário disponível para serviço de ${duracao}min</option>`;
                     }
                 }
             } else {
-                if (data === hojeStr) {
-                    horaSelect.innerHTML = '<option value="">⏰ Todos os horários de hoje já passaram</option>';
-                    showToast('⏰ Todos os horários de hoje já passaram. Escolha outro dia.', 'warning');
-                } else {
-                    horaSelect.innerHTML = `<option value="">Nenhum horário disponível para serviço de ${duracao}min</option>`;
-                }
+                console.error('❌ Erro na resposta da API:', result);
+                horaSelect.innerHTML = `<option value="">Erro: ${result.message || 'Erro ao carregar horários'}</option>`;
             }
-        } else {
-            horaSelect.innerHTML = '<option value="">Erro ao carregar horários</option>';
+        } catch (tokenError) {
+            console.error('❌ Erro ao decodificar token:', tokenError);
+            horaSelect.innerHTML = '<option value="">Erro: Token inválido</option>';
         }
+
     } catch (error) {
-        console.error("Erro ao buscar horários:", error);
-        horaSelect.innerHTML = '<option value="">Erro ao carregar horários</option>';
+        console.error('❌ ERRO GERAL em carregarHorariosDisponiveisDono:', error);
+        console.error('❌ Stack:', error.stack);
+        const horaSelect = document.getElementById("horaAgendamentoDono");
+        if (horaSelect) {
+            horaSelect.innerHTML = `<option value="">Erro: ${error.message || 'Erro desconhecido'}</option>`;
+        }
+        showToast('Erro ao carregar horários: ' + error.message, 'error');
     }
+
+    console.log('🔍 ===== FIM DO CARREGAMENTO DE HORÁRIOS =====');
 }
 
 // ============================================
