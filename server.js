@@ -1,16 +1,16 @@
-Ôªø// ============================================================
-// üö® ATEN√á√ÉO: PARTES EXTRAT√çDAS PARA OUTROS ARQUIVOS üö®
+// ============================================================
+// ?? ATEN«√O: PARTES EXTRATÕDAS PARA OUTROS ARQUIVOS ??
 // ============================================================
 // 
-// As seguintes partes N√ÉO EST√ÉO MAIS AQUI e N√ÉO DEVEM SER MEXIDAS:
+// As seguintes partes N√O EST√O MAIS AQUI e N√O DEVEM SER MEXIDAS:
 //
-// üìÅ server\config\database.js - Cria√ß√£o das tabelas
-// üìÅ server\middlewares\auth.js - Middlewares de autentica√ß√£o
-// üìÅ server\utils\constants.js - Constantes dos planos
-// üìÅ server\utils\helpers.js - Fun√ß√µes auxiliares
+// ?? server\config\database.js - CriaÁ„o das tabelas
+// ?? server\middlewares\auth.js - Middlewares de autenticaÁ„o
+// ?? server\utils\constants.js - Constantes dos planos
+// ?? server\utils\helpers.js - FunÁıes auxiliares
 //
 // ============================================================
-// O C√ìDIGO ABAIXO S√ÉO AS ROTAS - AQUI VOC√äS MEXEM!
+// O C”DIGO ABAIXO S√O AS ROTAS - AQUI VOC S MEXEM!
 // ============================================================
 
 const express = require('express');
@@ -20,7 +20,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 // ============================================================
-// IMPORTS DAS PARTES EXTRAT√çDAS
+// IMPORTS DAS PARTES EXTRATÕDAS
 // ============================================================
 
 const { db, initDatabase, inserirHorariosPadrao } = require('./server/config/database');
@@ -42,7 +42,7 @@ const {
 } = require('./server/utils/helpers');
 
 // ============================================================
-// NOVO: IMPORT DO SERVI√áO WHATSAPP
+// NOVO: IMPORT DO SERVI«O WHATSAPP
 // ============================================================
 const whatsappService = require('./server/services/whatsapp');
 
@@ -54,7 +54,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // ============================================================
-// FUN√á√ÉO AUXILIAR: FORMATAR DATA (BACKEND)
+// FUN«√O AUXILIAR: FORMATAR DATA (BACKEND)
 // ============================================================
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
@@ -67,7 +67,7 @@ function formatarDataBr(dataStr) {
 }
 
 // ============================================================
-// FUN√á√ÉO AUXILIAR: GERAR HOR√ÅRIOS DO DIA
+// FUN«√O AUXILIAR: GERAR HOR¡RIOS DO DIA
 // ============================================================
 function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
     const horarios = [];
@@ -89,10 +89,10 @@ function gerarHorariosDoDia(horaInicio, horaFim, almocoInicio, almocoFim) {
 }
 
 // ============================================================
-// FUN√á√ÉO AUXILIAR: VERIFICAR DISPONIBILIDADE COM DURA√á√ÉO
+// FUN«√O AUXILIAR: VERIFICAR DISPONIBILIDADE COM DURA«√O
 // ============================================================
 async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data, hora, duracao) {
-    // Se n√£o tiver profissional definido, considerar todos os profissionais
+    // Se n„o tiver profissional definido, considerar todos os profissionais
     let sqlAgendamentos;
     let paramsAgendamentos;
 
@@ -114,7 +114,7 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
                AND a.status != 'cancelado'`;
         paramsAgendamentos = [empresa_id, data, profissional_id];
     } else {
-        // Se n√£o tem profissional espec√≠fico, verificar todos os profissionais
+        // Se n„o tem profissional especÌfico, verificar todos os profissionais
         sqlAgendamentos = isProduction
             ? `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
                FROM agendamentos a
@@ -134,7 +134,7 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
     const agendamentos = await new Promise((resolve) => {
         db.all(sqlAgendamentos, paramsAgendamentos, (err, rows) => {
             if (err) {
-                console.error('‚ùå Erro ao buscar agendamentos:', err);
+                console.error('? Erro ao buscar agendamentos:', err);
                 resolve([]);
             } else {
                 resolve(rows || []);
@@ -154,25 +154,25 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
         const agDuracao = ag.servico_duracao || 30;
         const agFimMin = agHoraMin + agDuracao;
 
-        // Verificar sobreposi√ß√£o
+        // Verificar sobreposiÁ„o
         if (horaInicioMin < agFimMin && horaFimMin > agHoraMin) {
-            console.log(`‚ùå Conflito: ${hora} (${duracao}min) com ${ag.hora} (${agDuracao}min)`);
+            console.log(`? Conflito: ${hora} (${duracao}min) com ${ag.hora} (${agDuracao}min)`);
             return false; // Conflito
         }
     }
 
-    return true; // Dispon√≠vel
+    return true; // DisponÌvel
 }
 
 // ============================================================
-// INICIALIZA√á√ÉO DO BANCO E USU√ÅRIOS PADR√ÉO
+// INICIALIZA«√O DO BANCO E USU¡RIOS PADR√O
 // ============================================================
 
 initDatabase();
 
 // ============================================
 // ============================================
-// üî• MIGRA√á√ÉO AUTOM√ÅTICA PARA POSTGRESQL (RENDER)
+// ?? MIGRA«√O AUTOM¡TICA PARA POSTGRESQL (RENDER)
 // ============================================
 // ============================================
 
@@ -180,11 +180,11 @@ setTimeout(() => {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!isProduction) {
-        console.log('‚ÑπÔ∏è Ambiente local - Migra√ß√µes PostgreSQL ignoradas');
+        console.log('?? Ambiente local - MigraÁıes PostgreSQL ignoradas');
         return;
     }
 
-    console.log('üîç [RENDER] Verificando colunas no PostgreSQL...');
+    console.log('?? [RENDER] Verificando colunas no PostgreSQL...');
 
     const colunas = [
         { tabela: 'empresas', coluna: 'telefone_dono', tipo: 'VARCHAR(20)' },
@@ -200,22 +200,22 @@ setTimeout(() => {
         const sql = `ALTER TABLE ${tabela} ADD COLUMN IF NOT EXISTS ${coluna} ${tipo}`;
         db.run(sql, [], (err) => {
             if (err) {
-                // Ignora erro - o usu√°rio pode n√£o ter permiss√£o
-                console.log(`‚ö†Ô∏è N√£o foi poss√≠vel criar ${coluna} em ${tabela}: ${err.message}`);
+                // Ignora erro - o usu·rio pode n„o ter permiss„o
+                console.log(`?? N„o foi possÌvel criar ${coluna} em ${tabela}: ${err.message}`);
             } else {
-                console.log(`‚úÖ ${coluna} criada em ${tabela}!`);
+                console.log(`? ${coluna} criada em ${tabela}!`);
             }
             executadas++;
 
             if (executadas === colunas.length) {
-                console.log('‚úÖ Todas as migra√ß√µes verificadas!');
+                console.log('? Todas as migraÁıes verificadas!');
             }
         });
     });
 }, 5000);
 
 // ============================================================
-// üî• MIGRA√á√ïES AUTOM√ÅTICAS
+// ?? MIGRA«’ES AUTOM¡TICAS
 // ============================================================
 
 // 1. Verificar e criar coluna dias_bloqueio na tabela clientes
@@ -224,15 +224,15 @@ setTimeout(() => {
         const { verificarColunaDiasBloqueio } = require('./server/config/database');
         verificarColunaDiasBloqueio();
     } catch (error) {
-        console.log('‚ö†Ô∏è Erro ao verificar dias_bloqueio:', error.message);
+        console.log('?? Erro ao verificar dias_bloqueio:', error.message);
     }
 }, 2000);
 
 // ============================================================
-// üî• MIGRA√á√ÉO: dias_bloqueio_geral (DESATIVADA - TABELAS J√Å EXISTEM)
+// ?? MIGRA«√O: dias_bloqueio_geral (DESATIVADA - TABELAS J¡ EXISTEM)
 // ============================================================
 setTimeout(() => {
-    console.log('üîç Verificando coluna dias_bloqueio_geral em empresas...');
+    console.log('?? Verificando coluna dias_bloqueio_geral em empresas...');
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -246,25 +246,25 @@ setTimeout(() => {
 
         db.get(sqlCheck, [], (err, row) => {
             if (err) {
-                console.log('‚ö†Ô∏è Erro ao verificar dias_bloqueio_geral:', err.message);
+                console.log('?? Erro ao verificar dias_bloqueio_geral:', err.message);
                 return;
             }
 
             if (row) {
-                console.log('‚úÖ Coluna dias_bloqueio_geral j√° existe!');
+                console.log('? Coluna dias_bloqueio_geral j· existe!');
                 return;
             }
 
-            console.log('üìù Criando coluna dias_bloqueio_geral no PostgreSQL...');
+            console.log('?? Criando coluna dias_bloqueio_geral no PostgreSQL...');
 
             const sqlAdd = `ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0`;
 
             db.run(sqlAdd, [], (err) => {
                 if (err) {
-                    console.log('‚ö†Ô∏è N√£o foi poss√≠vel criar dias_bloqueio_geral:', err.message);
+                    console.log('?? N„o foi possÌvel criar dias_bloqueio_geral:', err.message);
                     return;
                 }
-                console.log('‚úÖ Coluna dias_bloqueio_geral criada com sucesso!');
+                console.log('? Coluna dias_bloqueio_geral criada com sucesso!');
             });
         });
     } else {
@@ -272,42 +272,42 @@ setTimeout(() => {
 
         db.all(sqlCheck, [], (err, rows) => {
             if (err) {
-                console.error('‚ùå Erro ao verificar dias_bloqueio_geral:', err.message);
+                console.error('? Erro ao verificar dias_bloqueio_geral:', err.message);
                 return;
             }
 
             const existe = rows && rows.some(r => r.name === 'dias_bloqueio_geral');
 
             if (existe) {
-                console.log('‚úÖ Coluna dias_bloqueio_geral j√° existe!');
+                console.log('? Coluna dias_bloqueio_geral j· existe!');
                 return;
             }
 
-            console.log('üìù Criando coluna dias_bloqueio_geral no SQLite...');
+            console.log('?? Criando coluna dias_bloqueio_geral no SQLite...');
 
             const sqlAdd = `ALTER TABLE empresas ADD COLUMN dias_bloqueio_geral INTEGER DEFAULT 0`;
 
             db.run(sqlAdd, [], (err) => {
                 if (err) {
-                    console.error('‚ùå Erro ao criar dias_bloqueio_geral:', err.message);
+                    console.error('? Erro ao criar dias_bloqueio_geral:', err.message);
                     return;
                 }
-                console.log('‚úÖ Coluna dias_bloqueio_geral criada com sucesso!');
+                console.log('? Coluna dias_bloqueio_geral criada com sucesso!');
             });
         });
     }
 }, 2500);
 
 // ============================================================
-// üî• MIGRA√á√ÉO: TABELA DESPESAS (POSTGRESQL) - USANDO db.run
+// ?? MIGRA«√O: TABELA DESPESAS (POSTGRESQL) - USANDO db.run
 // ============================================================
 setTimeout(() => {
-    console.log('üîç Verificando tabela despesas no PostgreSQL...');
+    console.log('?? Verificando tabela despesas no PostgreSQL...');
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!isProduction) {
-        console.log('‚ÑπÔ∏è Ambiente local - Migra√ß√£o despesas ignorada');
+        console.log('?? Ambiente local - MigraÁ„o despesas ignorada');
         return;
     }
 
@@ -321,20 +321,20 @@ setTimeout(() => {
 
     db.get(sqlCheck, [], (err, result) => {
         if (err) {
-            console.log('‚ö†Ô∏è Erro ao verificar tabela despesas:', err.message);
+            console.log('?? Erro ao verificar tabela despesas:', err.message);
             return;
         }
 
         const existe = result?.exists || false;
 
         if (existe) {
-            console.log('‚úÖ Tabela despesas j√° existe!');
+            console.log('? Tabela despesas j· existe!');
             return;
         }
 
-        console.log('üìù Criando tabela despesas no PostgreSQL...');
+        console.log('?? Criando tabela despesas no PostgreSQL...');
 
-        // üî• USAR db.run para cada comando separadamente
+        // ?? USAR db.run para cada comando separadamente
         const commands = [
             `CREATE TABLE IF NOT EXISTS despesas (
                 id SERIAL PRIMARY KEY,
@@ -363,20 +363,20 @@ setTimeout(() => {
         commands.forEach((cmd, index) => {
             db.run(cmd, [], (err) => {
                 if (err) {
-                    console.log(`‚ö†Ô∏è Erro no comando ${index + 1}: ${err.message}`);
+                    console.log(`?? Erro no comando ${index + 1}: ${err.message}`);
                 } else {
-                    console.log(`‚úÖ Comando ${index + 1}/${totalComandos} executado`);
+                    console.log(`? Comando ${index + 1}/${totalComandos} executado`);
                 }
                 executados++;
 
                 if (executados === totalComandos) {
-                    console.log('‚úÖ Tabela despesas criada com sucesso!');
+                    console.log('? Tabela despesas criada com sucesso!');
                     // Verificar
                     db.get("SELECT COUNT(*) as total FROM despesas", [], (err, count) => {
                         if (err) {
-                            console.log('‚ö†Ô∏è Erro ao verificar tabela:', err.message);
+                            console.log('?? Erro ao verificar tabela:', err.message);
                         } else {
-                            console.log(`üìä Tabela despesas pronta! (${count?.total || 0} registros)`);
+                            console.log(`?? Tabela despesas pronta! (${count?.total || 0} registros)`);
                         }
                     });
                 }
@@ -386,15 +386,15 @@ setTimeout(() => {
 }, 15000);
 
 // ============================================================
-// üî• MIGRA√á√ÉO: TABELA METAS (POSTGRESQL) - USANDO db.run
+// ?? MIGRA«√O: TABELA METAS (POSTGRESQL) - USANDO db.run
 // ============================================================
 setTimeout(() => {
-    console.log('üîç Verificando tabela metas no PostgreSQL...');
+    console.log('?? Verificando tabela metas no PostgreSQL...');
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     if (!isProduction) {
-        console.log('‚ÑπÔ∏è Ambiente local - Migra√ß√£o metas ignorada');
+        console.log('?? Ambiente local - MigraÁ„o metas ignorada');
         return;
     }
 
@@ -407,20 +407,20 @@ setTimeout(() => {
 
     db.get(sqlCheck, [], (err, result) => {
         if (err) {
-            console.log('‚ö†Ô∏è Erro ao verificar tabela metas:', err.message);
+            console.log('?? Erro ao verificar tabela metas:', err.message);
             return;
         }
 
         const existe = result?.exists || false;
 
         if (existe) {
-            console.log('‚úÖ Tabela metas j√° existe!');
+            console.log('? Tabela metas j· existe!');
             return;
         }
 
-        console.log('üìù Criando tabela metas no PostgreSQL...');
+        console.log('?? Criando tabela metas no PostgreSQL...');
 
-        // üî• USAR db.run para cada comando separadamente
+        // ?? USAR db.run para cada comando separadamente
         const commands = [
             `CREATE TABLE IF NOT EXISTS metas (
                 id SERIAL PRIMARY KEY,
@@ -443,14 +443,14 @@ setTimeout(() => {
         commands.forEach((cmd, index) => {
             db.run(cmd, [], (err) => {
                 if (err) {
-                    console.log(`‚ö†Ô∏è Erro no comando ${index + 1}: ${err.message}`);
+                    console.log(`?? Erro no comando ${index + 1}: ${err.message}`);
                 } else {
-                    console.log(`‚úÖ Comando ${index + 1}/${totalComandos} executado`);
+                    console.log(`? Comando ${index + 1}/${totalComandos} executado`);
                 }
                 executados++;
 
                 if (executados === totalComandos) {
-                    console.log('‚úÖ Tabela metas criada com sucesso!');
+                    console.log('? Tabela metas criada com sucesso!');
                 }
             });
         });
@@ -460,30 +460,30 @@ setTimeout(() => {
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================================
-// 1. CRIAR/ATUALIZAR SUPER ADMIN (SEM FOR√áAR ID)
+// 1. CRIAR/ATUALIZAR SUPER ADMIN (SEM FOR«AR ID)
 // ============================================================
-console.log('üìù Verificando/Criando Super Admin...');
+console.log('?? Verificando/Criando Super Admin...');
 
 const superAdminSenha = bcrypt.hashSync('super123', 10);
 
 db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, existing) => {
     if (err) {
-        console.error('‚ùå Erro ao verificar Super Admin:', err.message);
+        console.error('? Erro ao verificar Super Admin:', err.message);
     } else if (existing) {
-        console.log('üìù Atualizando senha do Super Admin...');
+        console.log('?? Atualizando senha do Super Admin...');
         const sqlUpdate = isProduction
             ? `UPDATE usuarios SET senha = $1 WHERE email = 'super@admin.com'`
             : `UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`;
 
         db.run(sqlUpdate, [superAdminSenha], function (err) {
             if (err) {
-                console.error('‚ùå Erro ao atualizar Super Admin:', err.message);
+                console.error('? Erro ao atualizar Super Admin:', err.message);
             } else {
-                console.log('‚úÖ Super Admin atualizado: super@admin.com / super123');
+                console.log('? Super Admin atualizado: super@admin.com / super123');
             }
         });
     } else {
-        console.log('üìù Criando Super Admin...');
+        console.log('?? Criando Super Admin...');
         const sqlInsert = isProduction
             ? `INSERT INTO usuarios (nome, email, senha, role) 
                VALUES ($1, $2, $3, 'superadmin')`
@@ -492,9 +492,9 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
 
         db.run(sqlInsert, ['Super Admin', 'super@admin.com', superAdminSenha], function (err) {
             if (err) {
-                console.error('‚ùå Erro ao criar Super Admin:', err.message);
+                console.error('? Erro ao criar Super Admin:', err.message);
             } else {
-                console.log('‚úÖ Super Admin criado: super@admin.com / super123');
+                console.log('? Super Admin criado: super@admin.com / super123');
             }
         });
     }
@@ -503,11 +503,11 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
 // ============================================================
 // 2. CRIAR/ATUALIZAR EMPRESA DE TESTE E DONO
 // ============================================================
-console.log('üìù Verificando/Criando empresa de teste...');
+console.log('?? Verificando/Criando empresa de teste...');
 
 db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) => {
     if (err) {
-        console.error('‚ùå Erro ao verificar empresa teste:', err.message);
+        console.error('? Erro ao verificar empresa teste:', err.message);
         return;
     }
 
@@ -520,7 +520,7 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 
         db.run(sqlEmpresa, [], function (err) {
             if (err) {
-                console.error('‚ùå Erro ao criar empresa teste:', err.message);
+                console.error('? Erro ao criar empresa teste:', err.message);
                 return;
             }
 
@@ -530,19 +530,19 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 
             db.get(sqlFind, [], (err, row) => {
                 if (err || !row) {
-                    console.error('‚ùå Erro ao buscar ID da empresa:', err?.message);
+                    console.error('? Erro ao buscar ID da empresa:', err?.message);
                     return;
                 }
 
                 const empresaId = row.id;
-                console.log(`‚úÖ Empresa teste criada (ID: ${empresaId})`);
+                console.log(`? Empresa teste criada (ID: ${empresaId})`);
                 inserirHorariosPadrao(empresaId);
 
                 const donoSenha = bcrypt.hashSync('123456', 10);
 
                 db.get(`SELECT id FROM usuarios WHERE email = 'admin@teste.com'`, [], (err, existingDono) => {
                     if (err) {
-                        console.error('‚ùå Erro ao verificar dono:', err.message);
+                        console.error('? Erro ao verificar dono:', err.message);
                         return;
                     }
 
@@ -555,30 +555,30 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
 
                         db.run(sqlInsertDono, ['Admin Teste', 'admin@teste.com', donoSenha, empresaId], function (err) {
                             if (err) {
-                                console.error('‚ùå Erro ao criar dono:', err.message);
+                                console.error('? Erro ao criar dono:', err.message);
                             } else {
-                                console.log('‚úÖ Dono criado: admin@teste.com / 123456');
+                                console.log('? Dono criado: admin@teste.com / 123456');
                             }
                         });
                     } else {
-                        console.log('‚úÖ Dono j√° existe');
+                        console.log('? Dono j· existe');
                     }
                 });
             });
         });
     } else {
-        console.log('‚úÖ Empresa teste j√° existe');
+        console.log('? Empresa teste j· existe');
     }
 });
 
 // ============================================================
-// AUTENTICA√á√ÉO - COM REGISTRO DE ACESSOS
+// AUTENTICA«√O - COM REGISTRO DE ACESSOS
 // ============================================================
 
 app.post('/api/login', (req, res) => {
     const { email, senha } = req.body;
 
-    console.log('üîç Tentando login:', { email });
+    console.log('?? Tentando login:', { email });
 
     // Query para profissionais (adaptada para PostgreSQL)
     const sqlProfissional = isProduction
@@ -593,7 +593,7 @@ app.post('/api/login', (req, res) => {
 
     db.get(sqlProfissional, [email], (err, profissional) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar profissional:', err.message);
+            console.error('? Erro ao buscar profissional:', err.message);
             return res.json({ success: false, message: 'Erro ao buscar profissional' });
         }
 
@@ -611,7 +611,7 @@ app.post('/api/login', (req, res) => {
                 { expiresIn: '7d' }
             );
 
-            // üî• REGISTRAR ACESSO DO PROFISSIONAL
+            // ?? REGISTRAR ACESSO DO PROFISSIONAL
             const ip = req.ip || req.connection.remoteAddress || null;
             const user_agent = req.headers['user-agent'] || null;
 
@@ -621,9 +621,9 @@ app.post('/api/login', (req, res) => {
 
             db.run(sqlAcesso, [profissional.empresa_id, profissional.id, ip, user_agent], (err) => {
                 if (err) {
-                    console.error('‚ö†Ô∏è Erro ao registrar acesso do profissional:', err.message);
+                    console.error('?? Erro ao registrar acesso do profissional:', err.message);
                 } else {
-                    console.log(`üìä Acesso registrado para profissional ${profissional.nome} (empresa ${profissional.empresa_id})`);
+                    console.log(`?? Acesso registrado para profissional ${profissional.nome} (empresa ${profissional.empresa_id})`);
                 }
             });
 
@@ -644,7 +644,7 @@ app.post('/api/login', (req, res) => {
             });
         }
 
-        // Query para usu√°rios (adaptada para PostgreSQL)
+        // Query para usu·rios (adaptada para PostgreSQL)
         const sqlUsuario = isProduction
             ? `SELECT u.*, e.trial_expira, e.nome as empresa_nome, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
                FROM usuarios u 
@@ -657,17 +657,17 @@ app.post('/api/login', (req, res) => {
 
         db.get(sqlUsuario, [email], (err, user) => {
             if (err) {
-                console.error('‚ùå Erro ao buscar usu√°rio:', err.message);
-                return res.json({ success: false, message: 'Erro ao buscar usu√°rio' });
+                console.error('? Erro ao buscar usu·rio:', err.message);
+                return res.json({ success: false, message: 'Erro ao buscar usu·rio' });
             }
 
             if (!user) {
-                console.log('‚ùå Usu√°rio n√£o encontrado:', email);
+                console.log('? Usu·rio n„o encontrado:', email);
                 return res.json({ success: false, message: 'Email ou senha incorretos' });
             }
 
             if (!bcrypt.compareSync(senha, user.senha)) {
-                console.log('‚ùå Senha incorreta para:', email);
+                console.log('? Senha incorreta para:', email);
                 return res.json({ success: false, message: 'Email ou senha incorretos' });
             }
 
@@ -678,7 +678,7 @@ app.post('/api/login', (req, res) => {
                     const hoje = new Date();
                     const trialExpira = new Date(user.trial_expira);
                     if (hoje > trialExpira) {
-                        return res.json({ success: false, message: 'Seu per√≠odo de teste expirou. Fa√ßa upgrade para continuar usando o sistema.' });
+                        return res.json({ success: false, message: 'Seu perÌodo de teste expirou. FaÁa upgrade para continuar usando o sistema.' });
                     }
                     diasRestantes = Math.ceil((trialExpira - hoje) / (1000 * 60 * 60 * 24));
                 } else if (user.plano !== 'trial' && user.assinatura_ativa === true && user.assinatura_valida_ate) {
@@ -697,7 +697,7 @@ app.post('/api/login', (req, res) => {
                 { expiresIn: '7d' }
             );
 
-            // üî• REGISTRAR ACESSO DO USU√ÅRIO
+            // ?? REGISTRAR ACESSO DO USU¡RIO
             const ip = req.ip || req.connection.remoteAddress || null;
             const user_agent = req.headers['user-agent'] || null;
 
@@ -707,13 +707,13 @@ app.post('/api/login', (req, res) => {
 
             db.run(sqlAcesso, [user.empresa_id, user.id, ip, user_agent], (err) => {
                 if (err) {
-                    console.error('‚ö†Ô∏è Erro ao registrar acesso do usu√°rio:', err.message);
+                    console.error('?? Erro ao registrar acesso do usu·rio:', err.message);
                 } else {
-                    console.log(`üìä Acesso registrado para ${user.nome} (empresa ${user.empresa_id})`);
+                    console.log(`?? Acesso registrado para ${user.nome} (empresa ${user.empresa_id})`);
                 }
             });
 
-            console.log('‚úÖ Login bem sucedido:', email);
+            console.log('? Login bem sucedido:', email);
 
             res.json({
                 success: true,
@@ -737,34 +737,34 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/cadastro', (req, res) => {
-    const { nome, email, senha, empresa_nome, telefone } = req.body; // ‚Üê ADICIONEI telefone
+    const { nome, email, senha, empresa_nome, telefone } = req.body; // ? ADICIONEI telefone
 
     if (!nome || !email || !senha || !empresa_nome) {
-        return res.json({ success: false, message: 'Todos os campos s√£o obrigat√≥rios' });
+        return res.json({ success: false, message: 'Todos os campos s„o obrigatÛrios' });
     }
 
-    console.log('üìù Tentando cadastrar:', { nome, email, empresa_nome, telefone });
+    console.log('?? Tentando cadastrar:', { nome, email, empresa_nome, telefone });
 
-    // üî• VERIFICAR SE EMAIL J√Å EXISTE
+    // ?? VERIFICAR SE EMAIL J¡ EXISTE
     const sqlCheck = isProduction
         ? 'SELECT id FROM usuarios WHERE email = $1'
         : 'SELECT id FROM usuarios WHERE email = ?';
 
     db.get(sqlCheck, [email], (err, user) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar email:', err.message);
+            console.error('? Erro ao verificar email:', err.message);
             return res.json({ success: false, message: 'Erro ao verificar email' });
         }
 
         if (user) {
-            return res.json({ success: false, message: 'Email j√° cadastrado' });
+            return res.json({ success: false, message: 'Email j· cadastrado' });
         }
 
-        // üî• LIMPAR O TELEFONE (APENAS N√öMEROS)
+        // ?? LIMPAR O TELEFONE (APENAS N⁄MEROS)
         const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
-        console.log('üì± Telefone limpo:', telefoneLimpo);
+        console.log('?? Telefone limpo:', telefoneLimpo);
 
-        // üî• CRIAR EMPRESA (COM TELEFONE_DONO)
+        // ?? CRIAR EMPRESA (COM TELEFONE_DONO)
         const sqlEmpresa = isProduction
             ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa, telefone_dono) 
                VALUES ($1, 'trial', 1, (CURRENT_TIMESTAMP + INTERVAL '45 days'), 1, $2) RETURNING id`
@@ -773,11 +773,11 @@ app.post('/api/cadastro', (req, res) => {
 
         db.run(sqlEmpresa, [empresa_nome, telefoneLimpo], function (err) {
             if (err) {
-                console.error('‚ùå Erro ao criar empresa:', err.message);
+                console.error('? Erro ao criar empresa:', err.message);
                 return res.json({ success: false, message: 'Erro ao criar empresa' });
             }
 
-            // üî• BUSCAR ID DA EMPRESA
+            // ?? BUSCAR ID DA EMPRESA
             let sqlFind;
             let paramsFind;
 
@@ -791,15 +791,15 @@ app.post('/api/cadastro', (req, res) => {
 
             db.get(sqlFind, paramsFind, (err, row) => {
                 if (err || !row) {
-                    console.error('‚ùå Erro ao buscar ID da empresa:', err?.message);
+                    console.error('? Erro ao buscar ID da empresa:', err?.message);
                     return res.json({ success: false, message: 'Erro ao buscar ID da empresa' });
                 }
 
                 const empresa_id = row.id;
-                console.log('‚úÖ Empresa criada com ID:', empresa_id);
-                console.log('üì± Telefone do dono salvo:', telefoneLimpo);
+                console.log('? Empresa criada com ID:', empresa_id);
+                console.log('?? Telefone do dono salvo:', telefoneLimpo);
 
-                // üî• CRIAR USU√ÅRIO (COM TELEFONE)
+                // ?? CRIAR USU¡RIO (COM TELEFONE)
                 const senhaHash = bcrypt.hashSync(senha, 10);
                 const sqlUsuario = isProduction
                     ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone) 
@@ -809,15 +809,15 @@ app.post('/api/cadastro', (req, res) => {
 
                 db.run(sqlUsuario, [nome, email, senhaHash, empresa_id, telefoneLimpo], function (err) {
                     if (err) {
-                        console.error('‚ùå Erro ao criar usu√°rio:', err.message);
-                        return res.json({ success: false, message: 'Erro ao criar usu√°rio' });
+                        console.error('? Erro ao criar usu·rio:', err.message);
+                        return res.json({ success: false, message: 'Erro ao criar usu·rio' });
                     }
 
-                    console.log('‚úÖ Usu√°rio criado com sucesso!');
-                    console.log('üì± Telefone do usu√°rio salvo:', telefoneLimpo);
+                    console.log('? Usu·rio criado com sucesso!');
+                    console.log('?? Telefone do usu·rio salvo:', telefoneLimpo);
 
-                    // üî• INSERIR HOR√ÅRIOS PADR√ÉO
-                    console.log('üìù Inserindo hor√°rios padr√£o para empresa:', empresa_id);
+                    // ?? INSERIR HOR¡RIOS PADR√O
+                    console.log('?? Inserindo hor·rios padr„o para empresa:', empresa_id);
 
                     const diasSemana = [0, 1, 2, 3, 4, 5, 6];
                     let horariosInseridos = 0;
@@ -839,11 +839,11 @@ app.post('/api/cadastro', (req, res) => {
 
                         db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
                             if (err) {
-                                console.error(`‚ùå Erro ao inserir hor√°rio dia ${dia}:`, err.message);
+                                console.error(`? Erro ao inserir hor·rio dia ${dia}:`, err.message);
                                 totalErros++;
                             } else {
                                 horariosInseridos++;
-                                console.log(`‚úÖ Hor√°rio dia ${dia} inserido (${horariosInseridos}/7)`);
+                                console.log(`? Hor·rio dia ${dia} inserido (${horariosInseridos}/7)`);
                             }
 
                             if (horariosInseridos + totalErros === 7 || horariosInseridos === 7) {
@@ -853,12 +853,12 @@ app.post('/api/cadastro', (req, res) => {
 
                                 db.get(sqlCheck, [empresa_id], (err, result) => {
                                     if (!err && result) {
-                                        console.log(`‚úÖ ${result.total} hor√°rios confirmados no banco`);
+                                        console.log(`? ${result.total} hor·rios confirmados no banco`);
                                     }
 
                                     res.json({
                                         success: true,
-                                        message: 'Cadastro realizado! Voc√™ tem 45 dias de teste.',
+                                        message: 'Cadastro realizado! VocÍ tem 45 dias de teste.',
                                         data: {
                                             empresa_id: empresa_id,
                                             horarios_inseridos: horariosInseridos,
@@ -870,18 +870,18 @@ app.post('/api/cadastro', (req, res) => {
                         });
                     }
 
-                    // TIMEOUT DE SEGURAN√áA
+                    // TIMEOUT DE SEGURAN«A
                     setTimeout(() => {
-                        console.log('‚è∞ Verificando hor√°rios ap√≥s timeout...');
+                        console.log('? Verificando hor·rios apÛs timeout...');
                         const sqlCheck = isProduction
                             ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
                             : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
 
                         db.get(sqlCheck, [empresa_id], (err, result) => {
                             if (!err && result && result.total > 0) {
-                                console.log(`‚úÖ ${result.total} hor√°rios encontrados`);
+                                console.log(`? ${result.total} hor·rios encontrados`);
                             } else {
-                                console.warn('‚ö†Ô∏è Inserindo hor√°rios manualmente...');
+                                console.warn('?? Inserindo hor·rios manualmente...');
                                 for (const dia of [0, 1, 2, 3, 4, 5, 6]) {
                                     const sqlManual = isProduction
                                         ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
@@ -914,7 +914,7 @@ app.get('/api/empresa/plano', auth, (req, res) => {
 
     db.get(sql, [empresaId], (err, empresa) => {
         if (err || !empresa) {
-            return res.json({ success: false, message: 'Empresa n√£o encontrada' });
+            return res.json({ success: false, message: 'Empresa n„o encontrada' });
         }
 
         let diasRestantes = 0;
@@ -949,16 +949,16 @@ app.get('/api/empresa/plano', auth, (req, res) => {
 });
 
 // ============================================================
-// üî• ROTA: DADOS DA EMPRESA (COM TELEFONE_DONO E ENDERECO)
+// ?? ROTA: DADOS DA EMPRESA (COM TELEFONE_DONO E ENDERECO)
 // ============================================================
 app.get('/api/empresa/dados', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
     if (!empresaId) {
-        return res.json({ success: false, message: 'Empresa n√£o identificada' });
+        return res.json({ success: false, message: 'Empresa n„o identificada' });
     }
 
-    // üî• ADICIONADO: telefone_dono e endereco
+    // ?? ADICIONADO: telefone_dono e endereco
     const sql = isProduction
         ? `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
            assinatura_valida_ate, ultima_cobranca, created_at, 
@@ -975,14 +975,14 @@ app.get('/api/empresa/dados', auth, (req, res) => {
 
     db.get(sql, [empresaId], (err, empresa) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar empresa:', err.message);
+            console.error('? Erro ao buscar empresa:', err.message);
             return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
         }
         if (!empresa) {
-            return res.json({ success: false, message: 'Empresa n√£o encontrada' });
+            return res.json({ success: false, message: 'Empresa n„o encontrada' });
         }
 
-        console.log('üìã Dados da empresa retornados:', {
+        console.log('?? Dados da empresa retornados:', {
             id: empresa.id,
             nome: empresa.nome,
             telefone_dono: empresa.telefone_dono,
@@ -993,13 +993,13 @@ app.get('/api/empresa/dados', auth, (req, res) => {
 });
 
 // ============================================================
-// üî• ROTA: ATUALIZAR ENDERECO DA EMPRESA
+// ?? ROTA: ATUALIZAR ENDERECO DA EMPRESA
 // ============================================================
 app.put('/api/empresa/endereco', auth, verificarDono, (req, res) => {
     const { endereco } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    console.log('üìù Atualizando endere√ßo:', { empresaId, endereco });
+    console.log('?? Atualizando endereÁo:', { empresaId, endereco });
 
     const sql = isProduction
         ? `UPDATE empresas SET endereco = $1 WHERE id = $2`
@@ -1007,29 +1007,29 @@ app.put('/api/empresa/endereco', auth, verificarDono, (req, res) => {
 
     db.run(sql, [endereco || '', empresaId], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao atualizar endere√ßo:', err.message);
+            console.error('? Erro ao atualizar endereÁo:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('‚úÖ Endere√ßo atualizado:', endereco);
+        console.log('? EndereÁo atualizado:', endereco);
         res.json({
             success: true,
-            message: 'üìç Endere√ßo atualizado com sucesso!',
+            message: '?? EndereÁo atualizado com sucesso!',
             data: { endereco: endereco }
         });
     });
 });
 
 // ============================================================
-// üî• ROTA: ATUALIZAR TELEFONE DO DONO
+// ?? ROTA: ATUALIZAR TELEFONE DO DONO
 // ============================================================
 app.put('/api/empresa/telefone-dono', auth, verificarDono, (req, res) => {
     const { telefone_dono } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    console.log('üìù Atualizando telefone do dono:', { empresaId, telefone_dono });
+    console.log('?? Atualizando telefone do dono:', { empresaId, telefone_dono });
 
-    // Remover tudo que n√£o √© n√∫mero
+    // Remover tudo que n„o È n˙mero
     const telefoneLimpo = telefone_dono ? telefone_dono.replace(/\D/g, '') : '';
 
     const sql = isProduction
@@ -1038,31 +1038,31 @@ app.put('/api/empresa/telefone-dono', auth, verificarDono, (req, res) => {
 
     db.run(sql, [telefoneLimpo, empresaId], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao atualizar telefone do dono:', err.message);
+            console.error('? Erro ao atualizar telefone do dono:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('‚úÖ Telefone do dono atualizado:', telefoneLimpo);
+        console.log('? Telefone do dono atualizado:', telefoneLimpo);
         res.json({
             success: true,
-            message: 'üìû Telefone do dono atualizado com sucesso!',
+            message: '?? Telefone do dono atualizado com sucesso!',
             data: { telefone_dono: telefoneLimpo }
         });
     });
 });
 
 // ============================================================
-// üî• ROTA: ATUALIZAR BLOQUEIO GERAL (COM LOGS)
+// ?? ROTA: ATUALIZAR BLOQUEIO GERAL (COM LOGS)
 // ============================================================
 app.put('/api/empresa/bloqueio-geral', auth, verificarDono, (req, res) => {
     const { dias_bloqueio } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    console.log('üìù ===== BLOQUEIO GERAL =====');
-    console.log('üìù Usu√°rio:', req.usuario);
-    console.log('üìù Empresa ID:', empresaId);
-    console.log('üìù Dias bloqueio recebido:', dias_bloqueio);
-    console.log('üìù Body completo:', req.body);
+    console.log('?? ===== BLOQUEIO GERAL =====');
+    console.log('?? Usu·rio:', req.usuario);
+    console.log('?? Empresa ID:', empresaId);
+    console.log('?? Dias bloqueio recebido:', dias_bloqueio);
+    console.log('?? Body completo:', req.body);
 
     const diasBloqueioFinal = parseInt(dias_bloqueio) || 0;
 
@@ -1070,18 +1070,18 @@ app.put('/api/empresa/bloqueio-geral', auth, verificarDono, (req, res) => {
         ? `UPDATE empresas SET dias_bloqueio_geral = $1 WHERE id = $2 RETURNING id`
         : `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`;
 
-    console.log('üìù SQL:', sql);
-    console.log('üìù Par√¢metros:', [diasBloqueioFinal, empresaId]);
+    console.log('?? SQL:', sql);
+    console.log('?? Par‚metros:', [diasBloqueioFinal, empresaId]);
 
     db.run(sql, [diasBloqueioFinal, empresaId], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao atualizar bloqueio geral:', err.message);
-            console.error('‚ùå Stack:', err.stack);
+            console.error('? Erro ao atualizar bloqueio geral:', err.message);
+            console.error('? Stack:', err.stack);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('‚úÖ Bloqueio geral atualizado para:', diasBloqueioFinal);
-        console.log('‚úÖ Changes:', this?.changes || 'N/A');
+        console.log('? Bloqueio geral atualizado para:', diasBloqueioFinal);
+        console.log('? Changes:', this?.changes || 'N/A');
 
         // VERIFICAR SE FOI ATUALIZADO
         const sqlCheck = isProduction
@@ -1090,9 +1090,9 @@ app.put('/api/empresa/bloqueio-geral', auth, verificarDono, (req, res) => {
 
         db.get(sqlCheck, [empresaId], (err, row) => {
             if (err) {
-                console.error('‚ùå Erro ao verificar atualiza√ß√£o:', err.message);
+                console.error('? Erro ao verificar atualizaÁ„o:', err.message);
             } else {
-                console.log('üìã Valor no banco ap√≥s update:', row);
+                console.log('?? Valor no banco apÛs update:', row);
             }
         });
 
@@ -1108,7 +1108,7 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
     if (!PLANOS[plano]) {
-        return res.status(400).json({ success: false, message: 'Plano inv√°lido' });
+        return res.status(400).json({ success: false, message: 'Plano inv·lido' });
     }
 
     const config = PLANOS[plano];
@@ -1156,12 +1156,12 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
                    VALUES (?, ?, ?, ?, ?, ?)`;
 
             db.run(sqlHistorico, [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null], (err) => {
-                if (err) console.error('Erro ao salvar hist√≥rico:', err);
+                if (err) console.error('Erro ao salvar histÛrico:', err);
             });
 
             res.json({
                 success: true,
-                message: `Parab√©ns! Seu plano ${config.nome} foi ativado com sucesso.`,
+                message: `ParabÈns! Seu plano ${config.nome} foi ativado com sucesso.`,
                 data: {
                     plano: plano,
                     plano_nome: config.nome,
@@ -1191,11 +1191,11 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
         }
 
         if (!empresa) {
-            return res.json({ success: false, message: 'Empresa n√£o encontrada' });
+            return res.json({ success: false, message: 'Empresa n„o encontrada' });
         }
 
         if (empresa.plano === 'trial') {
-            return res.json({ success: false, message: 'Voc√™ j√° est√° no plano Trial' });
+            return res.json({ success: false, message: 'VocÍ j· est· no plano Trial' });
         }
 
         const sqlHistorico = isProduction
@@ -1206,7 +1206,7 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
                (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
                VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`;
 
-        db.run(sqlHistorico, [empresaId, empresa.plano, motivo || 'Usu√°rio cancelou assinatura'], (err) => {
+        db.run(sqlHistorico, [empresaId, empresa.plano, motivo || 'Usu·rio cancelou assinatura'], (err) => {
             if (err) console.error('Erro ao registrar cancelamento:', err);
         });
 
@@ -1237,7 +1237,7 @@ app.post('/api/cancel-subscription', auth, verificarDono, (req, res) => {
 
             res.json({
                 success: true,
-                message: `Assinatura cancelada! Voc√™ tem 7 dias de acesso ao plano Trial at√© ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
+                message: `Assinatura cancelada! VocÍ tem 7 dias de acesso ao plano Trial atÈ ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
                 dias_trial: 7
             });
         });
@@ -1297,18 +1297,18 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
         if (err) {
             return res.json({ success: false, message: 'Erro ao voltar para trial' });
         }
-        res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! V√°lido at√© ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
+        res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! V·lido atÈ ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
     });
 });
 
 // ============================================================
-// üî• ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
+// ?? ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
 // ============================================================
 app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
 
-    console.log(`üë§ Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
+    console.log(`?? Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
 
     const sqlCheck = isProduction
         ? `SELECT id, empresa_id FROM profissionais WHERE id = $1`
@@ -1316,12 +1316,12 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
     db.get(sqlCheck, [id], (err, profissional) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar profissional:', err);
+            console.error('? Erro ao verificar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            return res.json({ success: false, message: 'Profissional n√£o encontrado' });
+            return res.json({ success: false, message: 'Profissional n„o encontrado' });
         }
 
         let query = isProduction
@@ -1362,11 +1362,11 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
         db.run(query, params, function (err) {
             if (err) {
-                console.error('‚ùå Erro ao atualizar profissional:', err);
+                console.error('? Erro ao atualizar profissional:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            console.log('‚úÖ Profissional atualizado com sucesso!');
+            console.log('? Profissional atualizado com sucesso!');
             res.json({
                 success: true,
                 message: 'Profissional atualizado com sucesso!'
@@ -1378,12 +1378,12 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
 
 // ============================================================
-// üî• ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
+// ?? ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
 // ============================================================
 app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
 
-    console.log(`üë§ Super Admin - Buscando profissional ${id}...`);
+    console.log(`?? Super Admin - Buscando profissional ${id}...`);
 
     const sql = isProduction
         ? `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
@@ -1395,60 +1395,60 @@ app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
     db.get(sql, [id], (err, profissional) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar profissional:', err);
+            console.error('? Erro ao buscar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            return res.json({ success: false, message: 'Profissional n√£o encontrado' });
+            return res.json({ success: false, message: 'Profissional n„o encontrado' });
         }
 
-        console.log('‚úÖ Profissional encontrado:', profissional.nome);
+        console.log('? Profissional encontrado:', profissional.nome);
         res.json({ success: true, data: profissional });
     });
 });
 // ============================================
-// 1. ESTAT√çSTICAS GERAIS (MELHORADA)
+// 1. ESTATÕSTICAS GERAIS (MELHORADA)
 // ============================================
 app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
-    console.log('üìä Super Admin - Buscando estat√≠sticas gerais...');
+    console.log('?? Super Admin - Buscando estatÌsticas gerais...');
 
     // Total de empresas
     db.get(`SELECT COUNT(*) as total FROM empresas`, (err, empresas) => {
         if (err) {
-            console.error('‚ùå Erro ao contar empresas:', err);
+            console.error('? Erro ao contar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
 
         // Total de donos
         db.get(`SELECT COUNT(*) as total FROM usuarios WHERE role = 'dono'`, (err2, donos) => {
             if (err2) {
-                console.error('‚ùå Erro ao contar donos:', err2);
+                console.error('? Erro ao contar donos:', err2);
                 return res.json({ success: false, message: err2.message });
             }
 
             // Total de profissionais
             db.get(`SELECT COUNT(*) as total FROM usuarios WHERE role = 'profissional'`, (err3, profissionais) => {
                 if (err3) {
-                    console.error('‚ùå Erro ao contar profissionais:', err3);
+                    console.error('? Erro ao contar profissionais:', err3);
                     return res.json({ success: false, message: err3.message });
                 }
 
                 // Total de clientes
                 db.get(`SELECT COUNT(*) as total FROM clientes`, (err4, clientes) => {
                     if (err4) {
-                        console.error('‚ùå Erro ao contar clientes:', err4);
+                        console.error('? Erro ao contar clientes:', err4);
                         return res.json({ success: false, message: err4.message });
                     }
 
                     // Total de agendamentos
                     db.get(`SELECT COUNT(*) as total FROM agendamentos`, (err5, agendamentos) => {
                         if (err5) {
-                            console.error('‚ùå Erro ao contar agendamentos:', err5);
+                            console.error('? Erro ao contar agendamentos:', err5);
                             return res.json({ success: false, message: err5.message });
                         }
 
-                        // Agendamentos do m√™s
+                        // Agendamentos do mÍs
                         const mesAtual = new Date().toISOString().slice(0, 7);
                         const sqlMes = isProduction
                             ? `SELECT COUNT(*) as total FROM agendamentos WHERE strftime('%Y-%m', data) = $1`
@@ -1456,22 +1456,22 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
 
                         db.get(sqlMes, [mesAtual], (err6, agendamentosMes) => {
                             if (err6) {
-                                console.error('‚ùå Erro ao contar agendamentos do m√™s:', err6);
+                                console.error('? Erro ao contar agendamentos do mÍs:', err6);
                                 return res.json({ success: false, message: err6.message });
                             }
 
-                            // Faturamento do m√™s
+                            // Faturamento do mÍs
                             const sqlFaturamento = isProduction
                                 ? `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = $1`
                                 : `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = ?`;
 
                             db.get(sqlFaturamento, [mesAtual], (err7, faturamento) => {
                                 if (err7) {
-                                    console.error('‚ùå Erro ao calcular faturamento:', err7);
+                                    console.error('? Erro ao calcular faturamento:', err7);
                                     return res.json({ success: false, message: err7.message });
                                 }
 
-                                console.log('‚úÖ Estat√≠sticas carregadas com sucesso!');
+                                console.log('? EstatÌsticas carregadas com sucesso!');
                                 res.json({
                                     success: true,
                                     data: {
@@ -1494,10 +1494,10 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// 2. LISTAR EMPRESAS COM M√âTRICAS (MELHORADA)
+// 2. LISTAR EMPRESAS COM M…TRICAS (MELHORADA)
 // ============================================
 app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
-    console.log('üè¢ Super Admin - Listando todas as empresas...');
+    console.log('?? Super Admin - Listando todas as empresas...');
 
     const sql = isProduction
         ? `SELECT e.*, 
@@ -1525,22 +1525,22 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, empresas) => {
         if (err) {
-            console.error('‚ùå Erro ao listar empresas:', err);
+            console.error('? Erro ao listar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log(`‚úÖ ${empresas.length} empresas encontradas`);
+        console.log(`? ${empresas.length} empresas encontradas`);
         res.json({ success: true, data: empresas });
     });
 });
 
 // ============================================
-// 3. LISTAR TODOS OS USU√ÅRIOS (CORRIGIDO - COM TELEFONE)
+// 3. LISTAR TODOS OS USU¡RIOS (CORRIGIDO - COM TELEFONE)
 // ============================================
 app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
-    console.log('üë§ Super Admin - Listando todos os usu√°rios...');
+    console.log('?? Super Admin - Listando todos os usu·rios...');
 
-    // üî• CORRIGIDO: Buscar telefone da tabela usuarios
+    // ?? CORRIGIDO: Buscar telefone da tabela usuarios
     const sql = isProduction
         ? `SELECT 
             u.id, 
@@ -1550,7 +1550,7 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
             u.empresa_id, 
             u.created_at, 
             e.nome as empresa_nome,
-            u.telefone,  -- üî• ADICIONADO: telefone do usu√°rio
+            u.telefone,  -- ?? ADICIONADO: telefone do usu·rio
             p.comissao_percent
            FROM usuarios u
            LEFT JOIN empresas e ON u.empresa_id = e.id
@@ -1564,7 +1564,7 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
             u.empresa_id, 
             u.created_at, 
             e.nome as empresa_nome,
-            u.telefone,  -- üî• ADICIONADO: telefone do usu√°rio
+            u.telefone,  -- ?? ADICIONADO: telefone do usu·rio
             p.comissao_percent
            FROM usuarios u
            LEFT JOIN empresas e ON u.empresa_id = e.id
@@ -1573,7 +1573,7 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, usuarios) => {
         if (err) {
-            console.error('‚ùå Erro ao listar usu√°rios:', err);
+            console.error('? Erro ao listar usu·rios:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -1587,7 +1587,7 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
             };
         });
 
-        console.log(`‚úÖ ${usuariosSemSenha.length} usu√°rios encontrados`);
+        console.log(`? ${usuariosSemSenha.length} usu·rios encontrados`);
         res.json({ success: true, data: usuariosSemSenha });
     });
 });
@@ -1596,9 +1596,9 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üè¢ Super Admin - Buscando empresa ${id}...`);
+    console.log(`?? Super Admin - Buscando empresa ${id}...`);
 
-    // üî• CORRIGIDO: Remover u.telefone se n√£o existir
+    // ?? CORRIGIDO: Remover u.telefone se n„o existir
     const sql = isProduction
         ? `SELECT e.*, 
            u.nome as dono_nome,
@@ -1621,12 +1621,12 @@ app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sql, [id], (err, empresa) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar empresa:', err);
+            console.error('? Erro ao buscar empresa:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!empresa) {
-            return res.json({ success: false, message: 'Empresa n√£o encontrada' });
+            return res.json({ success: false, message: 'Empresa n„o encontrada' });
         }
 
         res.json({ success: true, data: empresa });
@@ -1634,13 +1634,13 @@ app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// 5. USU√ÅRIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO - COM TELEFONE)
+// 5. USU¡RIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO - COM TELEFONE)
 // ============================================
 app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üë§ Super Admin - Buscando usu√°rios e profissionais da empresa ${id}...`);
+    console.log(`?? Super Admin - Buscando usu·rios e profissionais da empresa ${id}...`);
 
-    // üî• CORRIGIDO: Buscar TELEFONE tanto de donos quanto de profissionais
+    // ?? CORRIGIDO: Buscar TELEFONE tanto de donos quanto de profissionais
     const sql = isProduction
         ? `SELECT 
             'dono' as tipo,
@@ -1649,7 +1649,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             u.email, 
             u.role, 
             u.created_at,
-            u.telefone,  -- üî• ADICIONADO: telefone do dono
+            u.telefone,  -- ?? ADICIONADO: telefone do dono
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
@@ -1664,7 +1664,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             p.email, 
             'profissional' as role,
             p.created_at,
-            p.telefone,  -- üî• J√Å ESTAVA: telefone do profissional
+            p.telefone,  -- ?? J¡ ESTAVA: telefone do profissional
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
@@ -1678,7 +1678,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             u.email, 
             u.role, 
             u.created_at,
-            u.telefone,  -- üî• ADICIONADO: telefone do dono
+            u.telefone,  -- ?? ADICIONADO: telefone do dono
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
@@ -1693,7 +1693,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             p.email, 
             'profissional' as role,
             p.created_at,
-            p.telefone,  -- üî• J√Å ESTAVA: telefone do profissional
+            p.telefone,  -- ?? J¡ ESTAVA: telefone do profissional
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
@@ -1703,7 +1703,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
 
     db.all(sql, [id, id], (err, usuarios) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar usu√°rios e profissionais:', err);
+            console.error('? Erro ao buscar usu·rios e profissionais:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -1717,7 +1717,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             };
         });
 
-        console.log(`‚úÖ ${dadosFormatados.length} usu√°rios/profissionais encontrados`);
+        console.log(`? ${dadosFormatados.length} usu·rios/profissionais encontrados`);
         console.log(`   - Donos: ${dadosFormatados.filter(u => u.tipo === 'dono').length}`);
         console.log(`   - Profissionais: ${dadosFormatados.filter(u => u.tipo === 'profissional').length}`);
 
@@ -1729,7 +1729,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
 // ============================================
 app.get('/api/admin/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üìä Super Admin - Buscando acessos da empresa ${id}...`);
+    console.log(`?? Super Admin - Buscando acessos da empresa ${id}...`);
 
     const sql = isProduction
         ? `SELECT a.*, u.nome as usuario_nome
@@ -1747,19 +1747,19 @@ app.get('/api/admin/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res)
 
     db.all(sql, [id], (err, acessos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar acessos:', err);
+            console.error('? Erro ao buscar acessos:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log(`‚úÖ ${acessos.length} acessos encontrados`);
+        console.log(`? ${acessos.length} acessos encontrados`);
         res.json({ success: true, data: acessos });
     });
 });
 // ============================================
-// ROTA: ESTAT√çSTICAS DAS EMPRESAS (SIMPLES E CONFI√ÅVEL)
+// ROTA: ESTATÕSTICAS DAS EMPRESAS (SIMPLES E CONFI¡VEL)
 // ============================================
 app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
-    console.log('üìä Super Admin - Buscando empresas com estat√≠sticas...');
+    console.log('?? Super Admin - Buscando empresas com estatÌsticas...');
 
     // Primeiro, buscar todas as empresas
     const sqlEmpresas = isProduction
@@ -1768,16 +1768,16 @@ app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res
 
     db.all(sqlEmpresas, [], (err, empresas) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar empresas:', err);
+            console.error('? Erro ao buscar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log(`üìä ${empresas.length} empresas encontradas`);
+        console.log(`?? ${empresas.length} empresas encontradas`);
 
-        // Para cada empresa, buscar as m√©tricas separadamente
+        // Para cada empresa, buscar as mÈtricas separadamente
         const promises = empresas.map((e) => {
             return new Promise((resolve) => {
-                // Buscar total de usu√°rios
+                // Buscar total de usu·rios
                 const sqlUsuarios = isProduction
                     ? `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = $1`
                     : `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = ?`;
@@ -1807,7 +1807,7 @@ app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res
                                     : `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ?`;
 
                                 db.get(sqlAcessos, [e.id], (err, acessos) => {
-                                    // Buscar √∫ltimo acesso
+                                    // Buscar ˙ltimo acesso
                                     const sqlUltimoAcesso = isProduction
                                         ? `SELECT data_acesso FROM acessos WHERE empresa_id = $1 ORDER BY data_acesso DESC LIMIT 1`
                                         : `SELECT data_acesso FROM acessos WHERE empresa_id = ? ORDER BY data_acesso DESC LIMIT 1`;
@@ -1851,13 +1851,13 @@ app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res
         });
 
         Promise.all(promises).then((empresasCompletas) => {
-            console.log(`‚úÖ ${empresasCompletas.length} empresas com estat√≠sticas carregadas`);
+            console.log(`? ${empresasCompletas.length} empresas com estatÌsticas carregadas`);
             res.json({ success: true, data: empresasCompletas });
         });
     });
 });
 
-// Fun√ß√£o auxiliar para formatar data/hora
+// FunÁ„o auxiliar para formatar data/hora
 function formatarDataHora(dataStr) {
     if (!dataStr) return 'Nunca';
     try {
@@ -1880,7 +1880,7 @@ function formatarDataHora(dataStr) {
 // ============================================
 app.get('/api/admin/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üë• Super Admin - Buscando clientes da empresa ${id}...`);
+    console.log(`?? Super Admin - Buscando clientes da empresa ${id}...`);
 
     const sql = isProduction
         ? `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
@@ -1894,7 +1894,7 @@ app.get('/api/admin/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res
 
     db.all(sql, [id], (err, clientes) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar clientes:', err);
+            console.error('? Erro ao buscar clientes:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -1907,7 +1907,7 @@ app.get('/api/admin/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res
 // ============================================
 app.get('/api/admin/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üìÖ Super Admin - Buscando agendamentos da empresa ${id}...`);
+    console.log(`?? Super Admin - Buscando agendamentos da empresa ${id}...`);
 
     const sql = isProduction
         ? `SELECT a.*, 
@@ -1937,7 +1937,7 @@ app.get('/api/admin/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req,
 
     db.all(sql, [id], (err, agendamentos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar agendamentos:', err);
+            console.error('? Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -1959,10 +1959,10 @@ app.get('/api/admin/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req,
 app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, plano } = req.body;
-    console.log(`üìù Super Admin - Atualizando empresa ${id}:`, { nome, plano });
+    console.log(`?? Super Admin - Atualizando empresa ${id}:`, { nome, plano });
 
     if (!nome) {
-        return res.json({ success: false, message: 'Nome da empresa √© obrigat√≥rio' });
+        return res.json({ success: false, message: 'Nome da empresa È obrigatÛrio' });
     }
 
     const sql = isProduction
@@ -1971,21 +1971,21 @@ app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.run(sql, [nome, plano || 'trial', id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao atualizar empresa:', err);
+            console.error('? Erro ao atualizar empresa:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('‚úÖ Empresa atualizada com sucesso!');
+        console.log('? Empresa atualizada com sucesso!');
         res.json({ success: true, message: 'Empresa atualizada com sucesso' });
     });
 });
 
 // ============================================
-// 9. BUSCAR USU√ÅRIO PARA EDI√á√ÉO (CORRIGIDO)
+// 9. BUSCAR USU¡RIO PARA EDI«√O (CORRIGIDO)
 // ============================================
 app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üë§ Super Admin - Buscando usu√°rio ${id}...`);
+    console.log(`?? Super Admin - Buscando usu·rio ${id}...`);
 
     const sql = isProduction
         ? `SELECT id, nome, email, role, empresa_id, created_at 
@@ -1997,12 +1997,12 @@ app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sql, [id], (err, usuario) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar usu√°rio:', err);
+            console.error('? Erro ao buscar usu·rio:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!usuario) {
-            return res.json({ success: false, message: 'Usu√°rio n√£o encontrado' });
+            return res.json({ success: false, message: 'Usu·rio n„o encontrado' });
         }
 
         delete usuario.senha;
@@ -2018,42 +2018,42 @@ app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
                 } else {
                     usuario.comissao_percent = 30;
                 }
-                console.log('‚úÖ Usu√°rio encontrado:', usuario.nome);
+                console.log('? Usu·rio encontrado:', usuario.nome);
                 res.json({ success: true, data: usuario });
             });
         } else {
             usuario.comissao_percent = null;
-            console.log('‚úÖ Usu√°rio encontrado:', usuario.nome);
+            console.log('? Usu·rio encontrado:', usuario.nome);
             res.json({ success: true, data: usuario });
         }
     });
 });
 // ============================================
-// PUT /api/admin/usuarios/:id - ATUALIZAR USU√ÅRIO (COM TELEFONE DA EMPRESA)
+// PUT /api/admin/usuarios/:id - ATUALIZAR USU¡RIO (COM TELEFONE DA EMPRESA)
 // ============================================
 app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, role, senha, telefone } = req.body;
 
-    console.log(`üë§ Super Admin - Atualizando usu√°rio ${id}:`, { nome, email, role, telefone });
+    console.log(`?? Super Admin - Atualizando usu·rio ${id}:`, { nome, email, role, telefone });
 
-    // üî• BUSCAR O USU√ÅRIO ATUAL
+    // ?? BUSCAR O USU¡RIO ATUAL
     const sqlCheck = isProduction
         ? `SELECT id, empresa_id, role FROM usuarios WHERE id = $1`
         : `SELECT id, empresa_id, role FROM usuarios WHERE id = ?`;
 
     db.get(sqlCheck, [id], (err, usuario) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar usu√°rio:', err);
+            console.error('? Erro ao verificar usu·rio:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!usuario) {
-            return res.json({ success: false, message: 'Usu√°rio n√£o encontrado' });
+            return res.json({ success: false, message: 'Usu·rio n„o encontrado' });
         }
 
         // ============================================
-        // ATUALIZAR USU√ÅRIO
+        // ATUALIZAR USU¡RIO
         // ============================================
         let query = isProduction
             ? `UPDATE usuarios SET 
@@ -2068,7 +2068,7 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
         let params = [nome || null, email || null, role || null];
         let counter = 4;
 
-        // üî• SALVAR TELEFONE DO USU√ÅRIO
+        // ?? SALVAR TELEFONE DO USU¡RIO
         if (telefone !== undefined) {
             const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
             query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
@@ -2086,19 +2086,19 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
         db.run(query, params, function (err) {
             if (err) {
-                console.error('‚ùå Erro ao atualizar usu√°rio:', err);
+                console.error('? Erro ao atualizar usu·rio:', err);
                 return res.json({ success: false, message: err.message });
             }
 
             // ============================================
-            // üî•üî•üî• CORRE√á√ÉO: SE FOR DONO, ATUALIZAR O TELEFONE NA EMPRESA
+            // ?????? CORRE«√O: SE FOR DONO, ATUALIZAR O TELEFONE NA EMPRESA
             // ============================================
             const novaRole = role || usuario.role;
             const empresaId = usuario.empresa_id;
             const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
 
             if (novaRole === 'dono' && telefoneLimpo && empresaId) {
-                console.log(`üî• Atualizando telefone do dono na empresa ${empresaId}: ${telefoneLimpo}`);
+                console.log(`?? Atualizando telefone do dono na empresa ${empresaId}: ${telefoneLimpo}`);
 
                 const sqlEmpresa = isProduction
                     ? `UPDATE empresas SET telefone_dono = $1 WHERE id = $2`
@@ -2106,44 +2106,44 @@ app.put('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
                 db.run(sqlEmpresa, [telefoneLimpo, empresaId], function (err) {
                     if (err) {
-                        console.error('‚ùå Erro ao atualizar telefone da empresa:', err);
+                        console.error('? Erro ao atualizar telefone da empresa:', err);
                     } else {
-                        console.log(`‚úÖ Telefone do dono atualizado na empresa ${empresaId}: ${telefoneLimpo}`);
+                        console.log(`? Telefone do dono atualizado na empresa ${empresaId}: ${telefoneLimpo}`);
                     }
                 });
             }
 
-            console.log('‚úÖ Usu√°rio atualizado com sucesso!');
+            console.log('? Usu·rio atualizado com sucesso!');
             res.json({
                 success: true,
-                message: 'Usu√°rio atualizado com sucesso!'
+                message: 'Usu·rio atualizado com sucesso!'
             });
         });
     });
 });
 // ============================================
-// EDITAR USU√ÅRIO (COM TELEFONE - ATUALIZADO)
+// EDITAR USU¡RIO (COM TELEFONE - ATUALIZADO)
 // ============================================
 
 async function editarUsuario(id) {
-    console.log('üë§ Editando usu√°rio ID:', id);
+    console.log('?? Editando usu·rio ID:', id);
 
     if (!id) {
-        showToast('ID do usu√°rio n√£o informado', 'error');
+        showToast('ID do usu·rio n„o informado', 'error');
         return;
     }
 
     const token = localStorage.getItem('token');
 
     if (!token) {
-        showToast('Token n√£o encontrado. Fa√ßa login novamente.', 'error');
+        showToast('Token n„o encontrado. FaÁa login novamente.', 'error');
         return;
     }
 
     showLoading();
 
     try {
-        // üî• PRIMEIRO, BUSCAR O USU√ÅRIO PARA SABER O ROLE
+        // ?? PRIMEIRO, BUSCAR O USU¡RIO PARA SABER O ROLE
         const resUser = await fetch(`/api/admin/usuarios/${id}`, {
             method: 'GET',
             headers: {
@@ -2157,27 +2157,27 @@ async function editarUsuario(id) {
         }
 
         const userData = await resUser.json();
-        console.log('üì° Dados do usu√°rio:', userData);
+        console.log('?? Dados do usu·rio:', userData);
 
         hideLoading();
 
         if (!userData.success || !userData.data) {
-            showToast('Usu√°rio n√£o encontrado', 'error');
+            showToast('Usu·rio n„o encontrado', 'error');
             return;
         }
 
         const usuario = userData.data;
-        console.log('üë§ Usu√°rio carregado:', usuario.nome, 'Role:', usuario.role);
+        console.log('?? Usu·rio carregado:', usuario.nome, 'Role:', usuario.role);
 
-        // üî• DECIDIR A ROTA BASEADA NO ROLE, N√ÉO NO ID!
+        // ?? DECIDIR A ROTA BASEADA NO ROLE, N√O NO ID!
         let url;
         if (usuario.role === 'profissional') {
-            url = `/api/admin/profissionais/${id}`;  // ‚Üê ROTA PARA PROFISSIONAL
+            url = `/api/admin/profissionais/${id}`;  // ? ROTA PARA PROFISSIONAL
         } else {
-            url = `/api/admin/usuarios/${id}`;       // ‚Üê ROTA PARA DONO/SUPERADMIN
+            url = `/api/admin/usuarios/${id}`;       // ? ROTA PARA DONO/SUPERADMIN
         }
 
-        console.log(`üì° Buscando ${url}...`);
+        console.log(`?? Buscando ${url}...`);
 
         const res = await fetch(url, {
             method: 'GET',
@@ -2192,25 +2192,25 @@ async function editarUsuario(id) {
         }
 
         const data = await res.json();
-        console.log('üì° Dados recebidos:', data);
+        console.log('?? Dados recebidos:', data);
 
         if (!data.success) {
-            showToast(data.message || 'Erro ao carregar usu√°rio', 'error');
+            showToast(data.message || 'Erro ao carregar usu·rio', 'error');
             return;
         }
 
         if (!data.data) {
-            showToast('Usu√°rio n√£o encontrado', 'error');
+            showToast('Usu·rio n„o encontrado', 'error');
             return;
         }
 
         const usuarioCompleto = data.data;
-        console.log('üë§ Usu√°rio carregado:', usuarioCompleto.nome);
+        console.log('?? Usu·rio carregado:', usuarioCompleto.nome);
 
-        // üî• DETECTAR SE √â PROFISSIONAL OU USU√ÅRIO
+        // ?? DETECTAR SE … PROFISSIONAL OU USU¡RIO
         const isProfissional = usuarioCompleto.role === 'profissional';
 
-        // üî• PEGAR O TELEFONE (se existir)
+        // ?? PEGAR O TELEFONE (se existir)
         const telefone = usuarioCompleto.telefone || '';
 
         const modalContent = `
@@ -2229,34 +2229,34 @@ async function editarUsuario(id) {
                         <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuarioCompleto.email || '')}" required>
                     </div>
                     
-                    <!-- üî• CAMPO TELEFONE PARA TODOS OS USU√ÅRIOS -->
+                    <!-- ?? CAMPO TELEFONE PARA TODOS OS USU¡RIOS -->
                     <div class="form-group">
-                        <label>üì± Telefone</label>
+                        <label>?? Telefone</label>
                         <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(telefone)}" placeholder="(11) 99999-9999">
-                        <small style="color:var(--text-muted);font-size:11px;">Este n√∫mero aparecer√° nas mensagens do WhatsApp</small>
+                        <small style="color:var(--text-muted);font-size:11px;">Este n˙mero aparecer· nas mensagens do WhatsApp</small>
                     </div>
                     
                     ${isProfissional ? `
                         <div class="form-group">
-                            <label>Comiss√£o (%)</label>
+                            <label>Comiss„o (%)</label>
                             <input type="number" id="editUsuarioComissao" class="form-control" value="${usuarioCompleto.comissao_percent || 30}" min="0" max="100">
-                            <small style="color:var(--text-muted);font-size:11px;">Percentual de comiss√£o para profissionais</small>
+                            <small style="color:var(--text-muted);font-size:11px;">Percentual de comiss„o para profissionais</small>
                         </div>
                     ` : `
                         <div class="form-group">
-                            <label>Role (Fun√ß√£o)</label>
+                            <label>Role (FunÁ„o)</label>
                             <select id="editUsuarioRole" class="form-control">
-                                <option value="dono" ${usuarioCompleto.role === 'dono' ? 'selected' : ''}>üëë Dono</option>
-                                <option value="profissional" ${usuarioCompleto.role === 'profissional' ? 'selected' : ''}>üë§ Profissional</option>
-                                <option value="superadmin" ${usuarioCompleto.role === 'superadmin' ? 'selected' : ''}>üî¥ Super Admin</option>
+                                <option value="dono" ${usuarioCompleto.role === 'dono' ? 'selected' : ''}>?? Dono</option>
+                                <option value="profissional" ${usuarioCompleto.role === 'profissional' ? 'selected' : ''}>?? Profissional</option>
+                                <option value="superadmin" ${usuarioCompleto.role === 'superadmin' ? 'selected' : ''}>?? Super Admin</option>
                             </select>
-                            <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permiss√µes do usu√°rio</small>
+                            <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissıes do usu·rio</small>
                         </div>
                     `}
                     
                     <div class="form-group">
                         <label>Nova Senha (opcional)</label>
-                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Digite nova senha (m√≠nimo 6 caracteres)">
+                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Digite nova senha (mÌnimo 6 caracteres)">
                         <small style="color:var(--text-muted);font-size:11px;">Deixe em branco para manter a senha atual</small>
                     </div>
                     
@@ -2272,7 +2272,7 @@ async function editarUsuario(id) {
             </div>
         `;
 
-        showModal('‚úèÔ∏è Editar Usu√°rio', modalContent, null);
+        showModal('?? Editar Usu·rio', modalContent, null);
 
         setTimeout(() => {
             const form = document.getElementById('formEditarUsuario');
@@ -2286,14 +2286,14 @@ async function editarUsuario(id) {
                     salvarUsuario();
                 });
 
-                console.log('‚úÖ Formul√°rio de usu√°rio conectado!');
+                console.log('? Formul·rio de usu·rio conectado!');
             }
         }, 200);
 
     } catch (error) {
         hideLoading();
-        console.error('‚ùå Erro ao editar usu√°rio:', error);
-        showToast('Erro ao carregar dados do usu√°rio: ' + error.message, 'error');
+        console.error('? Erro ao editar usu·rio:', error);
+        showToast('Erro ao carregar dados do usu·rio: ' + error.message, 'error');
     }
 }
 
@@ -2302,7 +2302,7 @@ async function editarUsuario(id) {
 // ============================================
 app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`üìù Super Admin - Estendendo trial da empresa ${id}...`);
+    console.log(`?? Super Admin - Estendendo trial da empresa ${id}...`);
 
     const dataTrialExpira = new Date();
     dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
@@ -2314,11 +2314,11 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
 
     db.run(sql, [dataStr, id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao estender trial:', err);
+            console.error('? Erro ao estender trial:', err);
             return res.json({ success: false, message: 'Erro ao estender trial' });
         }
 
-        console.log(`‚úÖ Trial estendido at√© ${dataStr}`);
+        console.log(`? Trial estendido atÈ ${dataStr}`);
         res.json({
             success: true,
             message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}`,
@@ -2327,12 +2327,12 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
     });
 });
 // ============================================================
-// üî• ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
+// ?? ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
 // ============================================================
 app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
 
-    console.log(`üë§ Super Admin - Buscando profissional ${id}...`);
+    console.log(`?? Super Admin - Buscando profissional ${id}...`);
 
     const sql = isProduction
         ? `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
@@ -2344,28 +2344,28 @@ app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
     db.get(sql, [id], (err, profissional) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar profissional:', err);
+            console.error('? Erro ao buscar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            console.log(`‚ùå Profissional ID ${id} n√£o encontrado`);
-            return res.json({ success: false, message: 'Profissional n√£o encontrado' });
+            console.log(`? Profissional ID ${id} n„o encontrado`);
+            return res.json({ success: false, message: 'Profissional n„o encontrado' });
         }
 
-        console.log(`‚úÖ Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
+        console.log(`? Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
         res.json({ success: true, data: profissional });
     });
 });
 
 // ============================================================
-// üî• ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
+// ?? ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
 // ============================================================
 app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
 
-    console.log(`üë§ Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
+    console.log(`?? Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
 
     // Verificar se o profissional existe
     const sqlCheck = isProduction
@@ -2374,16 +2374,16 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
     db.get(sqlCheck, [id], (err, profissional) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar profissional:', err);
+            console.error('? Erro ao verificar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            console.log(`‚ùå Profissional ID ${id} n√£o encontrado para atualizar`);
-            return res.json({ success: false, message: 'Profissional n√£o encontrado' });
+            console.log(`? Profissional ID ${id} n„o encontrado para atualizar`);
+            return res.json({ success: false, message: 'Profissional n„o encontrado' });
         }
 
-        // Construir query de atualiza√ß√£o
+        // Construir query de atualizaÁ„o
         let query = isProduction
             ? `UPDATE profissionais SET 
                nome = COALESCE($1, nome), 
@@ -2422,11 +2422,11 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 
         db.run(query, params, function (err) {
             if (err) {
-                console.error('‚ùå Erro ao atualizar profissional:', err);
+                console.error('? Erro ao atualizar profissional:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            console.log(`‚úÖ Profissional ${id} atualizado com sucesso!`);
+            console.log(`? Profissional ${id} atualizado com sucesso!`);
             res.json({
                 success: true,
                 message: 'Profissional atualizado com sucesso!'
@@ -2437,7 +2437,7 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
 // ============================================
 // 12. CONTAGEM DE ACESSOS (OPCIONAL)
 // ============================================
-// Criar tabela de acessos se n√£o existir
+// Criar tabela de acessos se n„o existir
 const sqlCriarAcessos = isProduction
     ? `CREATE TABLE IF NOT EXISTS acessos (
         id SERIAL PRIMARY KEY,
@@ -2458,9 +2458,9 @@ const sqlCriarAcessos = isProduction
 
 db.run(sqlCriarAcessos, [], (err) => {
     if (err) {
-        console.error('‚ùå Erro ao criar tabela acessos:', err);
+        console.error('? Erro ao criar tabela acessos:', err);
     } else {
-        console.log('‚úÖ Tabela acessos verificada/criada');
+        console.log('? Tabela acessos verificada/criada');
     }
 });
 
@@ -2477,13 +2477,13 @@ app.post('/api/admin/registrar-acesso', auth, (req, res) => {
 
     db.run(sql, [usuario_id, empresa_id, ip, user_agent], (err) => {
         if (err) {
-            console.error('‚ùå Erro ao registrar acesso:', err);
+            console.error('? Erro ao registrar acesso:', err);
         }
         res.json({ success: true });
     });
 });
 
-// Rota para estat√≠sticas de acessos
+// Rota para estatÌsticas de acessos
 app.get('/api/admin/acessos', auth, verificarSuperAdmin, (req, res) => {
     const sql = isProduction
         ? `SELECT 
@@ -2507,7 +2507,7 @@ app.get('/api/admin/acessos', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, acessos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar acessos:', err);
+            console.error('? Erro ao buscar acessos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -2528,7 +2528,7 @@ app.get('/api/admin/acessos', auth, verificarSuperAdmin, (req, res) => {
 
         db.get(sqlTotais, [], (err, totais) => {
             if (err) {
-                console.error('‚ùå Erro ao buscar totais de acessos:', err);
+                console.error('? Erro ao buscar totais de acessos:', err);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -2543,9 +2543,9 @@ app.get('/api/admin/acessos', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 
-console.log('‚úÖ Super Admin - Todas as rotas carregadas com sucesso!');
+console.log('? Super Admin - Todas as rotas carregadas com sucesso!');
 // ============================================================
-// SERVI√áOS
+// SERVI«OS
 // ============================================================
 
 app.get('/api/servicos', auth, (req, res) => {
@@ -2559,7 +2559,7 @@ app.get('/api/servicos', auth, (req, res) => {
 
     db.all(sql, [empresa_id], (err, servicos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar servi√ßos:', err.message);
+            console.error('? Erro ao buscar serviÁos:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: servicos });
@@ -2575,7 +2575,7 @@ app.get('/api/servicos/todos', auth, verificarDono, (req, res) => {
 
     db.all(sql, [empresa_id], (err, servicos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar todos servi√ßos:', err.message);
+            console.error('? Erro ao buscar todos serviÁos:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: servicos });
@@ -2587,7 +2587,7 @@ app.post('/api/servicos', auth, verificarDono, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     if (!nome || !valor) {
-        return res.json({ success: false, message: 'Nome e valor s√£o obrigat√≥rios' });
+        return res.json({ success: false, message: 'Nome e valor s„o obrigatÛrios' });
     }
 
     const sql = isProduction
@@ -2598,12 +2598,12 @@ app.post('/api/servicos', auth, verificarDono, (req, res) => {
 
     db.run(sql, [nome, descricao || '', valor, duracao || 30, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao criar servi√ßo:', err.message);
+            console.error('? Erro ao criar serviÁo:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
         let id = this?.lastID || this?.id || null;
-        res.json({ success: true, data: { id: id }, message: 'Servi√ßo cadastrado' });
+        res.json({ success: true, data: { id: id }, message: 'ServiÁo cadastrado' });
     });
 });
 
@@ -2630,10 +2630,10 @@ app.put('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
     db.run(sql, [nome, descricao, valor, duracao, ativo, id, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao editar servi√ßo:', err.message);
+            console.error('? Erro ao editar serviÁo:', err.message);
             return res.json({ success: false, message: err.message });
         }
-        res.json({ success: true, message: 'Servi√ßo atualizado' });
+        res.json({ success: true, message: 'ServiÁo atualizado' });
     });
 });
 
@@ -2647,7 +2647,7 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
     db.get(sqlCheck, [id], (err, result) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar agendamentos:', err.message);
+            console.error('? Erro ao verificar agendamentos:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
@@ -2658,10 +2658,10 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
             db.run(sqlUpdate, [id, empresa_id], (err) => {
                 if (err) {
-                    console.error('‚ùå Erro ao desativar servi√ßo:', err.message);
+                    console.error('? Erro ao desativar serviÁo:', err.message);
                     return res.json({ success: false, message: err.message });
                 }
-                res.json({ success: true, message: 'Servi√ßo desativado (possui agendamentos)' });
+                res.json({ success: true, message: 'ServiÁo desativado (possui agendamentos)' });
             });
         } else {
             const sqlDelete = isProduction
@@ -2670,10 +2670,10 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
             db.run(sqlDelete, [id, empresa_id], (err) => {
                 if (err) {
-                    console.error('‚ùå Erro ao excluir servi√ßo:', err.message);
+                    console.error('? Erro ao excluir serviÁo:', err.message);
                     return res.json({ success: false, message: err.message });
                 }
-                res.json({ success: true, message: 'Servi√ßo removido' });
+                res.json({ success: true, message: 'ServiÁo removido' });
             });
         }
     });
@@ -2698,7 +2698,7 @@ app.get('/api/profissionais', auth, (req, res) => {
 
     db.all(sql, [empresa_id], (err, profissionais) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar profissionais:', err.message);
+            console.error('? Erro ao buscar profissionais:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: profissionais });
@@ -2710,7 +2710,7 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
     const empresa_id = req.usuario.empresa_id;
 
     if (!nome || !email) {
-        return res.json({ success: false, message: 'Nome e email s√£o obrigat√≥rios' });
+        return res.json({ success: false, message: 'Nome e email s„o obrigatÛrios' });
     }
 
     let senhaFinal = senha;
@@ -2734,7 +2734,7 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
     db.run(sql, [nome, email, senhaHash, comissao_percent || 30, empresa_id, telefonePadrao], function (err) {
         if (err) {
             if (err.message.includes('UNIQUE')) {
-                return res.json({ success: false, message: 'Email j√° cadastrado' });
+                return res.json({ success: false, message: 'Email j· cadastrado' });
             }
             return res.json({ success: false, message: err.message });
         }
@@ -2743,7 +2743,7 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
         res.json({
             success: true,
             data: { id: id, senha_temp: senhaFinal },
-            message: `Profissional criado! ${senhaGerada ? `Senha tempor√°ria: ${senhaFinal}` : 'Senha definida pelo dono.'}`
+            message: `Profissional criado! ${senhaGerada ? `Senha tempor·ria: ${senhaFinal}` : 'Senha definida pelo dono.'}`
         });
     });
 });
@@ -2807,7 +2807,7 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 
     db.get(sqlCheck, [id], (err, result) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar agendamentos:', err.message);
+            console.error('? Erro ao verificar agendamentos:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
@@ -2818,7 +2818,7 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 
             db.run(sqlUpdate, [id, empresa_id], (err) => {
                 if (err) {
-                    console.error('‚ùå Erro ao desativar profissional:', err.message);
+                    console.error('? Erro ao desativar profissional:', err.message);
                     return res.json({ success: false, message: err.message });
                 }
                 res.json({ success: true, message: 'Profissional desativado (possui agendamentos)' });
@@ -2830,7 +2830,7 @@ app.delete('/api/profissionais/:id', auth, verificarDono, (req, res) => {
 
             db.run(sqlDelete, [id, empresa_id], (err) => {
                 if (err) {
-                    console.error('‚ùå Erro ao excluir profissional:', err.message);
+                    console.error('? Erro ao excluir profissional:', err.message);
                     return res.json({ success: false, message: err.message });
                 }
                 res.json({ success: true, message: 'Profissional removido' });
@@ -2878,7 +2878,7 @@ app.get('/api/agendamentos', auth, (req, res) => {
 
     db.all(sql, [empresa_id], (err, agendamentos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar agendamentos:', err.message);
+            console.error('? Erro ao buscar agendamentos:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
@@ -2893,7 +2893,7 @@ app.get('/api/agendamentos', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL E DURA√á√ÉO)
+// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL E DURA«√O)
 // ============================================
 app.post('/api/agendamentos',
     auth,
@@ -2903,34 +2903,34 @@ app.post('/api/agendamentos',
         const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
         const empresa_id = req.usuario.empresa_id;
 
-        console.log('üìù Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
+        console.log('?? Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
 
         if (!cliente_id || !data) {
-            console.log('‚ùå Cliente ou data faltando');
-            return res.json({ success: false, message: 'Cliente e data s√£o obrigat√≥rios' });
+            console.log('? Cliente ou data faltando');
+            return res.json({ success: false, message: 'Cliente e data s„o obrigatÛrios' });
         }
 
         if (!hora) {
-            console.log('‚ùå Hor√°rio faltando');
-            return res.json({ success: false, message: 'Hor√°rio √© obrigat√≥rio' });
+            console.log('? Hor·rio faltando');
+            return res.json({ success: false, message: 'Hor·rio È obrigatÛrio' });
         }
 
         // ============================================
-        // üî•üî•üî• VALIDA√á√ÉO: DATA/HORA N√ÉO PODE SER NO PASSADO üî•üî•üî•
+        // ?????? VALIDA«√O: DATA/HORA N√O PODE SER NO PASSADO ??????
         // ============================================
         const agora = new Date();
         const [ano, mes, dia] = data.split('-').map(Number);
         const [horaStr, minutoStr] = hora.split(':').map(Number);
         const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0, 0);
 
-        console.log('üìÖ Data/Hora agendamento:', dataHoraAgendamento);
-        console.log('üïê Agora:', agora);
+        console.log('?? Data/Hora agendamento:', dataHoraAgendamento);
+        console.log('?? Agora:', agora);
 
         if (dataHoraAgendamento < agora) {
-            console.log('‚ùå Tentativa de agendar em data/hora passada');
+            console.log('? Tentativa de agendar em data/hora passada');
             return res.json({
                 success: false,
-                message: '‚è∞ N√£o √© poss√≠vel agendar em datas ou hor√°rios que j√° passaram. Selecione uma data/hora futura.'
+                message: '? N„o È possÌvel agendar em datas ou hor·rios que j· passaram. Selecione uma data/hora futura.'
             });
         }
 
@@ -2942,16 +2942,16 @@ app.post('/api/agendamentos',
             const minutoAgendamento = parseInt(minutoStr);
 
             if (horaAgendamento < horaAtual || (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
-                console.log('‚ùå Tentativa de agendar em hor√°rio que j√° passou hoje');
+                console.log('? Tentativa de agendar em hor·rio que j· passou hoje');
                 return res.json({
                     success: false,
-                    message: `‚è∞ N√£o √© poss√≠vel agendar no hor√°rio ${hora} pois j√° passou. Escolha um hor√°rio futuro.`
+                    message: `? N„o È possÌvel agendar no hor·rio ${hora} pois j· passou. Escolha um hor·rio futuro.`
                 });
             }
         }
 
         // ============================================
-        // üî• VALIDA√á√ÉO: CLIENTE J√Å TEM AGENDAMENTO NESTE DIA? (REGRRA FIXA)
+        // ?? VALIDA«√O: CLIENTE J¡ TEM AGENDAMENTO NESTE DIA? (REGRRA FIXA)
         // ============================================
         const sqlAgendamentoHoje = isProduction
             ? `SELECT id FROM agendamentos 
@@ -2970,7 +2970,7 @@ app.post('/api/agendamentos',
         const agendamentoHoje = await new Promise((resolve) => {
             db.get(sqlAgendamentoHoje, [parseInt(cliente_id), data, parseInt(empresa_id)], (err, row) => {
                 if (err) {
-                    console.error('‚ùå Erro ao verificar agendamento no mesmo dia:', err);
+                    console.error('? Erro ao verificar agendamento no mesmo dia:', err);
                     resolve(null);
                 } else {
                     resolve(row);
@@ -2979,15 +2979,15 @@ app.post('/api/agendamentos',
         });
 
         if (agendamentoHoje) {
-            console.log(`‚ùå Cliente ${cliente_id} j√° tem agendamento no dia ${data}`);
+            console.log(`? Cliente ${cliente_id} j· tem agendamento no dia ${data}`);
             return res.json({
                 success: false,
-                message: `Voc√™ j√° possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente s√≥ pode fazer UM agendamento por dia.`
+                message: `VocÍ j· possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente sÛ pode fazer UM agendamento por dia.`
             });
         }
 
         // ============================================
-        // üî• VALIDA√á√ÉO: BUSCAR DIAS_BLOQUEIO_GERAL DA EMPRESA
+        // ?? VALIDA«√O: BUSCAR DIAS_BLOQUEIO_GERAL DA EMPRESA
         // ============================================
         const sqlDiasBloqueioEmpresa = isProduction
             ? `SELECT COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral FROM empresas WHERE id = $1`
@@ -2996,20 +2996,20 @@ app.post('/api/agendamentos',
         const empresaInfo = await new Promise((resolve) => {
             db.get(sqlDiasBloqueioEmpresa, [parseInt(empresa_id)], (err, row) => {
                 if (err) {
-                    console.error('‚ùå Erro ao buscar dias_bloqueio_geral:', err);
+                    console.error('? Erro ao buscar dias_bloqueio_geral:', err);
                     resolve({ dias_bloqueio_geral: 0 });
                 } else {
-                    console.log(`üìã Empresa ${empresa_id} - dias_bloqueio_geral:`, row?.dias_bloqueio_geral || 0);
+                    console.log(`?? Empresa ${empresa_id} - dias_bloqueio_geral:`, row?.dias_bloqueio_geral || 0);
                     resolve(row || { dias_bloqueio_geral: 0 });
                 }
             });
         });
 
         const diasBloqueioGeral = empresaInfo?.dias_bloqueio_geral || 0;
-        console.log(`üìã Empresa ${empresa_id} - Dias de bloqueio geral: ${diasBloqueioGeral}`);
+        console.log(`?? Empresa ${empresa_id} - Dias de bloqueio geral: ${diasBloqueioGeral}`);
 
         if (diasBloqueioGeral > 0) {
-            console.log(`üîç Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
+            console.log(`?? Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
 
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
@@ -3028,10 +3028,10 @@ app.post('/api/agendamentos',
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
                     if (err) {
-                        console.error('‚ùå Erro ao buscar √∫ltimo agendamento:', err);
+                        console.error('? Erro ao buscar ˙ltimo agendamento:', err);
                         resolve(null);
                     } else {
-                        console.log(`üìÖ √öltimo agendamento encontrado (raw):`, row);
+                        console.log(`?? ⁄ltimo agendamento encontrado (raw):`, row);
                         resolve(row);
                     }
                 });
@@ -3051,7 +3051,7 @@ app.post('/api/agendamentos',
                         dataUltimo.setHours(0, 0, 0, 0);
                     }
 
-                    console.log(`üìÖ Data do √∫ltimo agendamento convertida:`, dataUltimo);
+                    console.log(`?? Data do ˙ltimo agendamento convertida:`, dataUltimo);
 
                     if (!isNaN(dataUltimo.getTime())) {
                         const dataMinima = new Date(dataUltimo);
@@ -3071,32 +3071,32 @@ app.post('/api/agendamentos',
                             dataAgendamento.setHours(0, 0, 0, 0);
                         }
 
-                        console.log(`üìÖ √öltimo agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
-                        console.log(`üìÖ Data m√≠nima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
-                        console.log(`üìÖ Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
+                        console.log(`?? ⁄ltimo agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
+                        console.log(`?? Data mÌnima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
+                        console.log(`?? Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
 
                         if (dataAgendamento < dataMinima) {
-                            console.log(`‚ùå BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} n√£o pode agendar antes de ${dataMinimaStr}`);
+                            console.log(`? BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} n„o pode agendar antes de ${dataMinimaStr}`);
                             return res.json({
                                 success: false,
-                                message: `Voc√™ s√≥ pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeral} dias ap√≥s o √∫ltimo agendamento).`
+                                message: `VocÍ sÛ pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeral} dias apÛs o ˙ltimo agendamento).`
                             });
                         } else {
-                            console.log(`‚úÖ Cliente ${cliente_id} pode agendar em ${data} - Dentro do prazo permitido`);
+                            console.log(`? Cliente ${cliente_id} pode agendar em ${data} - Dentro do prazo permitido`);
                         }
                     }
                 } catch (error) {
-                    console.error('‚ùå Erro ao processar data do √∫ltimo agendamento:', error);
+                    console.error('? Erro ao processar data do ˙ltimo agendamento:', error);
                 }
             } else {
-                console.log(`‚úÖ Cliente ${cliente_id} n√£o tem agendamentos anteriores - pode agendar livremente`);
+                console.log(`? Cliente ${cliente_id} n„o tem agendamentos anteriores - pode agendar livremente`);
             }
         } else {
-            console.log(`‚ÑπÔ∏è Bloqueio geral DESATIVADO (0 dias) - Sem valida√ß√£o extra`);
+            console.log(`?? Bloqueio geral DESATIVADO (0 dias) - Sem validaÁ„o extra`);
         }
 
         // ============================================
-        // üî• VALIDA√á√ÉO: BUSCAR DURA√á√ÉO DO SERVI√áO
+        // ?? VALIDA«√O: BUSCAR DURA«√O DO SERVI«O
         // ============================================
         let duracaoServico = 30;
         let nomeServico = '';
@@ -3110,7 +3110,7 @@ app.post('/api/agendamentos',
             const servicoInfo = await new Promise((resolve) => {
                 db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, row) => {
                     if (err) {
-                        console.error('‚ùå Erro ao buscar servi√ßo:', err);
+                        console.error('? Erro ao buscar serviÁo:', err);
                         resolve(null);
                     } else {
                         resolve(row);
@@ -3122,27 +3122,27 @@ app.post('/api/agendamentos',
                 duracaoServico = servicoInfo.duracao || 30;
                 nomeServico = servicoInfo.nome;
                 valorServico = servicoInfo.valor || 0;
-                console.log(`üìù Servi√ßo encontrado: ${nomeServico} - ${duracaoServico}min - R$ ${valorServico}`);
+                console.log(`?? ServiÁo encontrado: ${nomeServico} - ${duracaoServico}min - R$ ${valorServico}`);
             } else {
-                console.log(`‚ö†Ô∏è Servi√ßo ${servico_id} n√£o encontrado, usando padr√£o 30min`);
+                console.log(`?? ServiÁo ${servico_id} n„o encontrado, usando padr„o 30min`);
             }
         } else {
-            nomeServico = req.body.servico || 'Servi√ßo';
+            nomeServico = req.body.servico || 'ServiÁo';
             valorServico = parseFloat(req.body.valor) || 0;
             duracaoServico = 30;
         }
 
         // ============================================
-        // üî• VERIFICAR PROFISSIONAL - CORRIGIDO
+        // ?? VERIFICAR PROFISSIONAL - CORRIGIDO
         // ============================================
         let profissionalIdFinal = null;
 
-        // Verificar se o usu√°rio especificou um profissional
+        // Verificar se o usu·rio especificou um profissional
         if (profissional_id && profissional_id !== '' && profissional_id !== 'null') {
             profissionalIdFinal = parseInt(profissional_id);
-            console.log(`üë§ Profissional especificado: ${profissionalIdFinal}`);
+            console.log(`?? Profissional especificado: ${profissionalIdFinal}`);
 
-            // Verificar se o profissional est√° dispon√≠vel
+            // Verificar se o profissional est· disponÌvel
             const disponivel = await verificarDisponibilidadeHorario(
                 empresa_id,
                 profissionalIdFinal,
@@ -3152,20 +3152,20 @@ app.post('/api/agendamentos',
             );
 
             if (!disponivel) {
-                console.log(`‚ùå Hor√°rio ${hora} ocupado para o profissional ${profissionalIdFinal}`);
+                console.log(`? Hor·rio ${hora} ocupado para o profissional ${profissionalIdFinal}`);
                 return res.json({
                     success: false,
-                    message: `Este hor√°rio j√° est√° ocupado para este profissional. O servi√ßo dura ${duracaoServico}min.`
+                    message: `Este hor·rio j· est· ocupado para este profissional. O serviÁo dura ${duracaoServico}min.`
                 });
             }
         } else {
-            // üî• QUANDO √â DONO (sem profissional), N√ÉO ATRIBUI A NINGU√âM
+            // ?? QUANDO … DONO (sem profissional), N√O ATRIBUI A NINGU…M
             profissionalIdFinal = null;
-            console.log(`üëë Agendamento como Dono (sem profissional)`);
+            console.log(`?? Agendamento como Dono (sem profissional)`);
         }
 
         // ============================================
-        // FUN√á√ÉO PARA CRIAR O AGENDAMENTO
+        // FUN«√O PARA CRIAR O AGENDAMENTO
         // ============================================
         async function criarAgendamento(servicoNome, servicoValor, servicoId) {
             const sqlInsert = isProduction
@@ -3186,28 +3186,28 @@ app.post('/api/agendamentos',
                 profissionalIdFinal
             ];
 
-            console.log('üìù SQL Insert:', sqlInsert);
-            console.log('üìù Par√¢metros:', params);
+            console.log('?? SQL Insert:', sqlInsert);
+            console.log('?? Par‚metros:', params);
 
             db.run(sqlInsert, params, async function (err) {
                 if (err) {
-                    console.error('‚ùå Erro ao criar agendamento:', err.message);
+                    console.error('? Erro ao criar agendamento:', err.message);
                     return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
                 }
 
                 let id = this?.lastID || this?.id || null;
-                console.log('‚úÖ Agendamento criado com ID:', id);
+                console.log('? Agendamento criado com ID:', id);
 
                 incrementarContadorAgendamentos(empresa_id, (err) => {
                     if (err) {
-                        console.error('‚ö†Ô∏è Erro ao incrementar contador:', err);
+                        console.error('?? Erro ao incrementar contador:', err);
                     } else {
-                        console.log('‚úÖ Contador de agendamentos incrementado');
+                        console.log('? Contador de agendamentos incrementado');
                     }
                 });
 
                 // ============================================
-                // ENVIA NOTIFICA√á√ïES WHATSAPP
+                // ENVIA NOTIFICA«’ES WHATSAPP
                 // ============================================
                 try {
                     const cliente = await new Promise((resolve, reject) => {
@@ -3250,10 +3250,10 @@ app.post('/api/agendamentos',
                         empresa: {
                             nome: empresa?.nome || 'Barbearia',
                             endereco: empresa?.endereco || '',
-                            telefone_dono: empresa?.telefone_dono || ''  // üî• ADICIONE ESTA LINHA!
+                            telefone_dono: empresa?.telefone_dono || ''  // ?? ADICIONE ESTA LINHA!
                         },
                     };
-                    console.log('üì± Dados do WhatsApp:', {
+                    console.log('?? Dados do WhatsApp:', {
                         cliente: dadosNotificacao.cliente.telefone,
                         empresa: dadosNotificacao.empresa.nome,
                         telefone_dono: dadosNotificacao.empresa.telefone_dono,
@@ -3262,16 +3262,16 @@ app.post('/api/agendamentos',
 
                     if (dadosNotificacao.cliente.telefone) {
                         await whatsappService.enviarConfirmacao(dadosNotificacao);
-                        console.log(`üì± WhatsApp: Confirma√ß√£o enviada para ${dadosNotificacao.cliente.telefone}`);
+                        console.log(`?? WhatsApp: ConfirmaÁ„o enviada para ${dadosNotificacao.cliente.telefone}`);
                     }
 
                     if (profissional?.telefone) {
                         await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao);
-                        console.log(`üì± WhatsApp: Notifica√ß√£o enviada para profissional ${profissional.telefone}`);
+                        console.log(`?? WhatsApp: NotificaÁ„o enviada para profissional ${profissional.telefone}`);
                     }
 
                 } catch (whatsappError) {
-                    console.error('‚ö†Ô∏è Erro ao enviar WhatsApp:', whatsappError.message);
+                    console.error('?? Erro ao enviar WhatsApp:', whatsappError.message);
                 }
 
                 res.json({
@@ -3282,7 +3282,7 @@ app.post('/api/agendamentos',
             });
         }
 
-        // Chamar a fun√ß√£o de cria√ß√£o
+        // Chamar a funÁ„o de criaÁ„o
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
             criarAgendamento(nomeServico, valorServico, parseInt(servico_id));
         } else {
@@ -3314,7 +3314,7 @@ app.get('/api/profissional/agendamentos', auth, (req, res) => {
 
     db.all(sql, [profissional_id], (err, agendamentos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar agendamentos do profissional:', err.message);
+            console.error('? Erro ao buscar agendamentos do profissional:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: agendamentos });
@@ -3325,7 +3325,7 @@ app.get('/api/profissional/agendamentos', auth, (req, res) => {
 // ROTA: FINANCEIRO DO PROFISSIONAL
 // ============================================================
 app.get('/api/profissional/financeiro', auth, (req, res) => {
-    // Verificar se √© profissional
+    // Verificar se È profissional
     if (req.usuario.role !== 'profissional') {
         return res.json({
             success: false,
@@ -3336,9 +3336,9 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
     const profissional_id = req.usuario.id;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log(`üìä Buscando financeiro do profissional ${profissional_id} (${req.usuario.nome})`);
+    console.log(`?? Buscando financeiro do profissional ${profissional_id} (${req.usuario.nome})`);
 
-    // Buscar agendamentos conclu√≠dos do profissional
+    // Buscar agendamentos concluÌdos do profissional
     const sql = isProduction
         ? `SELECT 
             a.id,
@@ -3381,7 +3381,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
 
     db.all(sql, [profissional_id, empresa_id], (err, agendamentos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar financeiro do profissional:', err.message);
+            console.error('? Erro ao buscar financeiro do profissional:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
@@ -3401,7 +3401,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
             // Formatar a data
             let dataFormatada = a.data_formatada || a.data;
             if (dataFormatada && typeof dataFormatada === 'string') {
-                // J√° est√° formatada
+                // J· est· formatada
             } else if (a.data) {
                 try {
                     const dataObj = new Date(a.data);
@@ -3424,7 +3424,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
             };
         });
 
-        console.log(`‚úÖ Financeiro do profissional ${profissional_id}: ${totalServicos} servi√ßos, R$ ${totalComissoes.toFixed(2)} em comiss√µes`);
+        console.log(`? Financeiro do profissional ${profissional_id}: ${totalServicos} serviÁos, R$ ${totalComissoes.toFixed(2)} em comissıes`);
 
         res.json({
             success: true,
@@ -3455,11 +3455,11 @@ app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
 
     db.get(sqlSelect, [id, profissional_id], (err, agendamento) => {
         if (err || !agendamento) {
-            return res.json({ success: false, message: 'Agendamento n√£o encontrado' });
+            return res.json({ success: false, message: 'Agendamento n„o encontrado' });
         }
 
         if (agendamento.status === 'concluido') {
-            return res.json({ success: false, message: 'Agendamentos conclu√≠dos n√£o podem ser editados' });
+            return res.json({ success: false, message: 'Agendamentos concluÌdos n„o podem ser editados' });
         }
 
         let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
@@ -3512,11 +3512,11 @@ app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
 
     db.get(sqlSelect, [id, profissional_id], (err, agendamento) => {
         if (err || !agendamento) {
-            return res.json({ success: false, message: 'Agendamento n√£o encontrado' });
+            return res.json({ success: false, message: 'Agendamento n„o encontrado' });
         }
 
         if (agendamento.status === 'concluido') {
-            return res.json({ success: false, message: 'Agendamento j√° foi conclu√≠do' });
+            return res.json({ success: false, message: 'Agendamento j· foi concluÌdo' });
         }
 
         const comissao = (agendamento.valor || 0) * (comissao_percent / 100);
@@ -3532,7 +3532,7 @@ app.put('/api/profissional/agendamentos/:id/concluir', auth, (req, res) => {
 
             res.json({
                 success: true,
-                message: `Agendamento conclu√≠do! Sua comiss√£o: R$ ${comissao.toFixed(2)}`,
+                message: `Agendamento concluÌdo! Sua comiss„o: R$ ${comissao.toFixed(2)}`,
                 data: { comissao: comissao }
             });
         });
@@ -3560,7 +3560,7 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
                 return res.json({ success: false, message: err.message });
             }
             if (!agendamento) {
-                return res.json({ success: false, message: 'Agendamento n√£o encontrado' });
+                return res.json({ success: false, message: 'Agendamento n„o encontrado' });
             }
 
             let comissao = 0;
@@ -3585,21 +3585,21 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
                         try {
                             await whatsappService.send(
                                 agendamento.telefone,
-                                `‚ú® *Atendimento Conclu√≠do!*\n\n` +
-                                `Ol√° *${agendamento.cliente_nome || 'Cliente'}*! Seu atendimento foi conclu√≠do com sucesso. ‚úÖ\n\n` +
-                                `Agradecemos pela prefer√™ncia! üôè\n\n` +
-                                `J√° pensou em agendar seu pr√≥ximo corte? Agende pelo nosso chatbot! ü§ñ\n\n` +
-                                `_Esta √© uma mensagem autom√°tica._`
+                                `? *Atendimento ConcluÌdo!*\n\n` +
+                                `Ol· *${agendamento.cliente_nome || 'Cliente'}*! Seu atendimento foi concluÌdo com sucesso. ?\n\n` +
+                                `Agradecemos pela preferÍncia! ??\n\n` +
+                                `J· pensou em agendar seu prÛximo corte? Agende pelo nosso chatbot! ??\n\n` +
+                                `_Esta È uma mensagem autom·tica._`
                             );
-                            console.log(`üì± WhatsApp: Agradecimento enviado para ${agendamento.telefone}`);
+                            console.log(`?? WhatsApp: Agradecimento enviado para ${agendamento.telefone}`);
                         } catch (whatsappError) {
-                            console.error('‚ö†Ô∏è Erro ao enviar WhatsApp:', whatsappError.message);
+                            console.error('?? Erro ao enviar WhatsApp:', whatsappError.message);
                         }
                     }
 
                     res.json({
                         success: true,
-                        message: 'Agendamento conclu√≠do com sucesso!',
+                        message: 'Agendamento concluÌdo com sucesso!',
                         comissao: comissao
                     });
                 }
@@ -3632,7 +3632,7 @@ app.put('/api/agendamentos/:id/cancelar', auth, verificarDono, async (req, res) 
         });
 
         if (!agendamento) {
-            return res.status(404).json({ success: false, message: 'Agendamento n√£o encontrado' });
+            return res.status(404).json({ success: false, message: 'Agendamento n„o encontrado' });
         }
 
         await new Promise((resolve, reject) => {
@@ -3650,14 +3650,14 @@ app.put('/api/agendamentos/:id/cancelar', auth, verificarDono, async (req, res) 
             try {
                 await whatsappService.enviarCancelamento({
                     cliente: { nome: agendamento.cliente_nome || 'Cliente' },
-                    servico: { nome: agendamento.servico_nome || 'Servi√ßo' },
+                    servico: { nome: agendamento.servico_nome || 'ServiÁo' },
                     data: agendamento.data,
                     hora: agendamento.hora,
                     empresa: { nome: 'Barbearia' }
                 });
-                console.log(`üì± WhatsApp: Cancelamento notificado para ${agendamento.telefone}`);
+                console.log(`?? WhatsApp: Cancelamento notificado para ${agendamento.telefone}`);
             } catch (whatsappError) {
-                console.error('‚ö†Ô∏è Erro ao enviar WhatsApp:', whatsappError.message);
+                console.error('?? Erro ao enviar WhatsApp:', whatsappError.message);
             }
         }
 
@@ -3680,11 +3680,11 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
     db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {
-            return res.json({ success: false, message: 'Agendamento n√£o encontrado' });
+            return res.json({ success: false, message: 'Agendamento n„o encontrado' });
         }
 
         if (agendamento.status === 'concluido') {
-            return res.json({ success: false, message: 'Agendamentos conclu√≠dos n√£o podem ser editados' });
+            return res.json({ success: false, message: 'Agendamentos concluÌdos n„o podem ser editados' });
         }
 
         let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
@@ -3748,7 +3748,7 @@ app.delete('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
     db.run(sql, [id, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao excluir agendamento:', err.message);
+            console.error('? Erro ao excluir agendamento:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, message: 'Agendamento removido' });
@@ -3777,7 +3777,7 @@ app.get('/api/clientes', auth, (req, res) => {
 
     db.all(sql, [empresa_id], (err, clientes) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar clientes:', err.message);
+            console.error('? Erro ao buscar clientes:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: clientes });
@@ -3791,10 +3791,10 @@ app.post('/api/clientes', auth, (req, res) => {
     const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('üìù Criando cliente:', { nome, telefone, email, empresa_id });
+    console.log('?? Criando cliente:', { nome, telefone, email, empresa_id });
 
     if (!nome) {
-        return res.json({ success: false, message: 'Nome √© obrigat√≥rio' });
+        return res.json({ success: false, message: 'Nome È obrigatÛrio' });
     }
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
@@ -3805,12 +3805,12 @@ app.post('/api/clientes', auth, (req, res) => {
 
     db.run(sql, [nome, telefonePadrao, email, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao criar cliente:', err.message);
+            console.error('? Erro ao criar cliente:', err.message);
             return res.json({ success: false, message: 'Erro ao criar cliente: ' + err.message });
         }
 
         let id = this?.lastID || this?.id || null;
-        console.log('‚úÖ Cliente criado com ID:', id);
+        console.log('? Cliente criado com ID:', id);
         res.json({ success: true, data: { id: id }, message: 'Cliente cadastrado com sucesso!' });
     });
 });
@@ -3823,7 +3823,7 @@ app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
     const { nome, telefone, email } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    console.log('üìù Atualizando cliente:', { id, nome, telefone, email, empresa_id });
+    console.log('?? Atualizando cliente:', { id, nome, telefone, email, empresa_id });
 
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
 
@@ -3841,11 +3841,11 @@ app.put('/api/clientes/:id', auth, verificarDono, (req, res) => {
 
     db.run(sql, [nome, telefonePadrao, email, id, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao editar cliente:', err.message);
+            console.error('? Erro ao editar cliente:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('‚úÖ Cliente atualizado! Changes:', this.changes);
+        console.log('? Cliente atualizado! Changes:', this.changes);
         res.json({ success: true, message: 'Cliente atualizado com sucesso' });
     });
 });
@@ -3860,7 +3860,7 @@ app.delete('/api/clientes/:id', auth, verificarDono, (req, res) => {
 
     db.run(sql, [id, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao excluir cliente:', err.message);
+            console.error('? Erro ao excluir cliente:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, message: 'Cliente removido' });
@@ -3878,7 +3878,7 @@ app.put('/api/clientes/:id/bloquear-chatbot', auth, verificarDono, (req, res) =>
 
     db.run(sql, [bloquear ? 1 : 0, id, empresa_id], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao bloquear/desbloquear cliente:', err.message);
+            console.error('? Erro ao bloquear/desbloquear cliente:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, message: bloquear ? 'Cliente bloqueado do chatbot' : 'Cliente desbloqueado do chatbot' });
@@ -3892,7 +3892,7 @@ app.put('/api/empresa/bloqueio-geral', auth, verificarDono, (req, res) => {
     const { dias_bloqueio } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    console.log('üìù Atualizando bloqueio geral:', { empresaId, dias_bloqueio });
+    console.log('?? Atualizando bloqueio geral:', { empresaId, dias_bloqueio });
 
     const diasBloqueioFinal = parseInt(dias_bloqueio) || 0;
 
@@ -3902,17 +3902,17 @@ app.put('/api/empresa/bloqueio-geral', auth, verificarDono, (req, res) => {
 
     db.run(sql, [diasBloqueioFinal, empresaId], function (err) {
         if (err) {
-            console.error('‚ùå Erro ao atualizar bloqueio geral:', err.message);
+            console.error('? Erro ao atualizar bloqueio geral:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('‚úÖ Bloqueio geral atualizado para:', diasBloqueioFinal);
+        console.log('? Bloqueio geral atualizado para:', diasBloqueioFinal);
         res.json({ success: true, message: `Bloqueio geral atualizado para ${diasBloqueioFinal} dias!` });
     });
 });
 
 // ============================================================
-// HOR√ÅRIOS
+// HOR¡RIOS
 // ============================================================
 
 app.get('/api/horarios', auth, (req, res) => {
@@ -3924,7 +3924,7 @@ app.get('/api/horarios', auth, (req, res) => {
 
     db.all(sql, [empresa_id], (err, horarios) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar hor√°rios:', err.message);
+            console.error('? Erro ao buscar hor·rios:', err.message);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: horarios });
@@ -3936,7 +3936,7 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
     const { dia } = req.params;
     const { aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = req.body;
 
-    console.log('üìù Atualizando hor√°rio:', { empresa_id, dia, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim });
+    console.log('?? Atualizando hor·rio:', { empresa_id, dia, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim });
 
     const sqlSelect = isProduction
         ? `SELECT * FROM horarios_funcionamento WHERE empresa_id = $1 AND dia_semana = $2`
@@ -3944,8 +3944,8 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 
     db.get(sqlSelect, [empresa_id, dia], (err, horarioAtual) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar hor√°rio atual:', err.message);
-            return res.json({ success: false, message: 'Erro ao buscar hor√°rio atual' });
+            console.error('? Erro ao buscar hor·rio atual:', err.message);
+            return res.json({ success: false, message: 'Erro ao buscar hor·rio atual' });
         }
 
         const finalAberto = aberto !== undefined ? aberto : (horarioAtual?.aberto || 1);
@@ -3975,8 +3975,8 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 
         db.run(sql, [finalAberto, finalHoraInicio, finalHoraFim, finalAlmocoInicio, finalAlmocoFim, finalIntervalo, empresa_id, dia], function (err) {
             if (err) {
-                console.error('‚ùå Erro ao atualizar hor√°rio:', err.message);
-                return res.json({ success: false, message: 'Erro ao atualizar hor√°rio: ' + err.message });
+                console.error('? Erro ao atualizar hor·rio:', err.message);
+                return res.json({ success: false, message: 'Erro ao atualizar hor·rio: ' + err.message });
             }
 
             if (this && this.changes === 0) {
@@ -3988,13 +3988,13 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 
                 db.run(sqlInsert, [empresa_id, dia, finalAberto, finalHoraInicio, finalHoraFim, finalAlmocoInicio, finalAlmocoFim, finalIntervalo], function (err) {
                     if (err) {
-                        console.error('‚ùå Erro ao inserir hor√°rio:', err.message);
-                        return res.json({ success: false, message: 'Erro ao inserir hor√°rio: ' + err.message });
+                        console.error('? Erro ao inserir hor·rio:', err.message);
+                        return res.json({ success: false, message: 'Erro ao inserir hor·rio: ' + err.message });
                     }
-                    res.json({ success: true, message: 'Hor√°rio salvo com sucesso!' });
+                    res.json({ success: true, message: 'Hor·rio salvo com sucesso!' });
                 });
             } else {
-                res.json({ success: true, message: 'Hor√°rio atualizado com sucesso!' });
+                res.json({ success: true, message: 'Hor·rio atualizado com sucesso!' });
             }
         });
     });
@@ -4032,7 +4032,7 @@ app.get('/api/financeiro', auth, (req, res) => {
 
         db.all(sql, [profissional_id], (err, comissoes) => {
             if (err) {
-                console.error('‚ùå Erro no financeiro profissional:', err.message);
+                console.error('? Erro no financeiro profissional:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -4099,7 +4099,7 @@ app.get('/api/financeiro', auth, (req, res) => {
 
         db.all(sql, [empresa_id], (err, comissoes) => {
             if (err) {
-                console.error('‚ùå Erro no financeiro dono:', err.message);
+                console.error('? Erro no financeiro dono:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -4169,7 +4169,7 @@ app.get('/api/financeiro', auth, (req, res) => {
     });
 });
 // ============================================================
-// üìä ROTAS DE DESPESAS
+// ?? ROTAS DE DESPESAS
 // ============================================================
 
 // ============================================
@@ -4246,7 +4246,7 @@ app.get('/api/despesas', auth, (req, res) => {
 
     db.all(sql, params, (err, despesas) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar despesas:', err);
+            console.error('? Erro ao buscar despesas:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
@@ -4282,9 +4282,9 @@ app.get('/api/despesas/categorias', auth, (req, res) => {
     const empresaId = usuario.empresa_id;
 
     const defaultCategorias = [
-        'Aluguel', '√Ågua', 'Energia El√©trica', 'Internet', 'Telefone',
-        'Material de Consumo', 'Equipamentos', 'Manuten√ß√£o', 'Impostos',
-        'Sal√°rios', 'Comiss√µes', 'Marketing', 'Limpeza', 'Alimenta√ß√£o',
+        'Aluguel', '¡gua', 'Energia ElÈtrica', 'Internet', 'Telefone',
+        'Material de Consumo', 'Equipamentos', 'ManutenÁ„o', 'Impostos',
+        'Sal·rios', 'Comissıes', 'Marketing', 'Limpeza', 'AlimentaÁ„o',
         'Transporte', 'Outros'
     ];
 
@@ -4293,7 +4293,7 @@ app.get('/api/despesas/categorias', auth, (req, res) => {
         [empresaId],
         (err, categorias) => {
             if (err) {
-                console.error('‚ùå Erro ao buscar categorias:', err);
+                console.error('? Erro ao buscar categorias:', err);
                 return res.status(500).json({ success: false, message: err.message });
             }
 
@@ -4314,7 +4314,7 @@ app.post('/api/despesas', auth, (req, res) => {
     if (usuario.role === 'profissional') {
         return res.status(403).json({
             success: false,
-            message: 'Profissionais n√£o podem criar despesas'
+            message: 'Profissionais n„o podem criar despesas'
         });
     }
 
@@ -4324,7 +4324,7 @@ app.post('/api/despesas', auth, (req, res) => {
     if (!descricao || !categoria || !valor || !data) {
         return res.status(400).json({
             success: false,
-            message: 'Descri√ß√£o, categoria, valor e data s√£o obrigat√≥rios'
+            message: 'DescriÁ„o, categoria, valor e data s„o obrigatÛrios'
         });
     }
 
@@ -4356,13 +4356,13 @@ app.post('/api/despesas', auth, (req, res) => {
 
     db.run(sql, params, function (err) {
         if (err) {
-            console.error('‚ùå Erro ao criar despesa:', err);
+            console.error('? Erro ao criar despesa:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
         db.get(`SELECT * FROM despesas WHERE id = ?`, [this.lastID], (err, despesa) => {
             if (err) {
-                console.error('‚ùå Erro ao buscar despesa:', err);
+                console.error('? Erro ao buscar despesa:', err);
                 return res.status(500).json({ success: false, message: err.message });
             }
 
@@ -4385,7 +4385,7 @@ app.put('/api/despesas/:id', auth, (req, res) => {
     if (usuario.role === 'profissional') {
         return res.status(403).json({
             success: false,
-            message: 'Profissionais n√£o podem editar despesas'
+            message: 'Profissionais n„o podem editar despesas'
         });
     }
 
@@ -4394,18 +4394,18 @@ app.put('/api/despesas/:id', auth, (req, res) => {
 
     db.get(`SELECT * FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], (err, existing) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar despesa:', err);
+            console.error('? Erro ao verificar despesa:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
         if (!existing) {
-            return res.status(404).json({ success: false, message: 'Despesa n√£o encontrada' });
+            return res.status(404).json({ success: false, message: 'Despesa n„o encontrada' });
         }
 
         if (!descricao || !categoria || !valor || !data) {
             return res.status(400).json({
                 success: false,
-                message: 'Descri√ß√£o, categoria, valor e data s√£o obrigat√≥rios'
+                message: 'DescriÁ„o, categoria, valor e data s„o obrigatÛrios'
             });
         }
 
@@ -4439,13 +4439,13 @@ app.put('/api/despesas/:id', auth, (req, res) => {
 
         db.run(sql, params, function (err) {
             if (err) {
-                console.error('‚ùå Erro ao atualizar despesa:', err);
+                console.error('? Erro ao atualizar despesa:', err);
                 return res.status(500).json({ success: false, message: err.message });
             }
 
             db.get(`SELECT * FROM despesas WHERE id = ?`, [id], (err, despesa) => {
                 if (err) {
-                    console.error('‚ùå Erro ao buscar despesa:', err);
+                    console.error('? Erro ao buscar despesa:', err);
                     return res.status(500).json({ success: false, message: err.message });
                 }
 
@@ -4469,7 +4469,7 @@ app.delete('/api/despesas/:id', auth, (req, res) => {
     if (usuario.role === 'profissional') {
         return res.status(403).json({
             success: false,
-            message: 'Profissionais n√£o podem excluir despesas'
+            message: 'Profissionais n„o podem excluir despesas'
         });
     }
 
@@ -4477,27 +4477,27 @@ app.delete('/api/despesas/:id', auth, (req, res) => {
 
     db.get(`SELECT * FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], (err, existing) => {
         if (err) {
-            console.error('‚ùå Erro ao verificar despesa:', err);
+            console.error('? Erro ao verificar despesa:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
         if (!existing) {
-            return res.status(404).json({ success: false, message: 'Despesa n√£o encontrada' });
+            return res.status(404).json({ success: false, message: 'Despesa n„o encontrada' });
         }
 
         db.run(`DELETE FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], function (err) {
             if (err) {
-                console.error('‚ùå Erro ao excluir despesa:', err);
+                console.error('? Erro ao excluir despesa:', err);
                 return res.status(500).json({ success: false, message: err.message });
             }
 
-            res.json({ success: true, message: 'Despesa exclu√≠da com sucesso!' });
+            res.json({ success: true, message: 'Despesa excluÌda com sucesso!' });
         });
     });
 });
 
 // ============================================
-// GET /api/despesas/resumo - RESUMO DO M√äS (CORRIGIDO PARA POSTGRESQL)
+// GET /api/despesas/resumo - RESUMO DO M S (CORRIGIDO PARA POSTGRESQL)
 // ============================================
 app.get('/api/despesas/resumo', auth, (req, res) => {
     const usuario = req.usuario;
@@ -4554,7 +4554,7 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
 
     db.get(sql, params, (err, resumo) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar resumo:', err);
+            console.error('? Erro ao buscar resumo:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
@@ -4586,7 +4586,7 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
 
         db.all(catSql, catParams, (err, categorias) => {
             if (err) {
-                console.error('‚ùå Erro ao buscar categorias:', err);
+                console.error('? Erro ao buscar categorias:', err);
                 return res.status(500).json({ success: false, message: err.message });
             }
 
@@ -4601,7 +4601,7 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
     });
 });
 // ============================================================
-// ROTAS DO CHATBOT (P√öBLICAS)
+// ROTAS DO CHATBOT (P⁄BLICAS)
 // ============================================================
 
 // ============================================================
@@ -4612,7 +4612,7 @@ app.get('/api/chatbot/link/:empresaId', auth, verificarDono, (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     const link = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
 
-    console.log(`üîó Link do chatbot gerado para empresa ${empresaId}: ${link}`);
+    console.log(`?? Link do chatbot gerado para empresa ${empresaId}: ${link}`);
     res.json({ success: true, link });
 });
 
@@ -4621,7 +4621,7 @@ app.get('/api/chatbot/empresa/:id', (req, res) => {
 
     db.get('SELECT id, nome FROM empresas WHERE id = ?', [id], (err, empresa) => {
         if (err || !empresa) {
-            return res.json({ success: false, message: 'Empresa n√£o encontrada' });
+            return res.json({ success: false, message: 'Empresa n„o encontrada' });
         }
         res.json({ success: true, empresa });
     });
@@ -4740,7 +4740,7 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
     const mesSolicitado = parseInt(mes) || new Date().getMonth() + 1;
     const anoSolicitado = parseInt(ano) || new Date().getFullYear();
 
-    console.log(`üìÖ Buscando datas para ${mesSolicitado}/${anoSolicitado} - Profissional: ${profissionalId || 'todos'}`);
+    console.log(`?? Buscando datas para ${mesSolicitado}/${anoSolicitado} - Profissional: ${profissionalId || 'todos'}`);
 
     let profissionalIdNum = null;
 
@@ -4783,7 +4783,7 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
 
     db.all(sqlAgendamentos, params, (err, agendamentos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar agendamentos:', err);
+            console.error('? Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -4801,11 +4801,11 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
         db.all(
             `SELECT dia_semana, hora_inicio, hora_fim, almoco_inicio, almoco_fim 
              FROM horarios_funcionamento 
-             WHERE empresa_id = ? AND aberto = 1`,
+             WHERE empresa_id = ? AND aberto = true`,
             [empresaId],
             (err, horariosFuncionamento) => {
                 if (err) {
-                    console.error('‚ùå Erro ao buscar hor√°rios de funcionamento:', err);
+                    console.error('? Erro ao buscar hor·rios de funcionamento:', err);
                     return res.json({ success: false, message: err.message });
                 }
 
@@ -4848,7 +4848,7 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
                     }
                 }
 
-                console.log(`‚úÖ ${datasDisponiveis.length} datas dispon√≠veis em ${mesSolicitado}/${anoSolicitado}`);
+                console.log(`? ${datasDisponiveis.length} datas disponÌveis em ${mesSolicitado}/${anoSolicitado}`);
 
                 res.json({
                     success: true,
@@ -4862,12 +4862,12 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
 });
 
 // ============================================
-// ROTA: /api/chatbot/horarios-disponiveis (COM DURA√á√ÉO)
+// ROTA: /api/chatbot/horarios-disponiveis (COM DURA«√O)
 // ============================================
 app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     const { empresaId, profissionalId, data, duracao } = req.body;
 
-    console.log(`üîç Buscando hor√°rios para ${data} - Profissional: ${profissionalId || 'todos'} - Dura√ß√£o: ${duracao || 30}min`);
+    console.log(`?? Buscando hor·rios para ${data} - Profissional: ${profissionalId || 'todos'} - DuraÁ„o: ${duracao || 30}min`);
 
     let profissionalIdNum = null;
 
@@ -4887,7 +4887,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
     const duracaoMin = duracao || 30;
 
-    // Buscar agendamentos do dia com dura√ß√£o dos servi√ßos
+    // Buscar agendamentos do dia com duraÁ„o dos serviÁos
     let sqlAgendamentos = `
         SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
         FROM agendamentos a
@@ -4905,7 +4905,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
     db.all(sqlAgendamentos, params, (err, agendamentos) => {
         if (err) {
-            console.error('‚ùå Erro ao buscar agendamentos:', err);
+            console.error('? Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -4919,7 +4919,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
             ocupados.push({ inicio: inicioMin, fim: fimMin });
         }
 
-        // Buscar hor√°rio de funcionamento do dia
+        // Buscar hor·rio de funcionamento do dia
         const dataObj = new Date(data + 'T00:00:00');
         const diaSemana = dataObj.getDay();
 
@@ -4930,7 +4930,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
             [empresaId, diaSemana],
             (err, horario) => {
                 if (err) {
-                    console.error('‚ùå Erro ao buscar hor√°rio:', err);
+                    console.error('? Erro ao buscar hor·rio:', err);
                     return res.json({ success: false, message: err.message });
                 }
 
@@ -4947,12 +4947,12 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
                 const horariosDisponiveis = [];
 
                 for (let minutos = inicioMin; minutos + duracaoMin <= fimMin; minutos += intervalo) {
-                    // Pular almo√ßo
+                    // Pular almoÁo
                     if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
                         continue;
                     }
 
-                    // Verificar se o hor√°rio + dura√ß√£o n√£o conflita com agendamentos
+                    // Verificar se o hor·rio + duraÁ„o n„o conflita com agendamentos
                     const fimProposto = minutos + duracaoMin;
                     let conflito = false;
 
@@ -4968,7 +4968,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
                     }
                 }
 
-                console.log(`‚úÖ ${horariosDisponiveis.length} hor√°rios dispon√≠veis para ${data} (dura√ß√£o: ${duracaoMin}min)`);
+                console.log(`? ${horariosDisponiveis.length} hor·rios disponÌveis para ${data} (duraÁ„o: ${duracaoMin}min)`);
 
                 res.json({
                     success: true,
@@ -4987,33 +4987,33 @@ app.post('/api/chatbot/agendar', async (req, res) => {
     try {
         const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
 
-        console.log('üìù CHATBOT - Agendamento:', { clienteId, servicoId, profissionalId, data, hora, empresaId });
+        console.log('?? CHATBOT - Agendamento:', { clienteId, servicoId, profissionalId, data, hora, empresaId });
 
         if (!clienteId || !servicoId || !data || !hora || !empresaId) {
             return res.json({ success: false, message: 'Dados incompletos' });
         }
 
         // ============================================
-        // üî•üî•üî• VALIDA√á√ÉO: DATA/HORA N√ÉO PODE SER NO PASSADO (CHATBOT) üî•üî•üî•
+        // ?????? VALIDA«√O: DATA/HORA N√O PODE SER NO PASSADO (CHATBOT) ??????
         // ============================================
         const agora = new Date();
         const [ano, mes, dia] = data.split('-').map(Number);
         const [horaStr, minutoStr] = hora.split(':').map(Number);
         const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0, 0);
 
-        console.log('üìÖ Chatbot - Data/Hora agendamento:', dataHoraAgendamento);
-        console.log('üïê Chatbot - Agora:', agora);
+        console.log('?? Chatbot - Data/Hora agendamento:', dataHoraAgendamento);
+        console.log('?? Chatbot - Agora:', agora);
 
-        // VALIDA√á√ÉO PRINCIPAL: Data/hora j√° passou?
+        // VALIDA«√O PRINCIPAL: Data/hora j· passou?
         if (dataHoraAgendamento < agora) {
-            console.log('‚ùå Chatbot - Tentativa de agendar em data/hora passada');
+            console.log('? Chatbot - Tentativa de agendar em data/hora passada');
             return res.json({
                 success: false,
-                message: '‚è∞ N√£o √© poss√≠vel agendar em datas ou hor√°rios que j√° passaram. Selecione uma data/hora futura.'
+                message: '? N„o È possÌvel agendar em datas ou hor·rios que j· passaram. Selecione uma data/hora futura.'
             });
         }
 
-        // VALIDA√á√ÉO EXTRA: Se for hoje, verificar se o hor√°rio j√° passou
+        // VALIDA«√O EXTRA: Se for hoje, verificar se o hor·rio j· passou
         const hojeStr = agora.toISOString().split('T')[0];
         if (data === hojeStr) {
             const horaAtual = agora.getHours();
@@ -5022,10 +5022,10 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             const minutoAgendamento = parseInt(minutoStr);
 
             if (horaAgendamento < horaAtual || (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
-                console.log('‚ùå Chatbot - Tentativa de agendar em hor√°rio que j√° passou hoje');
+                console.log('? Chatbot - Tentativa de agendar em hor·rio que j· passou hoje');
                 return res.json({
                     success: false,
-                    message: `‚è∞ N√£o √© poss√≠vel agendar no hor√°rio ${hora} pois j√° passou. Escolha um hor√°rio futuro.`
+                    message: `? N„o È possÌvel agendar no hor·rio ${hora} pois j· passou. Escolha um hor·rio futuro.`
                 });
             }
         }
@@ -5035,7 +5035,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         const empresaIdNum = parseInt(empresaId);
         const profissionalIdNum = profissionalId ? parseInt(profissionalId) : null;
 
-        // 1. VERIFICAR LIMITE DE AGENDAMENTOS/M√äS
+        // 1. VERIFICAR LIMITE DE AGENDAMENTOS/M S
         const empresa = await new Promise((resolve) => {
             const sql = isProduction
                 ? `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = $1`
@@ -5044,7 +5044,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
         if (!empresa) {
-            return res.json({ success: false, message: 'Empresa n√£o encontrada' });
+            return res.json({ success: false, message: 'Empresa n„o encontrada' });
         }
 
         const planoLower = (empresa.plano || '').toLowerCase();
@@ -5066,14 +5066,14 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             if (total >= LIMITE_MAXIMO) {
                 return res.json({
                     success: false,
-                    message: `Limite de ${LIMITE_MAXIMO} agendamentos/m√™s atingido.`,
+                    message: `Limite de ${LIMITE_MAXIMO} agendamentos/mÍs atingido.`,
                     limit_reached: true
                 });
             }
         }
 
         // ============================================
-        // üî• CHATBOT: VALIDA√á√ÉO - CLIENTE J√Å TEM AGENDAMENTO NESTE DIA?
+        // ?? CHATBOT: VALIDA«√O - CLIENTE J¡ TEM AGENDAMENTO NESTE DIA?
         // ============================================
         const sqlAgendamentoHojeChat = isProduction
             ? `SELECT id FROM agendamentos 
@@ -5092,7 +5092,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         const agendamentoHojeChat = await new Promise((resolve) => {
             db.get(sqlAgendamentoHojeChat, [clienteIdNum, data, empresaIdNum], (err, row) => {
                 if (err) {
-                    console.error('‚ùå Erro ao verificar agendamento no mesmo dia (chatbot):', err);
+                    console.error('? Erro ao verificar agendamento no mesmo dia (chatbot):', err);
                     resolve(null);
                 } else {
                     resolve(row);
@@ -5101,15 +5101,15 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
         if (agendamentoHojeChat) {
-            console.log(`‚ùå Chatbot: Cliente ${clienteIdNum} j√° tem agendamento no dia ${data}`);
+            console.log(`? Chatbot: Cliente ${clienteIdNum} j· tem agendamento no dia ${data}`);
             return res.json({
                 success: false,
-                message: `Voc√™ j√° possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente s√≥ pode fazer UM agendamento por dia.`
+                message: `VocÍ j· possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente sÛ pode fazer UM agendamento por dia.`
             });
         }
 
         // ============================================
-        // üî• CHATBOT: VALIDA√á√ÉO - DIAS_BLOQUEIO_GERAL
+        // ?? CHATBOT: VALIDA«√O - DIAS_BLOQUEIO_GERAL
         // ============================================
         const sqlDiasBloqueioEmpresaChat = isProduction
             ? `SELECT COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral FROM empresas WHERE id = $1`
@@ -5118,7 +5118,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         const empresaInfoChat = await new Promise((resolve) => {
             db.get(sqlDiasBloqueioEmpresaChat, [empresaIdNum], (err, row) => {
                 if (err) {
-                    console.error('‚ùå Erro ao buscar dias_bloqueio_geral (chatbot):', err);
+                    console.error('? Erro ao buscar dias_bloqueio_geral (chatbot):', err);
                     resolve({ dias_bloqueio_geral: 0 });
                 } else {
                     resolve(row || { dias_bloqueio_geral: 0 });
@@ -5127,13 +5127,13 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
         const diasBloqueioGeralChat = empresaInfoChat?.dias_bloqueio_geral || 0;
-        console.log(`üìã Chatbot - Dias de bloqueio geral: ${diasBloqueioGeralChat}`);
+        console.log(`?? Chatbot - Dias de bloqueio geral: ${diasBloqueioGeralChat}`);
 
         // ============================================
-        // üî• CHATBOT: VALIDAR - BUSCAR √öLTIMO AGENDAMENTO
+        // ?? CHATBOT: VALIDAR - BUSCAR ⁄LTIMO AGENDAMENTO
         // ============================================
         if (diasBloqueioGeralChat > 0) {
-            console.log(`üîç Chatbot - Bloqueio geral ATIVO (${diasBloqueioGeralChat} dias) - Validando...`);
+            console.log(`?? Chatbot - Bloqueio geral ATIVO (${diasBloqueioGeralChat} dias) - Validando...`);
 
             const sqlUltimoAgendamentoChat = isProduction
                 ? `SELECT data FROM agendamentos 
@@ -5152,10 +5152,10 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             const ultimoAgendamentoChat = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamentoChat, [clienteIdNum, empresaIdNum], (err, row) => {
                     if (err) {
-                        console.error('‚ùå Erro ao buscar √∫ltimo agendamento no chatbot:', err);
+                        console.error('? Erro ao buscar ˙ltimo agendamento no chatbot:', err);
                         resolve(null);
                     } else {
-                        console.log(`üìÖ Chatbot - √öltimo agendamento encontrado (raw):`, row);
+                        console.log(`?? Chatbot - ⁄ltimo agendamento encontrado (raw):`, row);
                         resolve(row);
                     }
                 });
@@ -5163,7 +5163,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
 
             if (ultimoAgendamentoChat && ultimoAgendamentoChat.data) {
                 try {
-                    // üî• CORRIGIDO: Converter corretamente a data
+                    // ?? CORRIGIDO: Converter corretamente a data
                     let dataUltimo;
 
                     if (typeof ultimoAgendamentoChat.data === 'string') {
@@ -5176,10 +5176,10 @@ app.post('/api/chatbot/agendar', async (req, res) => {
                         dataUltimo.setHours(0, 0, 0, 0);
                     }
 
-                    console.log(`üìÖ Chatbot - Data do √∫ltimo agendamento convertida:`, dataUltimo);
+                    console.log(`?? Chatbot - Data do ˙ltimo agendamento convertida:`, dataUltimo);
 
                     if (isNaN(dataUltimo.getTime())) {
-                        console.log(`‚ö†Ô∏è Chatbot - Data inv√°lida no √∫ltimo agendamento: ${ultimoAgendamentoChat.data}`);
+                        console.log(`?? Chatbot - Data inv·lida no ˙ltimo agendamento: ${ultimoAgendamentoChat.data}`);
                     } else {
                         const dataMinima = new Date(dataUltimo);
                         dataMinima.setDate(dataMinima.getDate() + diasBloqueioGeralChat);
@@ -5198,30 +5198,30 @@ app.post('/api/chatbot/agendar', async (req, res) => {
                             dataAgendamento.setHours(0, 0, 0, 0);
                         }
 
-                        console.log(`üìÖ Chatbot - √öltimo agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
-                        console.log(`üìÖ Chatbot - Data m√≠nima permitida (${diasBloqueioGeralChat} dias): ${dataMinimaStr}`);
-                        console.log(`üìÖ Chatbot - Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
+                        console.log(`?? Chatbot - ⁄ltimo agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
+                        console.log(`?? Chatbot - Data mÌnima permitida (${diasBloqueioGeralChat} dias): ${dataMinimaStr}`);
+                        console.log(`?? Chatbot - Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
 
                         if (dataAgendamento < dataMinima) {
-                            console.log(`‚ùå Chatbot - BLOQUEIO GERAL ATIVADO! Cliente ${clienteIdNum} n√£o pode agendar antes de ${dataMinimaStr}`);
+                            console.log(`? Chatbot - BLOQUEIO GERAL ATIVADO! Cliente ${clienteIdNum} n„o pode agendar antes de ${dataMinimaStr}`);
                             return res.json({
                                 success: false,
-                                message: `Voc√™ s√≥ pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeralChat} dias ap√≥s o √∫ltimo agendamento).`
+                                message: `VocÍ sÛ pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeralChat} dias apÛs o ˙ltimo agendamento).`
                             });
                         } else {
-                            console.log(`‚úÖ Chatbot - Cliente ${clienteIdNum} pode agendar em ${data} - Dentro do prazo permitido`);
+                            console.log(`? Chatbot - Cliente ${clienteIdNum} pode agendar em ${data} - Dentro do prazo permitido`);
                         }
                     }
                 } catch (error) {
-                    console.error('‚ùå Chatbot - Erro ao processar data do √∫ltimo agendamento:', error);
+                    console.error('? Chatbot - Erro ao processar data do ˙ltimo agendamento:', error);
                 }
             } else {
-                console.log(`‚úÖ Chatbot - Cliente ${clienteIdNum} n√£o tem agendamentos anteriores`);
+                console.log(`? Chatbot - Cliente ${clienteIdNum} n„o tem agendamentos anteriores`);
             }
         }
 
         // ============================================
-        // 4. VERIFICAR HOR√ÅRIO
+        // 4. VERIFICAR HOR¡RIO
         // ============================================
         const sqlCheck = isProduction
             ? `SELECT id FROM agendamentos WHERE empresa_id = $1 AND data = $2 AND hora = $3 AND status != 'cancelado'`
@@ -5232,7 +5232,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
         if (ocupado) {
-            return res.json({ success: false, message: 'Hor√°rio indispon√≠vel' });
+            return res.json({ success: false, message: 'Hor·rio indisponÌvel' });
         }
 
         // ============================================
@@ -5251,7 +5251,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         }
 
         // ============================================
-        // 6. BUSCAR SERVI√áO
+        // 6. BUSCAR SERVI«O
         // ============================================
         const sqlServico = isProduction
             ? `SELECT nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = 1`
@@ -5262,7 +5262,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
         if (!servico) {
-            return res.json({ success: false, message: 'Servi√ßo n√£o encontrado' });
+            return res.json({ success: false, message: 'ServiÁo n„o encontrado' });
         }
 
         // ============================================
@@ -5302,7 +5302,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             db.get(sqlProf, [profissionalIdNum], (err, row) => resolve(row));
         });
 
-        console.log('‚úÖ CHATBOT - Agendamento criado! ID:', result.lastID);
+        console.log('? CHATBOT - Agendamento criado! ID:', result.lastID);
 
         try {
             const sqlCliente = isProduction ? `SELECT nome, telefone FROM clientes WHERE id = $1` : `SELECT nome, telefone FROM clientes WHERE id = ?`;
@@ -5312,9 +5312,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             const sqlProfFull = isProduction ? `SELECT nome, telefone FROM profissionais WHERE id = $1` : `SELECT nome, telefone FROM profissionais WHERE id = ?`;
             const profissionalFull = await new Promise((resolve) => { db.get(sqlProfFull, [profissionalIdNum], (err, row) => resolve(row)); });
             const dadosNotificacao = { cliente: { nome: clienteData?.nome || 'Cliente', telefone: clienteData?.telefone || null }, servico: { nome: servico.nome, valor: servico.valor }, profissional: profissionalFull ? { nome: profissionalFull.nome, telefone: profissionalFull.telefone || null } : null, data: data, hora: hora, empresa: { nome: empresaData?.nome || 'Estabelecimento', endereco: empresaData?.endereco || '' } };
-            if (dadosNotificacao.cliente.telefone) { await whatsappService.enviarConfirmacao(dadosNotificacao); console.log('‚úÖ CHATBOT WPP confirma√ß√£o enviada'); }
-            if (profissionalFull?.telefone) { await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao); console.log('‚úÖ CHATBOT WPP profissional notificado'); }
-        } catch (wpErr) { console.error('‚ùå CHATBOT WhatsApp erro:', wpErr.message); }
+            if (dadosNotificacao.cliente.telefone) { await whatsappService.enviarConfirmacao(dadosNotificacao); console.log('? CHATBOT WPP confirmaÁ„o enviada'); }
+            if (profissionalFull?.telefone) { await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao); console.log('? CHATBOT WPP profissional notificado'); }
+        } catch (wpErr) { console.error('? CHATBOT WhatsApp erro:', wpErr.message); }
         res.json({
             success: true,
             agendamentoId: result.lastID,
@@ -5324,13 +5324,13 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('‚ùå CHATBOT - Erro:', error);
+        console.error('? CHATBOT - Erro:', error);
         res.json({ success: false, message: 'Erro interno. Tente novamente.' });
     }
 });
 
 // ============================================================
-// SIMULA√á√ÉO DE PAGAMENTO
+// SIMULA«√O DE PAGAMENTO
 // ============================================================
 
 app.post('/api/simulate-pix', auth, (req, res) => {
@@ -5350,7 +5350,7 @@ app.post('/api/simulate-pix', auth, (req, res) => {
            VALUES (?, ?, ?, ?, 'pix_simulado', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`;
 
     db.run(sql, [empresaId, plano_id, plano_nome, valor, paymentId, qrCodeSimulado, qrCodeBase64Simulado], (err) => {
-        if (err) console.error('Erro ao salvar simula√ß√£o:', err);
+        if (err) console.error('Erro ao salvar simulaÁ„o:', err);
     });
 
     res.json({
@@ -5377,7 +5377,7 @@ app.post('/api/simulate-card', auth, (req, res) => {
            VALUES (?, ?, ?, ?, 'cartao_simulado', ?, 'approved', CURRENT_TIMESTAMP)`;
 
     db.run(sql, [empresaId, plano_id, plano_nome, valor, paymentId], (err) => {
-        if (err) console.error('Erro ao salvar simula√ß√£o:', err);
+        if (err) console.error('Erro ao salvar simulaÁ„o:', err);
     });
 
     const plano = PLANOS[plano_id];
@@ -5429,7 +5429,7 @@ app.post('/api/simulate-boleto', auth, (req, res) => {
            VALUES (?, ?, ?, ?, 'boleto_simulado', ?, 'pending', ?, CURRENT_TIMESTAMP)`;
 
     db.run(sql, [empresaId, plano_id, plano_nome, valor, paymentId, boletoUrl], (err) => {
-        if (err) console.error('Erro ao salvar simula√ß√£o:', err);
+        if (err) console.error('Erro ao salvar simulaÁ„o:', err);
     });
 
     res.json({
@@ -5449,7 +5449,7 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 
     db.get(sqlSelect, [paymentId], (err, transacao) => {
         if (err || !transacao) {
-            return res.json({ success: false, message: 'Transa√ß√£o n√£o encontrada' });
+            return res.json({ success: false, message: 'TransaÁ„o n„o encontrada' });
         }
 
         const plano = PLANOS[transacao.plano_id];
@@ -5487,13 +5487,13 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 
             res.json({ success: true, message: 'Pagamento confirmado!' });
         } else {
-            res.json({ success: false, message: 'Plano n√£o encontrado' });
+            res.json({ success: false, message: 'Plano n„o encontrado' });
         }
     });
 });
 
 // ============================================================
-// JOBS E SERVI√áOS
+// JOBS E SERVI«OS
 // ============================================================
 
 // Inicia o job de lembretes WhatsApp
@@ -5501,9 +5501,9 @@ const lembreteJob = require('./server/jobs/lembretes');
 
 if (process.env.WHATSAPP_ENABLED === 'true') {
     lembreteJob.start();
-    console.log('‚úÖ Job de lembretes WhatsApp iniciado');
+    console.log('? Job de lembretes WhatsApp iniciado');
 } else {
-    console.log('‚ÑπÔ∏è WhatsApp desabilitado (WHATSAPP_ENABLED=false)');
+    console.log('?? WhatsApp desabilitado (WHATSAPP_ENABLED=false)');
 }
 
 // ============================================================
@@ -5515,18 +5515,18 @@ if (process.env.WHATSAPP_ENABLED === 'true' && process.env.WHATSAPP_PROVIDER ===
         setTimeout(async () => {
             try {
                 await getClient();
-                console.log('‚úÖ WhatsApp WPPConnect iniciado com sucesso!');
+                console.log('? WhatsApp WPPConnect iniciado com sucesso!');
             } catch (err) {
-                console.error('‚ùå Erro ao iniciar WPPConnect:', err.message);
+                console.error('? Erro ao iniciar WPPConnect:', err.message);
             }
         }, 2000);
     } catch (error) {
-        console.error('‚ùå Erro ao carregar wppconnect-local:', error.message);
+        console.error('? Erro ao carregar wppconnect-local:', error.message);
     }
 }
 
 // ============================================
-// ROTA: PROFISSIONAIS DISPON√çVEIS POR HOR√ÅRIO
+// ROTA: PROFISSIONAIS DISPONÕVEIS POR HOR¡RIO
 // ============================================
 
 app.get('/api/agenda/profissionais-disponiveis', auth, (req, res) => {
@@ -5534,7 +5534,7 @@ app.get('/api/agenda/profissionais-disponiveis', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     if (!data || !hora) {
-        return res.json({ success: false, message: 'Data e hora s√£o obrigat√≥rias' });
+        return res.json({ success: false, message: 'Data e hora s„o obrigatÛrias' });
     }
 
     const sqlProfissionais = isProduction
@@ -5597,7 +5597,7 @@ app.get('/api/agenda/profissionais-disponiveis', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: AGENDAMENTOS POR PER√çODO (PARA AGENDA)
+// ROTA: AGENDAMENTOS POR PERÕODO (PARA AGENDA)
 // ============================================
 
 app.get('/api/agendamentos/periodo', auth, (req, res) => {
@@ -5605,7 +5605,7 @@ app.get('/api/agendamentos/periodo', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     if (!data_inicio || !data_fim) {
-        return res.json({ success: false, message: 'Data in√≠cio e fim s√£o obrigat√≥rias' });
+        return res.json({ success: false, message: 'Data inÌcio e fim s„o obrigatÛrias' });
     }
 
     const sql = isProduction
@@ -5652,21 +5652,21 @@ app.get('/api/agendamentos/periodo', auth, (req, res) => {
 });
 
 // ============================================================
-// INICIALIZA√á√ÉO DO SERVIDOR
+// INICIALIZA«√O DO SERVIDOR
 // ============================================================
 
 const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
 
 app.listen(PORT, HOST, () => {
-    console.log(`üöÄ Servidor rodando em http://${HOST}:${PORT}`);
-    console.log(`üìß Super Admin: super@admin.com / super123`);
-    console.log(`üìß Dono: admin@teste.com / 123456`);
-    console.log(`\nüí∞ PLANOS DISPON√çVEIS:`);
-    console.log(`   Starter: R$ 24,90/m√™s - 1 profissional`);
-    console.log(`   Pro: R$ 49,90/m√™s - 5 profissionais`);
-    console.log(`   Business: R$ 99,90/m√™s - 12 profissionais`);
-    console.log(`   Enterprise: R$ 199,90/m√™s - Profissionais ilimitados`);
-    console.log(`\nüì± WhatsApp: ${process.env.WHATSAPP_ENABLED === 'true' ? '‚úÖ ATIVADO' : '‚ùå DESABILITADO'}`);
+    console.log(`?? Servidor rodando em http://${HOST}:${PORT}`);
+    console.log(`?? Super Admin: super@admin.com / super123`);
+    console.log(`?? Dono: admin@teste.com / 123456`);
+    console.log(`\n?? PLANOS DISPONÕVEIS:`);
+    console.log(`   Starter: R$ 24,90/mÍs - 1 profissional`);
+    console.log(`   Pro: R$ 49,90/mÍs - 5 profissionais`);
+    console.log(`   Business: R$ 99,90/mÍs - 12 profissionais`);
+    console.log(`   Enterprise: R$ 199,90/mÍs - Profissionais ilimitados`);
+    console.log(`\n?? WhatsApp: ${process.env.WHATSAPP_ENABLED === 'true' ? '? ATIVADO' : '? DESABILITADO'}`);
 });
 
 // ============================================================
@@ -5677,27 +5677,27 @@ if (process.env.RENDER === 'true') {
     try {
         const { keepAlive } = require('./keep_alive');
         keepAlive();
-        console.log('üîÑ Keep Alive ativado para o Render!');
+        console.log('?? Keep Alive ativado para o Render!');
     } catch (error) {
-        console.log('‚ö†Ô∏è Erro ao carregar keep_alive:', error.message);
+        console.log('?? Erro ao carregar keep_alive:', error.message);
         // Fallback: ping simples
         const http = require('http');
         setInterval(() => {
             http.get(`http://localhost:${PORT}`, (res) => {
-                console.log(`üíì Keep Alive ping - Status: ${res.statusCode}`);
+                console.log(`?? Keep Alive ping - Status: ${res.statusCode}`);
             }).on('error', () => { });
         }, 4 * 60 * 1000);
-        console.log('üîÑ Keep Alive fallback ativado!');
+        console.log('?? Keep Alive fallback ativado!');
     }
 }
 
-// Tamb√©m criar um cron job separado para garantir
+// TambÈm criar um cron job separado para garantir
 if (process.env.RENDER === 'true') {
     try {
         require('./cron');
-        console.log('üîÑ Cron job ativado!');
+        console.log('?? Cron job ativado!');
     } catch (error) {
-        console.log('‚ö†Ô∏è Cron job n√£o encontrado, continuando...');
+        console.log('?? Cron job n„o encontrado, continuando...');
     }
 }
 
@@ -5708,7 +5708,7 @@ if (process.env.RENDER === 'true') {
 try {
     const resetJob = require('./server/jobs/reset-contador');
     resetJob.start();
-    console.log('‚úÖ Job de reset de contadores iniciado');
+    console.log('? Job de reset de contadores iniciado');
 } catch (error) {
-    console.log('‚ö†Ô∏è Erro ao iniciar job de reset:', error.message);
+    console.log('?? Erro ao iniciar job de reset:', error.message);
 }
