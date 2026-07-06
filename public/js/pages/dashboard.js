@@ -1199,9 +1199,9 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     servicoSelect.innerHTML = '<option value="">Selecione um serviço</option>';
                     if (window.servicosList && window.servicosList.length > 0) {
                         window.servicosList.forEach(s => {
-    const valor = parseFloat(s.valor) || 0;
-    servicoSelect.innerHTML += `<option value="${s.id}" data-valor="${valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${s.nome} - R$ ${valor.toFixed(2)} (${s.duracao || 30}min)</option>`;
-});;
+                            const valor = parseFloat(s.valor) || 0;
+                            servicoSelect.innerHTML += `<option value="${s.id}" data-valor="${valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${s.nome} - R$ ${valor.toFixed(2)} (${s.duracao || 30}min)</option>`;
+                        });;
                     }
                 }
 
