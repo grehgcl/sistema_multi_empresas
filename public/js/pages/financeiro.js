@@ -57,7 +57,6 @@ async function carregarFinanceiro() {
     filtroAnoAtual = filtroAnoAtual || String(hoje.getFullYear());
 
     try {
-        // Carregar dados em paralelo
         const [financeiroRes, despesasRes, categoriasRes] = await Promise.all([
             fetch('/api/financeiro', {
                 headers: { 'Authorization': 'Bearer ' + token }
@@ -80,6 +79,12 @@ async function carregarFinanceiro() {
 
         if (despesasResult.success) {
             despesasData = despesasResult.data;
+            // 🔥 CORRIGIR: Garantir que totais sejam números
+            if (despesasData.totais) {
+                despesasData.totais.total = parseFloat(despesasData.totais.total) || 0;
+                despesasData.totais.pago = parseFloat(despesasData.totais.pago) || 0;
+                despesasData.totais.pendente = parseFloat(despesasData.totais.pendente) || 0;
+            }
         }
 
         const categorias = categoriasResult.success ? categoriasResult.data : [];
@@ -167,7 +172,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                         <div class="stat-icon" style="background: #dcfce7;color:#16a34a;">💰</div>
                         <div class="stat-content">
                             <div class="stat-value" style="color:#16a34a;">
-                                R$ ${((totais.faturamento_bruto || 0) - (despesasTotais.total || 0)).toFixed(2)}
+                                R$ ${((parseFloat(totais.faturamento_bruto) || 0) - (parseFloat(despesasTotais.total) || 0)).toFixed(2)}
                             </div>
                             <div class="stat-label">Lucro Líquido</div>
                             <div class="stat-sub">Bruto - Despesas</div>
@@ -231,36 +236,69 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
         // COMISSÕES POR PROFISSIONAL
         // ============================================
         if (financeiro?.comissoes_por_profissional && financeiro.comissoes_por_profissional.length > 0) {
+            const isMobileComissoes = window.innerWidth < 768;
+
             html += `
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-users"></i> Comissões por Profissional</h3>
-                        <span class="badge badge-info">${financeiro.comissoes_por_profissional.length} profissionais</span>
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-users"></i> Comissões por Profissional</h3>
+                <span class="badge badge-info">${financeiro.comissoes_por_profissional.length} profissionais</span>
+            </div>
+    `;
+
+            if (isMobileComissoes) {
+                // ============================================
+                // VERSÃO MOBILE - CARDS DE COMISSÕES
+                // ============================================
+                html += `<div class="comissoes-cards-mobile">`;
+
+                for (let prof of financeiro.comissoes_por_profissional) {
+                    const inicial = prof.nome ? prof.nome.charAt(0).toUpperCase() : '?';
+                    const totalComissao = parseFloat(prof.total_comissao) || 0;
+
+                    html += `
+                <div class="comissao-card-mobile">
+                    <div class="comissao-avatar">${inicial}</div>
+                    <div class="comissao-info">
+                        <span class="comissao-nome">${escapeHtml(prof.nome)}</span>
+                        <span class="comissao-detalhes">${prof.total_servicos} serviço(s)</span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Profissional</th>
-                                    <th>Serviços</th>
-                                    <th>Total Comissão</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${financeiro.comissoes_por_profissional.map(prof => `
-                                    <tr>
-                                        <td><strong>${escapeHtml(prof.nome)}</strong></td>
-                                        <td>${prof.total_servicos} serviço(s)</td>
-                                        <td><span class="valor">R$ ${(parseFloat(prof.total_comissao) || 0).toFixed(2)}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="comissao-valor">R$ ${totalComissao.toFixed(2)}</div>
                 </div>
             `;
-        }
+                }
 
+                html += `</div>`;
+            } else {
+                // ============================================
+                // VERSÃO DESKTOP - TABELA
+                // ============================================
+                html += `
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Profissional</th>
+                            <th>Serviços</th>
+                            <th>Total Comissão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${financeiro.comissoes_por_profissional.map(prof => `
+                            <tr>
+                                <td><strong>${escapeHtml(prof.nome)}</strong></td>
+                                <td>${prof.total_servicos} serviço(s)</td>
+                                <td><span class="valor">R$ ${(parseFloat(prof.total_comissao) || 0).toFixed(2)}</span></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+            }
+
+            html += `</div>`;
+        }
         // ============================================
         // DESPESAS - LISTA COMPLETA
         // ============================================
@@ -298,61 +336,111 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
 
         // Tabela de Despesas
         const despesasLista = despesas?.despesas || [];
+        const isMobile = window.innerWidth < 768;
 
         if (despesasLista.length === 0) {
             html += `
-                <div class="empty-state">
-                    <i class="fas fa-receipt"></i>
-                    <h4>Nenhuma despesa cadastrada</h4>
-                    <p>Clique em "Nova Despesa" para começar a controlar seus custos</p>
+        <div class="empty-state">
+            <i class="fas fa-receipt"></i>
+            <h4>Nenhuma despesa cadastrada</h4>
+            <p>Clique em "Nova Despesa" para começar a controlar seus custos</p>
+        </div>
+    `;
+        } else if (isMobile) {
+            // ============================================
+            // VERSÃO MOBILE - CARDS DE DESPESAS
+            // ============================================
+            html += `<div class="despesas-cards-mobile">`;
+
+            for (let d of despesasLista) {
+                const statusClass = d.pago ? 'pago' : 'pendente';
+                const statusLabel = d.pago ? '✅ Paga' : '⏳ Pendente';
+                const formaPagamento = d.forma_pagamento || 'Não informado';
+
+                html += `
+            <div class="despesa-card-mobile">
+                <div class="despesa-header">
+                    <div class="despesa-info">
+                        <span class="despesa-descricao">${escapeHtml(d.descricao)}</span>
+                        <span class="despesa-categoria">📂 ${escapeHtml(d.categoria)}</span>
+                        <span class="despesa-data">📅 ${formatarDataBr(d.data)}</span>
+                    </div>
+                    <span class="despesa-status ${statusClass}">${statusLabel}</span>
                 </div>
-            `;
+                
+                <div class="despesa-valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</div>
+                
+                <div class="despesa-pagamento">
+                    <span class="pagamento-icon">💳</span>
+                    ${escapeHtml(formaPagamento)}
+                    ${d.data_vencimento ? `| 📅 Venc: ${formatarDataBr(d.data_vencimento)}` : ''}
+                </div>
+                
+                <div class="despesa-actions">
+                    <button class="btn-icon btn-edit" onclick="editarDespesa(${d.id})" title="Editar">
+                        <i class="fas fa-pen"></i> Editar
+                    </button>
+                    <button class="btn-icon btn-toggle ${statusClass}" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
+                        <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i> ${d.pago ? 'Desfazer' : 'Pagar'}
+                    </button>
+                    <button class="btn-icon btn-delete" onclick="excluirDespesa(${d.id})" title="Excluir">
+                        <i class="fas fa-trash"></i> Excluir
+                    </button>
+                </div>
+            </div>
+        `;
+            }
+
+            html += `</div>`;
         } else {
+            // ============================================
+            // VERSÃO DESKTOP - TABELA
+            // ============================================
             html += `
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>📅 Data</th>
-                                <th>📝 Descrição</th>
-                                <th>📂 Categoria</th>
-                                <th>💰 Valor</th>
-                                <th>📊 Status</th>
-                                <th>⚡ Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${despesasLista.map(d => `
-                                <tr>
-                                    <td>${formatarDataBr(d.data)}</td>
-                                    <td>${escapeHtml(d.descricao)}</td>
-                                    <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
-                                    <td><span class="valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</span></td>
-                                    <td>
-                                        ${d.pago
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>📅 Data</th>
+                        <th>📝 Descrição</th>
+                        <th>📂 Categoria</th>
+                        <th>💰 Valor</th>
+                        <th>📊 Status</th>
+                        <th>⚡ Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${despesasLista.map(d => `
+                        <tr>
+                            <td>${formatarDataBr(d.data)}</td>
+                            <td>${escapeHtml(d.descricao)}</td>
+                            <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
+                            <td><span class="valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</span></td>
+                            <td>
+                                ${d.pago
                     ? '<span class="badge badge-success">✅ Paga</span>'
                     : `<span class="badge badge-warning">⏳ Pendente</span>`
                 }
-                                    </td>
-                                    <td>
-                                        <div style="display:flex;gap:4px;">
-                                            <button class="btn btn-outline btn-sm" onclick="editarDespesa(${d.id})" title="Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-outline btn-sm" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
-                                                <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i>
-                                            </button>
-                                            <button class="btn btn-outline btn-sm" onclick="excluirDespesa(${d.id})" title="Excluir" style="color:#dc2626;">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
+                            </td>
+                            <td>
+                                <div style="display:flex;gap:4px;">
+                                    <button class="btn btn-outline btn-sm" onclick="editarDespesa(${d.id})" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
+                                        <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i>
+                                    </button>
+                                    <button class="btn btn-outline btn-sm" onclick="excluirDespesa(${d.id})" title="Excluir" style="color:#dc2626;">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
         }
 
         html += `</div>`;

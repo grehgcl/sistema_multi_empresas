@@ -5721,3 +5721,1163 @@ input[type="month"] {
 [data-theme="dark"] .cliente-card-desktop .cliente-contato {
     color: #8888aa;
 }
+
+/* ============================================
+   DESPESAS - MOBILE (CORRIGIDO E ORGANIZADO)
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Container dos cards de despesa */
+    .despesas-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 4px 0;
+    }
+
+    /* Card individual da despesa */
+    .despesa-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+    }
+
+    .despesa-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    /* Cabeçalho do card */
+    .despesa-card-mobile .despesa-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        gap: 8px;
+    }
+
+    .despesa-card-mobile .despesa-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .despesa-card-mobile .despesa-descricao {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .despesa-card-mobile .despesa-categoria {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+    }
+
+    .despesa-card-mobile .despesa-data {
+        font-size: 11px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+    }
+
+    /* Badge de Status */
+    .despesa-card-mobile .despesa-status {
+        font-size: 11px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .despesa-card-mobile .despesa-status.pago {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .despesa-card-mobile .despesa-status.pendente {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+    }
+
+    /* Valor */
+    .despesa-card-mobile .despesa-valor {
+        font-size: 20px;
+        font-weight: 700;
+        color: #ef4444;
+        display: block;
+        margin: 8px 0;
+        text-align: center;
+        padding: 8px;
+        background: rgba(239, 68, 68, 0.06);
+        border-radius: 10px;
+    }
+
+    /* Forma de pagamento */
+    .despesa-card-mobile .despesa-pagamento {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .despesa-card-mobile .despesa-pagamento .pagamento-icon {
+        font-size: 14px;
+    }
+
+    /* Rodapé do card - Ações */
+    .despesa-card-mobile .despesa-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding-top: 10px;
+        margin-top: 10px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-icon {
+        padding: 6px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        justify-content: center;
+        min-width: 60px;
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-icon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-edit {
+        border-color: rgba(102, 126, 234, 0.3);
+        color: var(--primary);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-edit:hover {
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-toggle {
+        border-color: rgba(34, 197, 94, 0.3);
+        color: #22c55e;
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-toggle:hover {
+        background: rgba(34, 197, 94, 0.1);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-toggle.pendente {
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #f59e0b;
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-toggle.pendente:hover {
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-delete {
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-delete:hover {
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Delay para animação */
+    .despesa-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .despesa-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .despesa-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .despesa-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .despesa-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+
+    .despesa-card-mobile:nth-child(6) {
+        animation-delay: 0.30s;
+    }
+}
+
+/* ============================================
+   RESUMO DAS DESPESAS - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .despesa-resumo-mobile {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .despesa-resumo-mobile .resumo-item {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 12px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .despesa-resumo-mobile .resumo-item .resumo-valor {
+        font-size: 18px;
+        font-weight: 700;
+        display: block;
+    }
+
+    .despesa-resumo-mobile .resumo-item .resumo-valor.total {
+        color: #ef4444;
+    }
+
+    .despesa-resumo-mobile .resumo-item .resumo-valor.pago {
+        color: #22c55e;
+    }
+
+    .despesa-resumo-mobile .resumo-item .resumo-valor.pendente {
+        color: #f59e0b;
+    }
+
+    .despesa-resumo-mobile .resumo-item .resumo-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-top: 2px;
+        display: block;
+    }
+}
+
+/* ============================================
+   FILTROS DE DESPESAS - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .despesa-filtros-mobile {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 12px;
+        background: var(--bg-card);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+    }
+
+    .despesa-filtros-mobile .filtro-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .despesa-filtros-mobile .filtro-group label {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .despesa-filtros-mobile .filtro-group select,
+    .despesa-filtros-mobile .filtro-group input {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        font-size: 12px;
+        width: 100%;
+    }
+
+    .despesa-filtros-mobile .filtro-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 8px;
+    }
+
+    .despesa-filtros-mobile .filtro-actions .btn {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 12px;
+        border-radius: 8px;
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   TEMA ESCURO - DESPESAS
+   ============================================ */
+
+[data-theme="dark"] .despesa-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .despesa-card-mobile .despesa-descricao {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .despesa-card-mobile .despesa-categoria {
+    color: #8888aa;
+}
+
+[data-theme="dark"] .despesa-card-mobile .despesa-data {
+    color: #666688;
+}
+
+[data-theme="dark"] .despesa-card-mobile .despesa-valor {
+    background: rgba(239, 68, 68, 0.08);
+}
+
+[data-theme="dark"] .despesa-resumo-mobile .resumo-item {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+/* ============================================
+   HISTÓRICO DE SERVIÇOS - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Container do histórico */
+    .historico-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 4px 0;
+    }
+
+    /* Card individual do histórico */
+    .historico-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+    }
+
+    .historico-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    /* Cabeçalho do card */
+    .historico-card-mobile .historico-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .historico-card-mobile .historico-cliente {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+    }
+
+    .historico-card-mobile .historico-servico {
+        font-size: 13px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+    }
+
+    .historico-card-mobile .historico-data {
+        font-size: 11px;
+        color: var(--text-muted);
+        background: var(--bg-hover);
+        padding: 2px 12px;
+        border-radius: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    /* Corpo do card */
+    .historico-card-mobile .historico-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 12px;
+        margin: 6px 0;
+    }
+
+    .historico-card-mobile .historico-card-body .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0;
+    }
+
+    .historico-card-mobile .historico-card-body .info-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .historico-card-mobile .historico-card-body .info-value {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .historico-card-mobile .historico-card-body .info-value.valor-mobile {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    .historico-card-mobile .historico-card-body .info-value.text-muted {
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+
+    /* Delay para animação */
+    .historico-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .historico-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .historico-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .historico-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .historico-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+
+    .historico-card-mobile:nth-child(6) {
+        animation-delay: 0.30s;
+    }
+}
+
+/* ============================================
+   COMISSÕES POR PROFISSIONAL - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Container dos cards de comissão */
+    .comissoes-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    /* Card individual do profissional */
+    .comissao-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .comissao-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    /* Avatar do profissional */
+    .comissao-card-mobile .comissao-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 18px;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Informações */
+    .comissao-card-mobile .comissao-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .comissao-card-mobile .comissao-nome {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .comissao-card-mobile .comissao-detalhes {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+    }
+
+    /* Valor da comissão */
+    .comissao-card-mobile .comissao-valor {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--primary);
+        flex-shrink: 0;
+        background: rgba(102, 126, 234, 0.1);
+        padding: 4px 14px;
+        border-radius: 12px;
+    }
+
+    /* Delay para animação */
+    .comissao-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .comissao-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .comissao-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .comissao-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .comissao-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+}
+
+/* ============================================
+   TEMA ESCURO - HISTÓRICO E COMISSÕES
+   ============================================ */
+
+[data-theme="dark"] .historico-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-cliente {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-servico {
+    color: #8888aa;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-data {
+    background: #252540;
+    color: #8888aa;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-card-body .info-value {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .comissao-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .comissao-card-mobile .comissao-nome {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .comissao-card-mobile .comissao-detalhes {
+    color: #8888aa;
+}
+
+/* ============================================
+   HISTÓRICO DE SERVIÇOS - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .historico-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 4px 0;
+    }
+
+    .historico-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+    }
+
+    .historico-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    .historico-card-mobile .historico-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .historico-card-mobile .historico-cliente {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+    }
+
+    .historico-card-mobile .historico-servico {
+        font-size: 13px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+    }
+
+    .historico-card-mobile .historico-data {
+        font-size: 11px;
+        color: var(--text-muted);
+        background: var(--bg-hover);
+        padding: 2px 12px;
+        border-radius: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-top: 4px;
+    }
+
+    .historico-card-mobile .historico-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 12px;
+        margin: 6px 0;
+    }
+
+    .historico-card-mobile .historico-card-body .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0;
+    }
+
+    .historico-card-mobile .historico-card-body .info-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .historico-card-mobile .historico-card-body .info-value {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .historico-card-mobile .historico-card-body .info-value.valor-mobile {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    .historico-card-mobile .historico-card-body .info-value.text-muted {
+        color: var(--text-muted);
+        font-weight: 400;
+    }
+
+    .historico-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .historico-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .historico-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .historico-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .historico-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+
+    .historico-card-mobile:nth-child(6) {
+        animation-delay: 0.30s;
+    }
+}
+
+/* ============================================
+   COMISSÕES POR PROFISSIONAL - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .comissoes-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 4px 0;
+    }
+
+    .comissao-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .comissao-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    .comissao-card-mobile .comissao-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 18px;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .comissao-card-mobile .comissao-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .comissao-card-mobile .comissao-nome {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .comissao-card-mobile .comissao-detalhes {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+        margin-top: 2px;
+    }
+
+    .comissao-card-mobile .comissao-valor {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--primary);
+        flex-shrink: 0;
+        background: rgba(102, 126, 234, 0.1);
+        padding: 4px 14px;
+        border-radius: 12px;
+    }
+
+    .comissao-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .comissao-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .comissao-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .comissao-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .comissao-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+}
+
+/* ============================================
+   TEMA ESCURO - HISTÓRICO E COMISSÕES
+   ============================================ */
+
+[data-theme="dark"] .historico-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-cliente {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-servico {
+    color: #8888aa;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-data {
+    background: #252540;
+    color: #8888aa;
+}
+
+[data-theme="dark"] .historico-card-mobile .historico-card-body .info-value {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .comissao-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .comissao-card-mobile .comissao-nome {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .comissao-card-mobile .comissao-detalhes {
+    color: #8888aa;
+}
+
+[data-theme="dark"] .comissao-card-mobile .comissao-valor {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+/* ============================================
+   ANIMAÇÃO SLIDE UP
+   ============================================ */
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   FINANCEIRO - MOBILE MELHORADO
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Cards de resultado */
+    .financeiro-container .card-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .financeiro-container .stat-card {
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+
+    .financeiro-container .stat-card:active {
+        transform: scale(0.97);
+    }
+
+    .financeiro-container .stat-card .stat-icon {
+        font-size: 20px;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .financeiro-container .stat-card .stat-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: block;
+        line-height: 1.2;
+    }
+
+    .financeiro-container .stat-card .stat-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-top: 2px;
+        display: block;
+    }
+
+    .financeiro-container .stat-card .stat-sub {
+        font-size: 9px;
+        color: var(--text-muted);
+        margin-top: 2px;
+        display: block;
+    }
+
+    /* Cards de Receitas e Despesas lado a lado */
+    .financeiro-container .receitas-despesas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .financeiro-container .receitas-despesas-grid .card {
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+    }
+
+    .financeiro-container .receitas-despesas-grid .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-color);
+    }
+
+    .financeiro-container .receitas-despesas-grid .card-header h3 {
+        font-size: 13px;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .financeiro-container .receitas-despesas-grid .card-header .badge {
+        font-size: 11px;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-weight: 600;
+    }
+
+    .financeiro-container .receitas-despesas-grid .badge-success {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .financeiro-container .receitas-despesas-grid .badge-danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .financeiro-container .receitas-despesas-grid .info-row-card {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 12px;
+    }
+
+    .financeiro-container .receitas-despesas-grid .info-row-card:last-child {
+        border-bottom: none;
+    }
+
+    .financeiro-container .receitas-despesas-grid .info-row-card .label {
+        color: var(--text-muted);
+    }
+
+    .financeiro-container .receitas-despesas-grid .info-row-card .value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .financeiro-container .receitas-despesas-grid .info-row-card .value.positive {
+        color: #22c55e;
+    }
+
+    .financeiro-container .receitas-despesas-grid .info-row-card .value.negative {
+        color: #ef4444;
+    }
+
+    /* Título da seção */
+    .financeiro-container .section-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .financeiro-container .section-title .title-icon {
+        font-size: 16px;
+    }
+
+    /* Cards de resultado detalhado */
+    .financeiro-container .resultado-detalhado {
+        background: var(--bg-card);
+        border-radius: 14px;
+        padding: 16px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+    }
+
+    .financeiro-container .resultado-detalhado .linha {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--border-color);
+        font-size: 13px;
+    }
+
+    .financeiro-container .resultado-detalhado .linha:last-child {
+        border-bottom: none;
+    }
+
+    .financeiro-container .resultado-detalhado .linha .label {
+        color: var(--text-muted);
+    }
+
+    .financeiro-container .resultado-detalhado .linha .value {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .financeiro-container .resultado-detalhado .linha .value.positive {
+        color: #22c55e;
+    }
+
+    .financeiro-container .resultado-detalhado .linha .value.negative {
+        color: #ef4444;
+    }
+
+    .financeiro-container .resultado-detalhado .linha .value.primary {
+        color: var(--primary);
+    }
+
+    .financeiro-container .resultado-detalhado .linha.total {
+        background: rgba(102, 126, 234, 0.08);
+        border-radius: 8px;
+        padding: 8px 12px;
+        margin-top: 4px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    .financeiro-container .resultado-detalhado .linha.total .value {
+        font-size: 16px;
+        color: #22c55e;
+    }
+
+    /* Margem de lucro */
+    .financeiro-container .margem-lucro {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--bg-hover);
+        border-radius: 10px;
+        margin-top: 8px;
+        font-size: 12px;
+    }
+
+    .financeiro-container .margem-lucro .margem-valor {
+        font-weight: 700;
+        font-size: 16px;
+    }
+
+    .financeiro-container .margem-lucro .margem-valor.alta {
+        color: #22c55e;
+    }
+
+    .financeiro-container .margem-lucro .margem-valor.media {
+        color: #f59e0b;
+    }
+
+    .financeiro-container .margem-lucro .margem-valor.baixa {
+        color: #ef4444;
+    }
+}
+
+/* ============================================
+   DESKTOP - AJUSTES
+   ============================================ */
+
+@media (min-width: 769px) {
+    .financeiro-container .card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .financeiro-container .receitas-despesas-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+}
