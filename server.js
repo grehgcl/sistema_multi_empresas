@@ -4926,7 +4926,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
         db.get(
             `SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim 
              FROM horarios_funcionamento 
-             WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1`,
+             WHERE empresa_id = ? AND dia_semana = ? AND aberto = true`,
             [empresaId, diaSemana],
             (err, horario) => {
                 if (err) {
@@ -5712,3 +5712,4 @@ try {
 } catch (error) {
     console.log('?? Erro ao iniciar job de reset:', error.message);
 }
+
