@@ -4784,3 +4784,940 @@ input[type="month"] {
     background-color: #1a1a2e;
     color: #e0e0e0;
 }
+
+/* ============================================
+   📱 VERSÃO MOBILE - CARDS ORGANIZADOS
+   ============================================ */
+
+/* ============================================
+   AGENDAMENTOS - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Agendamento Card */
+    .agendamento-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+    }
+
+    .agendamento-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    /* Cabeçalho do Card */
+    .agendamento-card-mobile .card-header-mobile {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        gap: 8px;
+    }
+
+    .agendamento-card-mobile .cliente-info-mobile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .agendamento-card-mobile .cliente-avatar-mobile {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    .agendamento-card-mobile .cliente-nome-mobile {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .agendamento-card-mobile .servico-mobile {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Badge de Status */
+    .agendamento-card-mobile .status-badge {
+        font-size: 11px;
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .agendamento-card-mobile .status-badge.concluido {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .agendamento-card-mobile .status-badge.pendente {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+    }
+
+    .agendamento-card-mobile .status-badge.agendado {
+        background: rgba(102, 126, 234, 0.15);
+        color: #667eea;
+    }
+
+    .agendamento-card-mobile .status-badge.cancelado {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    /* Corpo do Card */
+    .agendamento-card-mobile .card-body-mobile {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 12px;
+        margin: 8px 0 12px 0;
+    }
+
+    .agendamento-card-mobile .card-body-mobile .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0;
+    }
+
+    .agendamento-card-mobile .card-body-mobile .info-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .agendamento-card-mobile .card-body-mobile .info-value {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .agendamento-card-mobile .card-body-mobile .info-value.valor-mobile {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    /* Ações */
+    .agendamento-card-mobile .card-actions-mobile {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-icon {
+        padding: 6px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        justify-content: center;
+        min-width: 60px;
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-icon:hover {
+        transform: translateY(-1px);
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-edit {
+        border-color: rgba(102, 126, 234, 0.3);
+        color: var(--primary);
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-edit:hover {
+        background: rgba(102, 126, 234, 0.1);
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-check {
+        border-color: rgba(34, 197, 94, 0.3);
+        color: #22c55e;
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-check:hover {
+        background: rgba(34, 197, 94, 0.1);
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-delete {
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+
+    .agendamento-card-mobile .card-actions-mobile .btn-delete:hover {
+        background: rgba(239, 68, 68, 0.1);
+    }
+}
+
+/* ============================================
+   SERVIÇOS - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .servico-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+    }
+
+    .servico-card-mobile .servico-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        gap: 8px;
+    }
+
+    .servico-card-mobile .servico-nome-mobile {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .servico-card-mobile .servico-icone {
+        font-size: 20px;
+    }
+
+    .servico-card-mobile .status-badge {
+        font-size: 11px;
+        padding: 3px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .servico-card-mobile .status-badge.ativo {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    .servico-card-mobile .status-badge.inativo {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .servico-card-mobile .servico-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 12px;
+        margin: 8px 0 12px 0;
+    }
+
+    .servico-card-mobile .servico-card-body .info-row {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 4px 0;
+    }
+
+    .servico-card-mobile .servico-card-body .info-label {
+        font-size: 10px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+
+    .servico-card-mobile .servico-card-body .info-value {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .servico-card-mobile .servico-card-body .info-value.valor-mobile {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    .servico-card-mobile .servico-card-actions {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        padding-top: 10px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .servico-card-mobile .servico-card-actions .btn-icon {
+        padding: 6px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        flex: 1;
+        justify-content: center;
+        min-width: 60px;
+    }
+
+    .servico-card-mobile .servico-card-actions .btn-edit {
+        border-color: rgba(102, 126, 234, 0.3);
+        color: var(--primary);
+    }
+
+    .servico-card-mobile .servico-card-actions .btn-toggle-on {
+        border-color: rgba(34, 197, 94, 0.3);
+        color: #22c55e;
+    }
+
+    .servico-card-mobile .servico-card-actions .btn-toggle-off {
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+
+    .servico-card-mobile .servico-card-actions .btn-delete {
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+    }
+}
+
+/* ============================================
+   CLIENTES - MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .cliente-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .cliente-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    .cliente-card-mobile .cliente-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-mobile .cliente-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cliente-card-mobile .cliente-nome {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cliente-card-mobile .cliente-contato {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cliente-card-mobile .cliente-status {
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-mobile .cliente-actions {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-icon:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-edit:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-delete:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+    }
+}
+
+/* ============================================
+   ESTATÍSTICAS MOBILE - CARDS MINI
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    .agendamento-stats,
+    .servico-stats {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .agendamento-stats .stat-mini,
+    .servico-stats .stat-mini {
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: 12px 8px;
+        text-align: center;
+        border: 1px solid var(--border-color);
+    }
+
+    .agendamento-stats .stat-mini-value,
+    .servico-stats .stat-mini-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: var(--text-primary);
+        display: block;
+    }
+
+    .agendamento-stats .stat-mini-label,
+    .servico-stats .stat-mini-label {
+        font-size: 9px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        margin-top: 2px;
+    }
+}
+
+/* ============================================
+   FILTROS MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .filter-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 12px;
+        background: var(--bg-card);
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+        margin-bottom: 16px;
+    }
+
+    .filter-bar .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .filter-bar .filter-group label {
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .filter-bar .filter-group .filter-input,
+    .filter-bar .filter-group .filter-select {
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        font-size: 12px;
+        width: 100%;
+    }
+
+    .filter-bar .filter-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 8px;
+    }
+
+    .filter-bar .filter-actions .btn {
+        flex: 1;
+        padding: 8px 12px;
+        font-size: 12px;
+        border-radius: 8px;
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   HEADER MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 10px;
+        padding: 12px 16px;
+    }
+
+    .dashboard-header .page-title {
+        font-size: 18px;
+    }
+
+    .dashboard-header .page-subtitle {
+        font-size: 12px;
+    }
+
+    .dashboard-header .dashboard-actions {
+        width: 100%;
+    }
+
+    .dashboard-header .dashboard-actions .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px 16px;
+        font-size: 13px;
+    }
+}
+
+/* ============================================
+   ANIMAÇÕES E TRANSIÇÕES
+   ============================================ */
+
+.agendamento-card-mobile,
+.servico-card-mobile,
+.cliente-card-mobile {
+    animation: slideUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Delay para cada card */
+.agendamento-card-mobile:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.agendamento-card-mobile:nth-child(2) {
+    animation-delay: 0.10s;
+}
+
+.agendamento-card-mobile:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.agendamento-card-mobile:nth-child(4) {
+    animation-delay: 0.20s;
+}
+
+.agendamento-card-mobile:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.agendamento-card-mobile:nth-child(6) {
+    animation-delay: 0.30s;
+}
+
+/* ============================================
+   CLIENTES - MOBILE (CORRIGIDO E ORGANIZADO)
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Container dos cards */
+    .clientes-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 4px 0;
+    }
+
+    /* Card individual do cliente */
+    .cliente-card-mobile {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 14px 16px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        animation: slideUp 0.3s ease forwards;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .cliente-card-mobile:active {
+        transform: scale(0.98);
+    }
+
+    /* Avatar do cliente */
+    .cliente-card-mobile .cliente-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 20px;
+        flex-shrink: 0;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    /* Informações do cliente */
+    .cliente-card-mobile .cliente-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cliente-card-mobile .cliente-nome {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .cliente-card-mobile .cliente-contato {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+    }
+
+    /* Badge de status (bloqueado/desbloqueado) */
+    .cliente-card-mobile .cliente-status {
+        font-size: 14px;
+        flex-shrink: 0;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 11px;
+    }
+
+    .cliente-card-mobile .cliente-status.bloqueado {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+    }
+
+    .cliente-card-mobile .cliente-status.desbloqueado {
+        background: rgba(34, 197, 94, 0.15);
+        color: #22c55e;
+    }
+
+    /* Ações do cliente */
+    .cliente-card-mobile .cliente-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        border: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-icon:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-edit:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-delete:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-toggle {
+        border-color: rgba(245, 158, 11, 0.3);
+        color: #f59e0b;
+    }
+
+    .cliente-card-mobile .cliente-actions .btn-toggle:hover {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: white;
+    }
+
+    /* Delay para animação */
+    .cliente-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .cliente-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .cliente-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .cliente-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .cliente-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+
+    .cliente-card-mobile:nth-child(6) {
+        animation-delay: 0.30s;
+    }
+}
+
+/* ============================================
+   CLIENTES - GRID (Desktop)
+   ============================================ */
+
+@media (min-width: 769px) {
+    .clientes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 16px;
+    }
+
+    .cliente-card-desktop {
+        background: var(--bg-card);
+        border-radius: 16px;
+        padding: 16px 20px;
+        border: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .cliente-card-desktop:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.08);
+        transform: translateY(-2px);
+    }
+
+    .cliente-card-desktop .cliente-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 18px;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-desktop .cliente-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .cliente-card-desktop .cliente-nome {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .cliente-card-desktop .cliente-contato {
+        font-size: 13px;
+        color: var(--text-muted);
+    }
+
+    .cliente-card-desktop .cliente-status {
+        font-size: 12px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-desktop .cliente-status.bloqueado {
+        background: rgba(239, 68, 68, 0.12);
+        color: #ef4444;
+    }
+
+    .cliente-card-desktop .cliente-status.desbloqueado {
+        background: rgba(34, 197, 94, 0.12);
+        color: #22c55e;
+    }
+
+    .cliente-card-desktop .cliente-actions {
+        display: flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .cliente-card-desktop .cliente-actions .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid var(--border-color);
+        background: var(--bg-hover);
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .cliente-card-desktop .cliente-actions .btn-icon:hover {
+        transform: translateY(-2px);
+    }
+
+    .cliente-card-desktop .cliente-actions .btn-edit:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+    }
+
+    .cliente-card-desktop .cliente-actions .btn-delete:hover {
+        background: #ef4444;
+        border-color: #ef4444;
+        color: white;
+    }
+}
+
+/* ============================================
+   TEMA ESCURO - CLIENTES
+   ============================================ */
+
+[data-theme="dark"] .cliente-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .cliente-card-mobile .cliente-nome {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .cliente-card-mobile .cliente-contato {
+    color: #8888aa;
+}
+
+[data-theme="dark"] .cliente-card-desktop {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .cliente-card-desktop .cliente-nome {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .cliente-card-desktop .cliente-contato {
+    color: #8888aa;
+}

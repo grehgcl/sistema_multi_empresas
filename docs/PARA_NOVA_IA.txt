@@ -308,3 +308,174 @@ http://localhost:3000
 =========================================
 ULTIMA ATUALIZACAO: 01/07/2026
 =========================================
+
+---
+
+## 📄 **4. PARA_NOVA_IA.txt** - COLE DIRETO NO ARQUIVO
+
+```markdown
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 06/07/2026
+=========================================
+
+## 🚀 COMO EXECUTAR O PROJETO
+
+### Modo Local (SQLite - Desenvolvimento)
+```bash
+npm start
+WhatsApp em modo LOG
+
+Banco SQLite local
+
+Acesse: http://localhost:3000
+
+Modo com PostgreSQL (Teste com dados reais)
+bash
+node -r dotenv/config server.js dotenv_config_path=.env.local
+WhatsApp Evolution REAL
+
+Banco PostgreSQL do Render
+
+Acesse: http://localhost:3000
+
+USUARIOS:
+Super Admin: super@admin.com / super123
+
+Dono: admin@teste.com / 123456
+
+✅ IMPLEMENTADO (06/07/2026)
+1. WHATSAPP EVOLUTION - SISTEMA COMPLETO 📱
+Confirmação de Agendamento: Enviada automaticamente
+
+Lembrete 24h: Job automático às 09:00
+
+Cancelamento: Notifica o cliente
+
+Conclusão: Agradecimento automático
+
+Telefone do Dono: Aparece em todas as mensagens
+
+Endereço: Aparece nas mensagens
+
+Formatação: (XX) XXXXX-XXXX
+
+2. SUPER ADMIN - DASHBOARD COMPLETO 🏢
+Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
+
+Lista completa de todas as empresas
+
+Status do trial (dias restantes, expirado, ativo)
+
+Gerenciar usuários (nome, email, telefone, role, senha, comissão)
+
+Filtrar empresas por nome em tempo real
+
+3. SISTEMA DE ACESSOS 📊
+Registro automático de acessos no login
+
+Captura de IP e User-Agent
+
+Estatísticas por empresa (total, hoje, último acesso)
+
+4. CORREÇÃO DE BOOLEANOS 🎯
+PostgreSQL: true/false, SQLite: 1/0
+
+Função isAberto() para compatibilidade
+
+5. CORREÇÃO DE .toFixed() 🎯
+PostgreSQL retorna strings
+
+parseFloat() antes de toFixed()
+
+6. PRESERVAÇÃO DE HORÁRIO NA AGENDA 🎯
+Horário é mantido ao selecionar serviço
+
+Próximo horário disponível se o selecionado não estiver disponível
+
+🔧 CORREÇÕES NO BACKEND
+Middleware verificarAcessoAgendamentos
+javascript
+const isAtiva = empresa.assinatura_ativa === true || 
+                empresa.assinatura_ativa === 1 || 
+                empresa.assinatura_ativa === 'true';
+Rota de Despesas - Placeholders
+javascript
+let counter = 2;
+sql += ` AND EXTRACT(MONTH FROM d.data) = $${counter}::int`;
+Rota de Agendamentos - Valores
+javascript
+valor: parseFloat(a.valor) || 0,
+comissao: parseFloat(a.comissao) || 0
+🗄️ ESTRUTURA DOS ARQUIVOS
+text
+server/
+├── config/
+│   ├── database.js
+│   └── whatsapp.js
+├── middlewares/
+│   └── auth.js           # CORRIGIDO
+├── services/
+│   └── whatsapp.js
+├── jobs/
+│   ├── lembretes.js
+│   └── reset-contador.js
+└── utils/
+    ├── constants.js
+    └── helpers.js
+
+public/
+├── index.html
+├── chatbot.html
+├── css/
+│   ├── style.css
+│   └── chatbot.css
+└── js/
+    ├── ui.js
+    └── pages/
+        ├── dashboard.js      # CORRIGIDO
+        ├── agendamentos.js   # CORRIGIDO
+        ├── configuracoes.js  # CORRIGIDO
+        ├── financeiro.js     # CORRIGIDO
+        └── servicos.js       # CORRIGIDO
+📋 PLANOS COMPLETOS
+Plano	Valor	Profissionais	Agendamentos/Mês
+Trial	Grátis (45 dias)	1	100
+Starter	R$ 29,90/mês	1	100
+Pro	R$ 59,90/mês	5	Ilimitado
+Business	R$ 119,90/mês	15	Ilimitado
+Enterprise	R$ 249,90/mês	Ilimitado	Ilimitado
+🔧 COMANDOS ÚTEIS
+bash
+# SQLite (Desenvolvimento)
+npm start
+
+# PostgreSQL (Teste)
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+# Verificar sintaxe
+node -c server.js
+
+# Scripts de correção
+node scripts/corrigir-booleanos.js
+node scripts/corrigir-tofixed.js
+node scripts/corrigir-placeholders.js
+🎯 O QUE FOI CORRIGIDO
+Problema	Solução	Status
+Booleanos no PostgreSQL	Função isAberto()	✅
+.toFixed() no PostgreSQL	parseFloat()	✅
+Placeholders PostgreSQL	Counter para $1, $2...	✅
+Assinatura ativa	Suporte true/false e 1/0	✅
+Horário na agenda	Preservação ao selecionar serviço	✅
+Profissionais status	isAberto() no frontend	✅
+Horários status	isAberto() no frontend	✅
+✅ STATUS ATUAL
+Tudo funcionando em AMBOS os bancos!
+
+✅ SQLite (desenvolvimento local)
+
+✅ PostgreSQL (Render e teste local)
+
+=========================================
+ULTIMA ATUALIZACAO: 06/07/2026
+=========================================

@@ -59,7 +59,7 @@ function verificarLimiteProfissionais(req, res, next) {
     // 🔥 CORRIGIDO: Usar $1 e $2 (dois placeholders diferentes)
     const sql = isProduction
         ? `SELECT plano, limite_profissionais, 
-            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = $1 AND ativo = 1) as total_profs 
+            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = $1 AND ativo = true) as total_profs 
             FROM empresas WHERE id = $2`
         : `SELECT plano, limite_profissionais, 
             (SELECT COUNT(*) FROM profissionais WHERE empresa_id = ? AND ativo = 1) as total_profs 
@@ -123,6 +123,9 @@ function verificarAcessoAgendamentos(req, res, next) {
         let acessoLiberado = false;
         let mensagem = '';
 
+        // 🔥 CORRIGIDO: Converter assinatura_ativa para booleano
+        const isAtiva = empresa.assinatura_ativa === true || empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === 'true';
+
         if (empresa.plano === 'trial' && empresa.trial_expira) {
             const trialExpira = new Date(empresa.trial_expira);
             if (hoje <= trialExpira) {
@@ -133,7 +136,7 @@ function verificarAcessoAgendamentos(req, res, next) {
                 console.log('❌ Trial expirado em:', trialExpira);
             }
         } else if (empresa.plano !== 'trial') {
-            if (empresa.assinatura_ativa === 1) {
+            if (isAtiva) {
                 if (empresa.assinatura_valida_ate) {
                     const validaAte = new Date(empresa.assinatura_valida_ate);
                     if (hoje <= validaAte) {

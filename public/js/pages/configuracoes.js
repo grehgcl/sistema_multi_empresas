@@ -30,7 +30,7 @@ async function carregarConfiguracoes() {
         }
 
         if (planoData.success && planoData.data) {
-            const ativos = profissionaisData.filter(p => p.ativo === 1).length;
+            const ativos = profissionaisData.filter(p => p.ativo === true || p.ativo === 1).length;
             planoInfo = {
                 plano: planoData.data.plano,
                 plano_nome: planoData.data.plano_nome || (planoData.data.plano === 'trial' ? 'Trial' : planoData.data.plano),
@@ -426,12 +426,14 @@ function renderProfissionaisList() {
             <td><strong>${escapeHtml(prof.nome)}</strong></td>
             <td>${escapeHtml(prof.email)}</td>
             <td><span class="badge">${prof.comissao_percent}%</span></td>
-            <td>${prof.ativo === 1 ? '<span class="badge-success">✅ Ativo</span>' : '<span class="badge-danger">❌ Inativo</span>'}</td>
+            <td>${(prof.ativo === true || prof.ativo === 1) ? '<span class="badge-success">✅ Ativo</span>' : '<span class="badge-danger">❌ Inativo</span>'}</td>
             <td>${formatarData(prof.created_at)}</td>
             <td class="actions-cell">
                 <button class="btn-icon btn-edit" onclick="editarProfissional(${prof.id})">✏️</button>
                 <button class="btn-icon btn-key" onclick="resetarSenhaProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🔑</button>
-                <button class="btn-icon btn-toggle" onclick="alternarStatusProfissional(${prof.id}, ${prof.ativo === 1 ? 'false' : 'true'})">${prof.ativo === 1 ? '🔴' : '🟢'}</button>
+                <button class="btn-icon btn-toggle" onclick="alternarStatusProfissional(${prof.id}, ${(prof.ativo === true || prof.ativo === 1) ? 'false' : 'true'})" title="${(prof.ativo === true || prof.ativo === 1) ? 'Desativar' : 'Ativar'}">
+    ${(prof.ativo === true || prof.ativo === 1) ? '🔴' : '🟢'}
+</button>
                 <button class="btn-icon btn-delete" onclick="excluirProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🗑️</button>
             </td>
         </tr>
@@ -454,7 +456,7 @@ function renderHorarios(horarios) {
     let rows = '';
     for (let dia = 0; dia <= 6; dia++) {
         const h = horariosMap[dia] || {};
-        const aberto = h.aberto !== undefined ? h.aberto : (dia === 0 ? 0 : 1);
+        const aberto = h.aberto !== undefined ? (h.aberto === true || h.aberto === 1 ? 1 : 0) : (dia === 0 ? 0 : 1);
         const disabled = aberto === 0 ? 'disabled' : '';
 
         rows += `
@@ -462,7 +464,7 @@ function renderHorarios(horarios) {
                 <td><strong>${dias[dia]}</strong></td>
                 <td>
                     <label class="switch">
-                        <input type="checkbox" class="status-toggle" data-dia="${dia}" ${aberto === 1 ? 'checked' : ''}>
+                        <input type="checkbox" class="status-toggle" data-dia="${dia}" ${(aberto === true || aberto === 1) ? 'checked' : ''}>
                         <span class="slider round"></span>
                     </label>
                 </td>
@@ -845,24 +847,38 @@ async function resetarSenhaProfissional(id, nome) {
 }
 
 async function alternarStatusProfissional(id, ativar) {
-    if (!confirm(`Deseja ${ativar ? 'ativar' : 'desativar'} este profissional?`)) return;
+    const acao = ativar ? 'ativar' : 'desativar';
+    if (!confirm(`Tem certeza que deseja ${acao} este profissional?`)) return;
+
     showLoading();
     const token = localStorage.getItem('token');
+
     try {
-        await fetch(`/api/profissionais/${id}`, {
+        const body = { ativo: ativar ? 1 : 0 };
+        console.log(`📝 Alternando status do profissional ${id} para:`, body);
+
+        const res = await fetch(`/api/profissionais/${id}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({ ativo: ativar ? 1 : 0 })
+            body: JSON.stringify(body)
         });
+
+        const data = await res.json();
         hideLoading();
-        showToast(`Profissional ${ativar ? 'ativado' : 'desativado'}!`, 'success');
-        carregarConfiguracoes();
+
+        if (data.success) {
+            showToast(`✅ Profissional ${acao}do com sucesso!`, 'success');
+            carregarConfiguracoes();
+        } else {
+            showToast(`❌ Erro ao ${acao} profissional: ${data.message}`, 'error');
+        }
     } catch (error) {
         hideLoading();
-        showToast('Erro ao alterar status', 'error');
+        console.error('Erro ao alternar status:', error);
+        showToast(`❌ Erro ao ${acao} profissional`, 'error');
     }
 }
 

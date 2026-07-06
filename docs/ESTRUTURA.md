@@ -287,3 +287,148 @@ text
 =========================================
 ULTIMA ATUALIZACAO: 01/07/2026
 =========================================
+
+---
+
+## 📄 **2. ESTRUTURA.md** - COLE DIRETO NO ARQUIVO
+
+```markdown
+# ESTRUTURA DO PROJETO - Atualizada em 06/07/2026
+
+## 🚀 COMO EXECUTAR O PROJETO
+
+### Modo Local (SQLite - Desenvolvimento)
+```bash
+npm start
+Banco SQLite local (database/barbearia.db)
+
+WhatsApp em modo LOG
+
+Modo com PostgreSQL do Render (Teste com dados reais)
+bash
+node -r dotenv/config server.js dotenv_config_path=.env.local
+Banco PostgreSQL do Render
+
+WhatsApp Evolution REAL
+
+📁 ESTRUTURA DE PASTAS
+text
+├── database/
+│   └── barbearia.db          # SQLite (desenvolvimento local)
+├── public/
+│   ├── index.html            # Landing Page + Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
+│   ├── css/
+│   │   ├── style.css         # Estilos premium com tema escuro
+│   │   └── chatbot.css       # Estilos específicos do chatbot
+│   └── js/
+│       ├── ui.js             # UI Global (toasts, loading, modal)
+│       └── pages/
+│           ├── dashboard.js              # Dashboard com AGENDA INTELIGENTE
+│           ├── dashboard-profissional.js # Dashboard Profissional
+│           ├── clientes.js               # CRUD Clientes
+│           ├── agendamentos.js           # CRUD Agendamentos (CORRIGIDO)
+│           ├── agendamentos-profissional.js
+│           ├── servicos.js               # CRUD Servicos
+│           ├── financeiro.js             # Financeiro (CORRIGIDO)
+│           ├── empresas.js               # Super Admin
+│           ├── configuracoes.js          # Configurações (CORRIGIDO)
+│           └── planos.js                 # Planos e Upgrade
+├── server/
+│   ├── config/
+│   │   ├── database.js      # Conexão com banco + MIGRAÇÕES
+│   │   └── whatsapp.js      # Configuração do WhatsApp
+│   ├── middlewares/
+│   │   └── auth.js          # Middlewares (CORRIGIDO)
+│   ├── services/
+│   │   └── whatsapp.js      # Serviço de notificações WhatsApp
+│   ├── jobs/
+│   │   ├── lembretes.js     # Job de lembretes (09:00)
+│   │   └── reset-contador.js
+│   └── utils/
+│       ├── constants.js     # Constantes (PLANOS, JWT_SECRET)
+│       └── helpers.js       # Funções auxiliares
+├── scripts/
+│   ├── migrate.js
+│   ├── seed.js
+│   ├── corrigir-booleanos.js
+│   ├── corrigir-tofixed.js
+│   └── corrigir-placeholders.js
+├── .env                     # SQLite (desenvolvimento)
+├── .env.local               # PostgreSQL (teste com dados reais)
+├── package.json
+└── server.js                # Backend completo + rotas (CORRIGIDO)
+🔥 CORREÇÕES RECENTES (06/07/2026)
+1. MIDDLEWARES CORRIGIDOS 📊
+verificarAcessoAgendamentos: Suporte a true/false e 1/0
+
+verificarLimiteProfissionais: Placeholders corrigidos para PostgreSQL
+
+verificarLimiteAgendamentos: Funcionando corretamente
+
+2. ROTAS CORRIGIDAS 🔧
+GET /api/despesas: Placeholders PostgreSQL corrigidos
+
+GET /api/horarios: Conversão de booleanos
+
+POST /api/agendamentos: Validação de assinatura ativa
+
+PUT /api/profissionais/:id: Counter corrigido
+
+3. FRONTEND CORRIGIDO 🎨
+configuracoes.js: Status de profissionais e horários
+
+agendamentos.js: Preservação de horário ao selecionar serviço
+
+financeiro.js: parseFloat antes de toFixed
+
+dashboard.js: Compatibilidade com booleanos
+
+4. SCRIPT DE CORREÇÃO 📝
+corrigir-booleanos.js: Converte 0/1 para true/false
+
+corrigir-tofixed.js: Adiciona parseFloat antes de toFixed
+
+corrigir-placeholders.js: Corrige placeholders PostgreSQL
+
+🗄️ TABELAS DO BANCO
+Tabela	Colunas principais	Status
+empresas	id, nome, plano, assinatura_ativa, telefone_dono, endereco	✅
+usuarios	id, nome, email, senha, role, empresa_id, telefone	✅
+profissionais	id, nome, email, comissao_percent, ativo, telefone	✅
+clientes	id, nome, telefone, email, bloqueado_chatbot, dias_bloqueio	✅
+servicos	id, nome, descricao, valor, duracao, ativo	✅
+agendamentos	id, cliente_id, data, hora, valor, status, comissao	✅
+despesas	id, empresa_id, descricao, categoria, valor, data, pago	✅
+horarios_funcionamento	id, empresa_id, dia_semana, aberto, hora_inicio, hora_fim	✅
+acessos	id, empresa_id, usuario_id, data_acesso, ip, user_agent	✅
+📋 VARIAVEIS DE AMBIENTE
+.env (SQLite - Desenvolvimento)
+bash
+NODE_ENV=development
+RENDER=false
+WHATSAPP_ENABLED=true
+WHATSAPP_PROVIDER=log
+.env.local (PostgreSQL - Teste)
+bash
+DATABASE_URL=postgresql://usuario:senha@host:porta/banco
+NODE_ENV=development
+RENDER=true
+WHATSAPP_ENABLED=true
+WHATSAPP_PROVIDER=evolution
+✅ STATUS DAS FUNCIONALIDADES
+Funcionalidade	SQLite	PostgreSQL	Status
+Login	✅	✅	OK
+Dashboard	✅	✅	OK
+Agenda Inteligente	✅	✅	OK
+Agendamentos	✅	✅	OK
+Despesas	✅	✅	OK
+Profissionais	✅	✅	OK
+Horários	✅	✅	OK
+Serviços	✅	✅	OK
+Financeiro	✅	✅	OK
+Configurações	✅	✅	OK
+WhatsApp	LOG	REAL	OK
+=========================================
+ULTIMA ATUALIZACAO: 06/07/2026
+=========================================

@@ -157,7 +157,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                     <div class="stat-card" style="border-left: 4px solid #e53e3e;">
                         <div class="stat-icon" style="background: #fee2e2;color:#dc2626;">📉</div>
                         <div class="stat-content">
-                            <div class="stat-value" style="color:#dc2626;">- R$ ${despesasTotais.total?.toFixed(2) || '0.00'}</div>
+                            <div class="stat-value" style="color:#dc2626;">- R$ ${(parseFloat(despesasTotais.total) || 0).toFixed(2) || '0.00'}</div>
                             <div class="stat-label">Total de Despesas</div>
                             <div class="stat-sub">${despesasTotais.quantidade || 0} despesas</div>
                         </div>
@@ -211,16 +211,16 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-arrow-down" style="color:#dc2626;"></i> Despesas</h3>
-                        <span class="badge badge-danger">R$ ${despesasTotais.total?.toFixed(2) || '0.00'}</span>
+                        <span class="badge badge-danger">R$ ${(parseFloat(despesasTotais.total) || 0).toFixed(2) || '0.00'}</span>
                     </div>
                     <div style="padding:12px;">
                         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
                             <span>💳 Pagas</span>
-                            <span><strong>R$ ${despesasTotais.pago?.toFixed(2) || '0.00'}</strong></span>
+                            <span><strong>R$ ${(parseFloat(despesasTotais.pago) || 0).toFixed(2) || '0.00'}</strong></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;padding:8px 0;">
                             <span>⏳ Pendentes</span>
-                            <span><strong style="color:#dc2626;">R$ ${despesasTotais.pendente?.toFixed(2) || '0.00'}</strong></span>
+                            <span><strong style="color:#dc2626;">R$ ${(parseFloat(despesasTotais.pendente) || 0).toFixed(2) || '0.00'}</strong></span>
                         </div>
                     </div>
                 </div>

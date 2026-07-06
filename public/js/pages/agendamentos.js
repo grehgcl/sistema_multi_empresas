@@ -640,7 +640,7 @@ async function salvarNovoCliente(event) {
 // CARREGAR HORÁRIOS DISPONÍVEIS (COM DURAÇÃO E PRESERVANDO HORÁRIO)
 // ============================================
 
-async function carregarHorariosDisponiveisDono(manterHorario = false) {
+async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null) {
     console.log('🔍 ===== INICIANDO CARREGAMENTO DE HORÁRIOS =====');
 
     try {
@@ -650,7 +650,11 @@ async function carregarHorariosDisponiveisDono(manterHorario = false) {
         const servicoId = servicoSelect ? servicoSelect.value : null;
         const horaSelect = document.getElementById("horaAgendamentoDono");
 
-        console.log('📝 Dados recebidos:', { data, profissional_id, servicoId, manterHorario });
+        // 🔥 GUARDAR O HORÁRIO ATUAL (se não foi passado um específico)
+        const horarioAtual = horaSelect ? horaSelect.value : null;
+        const horarioFinal = horarioParaRestaurar || (manterHorario ? horarioAtual : null);
+
+        console.log('📝 Dados recebidos:', { data, profissional_id, servicoId, manterHorario, horarioFinal });
 
         if (!data) {
             console.log('⚠️ Data vazia');
@@ -770,6 +774,43 @@ async function carregarHorariosDisponiveisDono(manterHorario = false) {
                     }
                     horaSelect.innerHTML = options;
                     console.log(`✅ ${horariosFiltrados.length} horários exibidos`);
+
+                    // 🔥🔥🔥 RESTAURAR O HORÁRIO (SE TIVER)
+                    if (horarioFinal) {
+                        console.log(`🔄 Tentando restaurar horário: ${horarioFinal}`);
+                        let encontrado = false;
+                        for (let opt of horaSelect.options) {
+                            if (opt.value === horarioFinal) {
+                                horaSelect.value = horarioFinal;
+                                encontrado = true;
+                                console.log(`✅ Horário ${horarioFinal} restaurado com sucesso!`);
+                                break;
+                            }
+                        }
+                        if (!encontrado) {
+                            console.log(`⚠️ Horário ${horarioFinal} não está mais disponível`);
+                            // Tenta encontrar um horário próximo
+                            const horariosDisponiveis = Array.from(horaSelect.options).map(o => o.value).filter(v => v !== '');
+                            if (horariosDisponiveis.length > 0) {
+                                // Encontra o próximo horário disponível
+                                const horarioProximo = horariosDisponiveis.find(h => h >= horarioFinal) || horariosDisponiveis[0];
+                                horaSelect.value = horarioProximo;
+                                console.log(`🔄 Horário ajustado para: ${horarioProximo}`);
+                                showToast(`⏰ O horário ${horarioFinal} não está mais disponível. Ajustado para ${horarioProximo}`, 'info');
+                            }
+                        }
+                    } else {
+                        // Se não tem horário para restaurar, mas é a primeira vez, seleciona o primeiro
+                        if (horariosFiltrados.length > 0 && !horaSelect.value) {
+                            // Seleciona o primeiro horário disponível (exceto o placeholder)
+                            const primeiroHorario = horariosFiltrados[0];
+                            if (primeiroHorario) {
+                                horaSelect.value = primeiroHorario;
+                                console.log(`✅ Primeiro horário selecionado automaticamente: ${primeiroHorario}`);
+                            }
+                        }
+                    }
+
                 } else {
                     if (data === hojeStr) {
                         horaSelect.innerHTML = '<option value="">⏰ Todos os horários de hoje já passaram</option>';
@@ -916,6 +957,12 @@ function atualizarValorPorServicoDono() {
     const nome = selectedOption.getAttribute("data-nome");
     const duracao = selectedOption.getAttribute("data-duracao");
 
+    // 🔥 GUARDAR O HORÁRIO ATUAL ANTES DE RECARREGAR
+    const horaSelect = document.getElementById("horaAgendamentoDono");
+    const horarioAtual = horaSelect ? horaSelect.value : null;
+
+    console.log('📝 Horário atual antes de recarregar:', horarioAtual);
+
     if (valor) {
         document.getElementById("valorAgendamentoDono").value = parseFloat(valor).toFixed(2);
         document.getElementById("servicoDescricaoDono").value = nome;
@@ -925,9 +972,9 @@ function atualizarValorPorServicoDono() {
             infoDuracao.textContent = `⏱️ Duração do serviço: ${duracao}min - Horários disponíveis consideram este tempo`;
         }
 
-        // 🔥 RECARREGAR HORÁRIOS MANTENDO O HORÁRIO SELECIONADO
+        // 🔥 RECARREGAR HORÁRIOS E RESTAURAR O HORÁRIO
         console.log('🔄 Recarregando horários após seleção de serviço...');
-        carregarHorariosDisponiveisDono(true); // <-- true = manter horário
+        carregarHorariosDisponiveisDono(true, horarioAtual); // <-- passa o horário atual
     }
 }
 

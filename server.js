@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // ?? ATEN��O: PARTES EXTRAT�DAS PARA OUTROS ARQUIVOS ??
 // ============================================================
 // 
@@ -2753,24 +2753,48 @@ app.put('/api/profissionais/:id', auth, verificarDono, (req, res) => {
     const { nome, email, comissao_percent, ativo, senha, telefone } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
-    let query = isProduction
-        ? `UPDATE profissionais SET nome = COALESCE($1, nome), email = COALESCE($2, email), comissao_percent = COALESCE($3, comissao_percent), ativo = COALESCE($4, ativo), telefone = COALESCE($5, telefone)`
-        : `UPDATE profissionais SET nome = COALESCE(?, nome), email = COALESCE(?, email), comissao_percent = COALESCE(?, comissao_percent), ativo = COALESCE(?, ativo), telefone = COALESCE(?, telefone)`;
-
     const telefonePadrao = telefone ? telefone.replace(/\D/g, '') : null;
+
+    let query = isProduction
+        ? `UPDATE profissionais SET 
+           nome = COALESCE($1, nome), 
+           email = COALESCE($2, email), 
+           comissao_percent = COALESCE($3, comissao_percent), 
+           ativo = COALESCE($4, ativo), 
+           telefone = COALESCE($5, telefone)`
+        : `UPDATE profissionais SET 
+           nome = COALESCE(?, nome), 
+           email = COALESCE(?, email), 
+           comissao_percent = COALESCE(?, comissao_percent), 
+           ativo = COALESCE(?, ativo), 
+           telefone = COALESCE(?, telefone)`;
+
     let params = [nome, email, comissao_percent, ativo, telefonePadrao];
+    let counter = 6;
 
     if (senha && senha.trim() !== '') {
         const senhaHash = bcrypt.hashSync(senha, 10);
-        query += isProduction ? `, senha = $6` : `, senha = ?`;
+        if (isProduction) {
+            query += `, senha = $${counter}`;
+        } else {
+            query += `, senha = ?`;
+        }
         params.push(senhaHash);
+        counter++;
     }
 
-    query += isProduction ? ` WHERE id = $${params.length + 1} AND empresa_id = $${params.length + 2}` : ` WHERE id = ? AND empresa_id = ?`;
+    if (isProduction) {
+        query += ` WHERE id = $${counter} AND empresa_id = $${counter + 1}`;
+    } else {
+        query += ` WHERE id = ? AND empresa_id = ?`;
+    }
     params.push(id, empresa_id);
 
     db.run(query, params, function (err) {
-        if (err) return res.json({ success: false, message: err.message });
+        if (err) {
+            console.error('❌ Erro ao atualizar profissional:', err);
+            return res.json({ success: false, message: err.message });
+        }
 
         if (senha && senha.trim() !== '') {
             res.json({ success: true, message: 'Profissional atualizado com nova senha', senha: senha });
@@ -3464,6 +3488,7 @@ app.put('/api/profissional/agendamentos/:id', auth, (req, res) => {
 
         let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
         let params = [];
+        params.push(empresaId);
         let updates = [];
         let counter = 1;
 
@@ -3689,6 +3714,7 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
         let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
         let params = [];
+        params.push(empresaId);
         let updates = [];
         let counter = 1;
 
@@ -4192,29 +4218,35 @@ app.get('/api/despesas', auth, (req, res) => {
     const { mes, ano, categoria, pago } = req.query;
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    let params = [empresaId];
+    let params = [];
     let sql = `
         SELECT d.*
         FROM despesas d
-        WHERE d.empresa_id = ?
+        WHERE d.empresa_id = $1
     `;
+    params.push(empresaId);
 
     if (isProduction) {
-        // PostgreSQL
+        // PostgreSQL - usar placeholders com contador
+        let counter = 2;
+
         if (mes && ano) {
-            sql += ` AND EXTRACT(MONTH FROM d.data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM d.data) = $${params.length + 2}::int`;
+            sql += ` AND EXTRACT(MONTH FROM d.data) = $${counter}::int AND EXTRACT(YEAR FROM d.data) = $${counter + 1}::int`;
             params.push(parseInt(mes), parseInt(ano));
+            counter += 2;
         }
 
         if (categoria) {
-            sql += ` AND d.categoria = $${params.length + 1}`;
+            sql += ` AND d.categoria = $${counter}`;
             params.push(categoria);
+            counter++;
         }
 
         if (pago !== undefined && pago !== '') {
             const pagoBool = pago === 'true';
-            sql += ` AND d.pago = $${params.length + 1}`;
+            sql += ` AND d.pago = $${counter}`;
             params.push(pagoBool);
+            counter++;
         }
     } else {
         // SQLite
@@ -4229,7 +4261,7 @@ app.get('/api/despesas', auth, (req, res) => {
         }
 
         if (pago !== undefined && pago !== '') {
-            const pagoBool = pago === 'true';
+            const pagoBool = pago === 'true' ? 1 : 0;
             sql += ` AND d.pago = ?`;
             params.push(pagoBool);
         }
@@ -4237,16 +4269,14 @@ app.get('/api/despesas', auth, (req, res) => {
 
     sql += ` ORDER BY d.data DESC, d.created_at DESC`;
 
-    // Ajustar placeholders para PostgreSQL
-    if (isProduction) {
-        sql = sql.replace(/\?/g, (match, offset) => {
-            return `$${params.indexOf(match) + 1}`;
-        });
-    }
+    console.log('📊 SQL:', sql);
+    console.log('📊 Params:', params);
 
     db.all(sql, params, (err, despesas) => {
         if (err) {
-            console.error('? Erro ao buscar despesas:', err);
+            console.error('❌ Erro ao buscar despesas:', err);
+            console.error('❌ SQL:', sql);
+            console.error('❌ Params:', params);
             return res.status(500).json({ success: false, message: err.message });
         }
 
@@ -4254,10 +4284,15 @@ app.get('/api/despesas', auth, (req, res) => {
         const totalPago = despesas.filter(d => d.pago === true || d.pago === 1).reduce((acc, d) => acc + (d.valor || 0), 0);
         const totalPendente = despesas.filter(d => d.pago === false || d.pago === 0).reduce((acc, d) => acc + (d.valor || 0), 0);
 
+        const despesasFormatadas = despesas.map(d => ({
+            ...d,
+            pago: d.pago === true || d.pago === 1 ? 1 : 0
+        }));
+
         res.json({
             success: true,
             data: {
-                despesas: despesas,
+                despesas: despesasFormatadas,
                 totais: {
                     total: totalDespesas,
                     pago: totalPago,
@@ -4525,7 +4560,8 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
     let params = [empresaId, mes, ano];
 
     if (isProduction) {
-        // PostgreSQL - usar TRUE/FALSE e EXTRACT
+        // PostgreSQL
+        let counter = 2; // usar TRUE / FALSE e EXTRACT
         sql = `
             SELECT 
                 COALESCE(SUM(CASE WHEN pago = true THEN valor ELSE 0 END), 0) as total_pago,
