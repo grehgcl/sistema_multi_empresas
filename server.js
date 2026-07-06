@@ -4251,8 +4251,8 @@ app.get('/api/despesas', auth, (req, res) => {
         }
 
         const totalDespesas = despesas.reduce((acc, d) => acc + (d.valor || 0), 0);
-        const totalPago = despesas.filter(d => d.pago).reduce((acc, d) => acc + (d.valor || 0), 0);
-        const totalPendente = despesas.filter(d => !d.pago).reduce((acc, d) => acc + (d.valor || 0), 0);
+        const totalPago = despesas.filter(d => d.pago === true || d.pago === 1).reduce((acc, d) => acc + (d.valor || 0), 0);
+        const totalPendente = despesas.filter(d => d.pago === false || d.pago === 0).reduce((acc, d) => acc + (d.valor || 0), 0);
 
         res.json({
             success: true,
