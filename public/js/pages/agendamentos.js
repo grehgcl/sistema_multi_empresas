@@ -1,4 +1,4 @@
-﻿// pages/agendamentos.js - Versão Completa com Filtros, Edição e Horários Disponíveis
+﻿///pages/agendamentos.js - Versão Completa com Filtros, Edição e Horários Disponíveis
 let profissionaisList = [];
 let clientesList = [];
 let servicosList = [];
