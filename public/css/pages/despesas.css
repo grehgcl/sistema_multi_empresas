@@ -1,0 +1,339 @@
+/* ============================================
+   DESPESAS - PÁGINA COMPLETA
+   ============================================ */
+
+/* ============================================
+   DESPESA CARD MOBILE
+   ============================================ */
+
+.despesas-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+}
+
+.despesa-card-mobile {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+    animation: slideUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+.despesa-card-mobile:active {
+    transform: scale(0.98);
+}
+
+.despesa-card-mobile .despesa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    gap: var(--spacing-sm);
+}
+
+.despesa-card-mobile .despesa-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.despesa-card-mobile .despesa-descricao {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.despesa-card-mobile .despesa-categoria {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    display: block;
+    margin-top: var(--spacing-xs);
+}
+
+.despesa-card-mobile .despesa-data {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    display: block;
+    margin-top: var(--spacing-xs);
+}
+
+.despesa-card-mobile .despesa-status {
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.despesa-card-mobile .despesa-status.pago {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.despesa-card-mobile .despesa-status.pendente {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+}
+
+.despesa-card-mobile .despesa-valor {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: #ef4444;
+    display: block;
+    margin: var(--spacing-sm) 0;
+    text-align: center;
+    padding: var(--spacing-sm);
+    background: rgba(239, 68, 68, 0.06);
+    border-radius: var(--radius-sm);
+}
+
+.despesa-card-mobile .despesa-pagamento {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+}
+
+.despesa-card-mobile .despesa-pagamento .pagamento-icon {
+    font-size: var(--font-size-sm);
+}
+
+.despesa-card-mobile .despesa-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    padding-top: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.despesa-card-mobile .despesa-actions .btn-icon {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    justify-content: center;
+    min-width: 60px;
+}
+
+.despesa-card-mobile .despesa-actions .btn-edit {
+    border-color: rgba(102, 126, 234, 0.3);
+    color: var(--primary);
+}
+
+.despesa-card-mobile .despesa-actions .btn-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.despesa-card-mobile .despesa-actions .btn-toggle {
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.despesa-card-mobile .despesa-actions .btn-toggle:hover {
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.despesa-card-mobile .despesa-actions .btn-toggle.pendente {
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #f59e0b;
+}
+
+.despesa-card-mobile .despesa-actions .btn-toggle.pendente:hover {
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.despesa-card-mobile .despesa-actions .btn-delete {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.despesa-card-mobile .despesa-actions .btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* ============================================
+   RESUMO DAS DESPESAS MOBILE
+   ============================================ */
+
+.despesa-resumo-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.despesa-resumo-mobile .resumo-item {
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    padding: var(--spacing-sm);
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.despesa-resumo-mobile .resumo-item .resumo-valor {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    display: block;
+}
+
+.despesa-resumo-mobile .resumo-item .resumo-valor.total {
+    color: #ef4444;
+}
+
+.despesa-resumo-mobile .resumo-item .resumo-valor.pago {
+    color: #22c55e;
+}
+
+.despesa-resumo-mobile .resumo-item .resumo-valor.pendente {
+    color: #f59e0b;
+}
+
+.despesa-resumo-mobile .resumo-item .resumo-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    margin-top: var(--spacing-xs);
+    display: block;
+}
+
+/* ============================================
+   FILTROS DE DESPESAS MOBILE
+   ============================================ */
+
+.despesa-filtros-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--bg-card);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    margin-bottom: var(--spacing-md);
+}
+
+.despesa-filtros-mobile .filtro-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.despesa-filtros-mobile .filtro-group label {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.despesa-filtros-mobile .filtro-group select,
+.despesa-filtros-mobile .filtro-group input {
+    padding: var(--spacing-sm) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: var(--font-size-xs);
+    width: 100%;
+}
+
+.despesa-filtros-mobile .filtro-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+.despesa-filtros-mobile .filtro-actions .btn {
+    flex: 1;
+    padding: var(--spacing-sm) var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    border-radius: var(--radius-sm);
+    text-align: center;
+    justify-content: center;
+}
+
+/* ============================================
+   RESPONSIVO DESPESAS
+   ============================================ */
+
+@media (max-width: 768px) {
+    .despesa-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .despesa-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .despesa-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .despesa-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .despesa-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+
+    .despesa-card-mobile:nth-child(6) {
+        animation-delay: 0.30s;
+    }
+}
+
+@media (max-width: 480px) {
+    .despesa-card-mobile {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .despesa-card-mobile .despesa-valor {
+        font-size: var(--font-size-lg);
+    }
+
+    .despesa-card-mobile .despesa-actions .btn-icon {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .despesa-resumo-mobile {
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-xs);
+    }
+
+    .despesa-resumo-mobile .resumo-item .resumo-valor {
+        font-size: var(--font-size-md);
+    }
+
+    .despesa-filtros-mobile {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xs);
+    }
+
+    .despesa-filtros-mobile .filtro-actions {
+        flex-direction: column;
+    }
+}

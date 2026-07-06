@@ -1,0 +1,206 @@
+/* ============================================
+   TABELAS
+   ============================================ */
+
+.table-responsive {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.data-table thead {
+    background: var(--gradient-primary);
+}
+
+.data-table th {
+    padding: 12px 16px;
+    text-align: left;
+    color: var(--white);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Ações na tabela */
+.actions-cell {
+    display: flex;
+    gap: var(--spacing-xs);
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* ============================================
+   TABELA AGENDA (OUTLOOK STYLE)
+   ============================================ */
+
+.agenda-outlook-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+    min-width: 400px;
+}
+
+.agenda-outlook-table thead th {
+    background: var(--bg-hover);
+    padding: 8px 10px;
+    text-align: center;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    border-bottom: 2px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+.agenda-col-hora {
+    min-width: 60px;
+    width: 60px;
+}
+
+.agenda-col-prof {
+    min-width: 80px;
+    padding: 6px 4px !important;
+}
+
+.agenda-col-dia {
+    padding: 6px 4px !important;
+    text-align: center;
+    min-width: 50px;
+}
+
+.agenda-col-dia .dia-semana {
+    display: block;
+    font-size: var(--font-size-xs);
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.agenda-col-dia .dia-numero {
+    display: block;
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.agenda-col-dia.hoje {
+    background: var(--primary) !important;
+}
+
+.agenda-col-dia.hoje .dia-semana,
+.agenda-col-dia.hoje .dia-numero {
+    color: var(--white) !important;
+}
+
+/* Células da agenda */
+.agenda-cell-hora {
+    padding: 6px 8px;
+    text-align: center;
+    font-weight: var(--font-weight-medium);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.agenda-cell-hora.almoco {
+    color: var(--warning);
+}
+
+.agenda-cell-prof {
+    padding: 4px 6px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    min-height: 36px;
+    vertical-align: middle;
+}
+
+.agenda-cell-prof.disponivel {
+    background: rgba(16, 185, 129, 0.06);
+}
+
+.agenda-cell-prof.disponivel:hover {
+    background: rgba(16, 185, 129, 0.2);
+    transform: scale(1.02);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.agenda-cell-prof.ocupado {
+    background: rgba(239, 68, 68, 0.08);
+    cursor: default;
+}
+
+.agenda-cell-prof.lotado {
+    background: rgba(107, 114, 128, 0.06);
+    cursor: not-allowed;
+}
+
+.agenda-cell-prof.almoco {
+    background: rgba(245, 158, 11, 0.08);
+    cursor: default;
+}
+
+/* Células semana */
+.agenda-cell-semana {
+    padding: 4px 2px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+    min-height: 30px;
+    vertical-align: middle;
+}
+
+.agenda-cell-semana.disponivel {
+    background: rgba(16, 185, 129, 0.06);
+    cursor: pointer;
+}
+
+.agenda-cell-semana.disponivel:hover {
+    background: rgba(16, 185, 129, 0.2);
+}
+
+.agenda-cell-semana.ocupado {
+    background: rgba(239, 68, 68, 0.08);
+    cursor: default;
+}
+
+.agenda-cell-semana.lotado {
+    background: rgba(107, 114, 128, 0.06);
+    cursor: not-allowed;
+}
+
+.agenda-cell-semana.almoco {
+    background: rgba(245, 158, 11, 0.08);
+    cursor: default;
+}
+
+.agenda-cell-semana.fechado {
+    background: rgba(107, 114, 128, 0.04);
+    cursor: default;
+}

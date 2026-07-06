@@ -1,0 +1,481 @@
+/* ============================================
+   MOBILE - CARDS
+   ============================================ */
+
+/* ============================================
+   CARD MOBILE BASE
+   ============================================ */
+
+.card-mobile {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+    animation: slideUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+.card-mobile:active {
+    transform: scale(0.98);
+}
+
+/* ============================================
+   CARD HEADER MOBILE
+   ============================================ */
+
+.card-mobile .card-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    gap: var(--spacing-sm);
+}
+
+.card-mobile .cliente-info-mobile {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex: 1;
+    min-width: 0;
+}
+
+.card-mobile .cliente-avatar-mobile {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-md);
+    flex-shrink: 0;
+}
+
+.card-mobile .cliente-nome-mobile {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-mobile .servico-mobile {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================
+   CARD BODY MOBILE
+   ============================================ */
+
+.card-mobile .card-body-mobile {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xs) var(--spacing-md);
+    margin: var(--spacing-xs) 0 var(--spacing-md) 0;
+}
+
+.card-mobile .card-body-mobile .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) 0;
+}
+
+.card-mobile .card-body-mobile .info-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.card-mobile .card-body-mobile .info-value {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+
+.card-mobile .card-body-mobile .info-value.valor-mobile {
+    color: var(--primary);
+    font-weight: var(--font-weight-bold);
+}
+
+/* ============================================
+   CARD ACTIONS MOBILE
+   ============================================ */
+
+.card-mobile .card-actions-mobile {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.card-mobile .card-actions-mobile .btn-icon {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    justify-content: center;
+    min-width: 60px;
+}
+
+.card-mobile .card-actions-mobile .btn-icon:hover {
+    transform: translateY(-1px);
+}
+
+.card-mobile .card-actions-mobile .btn-edit {
+    border-color: rgba(102, 126, 234, 0.3);
+    color: var(--primary);
+}
+
+.card-mobile .card-actions-mobile .btn-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.card-mobile .card-actions-mobile .btn-check {
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.card-mobile .card-actions-mobile .btn-check:hover {
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.card-mobile .card-actions-mobile .btn-delete {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.card-mobile .card-actions-mobile .btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* ============================================
+   DELAY ANIMATION
+   ============================================ */
+
+.card-mobile:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.card-mobile:nth-child(2) {
+    animation-delay: 0.10s;
+}
+
+.card-mobile:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.card-mobile:nth-child(4) {
+    animation-delay: 0.20s;
+}
+
+.card-mobile:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.card-mobile:nth-child(6) {
+    animation-delay: 0.30s;
+}
+
+/* ============================================
+   SERVIÇOS MOBILE - FIX COMPLETO
+   ============================================ */
+
+/* Container dos cards */
+.servicos-cards-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) 0;
+}
+
+/* Card individual */
+.servico-card-mobile {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+    animation: slideUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+.servico-card-mobile:active {
+    transform: scale(0.98);
+}
+
+/* Header do card */
+.servico-card-mobile .servico-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+    padding-bottom: var(--spacing-sm);
+    border-bottom: 1px solid var(--border-color);
+    gap: var(--spacing-sm);
+}
+
+.servico-card-mobile .servico-nome-mobile {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.servico-card-mobile .servico-icone {
+    font-size: var(--font-size-xl);
+}
+
+/* Badge de status dentro do card */
+.servico-card-mobile .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.servico-card-mobile .status-badge.ativo {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.servico-card-mobile .status-badge.inativo {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.servico-card-mobile .status-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.servico-card-mobile .status-badge.ativo .dot {
+    background: #22c55e;
+}
+
+.servico-card-mobile .status-badge.inativo .dot {
+    background: #ef4444;
+}
+
+/* Body do card */
+.servico-card-mobile .servico-card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-xs) var(--spacing-sm);
+    margin: var(--spacing-sm) 0 var(--spacing-sm) 0;
+}
+
+.servico-card-mobile .servico-card-body .info-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) 0;
+}
+
+.servico-card-mobile .servico-card-body .info-label {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: var(--font-weight-semibold);
+}
+
+.servico-card-mobile .servico-card-body .info-value {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+
+.servico-card-mobile .servico-card-body .info-value.valor-mobile {
+    color: var(--primary);
+    font-weight: var(--font-weight-bold);
+}
+
+/* Ações do card */
+.servico-card-mobile .servico-card-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.servico-card-mobile .servico-card-actions .btn-icon {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+    justify-content: center;
+    min-width: 60px;
+}
+
+.servico-card-mobile .servico-card-actions .btn-icon:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
+}
+
+.servico-card-mobile .servico-card-actions .btn-edit {
+    border-color: rgba(102, 126, 234, 0.3);
+    color: var(--primary);
+}
+
+.servico-card-mobile .servico-card-actions .btn-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+
+.servico-card-mobile .servico-card-actions .btn-toggle-on {
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.servico-card-mobile .servico-card-actions .btn-toggle-on:hover {
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.servico-card-mobile .servico-card-actions .btn-toggle-off {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.servico-card-mobile .servico-card-actions .btn-toggle-off:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.servico-card-mobile .servico-card-actions .btn-delete {
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #ef4444;
+}
+
+.servico-card-mobile .servico-card-actions .btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Delay para animação dos cards */
+.servico-card-mobile:nth-child(1) {
+    animation-delay: 0.05s;
+}
+
+.servico-card-mobile:nth-child(2) {
+    animation-delay: 0.10s;
+}
+
+.servico-card-mobile:nth-child(3) {
+    animation-delay: 0.15s;
+}
+
+.servico-card-mobile:nth-child(4) {
+    animation-delay: 0.20s;
+}
+
+.servico-card-mobile:nth-child(5) {
+    animation-delay: 0.25s;
+}
+
+.servico-card-mobile:nth-child(6) {
+    animation-delay: 0.30s;
+}
+
+.servico-card-mobile:nth-child(7) {
+    animation-delay: 0.35s;
+}
+
+.servico-card-mobile:nth-child(8) {
+    animation-delay: 0.40s;
+}
+
+/* ============================================
+   RESPONSIVO PARA TELAS PEQUENAS
+   ============================================ */
+
+@media (max-width: 480px) {
+    .servico-card-mobile .servico-card-body {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xs);
+    }
+
+    .servico-card-mobile {
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .servico-card-mobile .servico-card-actions .btn-icon {
+        font-size: var(--font-size-xs);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        min-width: 50px;
+    }
+
+    .servico-card-mobile .servico-nome-mobile {
+        font-size: var(--font-size-sm);
+    }
+}
+
+/* ============================================
+   TEMA ESCURO
+   ============================================ */
+
+[data-theme="dark"] .servico-card-mobile {
+    background: #1a1a2e;
+    border-color: #2d2d44;
+}
+
+[data-theme="dark"] .servico-card-mobile .servico-nome-mobile {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .servico-card-mobile .servico-card-body .info-value {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .servico-card-mobile .servico-card-body .info-label {
+    color: #8888aa;
+}
+
+[data-theme="dark"] .servico-card-mobile .servico-card-actions .btn-icon {
+    background: #252540;
+    border-color: #2d2d44;
+    color: #a8a8a8;
+}

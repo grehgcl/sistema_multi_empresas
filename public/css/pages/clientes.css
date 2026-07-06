@@ -1,0 +1,416 @@
+/* ============================================
+   CLIENTES - PÁGINA COMPLETA
+   ============================================ */
+
+/* ============================================
+   CLIENTE AVATAR
+   ============================================ */
+
+.cliente-avatar-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient-primary);
+    border-radius: 50%;
+    color: var(--white);
+    font-size: var(--font-size-md);
+    flex-shrink: 0;
+    font-weight: var(--font-weight-bold);
+}
+
+.cliente-avatar-mobile {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-md);
+    flex-shrink: 0;
+}
+
+/* ============================================
+   GRID DE CLIENTES
+   ============================================ */
+
+.ultimos-clientes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-sm);
+}
+
+/* ============================================
+   CLIENTE CARD ITEM
+   ============================================ */
+
+.cliente-card-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-hover);
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-base);
+    border: 1px solid transparent;
+}
+
+.cliente-card-item:hover {
+    background: var(--border-color);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-sm);
+}
+
+.cliente-info-data {
+    flex: 1;
+    min-width: 0;
+}
+
+.cliente-nome-completo {
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cliente-contato-info {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* ============================================
+   CLIENTE CARD MOBILE
+   ============================================ */
+
+.cliente-card-mobile {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    margin-bottom: var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    animation: slideUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+.cliente-card-mobile:active {
+    transform: scale(0.98);
+}
+
+.cliente-card-mobile .cliente-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-xl);
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.cliente-card-mobile .cliente-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cliente-card-mobile .cliente-nome {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cliente-card-mobile .cliente-contato {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: var(--spacing-xs);
+}
+
+.cliente-card-mobile .cliente-status {
+    font-size: var(--font-size-sm);
+    flex-shrink: 0;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-xs);
+}
+
+.cliente-card-mobile .cliente-status.bloqueado {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+}
+
+.cliente-card-mobile .cliente-status.desbloqueado {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.cliente-card-mobile .cliente-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+.cliente-card-mobile .cliente-actions .btn-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+}
+
+.cliente-card-mobile .cliente-actions .btn-icon:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.cliente-card-mobile .cliente-actions .btn-edit:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+.cliente-card-mobile .cliente-actions .btn-delete:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--white);
+}
+
+.cliente-card-mobile .cliente-actions .btn-toggle {
+    border-color: rgba(245, 158, 11, 0.3);
+    color: var(--warning);
+}
+
+.cliente-card-mobile .cliente-actions .btn-toggle:hover {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: var(--white);
+}
+
+/* ============================================
+   CLIENTE CARD DESKTOP
+   ============================================ */
+
+.cliente-card-desktop {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    transition: all var(--transition-base);
+    cursor: pointer;
+}
+
+.cliente-card-desktop:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.cliente-card-desktop .cliente-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--white);
+    font-weight: var(--font-weight-bold);
+    font-size: var(--font-size-lg);
+    flex-shrink: 0;
+}
+
+.cliente-card-desktop .cliente-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.cliente-card-desktop .cliente-nome {
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
+}
+
+.cliente-card-desktop .cliente-contato {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+}
+
+.cliente-card-desktop .cliente-status {
+    font-size: var(--font-size-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-weight: var(--font-weight-semibold);
+    flex-shrink: 0;
+}
+
+.cliente-card-desktop .cliente-status.bloqueado {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.cliente-card-desktop .cliente-status.desbloqueado {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+.cliente-card-desktop .cliente-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-shrink: 0;
+}
+
+.cliente-card-desktop .cliente-actions .btn-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border-color);
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-sm);
+}
+
+.cliente-card-desktop .cliente-actions .btn-icon:hover {
+    transform: translateY(-2px);
+}
+
+.cliente-card-desktop .cliente-actions .btn-edit:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: var(--white);
+}
+
+.cliente-card-desktop .cliente-actions .btn-delete:hover {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: var(--white);
+}
+
+/* ============================================
+   CLIENTE CARD ACTIONS
+   ============================================ */
+
+.cliente-card-actions {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+}
+
+.cliente-card-actions .btn-icon {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+    background: var(--bg-hover);
+    border: 1px solid transparent;
+}
+
+/* ============================================
+   WHATSAPP BUTTON
+   ============================================ */
+
+.btn-whatsapp-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(37, 211, 102, 0.1);
+    color: #25D366;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.btn-whatsapp-icon:hover {
+    background: #25D366;
+    color: var(--white);
+    transform: scale(1.1);
+}
+
+/* ============================================
+   RESPONSIVO CLIENTES
+   ============================================ */
+
+@media (max-width: 768px) {
+    .clientes-cards-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-xs) 0;
+    }
+
+    .cliente-card-mobile:nth-child(1) {
+        animation-delay: 0.05s;
+    }
+
+    .cliente-card-mobile:nth-child(2) {
+        animation-delay: 0.10s;
+    }
+
+    .cliente-card-mobile:nth-child(3) {
+        animation-delay: 0.15s;
+    }
+
+    .cliente-card-mobile:nth-child(4) {
+        animation-delay: 0.20s;
+    }
+
+    .cliente-card-mobile:nth-child(5) {
+        animation-delay: 0.25s;
+    }
+
+    .cliente-card-mobile:nth-child(6) {
+        animation-delay: 0.30s;
+    }
+}
+
+@media (min-width: 769px) {
+    .clientes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: var(--spacing-md);
+    }
+}

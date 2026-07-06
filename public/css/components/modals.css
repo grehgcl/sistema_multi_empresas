@@ -1,0 +1,117 @@
+/* ============================================
+   MODAIS
+   ============================================ */
+
+.modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg-modal);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    justify-content: center;
+    align-items: center;
+    z-index: var(--z-modal);
+    padding: var(--spacing-lg);
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    width: 500px;
+    max-width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: modalFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-xl);
+    position: relative;
+    border: 1px solid var(--border-color);
+    margin: auto;
+}
+
+.modal-content .close {
+    position: absolute;
+    right: var(--spacing-lg);
+    top: var(--spacing-md);
+    font-size: var(--font-size-2xl);
+    cursor: pointer;
+    color: var(--text-muted);
+    transition: all var(--transition-base);
+    background: none;
+    border: none;
+    line-height: 1;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border-radius: 50%;
+}
+
+.modal-content .close:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+    transform: rotate(90deg);
+}
+
+.modal-content h3 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-lg);
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.modal-buttons {
+    display: flex;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    margin-top: var(--spacing-lg);
+    justify-content: flex-end;
+}
+
+.modal-buttons button {
+    padding: 10px 24px;
+    border: none;
+    border-radius: var(--radius-full);
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+/* ============================================
+   MODAL RESPONSIVO
+   ============================================ */
+
+@media (max-width: 768px) {
+    .modal-content {
+        padding: var(--spacing-lg);
+        margin: var(--spacing-sm);
+        max-width: 100%;
+    }
+
+    .modal-buttons {
+        flex-direction: column;
+    }
+
+    .modal-buttons button {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+
+    .modal-content h3 {
+        font-size: var(--font-size-xl);
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        padding: var(--spacing-md);
+    }
+
+    .modal-content h3 {
+        font-size: var(--font-size-lg);
+    }
+}

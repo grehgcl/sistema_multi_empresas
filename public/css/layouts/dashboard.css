@@ -1,0 +1,147 @@
+/* ============================================
+   DASHBOARD LAYOUT
+   ============================================ */
+
+.main {
+    margin-left: var(--sidebar-width);
+    padding: var(--spacing-xl);
+    min-height: calc(100vh - var(--header-height));
+}
+
+/* ============================================
+   WELCOME BANNER
+   ============================================ */
+
+.welcome-banner {
+    background: var(--welcome-bg);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg) var(--spacing-2xl);
+    margin-bottom: var(--spacing-lg);
+    color: var(--welcome-text);
+    position: relative;
+    overflow: hidden;
+}
+
+.welcome-banner::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -10%;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+    animation: floatPulse 6s ease-in-out infinite;
+}
+
+.welcome-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    position: relative;
+    z-index: 1;
+}
+
+.welcome-content h2 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    margin: 0;
+}
+
+.welcome-content p {
+    opacity: 0.85;
+    margin: var(--spacing-xs) 0 0;
+    font-size: var(--font-size-md);
+}
+
+.welcome-date {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.welcome-date .day {
+    display: block;
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    text-transform: capitalize;
+}
+
+.welcome-date .date {
+    font-size: var(--font-size-sm);
+    opacity: 0.7;
+}
+
+/* ============================================
+   DASHBOARD RESPONSIVO
+   ============================================ */
+
+@media (max-width: 768px) {
+    .main {
+        margin-left: 0;
+        padding: var(--spacing-md);
+    }
+
+    .welcome-content {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .welcome-date {
+        text-align: center;
+    }
+
+    .welcome-banner {
+        padding: var(--spacing-lg);
+    }
+
+    .welcome-content h2 {
+        font-size: var(--font-size-lg);
+    }
+
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm) var(--spacing-md);
+    }
+
+    .dashboard-header .page-title {
+        font-size: var(--font-size-lg);
+    }
+
+    .dashboard-header .page-subtitle {
+        font-size: var(--font-size-xs);
+    }
+
+    .dashboard-header .dashboard-actions {
+        width: 100%;
+    }
+
+    .dashboard-header .dashboard-actions .btn {
+        width: 100%;
+        justify-content: center;
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+    }
+}
+
+@media (max-width: 480px) {
+    .main {
+        padding: var(--spacing-sm);
+    }
+
+    .welcome-content h2 {
+        font-size: var(--font-size-md);
+    }
+
+    .welcome-banner {
+        padding: var(--spacing-md);
+    }
+
+    .page-title {
+        font-size: var(--font-size-xl);
+    }
+}

@@ -1,0 +1,98 @@
+/* ============================================
+   MOBILE - AÇÕES
+   ============================================ */
+
+/* ============================================
+   AÇÕES RÁPIDAS MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .quick-action {
+        max-width: 100%;
+        padding: var(--spacing-sm) var(--spacing-md);
+        flex-direction: row;
+        gap: var(--spacing-sm);
+        justify-content: center;
+    }
+
+    .quick-action i {
+        font-size: var(--font-size-xl);
+    }
+}
+
+@media (max-width: 480px) {
+    .quick-actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-action {
+        padding: var(--spacing-sm) var(--spacing-md);
+        flex-direction: row;
+        justify-content: center;
+    }
+
+    .quick-action i {
+        font-size: var(--font-size-lg);
+    }
+}
+
+/* ============================================
+   AÇÕES DE CARD MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    .servico-card-actions,
+    .cliente-card-actions,
+    .card-actions-mobile {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .servico-card-actions .btn-icon,
+    .cliente-card-actions .btn-icon,
+    .card-actions-mobile .btn-icon {
+        flex: 1;
+        min-width: 60px;
+        justify-content: center;
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+    }
+}
+
+@media (max-width: 480px) {
+
+    .servico-card-actions,
+    .cliente-card-actions,
+    .card-actions-mobile {
+        flex-direction: column;
+    }
+
+    .servico-card-actions .btn-icon,
+    .cliente-card-actions .btn-icon,
+    .card-actions-mobile .btn-icon {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   AÇÕES DA TABELA MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .actions-cell {
+        flex-wrap: wrap;
+        gap: var(--spacing-xs);
+    }
+
+    .actions-cell .btn-icon {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: var(--font-size-sm);
+    }
+}

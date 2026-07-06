@@ -1,0 +1,152 @@
+/* ============================================
+   MOBILE - FILTROS
+   ============================================ */
+
+/* ============================================
+   FILTRO BAR MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .filter-bar {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm);
+        background: var(--bg-card);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .filter-bar .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+        min-width: 0;
+    }
+
+    .filter-bar .filter-group label {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .filter-bar .filter-group .filter-input,
+    .filter-bar .filter-group .filter-select {
+        padding: var(--spacing-sm) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        font-size: var(--font-size-xs);
+        width: 100%;
+    }
+
+    .filter-bar .filter-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: var(--spacing-sm);
+    }
+
+    .filter-bar .filter-actions .btn {
+        flex: 1;
+        padding: var(--spacing-sm) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+        border-radius: var(--radius-sm);
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   FILTRO DE BUSCA MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .search-filter {
+        margin-bottom: var(--spacing-md);
+    }
+
+    .search-filter input {
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: var(--font-size-sm);
+        border-radius: var(--radius-sm);
+    }
+}
+
+/* ============================================
+   FILTRO DE DESPESAS MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .despesa-filtros-mobile {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--spacing-sm);
+        padding: var(--spacing-sm);
+        background: var(--bg-card);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .despesa-filtros-mobile .filtro-group {
+        display: flex;
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .despesa-filtros-mobile .filtro-group label {
+        font-size: var(--font-size-xs);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .despesa-filtros-mobile .filtro-group select,
+    .despesa-filtros-mobile .filtro-group input {
+        padding: var(--spacing-sm) var(--spacing-sm);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border-color);
+        background: var(--bg-input);
+        color: var(--text-primary);
+        font-size: var(--font-size-xs);
+        width: 100%;
+    }
+
+    .despesa-filtros-mobile .filtro-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: var(--spacing-sm);
+    }
+
+    .despesa-filtros-mobile .filtro-actions .btn {
+        flex: 1;
+        padding: var(--spacing-sm) var(--spacing-sm);
+        font-size: var(--font-size-xs);
+        border-radius: var(--radius-sm);
+        text-align: center;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .filter-bar {
+        grid-template-columns: 1fr;
+    }
+
+    .despesa-filtros-mobile {
+        grid-template-columns: 1fr;
+    }
+
+    .filter-bar .filter-actions {
+        flex-direction: column;
+    }
+
+    .despesa-filtros-mobile .filtro-actions {
+        flex-direction: column;
+    }
+}

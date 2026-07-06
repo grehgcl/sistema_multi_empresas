@@ -1,0 +1,56 @@
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.footer {
+    background: var(--footer-bg);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    text-align: center;
+    color: var(--footer-text);
+    font-size: var(--font-size-sm);
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--spacing-2xl);
+}
+
+.footer a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.footer a:hover {
+    text-decoration: underline;
+}
+
+.footer .footer-links {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-lg);
+    margin-top: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.footer .footer-links a {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+.footer .footer-links a:hover {
+    color: var(--primary);
+}
+
+/* ============================================
+   FOOTER RESPONSIVO
+   ============================================ */
+
+@media (max-width: 768px) {
+    .footer {
+        padding: var(--spacing-md);
+        font-size: var(--font-size-xs);
+    }
+
+    .footer .footer-links {
+        gap: var(--spacing-sm);
+        flex-direction: column;
+        align-items: center;
+    }
+}
