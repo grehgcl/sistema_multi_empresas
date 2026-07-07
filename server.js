@@ -1451,7 +1451,7 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
                         // Agendamentos do m�s
                         const mesAtual = new Date().toISOString().slice(0, 7);
                         const sqlMes = isProduction
-                            ? `SELECT COUNT(*) as total FROM agendamentos WHERE strftime('%Y-%m', data) = $1`
+                            ? `SELECT COUNT(*) as total FROM agendamentos WHERE TO_CHAR(data, 'YYYY-MM') = $1`
                             : `SELECT COUNT(*) as total FROM agendamentos WHERE strftime('%Y-%m', data) = ?`;
 
                         db.get(sqlMes, [mesAtual], (err6, agendamentosMes) => {
@@ -1462,7 +1462,7 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
 
                             // Faturamento do m�s
                             const sqlFaturamento = isProduction
-                                ? `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = $1`
+                                ? `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND TO_CHAR(data, 'YYYY-MM') = $1`
                                 : `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = ?`;
 
                             db.get(sqlFaturamento, [mesAtual], (err7, faturamento) => {
@@ -4251,8 +4251,15 @@ app.get('/api/despesas', auth, (req, res) => {
     } else {
         // SQLite
         if (mes && ano) {
-            sql += ` AND strftime('%m', d.data) = ? AND strftime('%Y', d.data) = ?`;
-            params.push(mes.padStart(2, '0'), ano);
+            if (isProduction) {
+                // PostgreSQL - usar placeholders com contador
+                sql += ` AND EXTRACT(MONTH FROM d.data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM d.data) = $${params.length + 2}::int`;
+                params.push(parseInt(mes), parseInt(ano));
+            } else {
+                // SQLite
+                sql += ` AND strftime('%m', d.data) = ? AND strftime('%Y', d.data) = ?`;
+                params.push(mes.padStart(2, '0'), ano);
+            }
         }
 
         if (categoria) {
@@ -4583,8 +4590,10 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
                 COUNT(*) as total_quantidade
             FROM despesas
             WHERE empresa_id = ?
-            AND strftime('%m', data) = ?
-            AND strftime('%Y', data) = ?
+                        ${isProduction
+                ? `AND EXTRACT(MONTH FROM data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM data) = $${params.length + 2}::int`
+                : `AND strftime('%m', data) = ? AND strftime('%Y', data) = ?`
+            }
         `;
     }
 
@@ -4613,8 +4622,10 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
                 SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
                 FROM despesas
                 WHERE empresa_id = ?
-                AND strftime('%m', data) = ?
-                AND strftime('%Y', data) = ?
+                                ${isProduction
+                    ? `AND EXTRACT(MONTH FROM data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM data) = $${params.length + 2}::int`
+                    : `AND strftime('%m', data) = ? AND strftime('%Y', data) = ?`
+                }
                 GROUP BY categoria
                 ORDER BY total_valor DESC
             `;
@@ -4805,8 +4816,10 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
            FROM agendamentos 
            WHERE empresa_id = ? 
            AND status != 'cancelado'
-           AND strftime('%Y', data) = ? 
-           AND strftime('%m', data) = ?`;
+                      ${isProduction
+            ? `AND EXTRACT(YEAR FROM data) = $${params.length + 1}::int AND EXTRACT(MONTH FROM data) = $${params.length + 2}::int`
+            : `AND strftime('%Y', data) = ? AND strftime('%m', data) = ?`
+        }`;
 
     let params = isProduction
         ? [empresaId, anoSolicitado.toString(), mesSolicitado.toString().padStart(2, '0')]
