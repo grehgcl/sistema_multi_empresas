@@ -1,4 +1,3 @@
-
 // ============================================
 // FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
 // ============================================
@@ -29,11 +28,8 @@ function formatMoney(valor) {
     return toNumber(valor).toFixed(2).replace('.', ',');
 }
 
-﻿// pages/clientes.js - VERSÃO CORRIGIDA E ESTÁVEL
-// CORREÇÃO: Verificação de elementos antes de acessar .value
-
 // ============================================
-// CARREGAR CLIENTES
+// CARREGAR CLIENTES - VERSÃO CORRIGIDA MOBILE
 // ============================================
 async function carregarClientes() {
     console.log("🟢 carregarClientes chamada");
@@ -51,8 +47,11 @@ async function carregarClientes() {
         console.log("Resposta da API:", data);
 
         const clientes = data.data || [];
-        const isMobile = window.innerWidth < 768;
 
+        // 🔥 FORÇA A DETECÇÃO DE MOBILE
+        const isMobile = window.innerWidth < 768 || window.screen.width < 768;
+
+        console.log("📱 Modo mobile:", isMobile);
         console.log("Clientes a serem exibidos:", clientes.length);
 
         let html = `
@@ -105,67 +104,224 @@ async function carregarClientes() {
                 </div>
             `;
         } else if (isMobile) {
-            // VERSÃO MOBILE - CARDS
-            html += `<div class="clientes-cards-mobile">`;
+            // ============================================
+            // VERSÃO MOBILE - CARDS (COM ESTILO INLINE)
+            // ============================================
+            console.log("📱 Renderizando MOBILE - Cards");
+
+            html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
+
             for (let c of clientes) {
                 const isBloqueado = c.bloqueado_chatbot === 1;
                 const telefone = c.telefone || '';
                 const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
                 const diasBloqueio = c.dias_bloqueio || 1;
+                const inicial = c.nome ? c.nome.charAt(0).toUpperCase() : '?';
 
                 html += `
-                    <div class="cliente-card-mobile">
-                        <div class="cliente-card-header">
-                            <div class="cliente-info-mobile">
-                                <div class="cliente-avatar-mobile">${c.nome ? c.nome.charAt(0).toUpperCase() : '?'}</div>
-                                <div>
-                                    <div class="cliente-nome-mobile">${escapeHtml(c.nome)}</div>
-                                    <div class="cliente-contato-mobile">
+                    <div style="
+                        background: var(--bg-card);
+                        border-radius: 16px;
+                        padding: 16px;
+                        border: 1px solid var(--border-color);
+                        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                        transition: all 0.3s ease;
+                    ">
+                        <!-- Header -->
+                        <div style="
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            margin-bottom: 10px;
+                            padding-bottom: 10px;
+                            border-bottom: 1px solid var(--border-color);
+                            gap: 8px;
+                        ">
+                            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                                <div style="
+                                    width: 40px;
+                                    height: 40px;
+                                    border-radius: 50%;
+                                    background: var(--gradient-primary);
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    color: white;
+                                    font-weight: 700;
+                                    font-size: 16px;
+                                    flex-shrink: 0;
+                                ">${inicial}</div>
+                                <div style="flex:1;min-width:0;">
+                                    <div style="font-size:15px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(c.nome)}</div>
+                                    <div style="font-size:12px;color:var(--text-muted);">
                                         ${c.telefone ? `<i class="fas fa-phone"></i> ${escapeHtml(c.telefone)}` : 'Sem telefone'}
                                     </div>
                                 </div>
                             </div>
-                            <span class="status-badge ${isBloqueado ? 'inativo' : 'ativo'}">
-                                <span class="dot"></span>
+                            <span style="
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 4px;
+                                padding: 4px 12px;
+                                border-radius: 9999px;
+                                font-size: 11px;
+                                font-weight: 600;
+                                background: ${isBloqueado ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
+                                color: ${isBloqueado ? '#ef4444' : '#22c55e'};
+                                white-space: nowrap;
+                                flex-shrink: 0;
+                            ">
+                                <span style="width:6px;height:6px;border-radius:50%;display:inline-block;background:${isBloqueado ? '#ef4444' : '#22c55e'};"></span>
                                 ${isBloqueado ? '🔒 Bloqueado' : '🔓 Liberado'}
                             </span>
                         </div>
-                        <div class="cliente-card-body">
-                            <div class="info-row">
-                                <span class="info-label">📧 Email</span>
-                                <span class="info-value">${c.email || '-'}</span>
+
+                        <!-- Body -->
+                        <div style="
+                            display: grid;
+                            grid-template-columns: 1fr 1fr;
+                            gap: 4px 12px;
+                            margin: 8px 0 12px 0;
+                        ">
+                            <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;">
+                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">📧 Email</span>
+                                <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${c.email || '-'}</span>
                             </div>
-                            <div class="info-row">
-                                <span class="info-label">📅 Cadastro</span>
-                                <span class="info-value">${formatarDataBr(c.created_at)}</span>
+                            <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;">
+                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">📅 Cadastro</span>
+                                <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${formatarDataBr(c.created_at)}</span>
                             </div>
-                            <div class="info-row">
-                                <span class="info-label">⏳ Dias bloqueio</span>
-                                <span class="info-value"><strong>${diasBloqueio}</strong> dia(s)</span>
+                            <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;grid-column: span 2;">
+                                <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">⏳ Dias bloqueio</span>
+                                <span style="font-size:13px;font-weight:500;color:var(--text-primary);"><strong>${diasBloqueio}</strong> dia(s)</span>
                             </div>
                         </div>
-                        <div class="cliente-card-actions">
+
+                        <!-- Actions -->
+                        <div style="
+                            display: flex;
+                            gap: 6px;
+                            flex-wrap: wrap;
+                            padding-top: 10px;
+                            border-top: 1px solid var(--border-color);
+                        ">
                             ${whatsappLink !== '#' ? `
-                                <a href="${whatsappLink}" target="_blank" class="btn-icon btn-whatsapp" title="Chamar no WhatsApp">
+                                <a href="${whatsappLink}" target="_blank" style="
+                                    padding: 6px 14px;
+                                    border-radius: 10px;
+                                    border: 1px solid rgba(37,211,102,0.3);
+                                    background: var(--bg-hover);
+                                    color: #25D366;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                    min-width: 60px;
+                                    text-decoration: none;
+                                ">
                                     <i class="fab fa-whatsapp"></i> WhatsApp
                                 </a>
                             ` : `
-                                <span class="btn-icon btn-whatsapp disabled" title="Cliente sem telefone">
+                                <span style="
+                                    padding: 6px 14px;
+                                    border-radius: 10px;
+                                    border: 1px solid var(--border-color);
+                                    background: var(--bg-hover);
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                    min-width: 60px;
+                                    opacity: 0.5;
+                                ">
                                     <i class="fab fa-whatsapp"></i> WhatsApp
                                 </span>
                             `}
-                            <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar">
+                            <button onclick="editarCliente(${c.id})" style="
+                                padding: 6px 14px;
+                                border-radius: 10px;
+                                border: 1px solid rgba(102,126,234,0.3);
+                                background: var(--bg-hover);
+                                color: var(--primary);
+                                font-size: 12px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 4px;
+                                flex: 1;
+                                justify-content: center;
+                                min-width: 60px;
+                            ">
                                 <i class="fas fa-pen"></i> Editar
                             </button>
                             ${isBloqueado ?
-                        `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar Chatbot">
+                        `<button onclick="desbloquearChatbot(${c.id})" style="
+                                    padding: 6px 14px;
+                                    border-radius: 10px;
+                                    border: 1px solid rgba(34,197,94,0.3);
+                                    background: var(--bg-hover);
+                                    color: #22c55e;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                    min-width: 60px;
+                                ">
                                     <i class="fas fa-unlock"></i> Liberar
                                 </button>` :
-                        `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear Chatbot">
+                        `<button onclick="bloquearChatbot(${c.id})" style="
+                                    padding: 6px 14px;
+                                    border-radius: 10px;
+                                    border: 1px solid rgba(239,68,68,0.3);
+                                    background: var(--bg-hover);
+                                    color: #ef4444;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    transition: all 0.3s ease;
+                                    display: inline-flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                    min-width: 60px;
+                                ">
                                     <i class="fas fa-lock"></i> Bloquear
                                 </button>`
                     }
-                            <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir">
+                            <button onclick="excluirCliente(${c.id})" style="
+                                padding: 6px 14px;
+                                border-radius: 10px;
+                                border: 1px solid rgba(239,68,68,0.3);
+                                background: var(--bg-hover);
+                                color: #ef4444;
+                                font-size: 12px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 4px;
+                                flex: 1;
+                                justify-content: center;
+                                min-width: 60px;
+                            ">
                                 <i class="fas fa-trash"></i> Excluir
                             </button>
                         </div>
@@ -173,8 +329,13 @@ async function carregarClientes() {
                 `;
             }
             html += `</div>`;
+
         } else {
+            // ============================================
             // VERSÃO DESKTOP - TABELA
+            // ============================================
+            console.log("💻 Renderizando DESKTOP - Tabela");
+
             html += `
                 <div class="table-responsive">
                     <table class="data-table">
@@ -255,6 +416,8 @@ async function carregarClientes() {
         `;
 
         document.getElementById('content').innerHTML = html;
+        console.log("✅ Clientes renderizados com sucesso!");
+
     } catch (error) {
         console.error("Erro ao carregar clientes:", error);
         document.getElementById('content').innerHTML = `
@@ -275,12 +438,11 @@ async function carregarClientes() {
 }
 
 // ============================================
-// ABRIR MODAL NOVO CLIENTE (CORRIGIDO)
+// ABRIR MODAL NOVO CLIENTE
 // ============================================
 window.abrirModalCliente = function () {
     console.log("🟡 abrirModalCliente chamada");
 
-    // Remover modal existente
     const existingModal = document.getElementById('modalCliente');
     if (existingModal) existingModal.remove();
 
@@ -335,32 +497,28 @@ function fecharModalCliente() {
 }
 
 // ============================================
-// SALVAR CLIENTE (CORRIGIDO - VERIFICAÇÃO SEGURA)
+// SALVAR CLIENTE
 // ============================================
 window.salvarCliente = async function () {
     console.log("💾 Salvando cliente...");
 
     try {
-        // PEGAR ELEMENTOS COM VERIFICAÇÃO DE SEGURANÇA
         const nomeInput = document.getElementById('clienteNome');
         const telefoneInput = document.getElementById('clienteTelefone');
         const emailInput = document.getElementById('clienteEmail');
         const diasBloqueioInput = document.getElementById('clienteDiasBloqueio');
 
-        // VERIFICAR SE OS ELEMENTOS EXISTEM
         if (!nomeInput) {
             console.error('❌ Campo nome não encontrado!');
             showToast('Erro: Campo nome não encontrado', 'error');
             return;
         }
 
-        // PEGAR VALORES COM FALLBACK
         const nome = nomeInput ? nomeInput.value.trim() : '';
         const telefone = telefoneInput ? telefoneInput.value.trim() : '';
         const email = emailInput ? emailInput.value.trim() : '';
         const diasBloqueio = diasBloqueioInput ? parseInt(diasBloqueioInput.value) || 1 : 1;
 
-        // VALIDAR
         if (!nome) {
             showToast('Nome é obrigatório', 'warning');
             return;
@@ -412,7 +570,7 @@ window.salvarCliente = async function () {
 };
 
 // ============================================
-// EDITAR CLIENTE (CORRIGIDO)
+// EDITAR CLIENTE
 // ============================================
 window.editarCliente = async function (id) {
     console.log("✏️ Editando cliente:", id);
@@ -438,7 +596,6 @@ window.editarCliente = async function (id) {
             return;
         }
 
-        // Remover modal existente
         const existingModal = document.getElementById('modalEditarCliente');
         if (existingModal) existingModal.remove();
 
@@ -497,13 +654,12 @@ function fecharModalEditarCliente() {
 }
 
 // ============================================
-// ATUALIZAR CLIENTE (CORRIGIDO)
+// ATUALIZAR CLIENTE
 // ============================================
 window.atualizarCliente = async function (id) {
     console.log('📝 Atualizando cliente:', id);
 
     try {
-        // PEGAR ELEMENTOS COM VERIFICAÇÃO
         const nomeInput = document.getElementById('editClienteNome');
         const telefoneInput = document.getElementById('editClienteTelefone');
         const emailInput = document.getElementById('editClienteEmail');
@@ -698,7 +854,7 @@ window.carregarClientes = carregarClientes;
 window.fecharModalCliente = fecharModalCliente;
 window.fecharModalEditarCliente = fecharModalEditarCliente;
 
-console.log('✅ clientes.js carregado com sucesso!');
+console.log('✅ clientes.js carregado com sucesso (MOBILE FIX)!');
 
 // ============================================
 // ATUALIZAR AO REDIMENSIONAR A TELA
@@ -712,11 +868,3 @@ window.addEventListener('resize', function () {
         }
     }, 300);
 });
-
-// ============================================
-// EXPORTAR FUNÇÕES GLOBAIS
-// ============================================
-
-window.carregarClientes = carregarClientes;
-window.fecharModalCliente = fecharModalCliente;
-window.fecharModalEditarCliente = fecharModalEditarCliente;

@@ -1,4 +1,4 @@
-﻿// pages/dashboard.js - Versão com DURAÇÃO DOS SERVIÇOS
+﻿// pages/dashboard.js - Versão com DURAÇÃO DOS SERVIÇOS e MOBILE MELHORADO
 
 let dashboardData = null;
 let chartInstance = null;
@@ -16,7 +16,7 @@ let agendaInteligenteCarregando = false;
 let agendaModoCompleto = false; // false = dia atual, true = semana completa
 
 // ============================================
-// 🔥 FUNÇÕES AUXILIARES PARA DURAÇÃO
+// FUNÇÕES AUXILIARES PARA DURAÇÃO
 // ============================================
 
 function horaParaMinutos(horaStr) {
@@ -31,23 +31,18 @@ function minutosParaHora(minutos) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-// 🔥 FUNÇÃO PARA VERIFICAR SE UM HORÁRIO ESTÁ OCUPADO CONSIDERANDO DURAÇÃO
 function isHorarioOcupadoComDuracao(agendamentos, profissionalId, data, hora) {
     const horaMin = horaParaMinutos(hora);
 
     for (let ag of agendamentos) {
-        // Verificar se é do mesmo profissional
         if (ag.profissional_id !== profissionalId) continue;
         if (ag.data !== data) continue;
         if (ag.status === 'cancelado') continue;
         if (!ag.hora) continue;
 
         const agHoraMin = horaParaMinutos(ag.hora);
+        let agDuracao = 30;
 
-        // 🔥 Buscar duração do serviço
-        let agDuracao = 30; // padrão
-
-        // Tentar buscar pela lista global de serviços
         if (ag.servico_id) {
             const servico = window.servicosListGlobal?.find(s => s.id === ag.servico_id);
             if (servico && servico.duracao) {
@@ -59,24 +54,20 @@ function isHorarioOcupadoComDuracao(agendamentos, profissionalId, data, hora) {
 
         const agFimMin = agHoraMin + agDuracao;
 
-        // Verificar sobreposição
         if (horaMin >= agHoraMin && horaMin < agFimMin) {
-            console.log(`❌ Conflito: ${hora} está dentro de ${ag.hora} (${agDuracao}min)`);
             return true;
         }
     }
     return false;
 }
 
-// 🔥 NOVA: Detectar se é mobile
 function isMobileScreen() {
     return window.innerWidth < 768;
 }
 
-// 🔥 NOVA: Atualizar modo baseado no tamanho da tela
 function atualizarModoAgendaPorTela() {
     const mobile = isMobileScreen();
-    const novoModo = !mobile; // Desktop = semana completa, Mobile = dia atual
+    const novoModo = !mobile;
 
     if (agendaModoCompleto !== novoModo) {
         agendaModoCompleto = novoModo;
@@ -95,23 +86,8 @@ const coresPaleta = [
     '#00D2D3', '#1DD1A1', '#F368E0', '#FF9F43', '#EE5A24'
 ];
 
-// Ícones por horário
-const iconesHorarios = {
-    '08:00': '🌅', '08:30': '🌅',
-    '09:00': '☀️', '09:30': '☀️',
-    '10:00': '☀️', '10:30': '☀️',
-    '11:00': '☀️', '11:30': '☀️',
-    '12:00': '🍽️', '12:30': '🍽️',
-    '13:00': '🌤️', '13:30': '🌤️',
-    '14:00': '🌤️', '14:30': '🌤️',
-    '15:00': '🌤️', '15:30': '🌤️',
-    '16:00': '🌤️', '16:30': '🌤️',
-    '17:00': '🌆', '17:30': '🌆',
-    '18:00': '🌆'
-};
-
 // ============================================
-// FUNÇÃO AUXILIAR: FORMATAR DATA PARA EXIBIÇÃO
+// FUNÇÃO AUXILIAR: FORMATAR DATA
 // ============================================
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
@@ -136,9 +112,6 @@ function formatarDataBr(dataStr) {
     }
 }
 
-// ============================================
-// FUNÇÃO AUXILIAR: FORMATAR MOEDA
-// ============================================
 function formatarMoeda(valor) {
     if (valor === undefined || valor === null || isNaN(valor)) {
         return '0,00';
@@ -150,8 +123,15 @@ function formatarMoeda(valor) {
     return num.toFixed(2).replace('.', ',');
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // ============================================
-// 🔥 CARREGAR AGENDA INTELIGENTE (COM SERVIÇOS)
+// CARREGAR AGENDA INTELIGENTE
 // ============================================
 
 async function carregarAgendaInteligente() {
@@ -166,15 +146,13 @@ async function carregarAgendaInteligente() {
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
 
     try {
-        // 🔥 ADICIONAR: Buscar serviços também
         const [horariosRes, profissionaisRes, agendamentosRes, servicosRes] = await Promise.all([
             fetch('/api/horarios', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/servicos/todos', { headers: { 'Authorization': 'Bearer ' + token } }) // 🔥 NOVO
+            fetch('/api/servicos/todos', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
-        // 🔥 SALVAR LISTA GLOBAL DE SERVIÇOS
         const servicosData = await servicosRes.json();
         window.servicosListGlobal = servicosData.success ? servicosData.data : [];
         console.log(`📦 ${window.servicosListGlobal.length} serviços carregados globalmente`);
@@ -210,7 +188,6 @@ async function carregarAgendaInteligente() {
 
         agendaInteligenteDate = new Date();
 
-        // 🔥 Ajustar modo baseado no tamanho da tela
         atualizarModoAgendaPorTela();
         renderizarAgendaInteligente();
 
@@ -237,7 +214,7 @@ function isHorarioAlmoco(hora, almocoInicio, almocoFim) {
 }
 
 // ============================================
-// 🔥 RENDERIZAR AGENDA INTELIGENTE (COM DURAÇÃO)
+// RENDERIZAR AGENDA INTELIGENTE
 // ============================================
 
 function renderizarAgendaInteligente() {
@@ -286,9 +263,6 @@ function renderizarAgendaInteligente() {
         return;
     }
 
-    // ============================================
-    // DIAS DA SEMANA - USANDO A DATA SELECIONADA
-    // ============================================
     const dias = [];
     for (let i = 0; i < 7; i++) {
         const d = new Date(inicioSemana);
@@ -300,9 +274,6 @@ function renderizarAgendaInteligente() {
     const horaAtual = agora.getHours();
     const minutoAtual = agora.getMinutes();
 
-    // ============================================
-    // BUSCAR CONFIGURAÇÃO DO DIA ATUAL
-    // ============================================
     const diaSemanaHoje = hoje.getDay();
     const horarioConfiguradoHoje = agendaInteligenteHorarios.find(h => h.dia_semana === diaSemanaHoje);
 
@@ -362,9 +333,6 @@ function renderizarAgendaInteligente() {
         }
     }
 
-    // ============================================
-    // ENCONTRAR O ÍNDICE DO HORÁRIO ATUAL
-    // ============================================
     let horarioAtualIndex = 0;
     const totalMinutosAtual = horaAtual * 60 + minutoAtual;
 
@@ -380,38 +348,29 @@ function renderizarAgendaInteligente() {
         horarioAtualIndex = Math.max(0, horariosBase.length - 5);
     }
 
-    // ============================================
-    // BARRA DE PROGRESSO
-    // ============================================
     const [inicioH, inicioM] = horarioInicioPadrao.split(':').map(Number);
     const [fimH, fimM] = horarioFimPadrao.split(':').map(Number);
     const totalMinutosDia = (fimH * 60 + fimM) - (inicioH * 60 + inicioM);
     const minutosPassados = (horaAtual * 60 + minutoAtual) - (inicioH * 60 + inicioM);
     const progressoDia = totalMinutosDia > 0 ? Math.max(0, Math.min(100, (minutosPassados / totalMinutosDia) * 100)) : 0;
 
-    // ============================================
-    // 🔥 BOTÃO DE ALTERNAR VISUALIZAÇÃO (Só aparece no mobile)
-    // ============================================
     const mostrarBotaoAlternar = isMobile;
 
-    // ============================================
-    // LEGENDA DE CORES (Compacta)
-    // ============================================
     let html = `
-        <div style="margin-bottom:12px;">
+        <div style="margin-bottom:${isMobile ? '8px' : '12px'};">
             ${mostrarBotaoAlternar ? `
                 <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
                     <div style="display:flex;align-items:center;gap:8px;">
-                        <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">
+                        <span style="font-size:${isMobile ? '11px' : '12px'};font-weight:600;color:var(--text-secondary);">
                             ${agendaModoCompleto ? '📅 Semana' : '📆 Hoje'}
                         </span>
                         <button onclick="alternarModoAgenda()" 
                                 style="background:${agendaModoCompleto ? 'rgba(102,126,234,0.15)' : 'var(--primary)'};
                                        border:${agendaModoCompleto ? '1px solid var(--border-color)' : 'none'};
                                        color:${agendaModoCompleto ? 'var(--text-secondary)' : 'white'};
-                                       padding:4px 14px;
+                                       padding:${isMobile ? '4px 12px' : '4px 14px'};
                                        border-radius:20px;
-                                       font-size:11px;
+                                       font-size:${isMobile ? '10px' : '11px'};
                                        font-weight:600;
                                        cursor:pointer;
                                        transition:all 0.3s ease;
@@ -419,23 +378,22 @@ function renderizarAgendaInteligente() {
                             ${agendaModoCompleto ? '📱 Ver Hoje' : '📅 Ver Semana'}
                         </button>
                     </div>
-                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                        <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:1px 10px;border-radius:12px;font-size:9px;">
-                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#10b981);"></span>
+                    <div style="display:flex;gap:${isMobile ? '2px' : '4px'};flex-wrap:wrap;">
+                        <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:${isMobile ? '1px 8px' : '1px 10px'};border-radius:12px;font-size:${isMobile ? '8px' : '9px'};">
+                            <span style="display:inline-block;width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#22c55e,#10b981);"></span>
                             Livre
                         </span>
-                        <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:1px 10px;border-radius:12px;font-size:9px;">
-                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);"></span>
+                        <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:${isMobile ? '1px 8px' : '1px 10px'};border-radius:12px;font-size:${isMobile ? '8px' : '9px'};">
+                            <span style="display:inline-block;width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);"></span>
                             Ocupado
                         </span>
-                        <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:1px 10px;border-radius:12px;font-size:9px;">
-                            <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#d4af37;"></span>
+                        <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:${isMobile ? '1px 8px' : '1px 10px'};border-radius:12px;font-size:${isMobile ? '8px' : '9px'};">
+                            <span style="display:inline-block;width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};border-radius:50%;background:#d4af37;"></span>
                             👑
                         </span>
                     </div>
                 </div>
             ` : `
-                <!-- Desktop: legenda normal -->
                 <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
                         <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">👤 Profissionais:</span>
@@ -484,7 +442,6 @@ function renderizarAgendaInteligente() {
                 </div>
             `}
             
-            <!-- Barra de progresso -->
             <div style="margin-top:${isMobile ? '4px' : '6px'};">
                 <div style="display:flex;justify-content:space-between;font-size:${isMobile ? '7px' : '8px'};color:var(--text-muted);">
                     <span>🌅 ${horarioInicioPadrao}</span>
@@ -498,10 +455,6 @@ function renderizarAgendaInteligente() {
         </div>
     `;
 
-    // ============================================
-    // TABELA DO CALENDÁRIO
-    // ============================================
-
     let diasParaMostrar = dias;
     if (isMobile && !agendaModoCompleto) {
         const hojeIndex = dias.findIndex(d => d.toISOString().split('T')[0] === hojeStr);
@@ -513,50 +466,52 @@ function renderizarAgendaInteligente() {
     }
 
     const minWidth = isMobile ? (agendaModoCompleto ? '400px' : '200px') : '550px';
+    const cellPadding = isMobile ? '4px 2px' : '4px 3px';
+    const fontSize = isMobile ? '8px' : '9px';
+    const minHeight = isMobile ? '28px' : '38px';
 
     html += `
-        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:${isMobile ? '380px' : '500px'};overflow-y:auto;border-radius:12px;border:1px solid var(--border-color);background:var(--bg-card);box-shadow:0 2px 12px rgba(0,0,0,0.04);position:relative;">
-            <table id="agendaTabela" style="width:100%;border-collapse:collapse;font-size:${isMobile ? '10px' : '11px'};min-width:${minWidth};">
+        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:${isMobile ? '360px' : '500px'};overflow-y:auto;border-radius:12px;border:1px solid var(--border-color);background:var(--bg-card);box-shadow:0 2px 12px rgba(0,0,0,0.04);position:relative;">
+            <table id="agendaTabela" style="width:100%;border-collapse:collapse;font-size:${isMobile ? '9px' : '11px'};min-width:${minWidth};">
                 <thead>
                     <tr>
-                        <th style="padding:${isMobile ? '6px 4px' : '10px 8px'};background:var(--bg-hover);text-align:center;font-weight:700;position:sticky;top:0;z-index:10;font-size:${isMobile ? '8px' : '10px'};min-width:${isMobile ? '40px' : '55px'};color:var(--text-muted);border-bottom:2px solid var(--border-color);">
-                            <i class="fas fa-clock" style="font-size:${isMobile ? '10px' : '12px'};"></i>
+                        <th style="padding:${isMobile ? '4px 2px' : '10px 8px'};background:var(--bg-hover);text-align:center;font-weight:700;position:sticky;top:0;z-index:10;font-size:${isMobile ? '7px' : '10px'};min-width:${isMobile ? '32px' : '55px'};color:var(--text-muted);border-bottom:2px solid var(--border-color);">
+                            <i class="fas fa-clock" style="font-size:${isMobile ? '8px' : '12px'};"></i>
                         </th>
                         ${diasParaMostrar.map(d => {
         const dataStr = d.toISOString().split('T')[0];
         const isHoje = dataStr === hojeStr;
         const nomeDia = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
         const diaNum = d.getDate();
-        const mesNum = d.getMonth() + 1;
         const isFimSemana = d.getDay() === 0 || d.getDay() === 6;
 
         const agendamentosDia = agendaInteligenteData.filter(a => a.data === dataStr && a.status !== 'cancelado');
         const totalAgendamentosDia = agendamentosDia.length;
         const badgeAgendamentos = totalAgendamentosDia > 0 ?
-            `<span style="display:inline-block;font-size:${isMobile ? '6px' : '7px'};background:${isHoje ? 'rgba(255,255,255,0.25)' : 'var(--primary)'};color:${isHoje ? '#fff' : 'white'};padding:0px 5px;border-radius:8px;margin-left:2px;">${totalAgendamentosDia}</span>` : '';
+            `<span style="display:inline-block;font-size:${isMobile ? '5px' : '7px'};background:${isHoje ? 'rgba(255,255,255,0.25)' : 'var(--primary)'};color:${isHoje ? '#fff' : 'white'};padding:0px 5px;border-radius:8px;margin-left:2px;">${totalAgendamentosDia}</span>` : '';
 
         const isProximo = dataStr === amanhaStr;
         const isFuturo = dataStr > hojeStr && !isProximo;
 
         let bgTh = isHoje ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (isFimSemana ? 'var(--bg-hover)' : 'var(--bg-hover)');
         let colorTh = isHoje ? '#ffffff' : 'var(--text-secondary)';
-        let fontSizeNum = isHoje ? (isMobile ? '16px' : '20px') : (isMobile ? '12px' : '15px');
-        let fontSizeDia = isMobile ? '7px' : '9px';
+        let fontSizeNum = isHoje ? (isMobile ? '14px' : '20px') : (isMobile ? '11px' : '15px');
+        let fontSizeDia = isMobile ? '6px' : '9px';
         let extraBadge = '';
 
         if (isHoje) {
-            extraBadge = `<span style="font-size:${isMobile ? '5px' : '7px'};opacity:0.9;letter-spacing:0.5px;font-weight:600;display:block;">● HOJE</span>`;
+            extraBadge = `<span style="font-size:${isMobile ? '4px' : '7px'};opacity:0.9;letter-spacing:0.5px;font-weight:600;display:block;">● HOJE</span>`;
         } else if (isProximo) {
-            extraBadge = `<span style="font-size:${isMobile ? '5px' : '7px'};opacity:0.7;letter-spacing:0.5px;font-weight:500;display:block;color:var(--text-muted);">Amanhã</span>`;
+            extraBadge = `<span style="font-size:${isMobile ? '4px' : '7px'};opacity:0.7;letter-spacing:0.5px;font-weight:500;display:block;color:var(--text-muted);">Amanhã</span>`;
         } else if (isFuturo) {
             const diff = Math.ceil((d - hoje) / (1000 * 60 * 60 * 24));
             if (diff <= 3) {
-                extraBadge = `<span style="font-size:${isMobile ? '5px' : '7px'};opacity:0.5;letter-spacing:0.3px;display:block;color:var(--text-muted);">+${diff}d</span>`;
+                extraBadge = `<span style="font-size:${isMobile ? '4px' : '7px'};opacity:0.5;letter-spacing:0.3px;display:block;color:var(--text-muted);">+${diff}d</span>`;
             }
         }
 
         return `
-                                <th style="padding:${isMobile ? '6px 2px' : '10px 4px'};
+                                <th style="padding:${isMobile ? '4px 2px' : '10px 4px'};
                                            background:${bgTh};
                                            color:${colorTh};
                                            text-align:center;
@@ -564,8 +519,8 @@ function renderizarAgendaInteligente() {
                                            position:sticky;
                                            top:0;
                                            z-index:5;
-                                           font-size:${isMobile ? '8px' : '10px'};
-                                           min-width:${isMobile ? '50px' : '65px'};
+                                           font-size:${isMobile ? '7px' : '10px'};
+                                           min-width:${isMobile ? '40px' : '65px'};
                                            border-bottom:${isHoje ? '3px solid #ffffff' : '2px solid var(--border-color)'};
                                            box-shadow:${isHoje ? '0 2px 16px rgba(102, 126, 234, 0.35)' : 'none'};
                                            border-radius:${isHoje ? '8px 8px 0 0' : '0'};
@@ -589,9 +544,6 @@ function renderizarAgendaInteligente() {
                 <tbody id="agendaTbody">
     `;
 
-    // ============================================
-    // 🔥 RENDERIZAR HORÁRIOS COM DURAÇÃO
-    // ============================================
     let isDiaHoje = false;
 
     for (let idx = 0; idx < horariosBase.length; idx++) {
@@ -616,31 +568,31 @@ function renderizarAgendaInteligente() {
 
         let horarioBg = 'var(--bg-hover)';
         let horarioColor = 'var(--text-primary)';
-        let horarioFontSize = isMobile ? '10px' : '12px';
+        let horarioFontSize = isMobile ? '9px' : '12px';
         let horarioFontWeight = '700';
         let extraContent = '';
 
         if (isHorarioAtual) {
             horarioBg = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
             horarioColor = '#ffffff';
-            horarioFontSize = isMobile ? '12px' : '15px';
+            horarioFontSize = isMobile ? '11px' : '15px';
             horarioFontWeight = '800';
             extraContent = `
-                <span style="display:block;font-size:${isMobile ? '5px' : '7px'};background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:8px;margin-top:0px;">● AGORA</span>
+                <span style="display:block;font-size:${isMobile ? '4px' : '7px'};background:rgba(255,255,255,0.2);padding:1px 6px;border-radius:8px;margin-top:0px;">● AGORA</span>
             `;
         } else if (isAlmoco) {
             horarioBg = 'rgba(245,158,11,0.1)';
             horarioColor = '#d97706';
-            extraContent = `<span style="font-size:${isMobile ? '12px' : '14px'};">🍽️</span>`;
+            extraContent = `<span style="font-size:${isMobile ? '10px' : '14px'};">🍽️</span>`;
         } else if (isPassadoGlobal) {
             horarioBg = 'rgba(107,114,128,0.06)';
             horarioColor = '#6b7280';
-            extraContent = `<span style="font-size:${isMobile ? '8px' : '10px'};opacity:0.5;">⏰</span>`;
+            extraContent = `<span style="font-size:${isMobile ? '7px' : '10px'};opacity:0.5;">⏰</span>`;
         }
 
         html += `
             <td style="
-                padding: ${isMobile ? '4px 3px' : '8px 6px'};
+                padding: ${isMobile ? '3px 2px' : '8px 6px'};
                 text-align: center;
                 border-bottom: 1px solid var(--border-color);
                 font-size: ${horarioFontSize};
@@ -649,7 +601,7 @@ function renderizarAgendaInteligente() {
                 background: ${horarioBg};
                 white-space: nowrap;
                 border-right: 2px solid ${isHorarioAtual ? '#667eea' : 'var(--border-color)'};
-                min-width: ${isMobile ? '40px' : '60px'};
+                min-width: ${isMobile ? '32px' : '60px'};
                 position: sticky;
                 left: 0;
                 z-index: 3;
@@ -659,11 +611,11 @@ function renderizarAgendaInteligente() {
             ">
                 <div style="display: flex; flex-direction: column; align-items: center; gap: 1px;">
                     ${extraContent}
-                    <span style="font-size: ${isHorarioAtual ? (isMobile ? '13px' : '16px') : (isMobile ? '10px' : '12px')}; font-weight: ${isHorarioAtual ? '800' : '700'};">
+                    <span style="font-size: ${isHorarioAtual ? (isMobile ? '12px' : '16px') : (isMobile ? '9px' : '12px')}; font-weight: ${isHorarioAtual ? '800' : '700'};">
                         ${hora}
                     </span>
                     ${isPassadoGlobal && !isHorarioAtual ? `
-                        <span style="font-size:${isMobile ? '4px' : '6px'};color:#6b7280;font-weight:600;letter-spacing:0.3px;">PASSOU</span>
+                        <span style="font-size:${isMobile ? '3px' : '6px'};color:#6b7280;font-weight:600;letter-spacing:0.3px;">PASSOU</span>
                     ` : ''}
                 </div>
             </td>
@@ -714,26 +666,22 @@ function renderizarAgendaInteligente() {
 
             if (!estaAberto || !dentroExpediente) {
                 bgColor = 'rgba(107,114,128,0.04)';
-                cellContent = `<span style="color:#9ca3af;font-size:${isMobile ? '12px' : '14px'};">—</span>`;
+                cellContent = `<span style="color:#9ca3af;font-size:${isMobile ? '10px' : '14px'};">—</span>`;
                 title = !estaAberto ? 'Fechado' : 'Fora do expediente';
                 cellStyle = 'opacity:0.4;';
             } else if (dataPassou || isPassadoGlobal) {
                 bgColor = 'rgba(107,114,128,0.04)';
-                cellContent = `<span style="color:#9ca3af;font-size:${isMobile ? '10px' : '14px'};opacity:0.3;">⏰</span>`;
+                cellContent = `<span style="color:#9ca3af;font-size:${isMobile ? '8px' : '14px'};opacity:0.3;">⏰</span>`;
                 title = dataPassou ? 'Data já passou' : 'Horário já passou';
                 cellStyle = 'opacity:0.3;filter:grayscale(0.8);';
             } else if (noAlmoco) {
                 bgColor = 'rgba(245,158,11,0.06)';
-                cellContent = `<span style="color:#d97706;font-size:${isMobile ? '14px' : '16px'};">🍽️</span>`;
+                cellContent = `<span style="color:#d97706;font-size:${isMobile ? '12px' : '16px'};">🍽️</span>`;
                 title = 'Horário de almoço';
             } else {
-                // ============================================
-                // 🔥 VERIFICAR OCUPAÇÃO CONSIDERANDO DURAÇÃO
-                // ============================================
                 const profissionaisComStatus = agendaInteligenteProfissionais.map(p => {
                     let ocupado = false;
                     if (p.is_dono === true) {
-                        // Verificar se há agendamento do dono neste horário considerando duração
                         for (let ag of agendaInteligenteData) {
                             if (ag.data !== dataStr) continue;
                             if (ag.status === 'cancelado') continue;
@@ -755,7 +703,6 @@ function renderizarAgendaInteligente() {
                             }
                         }
                     } else {
-                        // Verificar se o profissional está ocupado neste horário considerando duração
                         ocupado = isHorarioOcupadoComDuracao(agendaInteligenteData, p.id, dataStr, hora);
                     }
                     return { ...p, ocupado };
@@ -765,25 +712,25 @@ function renderizarAgendaInteligente() {
 
                 if (disponiveis.length === 0) {
                     bgColor = 'rgba(239,68,68,0.05)';
-                    cellContent = `<span style="color:#ef4444;font-size:${isMobile ? '12px' : '14px'};font-weight:700;">🔴</span>`;
+                    cellContent = `<span style="color:#ef4444;font-size:${isMobile ? '10px' : '14px'};font-weight:700;">🔴</span>`;
                     title = 'Todos os profissionais ocupados';
                 } else {
                     const todosProfissionais = profissionaisComStatus;
                     const qtdeProf = todosProfissionais.length;
 
-                    let tamanhoBolinha = isMobile ? 20 : 30;
-                    if (qtdeProf <= 2) tamanhoBolinha = isMobile ? 24 : 30;
-                    else if (qtdeProf <= 4) tamanhoBolinha = isMobile ? 20 : 26;
-                    else tamanhoBolinha = isMobile ? 16 : 22;
+                    let tamanhoBolinha = isMobile ? 16 : 30;
+                    if (qtdeProf <= 2) tamanhoBolinha = isMobile ? 20 : 30;
+                    else if (qtdeProf <= 4) tamanhoBolinha = isMobile ? 16 : 26;
+                    else tamanhoBolinha = isMobile ? 14 : 22;
 
-                    const displayProfs = todosProfissionais.slice(0, isMobile ? 4 : 6);
-                    const mais = todosProfissionais.length > (isMobile ? 4 : 6) ? ` +${todosProfissionais.length - (isMobile ? 4 : 6)}` : '';
+                    const displayProfs = todosProfissionais.slice(0, isMobile ? 3 : 6);
+                    const mais = todosProfissionais.length > (isMobile ? 3 : 6) ? ` +${todosProfissionais.length - (isMobile ? 3 : 6)}` : '';
 
                     bgColor = isHoje ? 'rgba(102, 126, 234, 0.06)' : 'rgba(16,185,129,0.04)';
 
                     cellContent = `
-                        <div style="display:flex;flex-direction:column;align-items:center;gap:${isMobile ? '2px' : '3px'};width:100%;">
-                            <div style="display:flex;flex-wrap:wrap;gap:${isMobile ? '2px' : '4px'};justify-content:center;align-items:center;width:100%;">
+                        <div style="display:flex;flex-direction:column;align-items:center;gap:${isMobile ? '1px' : '3px'};width:100%;">
+                            <div style="display:flex;flex-wrap:wrap;gap:${isMobile ? '1px' : '4px'};justify-content:center;align-items:center;width:100%;">
                                 ${displayProfs.map(p => {
                         const isDono = p.is_dono === true;
                         const cor = agendaInteligenteCores[p.id] || '#666';
@@ -800,7 +747,7 @@ function renderizarAgendaInteligente() {
                         const onClick = isIndisponivel ? '' : `event.stopPropagation(); abrirAgendamentoInteligente('${dataStr}','${hora}','${p.id}')`;
 
                         const size = isOcupado ? tamanhoBolinha + (isMobile ? 2 : 4) : tamanhoBolinha;
-                        const fontSize = isOcupado ? (isMobile ? '10px' : '14px') : (isMobile ? '8px' : '12px');
+                        const fontSize = isOcupado ? (isMobile ? '8px' : '14px') : (isMobile ? '6px' : '12px');
                         const icone = isPassado ? '⏰' : (isOcupado ? '✕' : avatar);
 
                         return `
@@ -813,7 +760,7 @@ function renderizarAgendaInteligente() {
                                                              height:${size}px;
                                                              border-radius:50%;
                                                              background:${isPassado ? '#9ca3af' : corFundo};
-                                                             border:${isMobile ? '2px' : '3px'} solid ${isPassado ? '#9ca3af' : corBorda};
+                                                             border:${isMobile ? '1.5px' : '3px'} solid ${isPassado ? '#9ca3af' : corBorda};
                                                              box-shadow: ${isPassado ? 'none' : sombra};
                                                              transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
                                                              position:relative;
@@ -833,12 +780,12 @@ function renderizarAgendaInteligente() {
                                                       >
                                                     ${icone}
                                                 </span>
-                                                ${isDono ? `<span style="position:absolute;top:${isMobile ? '-4px' : '-6px'};right:${isMobile ? '-4px' : '-6px'};font-size:${isMobile ? '8px' : '12px'};text-shadow:0 0 4px rgba(0,0,0,0.3);">👑</span>` : ''}
+                                                ${isDono ? `<span style="position:absolute;top:${isMobile ? '-3px' : '-6px'};right:${isMobile ? '-3px' : '-6px'};font-size:${isMobile ? '6px' : '12px'};text-shadow:0 0 4px rgba(0,0,0,0.3);">👑</span>` : ''}
                                                 ${isOcupado && !isPassado ? `
-                                                    <span style="position:absolute;bottom:${isMobile ? '-2px' : '-4px'};right:${isMobile ? '-2px' : '-4px'};width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};background:#ef4444;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(239,68,68,0.5);"></span>
+                                                    <span style="position:absolute;bottom:${isMobile ? '-1px' : '-4px'};right:${isMobile ? '-1px' : '-4px'};width:${isMobile ? '4px' : '8px'};height:${isMobile ? '4px' : '8px'};background:#ef4444;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(239,68,68,0.5);"></span>
                                                 ` : ''}
                                                 ${!isOcupado && !isPassado ? `
-                                                    <span style="position:absolute;bottom:${isMobile ? '-2px' : '-4px'};right:${isMobile ? '-2px' : '-4px'};width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};background:#22c55e;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(34,197,94,0.5);animation:pulse-green 2s infinite;"></span>
+                                                    <span style="position:absolute;bottom:${isMobile ? '-1px' : '-4px'};right:${isMobile ? '-1px' : '-4px'};width:${isMobile ? '4px' : '8px'};height:${isMobile ? '4px' : '8px'};background:#22c55e;border-radius:50%;border:2px solid white;box-shadow:0 0 8px rgba(34,197,94,0.5);"></span>
                                                 ` : ''}
                                             </div>
                                             ${!isMobile ? `
@@ -852,7 +799,7 @@ function renderizarAgendaInteligente() {
                                         </div>
                                     `;
                     }).join('')}
-                                ${mais ? `<span style="font-size:${isMobile ? '8px' : '10px'};color:var(--text-muted);font-weight:600;">${mais}</span>` : ''}
+                                ${mais ? `<span style="font-size:${isMobile ? '6px' : '10px'};color:var(--text-muted);font-weight:600;">${mais}</span>` : ''}
                             </div>
                             ${!isMobile && todosProfissionais.length > 1 ? `
                                 <div style="display:flex;gap:8px;font-size:6px;color:var(--text-muted);opacity:0.6;margin-top:1px;background:var(--bg-hover);padding:1px 10px;border-radius:10px;">
@@ -871,12 +818,12 @@ function renderizarAgendaInteligente() {
             const borderBottom = isHoje && hora === horariosBase[horariosBase.length - 1] ? 'border-bottom:2px solid rgba(102,126,234,0.3);' : '';
 
             html += `
-                <td style="padding:${isMobile ? '3px 2px' : '4px 3px'};
+                <td style="padding:${cellPadding};
                            border-bottom:1px solid var(--border-color);
                            background:${bgColor};
                            text-align:center;
-                           font-size:${isMobile ? '8px' : '9px'};
-                           min-height:${isMobile ? '30px' : '42px'};
+                           font-size:${fontSize};
+                           min-height:${minHeight};
                            vertical-align:middle;
                            ${borderStyle}
                            ${borderTop}
@@ -905,62 +852,50 @@ function renderizarAgendaInteligente() {
         </div>
     `;
 
-    // ============================================
-    // NAVEGAÇÃO
-    // ============================================
     html += `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:${isMobile ? '8px 2px 0' : '12px 4px 0'};border-top:1px solid var(--border-color);margin-top:${isMobile ? '8px' : '12px'};font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);flex-wrap:wrap;gap:${isMobile ? '4px' : '8px'};">
-            <div style="display:flex;gap:${isMobile ? '3px' : '6px'};align-items:center;flex-wrap:wrap;">
-                <button onclick="mudarAgendaSemana(-7)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:${isMobile ? '4px 8px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '10px' : '13px'};transition:all 0.2s;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:${isMobile ? '6px 2px 0' : '12px 4px 0'};border-top:1px solid var(--border-color);margin-top:${isMobile ? '6px' : '12px'};font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);flex-wrap:wrap;gap:${isMobile ? '3px' : '8px'};">
+            <div style="display:flex;gap:${isMobile ? '2px' : '6px'};align-items:center;flex-wrap:wrap;">
+                <button onclick="mudarAgendaSemana(-7)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:${isMobile ? '4px' : '6px'};cursor:pointer;padding:${isMobile ? '3px 6px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '8px' : '13px'};transition:all 0.2s;">
                     ◀◀
                 </button>
-                <button onclick="mudarAgendaSemana(-1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:${isMobile ? '4px 8px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '10px' : '13px'};transition:all 0.2s;">
+                <button onclick="mudarAgendaSemana(-1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:${isMobile ? '4px' : '6px'};cursor:pointer;padding:${isMobile ? '3px 6px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '8px' : '13px'};transition:all 0.2s;">
                     ◀
                 </button>
-                <span style="font-weight:600;color:var(--text-primary);font-size:${isMobile ? '10px' : '13px'};background:var(--bg-hover);padding:${isMobile ? '4px 10px' : '6px 18px'};border-radius:6px;border:1px solid var(--border-color);">
+                <span style="font-weight:600;color:var(--text-primary);font-size:${isMobile ? '9px' : '13px'};background:var(--bg-hover);padding:${isMobile ? '3px 8px' : '6px 18px'};border-radius:${isMobile ? '4px' : '6px'};border:1px solid var(--border-color);">
                     ${(isMobile && !agendaModoCompleto) ?
-            diasParaMostrar[0]?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) :
+            diasParaMostrar[0]?.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }) :
             `${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`
         }
                 </span>
-                <button onclick="mudarAgendaSemana(1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:${isMobile ? '4px 8px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '10px' : '13px'};transition:all 0.2s;">
+                <button onclick="mudarAgendaSemana(1)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:${isMobile ? '4px' : '6px'};cursor:pointer;padding:${isMobile ? '3px 6px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '8px' : '13px'};transition:all 0.2s;">
                     ▶
                 </button>
-                <button onclick="mudarAgendaSemana(7)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;padding:${isMobile ? '4px 8px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '10px' : '13px'};transition:all 0.2s;">
+                <button onclick="mudarAgendaSemana(7)" style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:${isMobile ? '4px' : '6px'};cursor:pointer;padding:${isMobile ? '3px 6px' : '6px 14px'};color:var(--text-secondary);font-size:${isMobile ? '8px' : '13px'};transition:all 0.2s;">
                     ▶▶
                 </button>
-                <button onclick="irAgendaHoje()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:6px;cursor:pointer;padding:${isMobile ? '4px 10px' : '6px 16px'};color:white;font-size:${isMobile ? '9px' : '11px'};font-weight:600;transition:all 0.2s;box-shadow:0 2px 12px rgba(102,126,234,0.3);">
+                <button onclick="irAgendaHoje()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;border-radius:${isMobile ? '4px' : '6px'};cursor:pointer;padding:${isMobile ? '3px 8px' : '6px 16px'};color:white;font-size:${isMobile ? '8px' : '11px'};font-weight:600;transition:all 0.2s;box-shadow:0 2px 12px rgba(102,126,234,0.3);">
                     📌 Hoje
                 </button>
             </div>
-            <div style="display:flex;gap:${isMobile ? '3px' : '8px'};font-size:${isMobile ? '7px' : '9px'};flex-wrap:wrap;">
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:${isMobile ? '1px 6px' : '2px 10px'};border-radius:12px;border:1px solid rgba(34,197,94,0.2);">
-                    <span style="display:inline-block;width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#22c55e,#10b981);"></span>
-                    Livre
+            <div style="display:flex;gap:${isMobile ? '2px' : '8px'};font-size:${isMobile ? '6px' : '9px'};flex-wrap:wrap;">
+                <span style="display:flex;align-items:center;gap:2px;background:var(--bg-hover);padding:${isMobile ? '1px 4px' : '2px 10px'};border-radius:12px;border:1px solid rgba(34,197,94,0.2);">
+                    <span style="display:inline-block;width:${isMobile ? '4px' : '8px'};height:${isMobile ? '4px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#22c55e,#10b981);"></span>
+                    ${isMobile ? 'L' : 'Livre'}
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:${isMobile ? '1px 6px' : '2px 10px'};border-radius:12px;border:1px solid rgba(239,68,68,0.2);">
-                    <span style="display:inline-block;width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);"></span>
-                    Ocupado
+                <span style="display:flex;align-items:center;gap:2px;background:var(--bg-hover);padding:${isMobile ? '1px 4px' : '2px 10px'};border-radius:12px;border:1px solid rgba(239,68,68,0.2);">
+                    <span style="display:inline-block;width:${isMobile ? '4px' : '8px'};height:${isMobile ? '4px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);"></span>
+                    ${isMobile ? 'O' : 'Ocupado'}
                 </span>
-                <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:${isMobile ? '1px 6px' : '2px 10px'};border-radius:12px;border:1px solid rgba(245,158,11,0.2);">
-                    <span style="display:inline-block;width:${isMobile ? '6px' : '8px'};height:${isMobile ? '6px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);"></span>
-                    Almoço
+                <span style="display:flex;align-items:center;gap:2px;background:var(--bg-hover);padding:${isMobile ? '1px 4px' : '2px 10px'};border-radius:12px;border:1px solid rgba(245,158,11,0.2);">
+                    <span style="display:inline-block;width:${isMobile ? '4px' : '8px'};height:${isMobile ? '4px' : '8px'};border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);"></span>
+                    ${isMobile ? 'A' : 'Almoço'}
                 </span>
-                ${!isMobile ? `
-                    <span style="display:flex;align-items:center;gap:3px;background:var(--bg-hover);padding:2px 10px;border-radius:12px;border:1px solid rgba(107,114,128,0.2);">
-                        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#6b7280;"></span>
-                        Fechado
-                    </span>
-                ` : ''}
             </div>
         </div>
     `;
 
     container.innerHTML = html;
 
-    // ============================================
-    // SCROLL PARA O HORÁRIO ATUAL
-    // ============================================
     setTimeout(() => {
         const wrapper = document.getElementById('agendaScrollWrapper');
         if (!wrapper) return;
@@ -1000,17 +935,13 @@ function renderizarAgendaInteligente() {
 }
 
 // ============================================
-// 🔥 ALTERNAR MODO DA AGENDA (DIA / SEMANA)
+// ALTERNAR MODO DA AGENDA
 // ============================================
 function alternarModoAgenda() {
     agendaModoCompleto = !agendaModoCompleto;
     console.log(`📱 Modo agenda: ${agendaModoCompleto ? 'Semana Completa' : 'Dia Atual'}`);
     renderizarAgendaInteligente();
 }
-
-// ============================================
-// NAVEGAÇÃO DA AGENDA
-// ============================================
 
 function mudarAgendaSemana(direcao) {
     agendaInteligenteDate.setDate(agendaInteligenteDate.getDate() + direcao);
@@ -1025,9 +956,6 @@ function irAgendaHoje() {
     renderizarAgendaInteligente();
 }
 
-// ============================================
-// 🔥 ATUALIZAR AGENDA APÓS AGENDAMENTO
-// ============================================
 function atualizarAgendaAposAgendamento() {
     console.log('🔄 🔥 FORÇANDO ATUALIZAÇÃO DA AGENDA...');
 
@@ -1052,8 +980,29 @@ function atualizarAgendaAposAgendamento() {
     }, 300);
 }
 
+function forcarRecarregarAgenda() {
+    console.log('🔥 FORÇANDO RECARREGAMENTO DA AGENDA...');
+    agendaInteligenteData = [];
+    agendaInteligenteCarregando = false;
+
+    const container = document.getElementById('agendaInteligenteContainer');
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:30px;">
+                <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:32px;height:32px;"></div>
+                <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Atualizando agenda...</p>
+            </div>
+        `;
+    }
+
+    setTimeout(function () {
+        carregarAgendaInteligente();
+        console.log('✅ Agenda recarregada!');
+    }, 500);
+}
+
 // ============================================
-// 🔥 ABRIR AGENDAMENTO - DIRETO PELA BOLINHA (CORRIGIDO COMPLETO)
+// ABRIR AGENDAMENTO - DIRETO PELA BOLINHA
 // ============================================
 
 function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
@@ -1061,7 +1010,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 
     console.log(`📝 Data: ${data} | Hora: ${hora} | Profissional: ${profissionalId}`);
 
-    // 🔥 VALIDAÇÃO: Data/Hora não pode ser no passado
     const agora = new Date();
     const [ano, mes, dia] = data.split('-').map(Number);
     const [horaNum, minutoNum] = hora.split(':').map(Number);
@@ -1072,11 +1020,7 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
         return;
     }
 
-    // 🔥 VERIFICAR SE É DONO - CORRIGIDO
     const isDono = profissionalId && typeof profissionalId === 'string' && profissionalId.startsWith('dono_');
-
-    // 🔥 Se for Dono, o profissional_id deve ser NULL (não enviar)
-    // Se for profissional normal, enviar o ID
     const profissionalIdReal = isDono ? null : (profissionalId ? parseInt(profissionalId) : null);
 
     console.log(`👑 É Dono? ${isDono} | Profissional ID real: ${profissionalIdReal}`);
@@ -1127,30 +1071,23 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 return;
             }
 
-            // 🔥 ABRIR MODAL
             abrirModalAgendamentoDono();
 
-            // 🔥 FUNÇÃO PARA PREENCHER O MODAL CORRETAMENTE
             function preencherModalCompleto() {
                 console.log('📝 Preenchendo modal...');
 
-                // 1. Preencher DATA
                 const dataInput = document.getElementById('dataAgendamentoDono');
                 if (dataInput) {
                     dataInput.value = data;
-                    // Disparar evento para carregar horários
                     const event = new Event('change', { bubbles: true });
                     dataInput.dispatchEvent(event);
                     console.log(`📅 Data preenchida: ${data}`);
                 }
 
-                // 🔥 2. PREENCHER PROFISSIONAL - CORRIGIDO
                 const profSelect = document.getElementById('profissionalIdDono');
                 if (profSelect) {
-                    // Limpar e preencher opções
                     profSelect.innerHTML = '<option value="">Não atribuir</option>';
 
-                    // Adicionar profissionais da lista
                     if (window.profissionaisList && window.profissionaisList.length > 0) {
                         window.profissionaisList.forEach(p => {
                             if ((p.ativo == 1 || p.ativo == true)) {
@@ -1159,14 +1096,11 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         });
                     }
 
-                    // 🔥 SE FOR DONO: seleciona "Não atribuir" (valor vazio)
                     if (isDono) {
                         profSelect.value = '';
                         console.log('👑 Agendando como Dono (sem comissão)');
                         showToast('👑 Agendando como Dono (sem comissão)', 'info');
-                    }
-                    // 🔥 SE FOR PROFISSIONAL: seleciona o profissional específico
-                    else if (profissionalIdReal) {
+                    } else if (profissionalIdReal) {
                         let encontrado = false;
                         for (let opt of profSelect.options) {
                             if (opt.value == profissionalIdReal) {
@@ -1182,7 +1116,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     }
                 }
 
-                // 3. Preencher CLIENTE
                 const clienteSelect = document.getElementById('clienteIdDono');
                 if (clienteSelect) {
                     clienteSelect.innerHTML = '<option value="">Selecione um cliente</option>';
@@ -1193,7 +1126,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     }
                 }
 
-                // 4. Preencher SERVIÇOS
                 const servicoSelect = document.getElementById('servicoIdDono');
                 if (servicoSelect) {
                     servicoSelect.innerHTML = '<option value="">Selecione um serviço</option>';
@@ -1201,11 +1133,10 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         window.servicosList.forEach(s => {
                             const valor = parseFloat(s.valor) || 0;
                             servicoSelect.innerHTML += `<option value="${s.id}" data-valor="${valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${s.nome} - R$ ${valor.toFixed(2)} (${s.duracao || 30}min)</option>`;
-                        });;
+                        });
                     }
                 }
 
-                // 🔥 5. FUNÇÃO PARA FORÇAR PREENCHIMENTO DO HORÁRIO
                 function forcarPreenchimentoHorario(tentativa = 0) {
                     const maxTentativas = 20;
                     const horaSelect = document.getElementById('horaAgendamentoDono');
@@ -1220,7 +1151,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 
                     console.log(`📝 Tentando preencher horário ${hora}... (tentativa ${tentativa + 1}/${maxTentativas})`);
 
-                    // Verificar se o horário existe nas opções
                     let horarioEncontrado = false;
                     for (let opt of horaSelect.options) {
                         if (opt.value === hora) {
@@ -1231,7 +1161,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         }
                     }
 
-                    // Se não encontrou, adicionar manualmente
                     if (!horarioEncontrado) {
                         console.log(`⚠️ Horário ${hora} não encontrado, adicionando...`);
                         const newOption = document.createElement('option');
@@ -1242,14 +1171,12 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         console.log(`✅ Horário ${hora} adicionado e selecionado!`);
                     }
 
-                    // Mostrar toast com confirmação (apenas na primeira tentativa)
                     if (tentativa === 0) {
                         const isDonoTexto = isDono ? ' (👑 Dono)' : '';
                         showToast(`📅 ${formatarDataBr(data)} às ${hora}${isDonoTexto}`, 'info');
                     }
                 }
 
-                // 🔥 INICIAR PREENCHIMENTO DO HORÁRIO (com tentativas)
                 forcarPreenchimentoHorario(0);
                 setTimeout(() => forcarPreenchimentoHorario(1), 500);
                 setTimeout(() => forcarPreenchimentoHorario(2), 1000);
@@ -1257,7 +1184,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 setTimeout(() => forcarPreenchimentoHorario(4), 2000);
                 setTimeout(() => forcarPreenchimentoHorario(5), 3000);
 
-                // 🔥 6. SALVAR AGENDAMENTO COM DATA ORIGINAL
                 function salvarAgendamentoComDataOriginal(dataOriginal) {
                     const cliente_id = document.getElementById('clienteIdDono')?.value;
                     const horaSelecionada = document.getElementById('horaAgendamentoDono')?.value;
@@ -1291,7 +1217,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
 
                     const token = localStorage.getItem("token");
 
-                    // 🔥 CORRIGIDO: Se for Dono, NÃO envia profissional_id
                     const body = {
                         cliente_id: parseInt(cliente_id),
                         data: dataOriginal,
@@ -1299,7 +1224,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         valor: parseFloat(valor) || 0
                     };
 
-                    // Só adiciona profissional_id se NÃO for Dono
                     if (!isDono && profissional_id && profissional_id !== '') {
                         body.profissional_id = parseInt(profissional_id);
                     }
@@ -1328,7 +1252,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                                 showToast("✅ Agendamento criado com sucesso!", "success");
                                 fecharModalAgendamentoDono();
 
-                                // Atualizar agenda
                                 if (typeof window.atualizarAgendaAposAgendamento === 'function') {
                                     window.atualizarAgendaAposAgendamento();
                                 } else {
@@ -1359,7 +1282,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                         });
                 }
 
-                // 🔥 7. CONECTAR BOTÃO SALVAR
                 const botoes = document.querySelectorAll('#modalAgendamentoDono .btn-primary');
                 let botaoSalvar = null;
                 for (let btn of botoes) {
@@ -1385,7 +1307,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 modalAberto = false;
             }
 
-            // 🔥 8. AGUARDAR MODAL CARREGAR
             function aguardarModal(tentativa = 0) {
                 const maxTentativas = 30;
                 const dataInput = document.getElementById('dataAgendamentoDono');
@@ -1452,8 +1373,9 @@ async function carregarDashboard() {
 }
 
 // ============================================
-// DASHBOARD DO DONO - SIMPLIFICADO (CORRIGIDO)
+// DASHBOARD DO DONO - COMPLETO
 // ============================================
+
 async function carregarDashboardDono() {
     const token = localStorage.getItem('token');
 
@@ -1471,7 +1393,6 @@ async function carregarDashboardDono() {
         console.warn('Não foi possível buscar dados da empresa:', error);
     }
 
-    // 🔥 BUSCAR DESPESAS DO MÊS
     let despesasMes = { total_despesas: 0, total_pago: 0, total_pendente: 0, por_categoria: [] };
     try {
         const despesasRes = await fetch('/api/despesas/resumo', {
@@ -1544,18 +1465,15 @@ async function carregarDashboardDono() {
         return sum + valor;
     }, 0);
 
-    // 🔥 DADOS DAS DESPESAS
     const totalDespesas = despesasMes.total_despesas || 0;
     const totalPago = despesasMes.total_pago || 0;
     const totalPendente = despesasMes.total_pendente || 0;
     const categoriasDespesas = despesasMes.por_categoria || [];
 
-    // 🔥 CÁLCULOS FINANCEIROS
     const lucroReal = faturamentoMes - totalDespesas;
     const lucroAposComissoes = faturamentoMes - totalComissoes;
     const margemLucro = faturamentoMes > 0 ? ((lucroReal / faturamentoMes) * 100).toFixed(1) : 0;
 
-    // 🔥 PROJEÇÃO
     const diasComDados = concluidos.length > 0 ? Math.min(concluidos.length, 30) : 1;
     const mediaDiaria = diasComDados > 0 ? faturamentoMes / diasComDados : 0;
     const projecao30Dias = mediaDiaria * 30;
@@ -1576,7 +1494,6 @@ async function carregarDashboardDono() {
         return dataCriacao >= new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1);
     }).length;
 
-    // 🔥 PRÓXIMOS AGENDAMENTOS
     const proximosAgendamentos = agendamentos
         .filter(a => a.status === 'pendente' && a.data >= hoje)
         .sort((a, b) => (a.data + ' ' + a.hora).localeCompare(b.data + ' ' + b.hora))
@@ -1588,8 +1505,10 @@ async function carregarDashboardDono() {
     const usuarioAtual = usuarioStr ? JSON.parse(usuarioStr) : null;
     const nomeUsuario = usuarioAtual?.nome || 'Usuário';
 
+    const isMobile = window.innerWidth < 768;
+
     // ============================================
-    // HTML DO DASHBOARD - SIMPLIFICADO
+    // HTML DO DASHBOARD - COMPLETO
     // ============================================
     const html = `
         <div class="fade-in">
@@ -1603,155 +1522,153 @@ async function carregarDashboardDono() {
             ` : ''}
             
             <!-- BANNER DE BOAS-VINDAS -->
-            <div class="welcome-banner" style="background:linear-gradient(135deg,var(--bg-card),var(--bg-hover));border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid var(--border-color);">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div style="background:linear-gradient(135deg,var(--bg-card),var(--bg-hover));border-radius:16px;padding:${isMobile ? '16px' : '20px 24px'};margin-bottom:16px;border:1px solid var(--border-color);">
+                <div style="display:flex;${isMobile ? 'flex-direction:column;text-align:center;' : 'justify-content:space-between;align-items:center;'}flex-wrap:wrap;gap:12px;">
                     <div>
-                        <h2 style="font-size:20px;margin:0;display:flex;align-items:center;gap:8px;">👋 Olá, ${nomeUsuario}!</h2>
-                        <p style="margin:4px 0 0;color:var(--text-muted);font-size:14px;">Bem-vindo ao See&Agende. Aqui está o resumo do seu negócio hoje.</p>
-                        <div style="margin-top:6px;font-size:13px;color:var(--text-secondary);background:rgba(102,126,234,0.08);padding:4px 12px;border-radius:8px;display:inline-block;">
+                        <h2 style="font-size:${isMobile ? '18px' : '20px'};margin:0;display:flex;align-items:center;gap:8px;${isMobile ? 'justify-content:center;' : ''}">
+                            👋 Olá, ${nomeUsuario}!
+                        </h2>
+                        <p style="margin:4px 0 0;color:var(--text-muted);font-size:${isMobile ? '13px' : '14px'};">
+                            ${isMobile ? '📊 Resumo do seu negócio' : 'Bem-vindo ao See&Agende. Aqui está o resumo do seu negócio hoje.'}
+                        </p>
+                        <div style="margin-top:8px;font-size:${isMobile ? '12px' : '13px'};color:var(--text-secondary);background:rgba(102,126,234,0.08);padding:${isMobile ? '6px 12px' : '4px 12px'};border-radius:8px;display:${isMobile ? 'block' : 'inline-block'};text-align:center;">
                             <i class="fas fa-lightbulb" style="color:var(--primary);"></i> 
-                            ${isNewUser ?
-            '💡 Dica: Comece cadastrando seus serviços!' :
-            '💡 Dica: Use a <strong>Agenda Inteligente</strong> abaixo para agendar rapidamente clicando nas bolinhas coloridas dos profissionais disponíveis.'}
+                            ${isNewUser ? '💡 Comece cadastrando seus serviços!' : '💡 Clique nas bolinhas 🟢 da agenda para agendar'}
                         </div>
                     </div>
-                    <div style="text-align:right;">
-                        <span style="display:block;font-weight:600;font-size:14px;color:var(--text-primary);">${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
-                        <span style="display:block;font-size:12px;color:var(--text-muted);">${dataAtual.toLocaleDateString('pt-BR')}</span>
-                        <span style="display:block;font-size:11px;color:var(--text-muted);margin-top:4px;">💰 ${faturamentoMes > 0 ? `R$ ${formatarMoeda(faturamentoMes)} este mês` : 'Nenhum faturamento ainda'}</span>
+                    <div style="text-align:${isMobile ? 'center' : 'right'};${isMobile ? 'width:100%;' : ''}">
+                        <span style="display:block;font-weight:600;font-size:${isMobile ? '15px' : '14px'};color:var(--text-primary);">
+                            ${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long' })}
+                        </span>
+                        <span style="display:block;font-size:${isMobile ? '13px' : '12px'};color:var(--text-muted);">
+                            ${dataAtual.toLocaleDateString('pt-BR')}
+                        </span>
+                        <span style="display:block;font-size:${isMobile ? '13px' : '11px'};color:var(--text-muted);margin-top:6px;background:rgba(16,185,129,0.08);padding:${isMobile ? '6px 12px' : '2px 12px'};border-radius:8px;">
+                            💰 ${faturamentoMes > 0 ? `R$ ${formatarMoeda(faturamentoMes)} este mês` : 'Nenhum faturamento ainda'}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- ============================================ -->
-            <!-- 🔥 CARDS FINANCEIROS - VISÃO GERAL           -->
-            <!-- ============================================ -->
+            <!-- CARDS FINANCEIROS -->
             <div style="margin-bottom:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                    <h3 style="font-size:15px;margin:0;display:flex;align-items:center;gap:8px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px;">
+                    <h3 style="font-size:${isMobile ? '14px' : '15px'};margin:0;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                         <i class="fas fa-chart-pie" style="color:var(--primary);"></i> 
-                        📊 Financeiro - Visão Geral
-                        <span style="font-size:10px;font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
-                            ${dataAtual.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                        📊 Financeiro
+                        <span style="font-size:${isMobile ? '9px' : '10px'};font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
+                            ${dataAtual.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}
                         </span>
                     </h3>
-                    <button onclick="carregarFinanceiro()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 12px;border-radius:8px;font-size:11px;cursor:pointer;color:var(--text-secondary);">
-                        <i class="fas fa-arrow-right"></i> Ver detalhes
+                    <button onclick="carregarFinanceiro()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:${isMobile ? '4px 10px' : '4px 12px'};border-radius:8px;font-size:${isMobile ? '10px' : '11px'};cursor:pointer;color:var(--text-secondary);">
+                        <i class="fas fa-arrow-right"></i> ${isMobile ? 'Detalhes' : 'Ver detalhes'}
                     </button>
                 </div>
                 
-                <!-- Cards de 4 colunas financeiras -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;">
-                    <!-- Card: Faturamento -->
-                    <div style="background:linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.06));border-radius:12px;padding:14px 16px;border:1px solid rgba(102,126,234,0.15);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">💰</span>
-                            <div style="flex:1;">
-                                <div style="font-size:18px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoMes)}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Faturamento do Mês</div>
+                <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(auto-fit,minmax(180px,1fr))'};gap:${isMobile ? '8px' : '12px'};">
+                    <div style="background:linear-gradient(135deg,rgba(102,126,234,0.12),rgba(118,75,162,0.06));border-radius:12px;padding:${isMobile ? '12px 14px' : '14px 16px'};border:1px solid rgba(102,126,234,0.15);">
+                        <div style="display:flex;align-items:center;gap:${isMobile ? '8px' : '10px'};">
+                            <span style="font-size:${isMobile ? '20px' : '22px'};">💰</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:${isMobile ? '16px' : '18px'};font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoMes)}</div>
+                                <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Faturamento</div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Card: Despesas -->
-                    <div style="background:linear-gradient(135deg,rgba(239,68,68,0.08),rgba(220,38,38,0.04));border-radius:12px;padding:14px 16px;border:1px solid rgba(239,68,68,0.12);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">📉</span>
-                            <div style="flex:1;">
-                                <div style="font-size:18px;font-weight:700;color:#ef4444;">- R$ ${formatarMoeda(totalDespesas)}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Total de Despesas</div>
-                                <div style="font-size:10px;color:var(--text-muted);display:flex;gap:8px;margin-top:2px;">
-                                    <span style="color:#22c55e;">✅ R$ ${formatarMoeda(totalPago)}</span>
-                                    <span style="color:#f59e0b;">⏳ R$ ${formatarMoeda(totalPendente)}</span>
-                                </div>
+                    <div style="background:linear-gradient(135deg,rgba(239,68,68,0.08),rgba(220,38,38,0.04));border-radius:12px;padding:${isMobile ? '12px 14px' : '14px 16px'};border:1px solid rgba(239,68,68,0.12);">
+                        <div style="display:flex;align-items:center;gap:${isMobile ? '8px' : '10px'};">
+                            <span style="font-size:${isMobile ? '20px' : '22px'};">📉</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:${isMobile ? '16px' : '18px'};font-weight:700;color:#ef4444;">- R$ ${formatarMoeda(totalDespesas)}</div>
+                                <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Despesas</div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Card: Lucro Real -->
-                    <div style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(16,185,129,0.05));border-radius:12px;padding:14px 16px;border:1px solid rgba(34,197,94,0.15);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">💎</span>
-                            <div style="flex:1;">
-                                <div style="font-size:18px;font-weight:700;color:#22c55e;">R$ ${formatarMoeda(lucroReal)}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Lucro Real</div>
-                                <div style="font-size:10px;color:var(--text-muted);display:flex;gap:6px;margin-top:2px;">
-                                    <span>📊 ${margemLucro}% margem</span>
-                                    <span>💼 R$ ${formatarMoeda(totalComissoes)} comissões</span>
-                                </div>
+                    <div style="background:linear-gradient(135deg,rgba(34,197,94,0.1),rgba(16,185,129,0.05));border-radius:12px;padding:${isMobile ? '12px 14px' : '14px 16px'};border:1px solid rgba(34,197,94,0.15);">
+                        <div style="display:flex;align-items:center;gap:${isMobile ? '8px' : '10px'};">
+                            <span style="font-size:${isMobile ? '20px' : '22px'};">💎</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:${isMobile ? '16px' : '18px'};font-weight:700;color:#22c55e;">R$ ${formatarMoeda(lucroReal)}</div>
+                                <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Lucro Real</div>
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Card: Ticket Médio -->
-                    <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">📈</span>
-                            <div style="flex:1;">
-                                <div style="font-size:18px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(ticketMedio)}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Ticket Médio</div>
-                                <div style="font-size:10px;color:var(--text-muted);display:flex;gap:6px;margin-top:2px;">
-                                    <span>✂️ ${totalServicosConcluidos} serviços</span>
-                                    <span>👥 ${clientes.length} clientes</span>
-                                </div>
+                    <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '12px 14px' : '14px 16px'};border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:${isMobile ? '8px' : '10px'};">
+                            <span style="font-size:${isMobile ? '20px' : '22px'};">📈</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:${isMobile ? '16px' : '18px'};font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(ticketMedio)}</div>
+                                <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Ticket Médio</div>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                ${isMobile ? `
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;">
+                    <div style="background:var(--bg-hover);border-radius:8px;padding:8px 6px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:var(--text-primary);">${totalServicosConcluidos}</div>
+                        <div style="font-size:9px;color:var(--text-muted);">Serviços</div>
+                    </div>
+                    <div style="background:var(--bg-hover);border-radius:8px;padding:8px 6px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:var(--text-primary);">${clientes.length}</div>
+                        <div style="font-size:9px;color:var(--text-muted);">Clientes</div>
+                    </div>
+                    <div style="background:var(--bg-hover);border-radius:8px;padding:8px 6px;text-align:center;">
+                        <div style="font-size:16px;font-weight:700;color:${pendentes.length > 5 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
+                        <div style="font-size:9px;color:var(--text-muted);">Pendentes</div>
+                    </div>
+                </div>
+                ` : ''}
             </div>
 
-            <!-- ============================================ -->
-            <!-- 🔥 RESULTADO DETALHADO + DESPESAS CATEGORIA  -->
-            <!-- ============================================ -->
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-                <!-- Card: Resultado Detalhado -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
-                    <h4 style="margin:0 0 12px;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <!-- RESULTADO DETALHADO + DESPESAS -->
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:16px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '14px' : '16px 18px'};border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 12px;font-size:${isMobile ? '14px' : '13px'};display:flex;align-items:center;gap:8px;">
                         <i class="fas fa-calculator" style="color:var(--primary);"></i> Resultado Detalhado
                     </h4>
-                    <div style="display:flex;flex-direction:column;gap:6px;font-size:13px;">
+                    <div style="display:flex;flex-direction:column;gap:6px;font-size:${isMobile ? '14px' : '13px'};">
                         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
-                            <span style="color:var(--text-muted);">📊 Faturamento Bruto</span>
+                            <span style="color:var(--text-muted);">📊 Faturamento</span>
                             <span style="font-weight:600;">R$ ${formatarMoeda(faturamentoMes)}</span>
                         </div>
                         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
-                            <span style="color:var(--text-muted);">👨‍💼 Comissões Pagas</span>
+                            <span style="color:var(--text-muted);">👨‍💼 Comissões</span>
                             <span style="font-weight:600;color:#f59e0b;">- R$ ${formatarMoeda(totalComissoes)}</span>
                         </div>
                         <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
-                            <span style="color:var(--text-muted);">= Faturamento Líquido</span>
-                            <span style="font-weight:700;color:#8b5cf6;">R$ ${formatarMoeda(lucroAposComissoes)}</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-color);">
-                            <span style="color:var(--text-muted);">📉 Despesas Totais</span>
+                            <span style="color:var(--text-muted);">📉 Despesas</span>
                             <span style="font-weight:600;color:#ef4444;">- R$ ${formatarMoeda(totalDespesas)}</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:6px 0;margin-top:4px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(16,185,129,0.04));border-radius:8px;padding:8px 12px;">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;margin-top:4px;background:linear-gradient(135deg,rgba(34,197,94,0.08),rgba(16,185,129,0.04));border-radius:8px;padding:8px 12px;">
                             <span style="font-weight:700;color:#22c55e;">🎯 Lucro Real</span>
-                            <span style="font-weight:700;font-size:16px;color:#22c55e;">R$ ${formatarMoeda(lucroReal)}</span>
+                            <span style="font-weight:700;font-size:${isMobile ? '18px' : '16px'};color:#22c55e;">R$ ${formatarMoeda(lucroReal)}</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px;color:var(--text-muted);">
+                        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:${isMobile ? '13px' : '12px'};color:var(--text-muted);">
                             <span>📊 Margem de Lucro</span>
                             <span style="font-weight:600;color:${margemLucro >= 50 ? '#22c55e' : margemLucro >= 30 ? '#f59e0b' : '#ef4444'};">${margemLucro}%</span>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Card: Despesas por Categoria -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
-                    <h4 style="margin:0 0 12px;font-size:13px;display:flex;align-items:center;gap:8px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '14px' : '16px 18px'};border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 12px;font-size:${isMobile ? '14px' : '13px'};display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                         <i class="fas fa-tags" style="color:var(--primary);"></i> Despesas por Categoria
-                        ${totalDespesas > 0 ? `<span style="font-size:10px;font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:0 10px;border-radius:12px;">${categoriasDespesas.length} categorias</span>` : ''}
+                        ${totalDespesas > 0 ? `<span style="font-size:10px;font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:0 10px;border-radius:12px;">${categoriasDespesas.length} cat.</span>` : ''}
                     </h4>
                     ${categoriasDespesas.length > 0 ? `
                         <div style="display:flex;flex-direction:column;gap:8px;">
                             ${categoriasDespesas.slice(0, 6).map((cat, idx) => {
-                const percentual = totalDespesas > 0 ? ((cat.total_valor / totalDespesas) * 100) : 0;
-                const cores = ['#667eea', '#764ba2', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6'];
-                const cor = cores[idx % cores.length];
-                return `
+        const percentual = totalDespesas > 0 ? ((cat.total_valor / totalDespesas) * 100) : 0;
+        const cores = ['#667eea', '#764ba2', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6'];
+        const cor = cores[idx % cores.length];
+        return `
                                     <div>
-                                        <div style="display:flex;justify-content:space-between;font-size:12px;">
+                                        <div style="display:flex;justify-content:space-between;font-size:${isMobile ? '13px' : '12px'};">
                                             <span style="color:var(--text-primary);">${escapeHtml(cat.categoria)}</span>
                                             <span style="font-weight:600;color:${cor};">R$ ${formatarMoeda(cat.total_valor)} (${Math.round(percentual)}%)</span>
                                         </div>
@@ -1760,7 +1677,7 @@ async function carregarDashboardDono() {
                                         </div>
                                     </div>
                                 `;
-            }).join('')}
+    }).join('')}
                             ${categoriasDespesas.length > 6 ? `
                                 <div style="text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;">
                                     + ${categoriasDespesas.length - 6} outras categorias
@@ -1770,78 +1687,72 @@ async function carregarDashboardDono() {
                     ` : `
                         <div style="text-align:center;padding:20px;color:var(--text-muted);">
                             <i class="fas fa-receipt" style="font-size:24px;opacity:0.3;"></i>
-                            <p style="margin:8px 0 0;font-size:13px;">Nenhuma despesa cadastrada este mês</p>
+                            <p style="margin:8px 0 0;font-size:13px;">Nenhuma despesa este mês</p>
                             <button onclick="carregarFinanceiro()" style="background:var(--primary);border:none;padding:4px 14px;border-radius:8px;color:white;font-size:11px;cursor:pointer;margin-top:6px;">
-                                <i class="fas fa-plus"></i> Adicionar despesa
+                                <i class="fas fa-plus"></i> Adicionar
                             </button>
                         </div>
                     `}
                 </div>
             </div>
 
-            <!-- ============================================ -->
-            <!-- 🔥 PROJEÇÃO DE FATURAMENTO                  -->
-            <!-- ============================================ -->
+            <!-- PROJEÇÃO + RESUMO -->
             ${!isNewUser ? `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-                <!-- Card: Projeção -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
-                    <h4 style="margin:0 0 10px;font-size:13px;display:flex;align-items:center;gap:8px;">
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:16px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '14px' : '16px 18px'};border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 10px;font-size:${isMobile ? '14px' : '13px'};display:flex;align-items:center;gap:8px;">
                         <i class="fas fa-rocket" style="color:var(--primary);"></i> Projeção de Faturamento
                     </h4>
                     <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border-color);">
+                        <div style="display:flex;justify-content:space-between;font-size:${isMobile ? '14px' : '13px'};padding:6px 0;border-bottom:1px solid var(--border-color);">
                             <span style="color:var(--text-muted);">📊 Média diária</span>
                             <span style="font-weight:600;">R$ ${formatarMoeda(mediaDiaria)}</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;font-size:15px;padding:8px 0;background:linear-gradient(135deg,rgba(102,126,234,0.06),rgba(118,75,162,0.03));border-radius:8px;padding:8px 12px;">
+                        <div style="display:flex;justify-content:space-between;font-size:${isMobile ? '16px' : '15px'};background:linear-gradient(135deg,rgba(102,126,234,0.06),rgba(118,75,162,0.03));border-radius:8px;padding:8px 12px;">
                             <span style="font-weight:600;color:var(--text-primary);">📈 Projeção 30 dias</span>
-                            <span style="font-weight:700;font-size:17px;color:#8b5cf6;">R$ ${formatarMoeda(projecao30Dias)}</span>
+                            <span style="font-weight:700;font-size:${isMobile ? '18px' : '17px'};color:#8b5cf6;">R$ ${formatarMoeda(projecao30Dias)}</span>
                         </div>
-                        <div style="font-size:11px;color:var(--text-muted);display:flex;gap:12px;margin-top:4px;">
+                        <div style="font-size:${isMobile ? '12px' : '11px'};color:var(--text-muted);display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
                             <span>📅 ${diasComDados} dias de dados</span>
                             <span>${projecao30Dias > faturamentoMes ? '📈 Tendência de crescimento' : '📉 Manter média atual'}</span>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Card: Resumo do Negócio -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px 18px;border:1px solid var(--border-color);">
-                    <h4 style="margin:0 0 10px;font-size:13px;display:flex;align-items:center;gap:8px;">
+                <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '14px' : '16px 18px'};border:1px solid var(--border-color);">
+                    <h4 style="margin:0 0 10px;font-size:${isMobile ? '14px' : '13px'};display:flex;align-items:center;gap:8px;">
                         <i class="fas fa-chart-simple" style="color:var(--primary);"></i> Resumo do Negócio
                     </h4>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${agendamentos.length}</div>
-                            <div style="font-size:11px;color:var(--text-muted);">Total Atendimentos</div>
-                            <div style="font-size:10px;color:#22c55e;">${concluidos.length} concluídos</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:${isMobile ? '8px' : '12px'};">
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 14px'};text-align:center;">
+                            <div style="font-size:${isMobile ? '20px' : '22px'};font-weight:700;color:var(--text-primary);">${agendamentos.length}</div>
+                            <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Atendimentos</div>
+                            <div style="font-size:${isMobile ? '9px' : '10px'};color:#22c55e;">${concluidos.length} concluídos</div>
                         </div>
-                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${clientes.length}</div>
-                            <div style="font-size:11px;color:var(--text-muted);">Total Clientes</div>
-                            <div style="font-size:10px;color:#22c55e;">+${novosClientesMes || 0} este mês</div>
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 14px'};text-align:center;">
+                            <div style="font-size:${isMobile ? '20px' : '22px'};font-weight:700;color:var(--text-primary);">${clientes.length}</div>
+                            <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Clientes</div>
+                            <div style="font-size:${isMobile ? '9px' : '10px'};color:#22c55e;">+${novosClientesMes || 0} este mês</div>
                         </div>
-                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:${pendentes.length > 5 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
-                            <div style="font-size:11px;color:var(--text-muted);">Pendentes</div>
-                            <div style="font-size:10px;color:${agendamentosHoje.length > 0 ? '#f59e0b' : 'var(--text-muted)'};">${agendamentosHoje.length > 0 ? `${agendamentosHoje.length} hoje` : 'Nenhum hoje'}</div>
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 14px'};text-align:center;">
+                            <div style="font-size:${isMobile ? '20px' : '22px'};font-weight:700;color:${pendentes.length > 5 ? '#ef4444' : 'var(--text-primary)'};">${pendentes.length}</div>
+                            <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Pendentes</div>
+                            <div style="font-size:${isMobile ? '9px' : '10px'};color:${agendamentosHoje.length > 0 ? '#f59e0b' : 'var(--text-muted)'};">${agendamentosHoje.length > 0 ? `${agendamentosHoje.length} hoje` : 'Nenhum hoje'}</div>
                         </div>
-                        <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;text-align:center;">
-                            <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${profissionaisAtivos}</div>
-                            <div style="font-size:11px;color:var(--text-muted);">Profissionais Ativos</div>
-                            <div style="font-size:10px;color:var(--text-muted);">${profissionais.length - profissionaisAtivos > 0 ? `${profissionais.length - profissionaisAtivos} inativos` : 'Todos ativos'}</div>
+                        <div style="background:var(--bg-hover);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 14px'};text-align:center;">
+                            <div style="font-size:${isMobile ? '20px' : '22px'};font-weight:700;color:var(--text-primary);">${profissionaisAtivos}</div>
+                            <div style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">Profissionais</div>
+                            <div style="font-size:${isMobile ? '9px' : '10px'};color:var(--text-muted);">${profissionais.length - profissionaisAtivos > 0 ? `⚠️ ${profissionais.length - profissionaisAtivos} inativos` : '✅ Todos ativos'}</div>
                         </div>
                     </div>
                 </div>
             </div>
             ` : ''}
 
-            <!-- ============================================ -->
-            <!-- AGENDA INTELIGENTE                          -->
-            <!-- ============================================ -->
+            <!-- AGENDA INTELIGENTE -->
             <div class="card" style="padding: 16px 20px;background:var(--bg-card);border-radius:16px;border:1px solid var(--border-color);box-shadow:0 4px 24px rgba(0,0,0,0.04);margin-bottom:20px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                    <h3 style="font-size:17px; margin:0;display:flex;align-items:center;gap:10px;">
+                    <h3 style="font-size:17px; margin:0;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <i class="fas fa-calendar-alt" style="color:var(--primary);font-size:20px;"></i> 
                         Agenda Inteligente
                         <span style="font-size:11px;font-weight:400;color:var(--text-muted);margin-left:4px;background:var(--bg-hover);padding:2px 12px;border-radius:12px;border:1px solid var(--border-color);">
@@ -1861,32 +1772,58 @@ async function carregarDashboardDono() {
             </div>
             
             ${isNewUser ? `
-                <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid rgba(102,126,234,0.15);">
-                    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-                        <i class="fas fa-rocket" style="font-size:32px;color:var(--primary);"></i>
-                        <div style="flex:1;">
-                            <h3 style="margin:0 0 4px;font-size:16px;">🚀 Comece aqui!</h3>
-                            <p style="margin:0 0 8px;color:var(--text-muted);font-size:13px;">Parece que você ainda não tem agendamentos. Vamos te ajudar a começar:</p>
-                            <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
-                                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">1</span> Cadastre seus <strong>serviços</strong></span>
-                                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span> Adicione seus <strong>profissionais</strong></span>
-                                <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">3</span> Crie seu primeiro <strong>agendamento</strong></span>
-                            </div>
+            <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid rgba(102,126,234,0.15);">
+                <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                    <i class="fas fa-rocket" style="font-size:32px;color:var(--primary);"></i>
+                    <div style="flex:1;">
+                        <h3 style="margin:0 0 4px;font-size:16px;">🚀 Comece aqui!</h3>
+                        <p style="margin:0 0 8px;color:var(--text-muted);font-size:13px;">Parece que você ainda não tem agendamentos. Vamos te ajudar a começar:</p>
+                        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px;">
+                            <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">1</span> Cadastre seus <strong>serviços</strong></span>
+                            <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">2</span> Adicione seus <strong>profissionais</strong></span>
+                            <span style="display:flex;align-items:center;gap:6px;"><span style="background:var(--primary);color:white;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;">3</span> Crie seu primeiro <strong>agendamento</strong></span>
                         </div>
-                        <button onclick="carregarServicos()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;padding:8px 20px;border-radius:10px;color:white;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 12px rgba(102,126,234,0.3);">
-                            <i class="fas fa-arrow-right"></i> Começar
-                        </button>
                     </div>
+                    <button onclick="carregarServicos()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;padding:8px 20px;border-radius:10px;color:white;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 2px 12px rgba(102,126,234,0.3);">
+                        <i class="fas fa-arrow-right"></i> Começar
+                    </button>
                 </div>
+            </div>
             ` : ''}
             
             <!-- PRÓXIMOS ATENDIMENTOS -->
             <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                    <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Próximos Atendimentos</h4>
+                    <h4 style="margin:0;font-size:${isMobile ? '15px' : '14px'};">
+                        <i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Próximos Atendimentos
+                    </h4>
                     <button onclick="carregarAgendamentos()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">Ver Todos →</button>
                 </div>
                 ${proximosAgendamentos.length > 0 ? `
+                    ${isMobile ? `
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${proximosAgendamentos.slice(0, 3).map(ag => `
+                            <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);">
+                                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+                                    <span style="font-weight:600;font-size:14px;color:var(--text-primary);">${escapeHtml(ag.cliente_nome || 'Cliente')}</span>
+                                    <span style="font-size:11px;padding:2px 10px;border-radius:12px;${ag.status === 'pendente' ? 'background:#f59e0b;color:white;' : 'background:#22c55e;color:white;'}">
+                                        ${ag.status === 'pendente' ? '⏳ Pendente' : '✅ Agendado'}
+                                    </span>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;margin-top:6px;font-size:13px;color:var(--text-secondary);">
+                                    <span>✂️ ${escapeHtml(ag.servico || '-')}</span>
+                                    <span>📅 ${formatarDataBr(ag.data)} às ${ag.hora || '-'}</span>
+                                    <span style="font-weight:600;color:var(--primary);">R$ ${formatarMoeda(ag.valor)}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${proximosAgendamentos.length > 3 ? `
+                            <div style="text-align:center;font-size:12px;color:var(--text-muted);padding:4px;">
+                                + ${proximosAgendamentos.length - 3} mais agendamentos
+                            </div>
+                        ` : ''}
+                    </div>
+                    ` : `
                     <div style="overflow-x:auto;">
                         <table style="width:100%;border-collapse:collapse;font-size:13px;">
                             <thead>
@@ -1917,6 +1854,7 @@ async function carregarDashboardDono() {
                             </tbody>
                         </table>
                     </div>
+                    `}
                 ` : `
                     <div style="text-align:center;padding:20px;color:var(--text-muted);">
                         <i class="fas fa-calendar-check" style="font-size:24px;opacity:0.3;"></i>
@@ -1929,22 +1867,24 @@ async function carregarDashboardDono() {
             <!-- ÚLTIMOS CLIENTES -->
             <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                    <h4 style="margin:0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Últimos Clientes</h4>
+                    <h4 style="margin:0;font-size:${isMobile ? '15px' : '14px'};">
+                        <i class="fas fa-users" style="color:var(--primary);"></i> Últimos Clientes
+                    </h4>
                     <button onclick="carregarClientes()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:var(--text-secondary);">Ver Todos →</button>
                 </div>
                 ${clientes.length > 0 ? `
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;">
-                        ${clientes.slice(0, 6).map(cliente => `
+                    <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(auto-fill,minmax(160px,1fr))'};gap:8px;">
+                        ${clientes.slice(0, isMobile ? 4 : 6).map(cliente => `
                             <div onclick="editarCliente(${cliente.id})" style="display:flex;align-items:center;gap:10px;background:var(--bg-hover);padding:8px 12px;border-radius:10px;cursor:pointer;transition:all 0.2s;border:1px solid transparent;hover:border-color:var(--primary);">
                                 <span style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:14px;">${cliente.nome ? cliente.nome.charAt(0).toUpperCase() : '👤'}</span>
                                 <div style="flex:1;min-width:0;">
-                                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.nome)}</div>
-                                    <div style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}</div>
+                                    <div style="font-size:${isMobile ? '12px' : '13px'};font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.nome)}</div>
+                                    <div style="font-size:${isMobile ? '9px' : '10px'};color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(cliente.telefone || cliente.email || 'Sem contato')}</div>
                                 </div>
                                 ${(cliente.bloqueado_chatbot == 1 || cliente.bloqueado_chatbot == true) ?
-                    '<span style="font-size:12px;">🔒</span>' :
-                    '<span style="font-size:12px;">✅</span>'
-                }
+            '<span style="font-size:12px;">🔒</span>' :
+            '<span style="font-size:12px;">✅</span>'
+        }
                             </div>
                         `).join('')}
                     </div>
@@ -1965,21 +1905,22 @@ async function carregarDashboardDono() {
         carregarAgendaInteligente();
     }, 150);
 }
+
 // ============================================
-// DASHBOARD SUPER ADMIN
+// DASHBOARD SUPER ADMIN (SIMPLIFICADO)
 // ============================================
 async function carregarDashboardSuperAdmin() {
-    // Mantido igual ao original
     console.log('🏢 Super Admin Dashboard');
+    // Mantido igual ao original
     // ... código existente ...
 }
 
 // ============================================
-// DASHBOARD PROFISSIONAL
+// DASHBOARD PROFISSIONAL (SIMPLIFICADO)
 // ============================================
 async function carregarDashboardProfissional() {
-    // Mantido igual ao original
     console.log('👤 Profissional Dashboard');
+    // Mantido igual ao original
     // ... código existente ...
 }
 
@@ -2041,42 +1982,6 @@ function renderizarGraficoAgendamentos(dias, dados) {
         });
     }
 }
-
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-window.atualizarDashboard = function () {
-    showToast('🔄 Atualizando dados...', 'info');
-    carregarDashboard();
-};
-
-window.estenderTrial = async function (empresaId) {
-    if (!confirm('Estender trial por mais 30 dias?')) return;
-
-    showLoading();
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`/api/admin/empresas/${empresaId}/extender-trial`, {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            showToast('Trial estendido com sucesso!', 'success');
-            carregarDashboard();
-        } else {
-            showToast(data.message || 'Erro ao estender trial', 'error');
-        }
-    } catch (error) {
-        showToast('Erro ao estender trial', 'error');
-    }
-    hideLoading();
-};
 
 function abrirModalAgendamento() {
     console.log('🔄 Abrindo modal de agendamento...');
@@ -2146,27 +2051,6 @@ function abrirModalCliente() {
     }
 }
 
-window.forcarRecarregarAgenda = function () {
-    console.log('🔥 FORÇANDO RECARREGAMENTO DA AGENDA...');
-    agendaInteligenteData = [];
-    agendaInteligenteCarregando = false;
-
-    const container = document.getElementById('agendaInteligenteContainer');
-    if (container) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:30px;">
-                <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:32px;height:32px;"></div>
-                <p style="margin-top:10px;font-size:13px;color:var(--text-muted);">Atualizando agenda...</p>
-            </div>
-        `;
-    }
-
-    setTimeout(function () {
-        carregarAgendaInteligente();
-        console.log('✅ Agenda recarregada!');
-    }, 500);
-};
-
 // ============================================
 // LISTENER PARA REDIMENSIONAMENTO DA TELA
 // ============================================
@@ -2214,10 +2098,10 @@ window.atualizarAgendaAposAgendamento = atualizarAgendaAposAgendamento;
 window.alternarModoAgenda = alternarModoAgenda;
 window.isMobileScreen = isMobileScreen;
 window.atualizarModoAgendaPorTela = atualizarModoAgendaPorTela;
-window.forcarRecarregarAgenda = window.forcarRecarregarAgenda;
+window.forcarRecarregarAgenda = forcarRecarregarAgenda;
 
 window.clientesList = window.clientesList || [];
 window.servicosList = window.servicosList || [];
 window.profissionaisList = window.profissionaisList || [];
 
-console.log('✅ dashboard.js carregado com DURAÇÃO DOS SERVIÇOS!');
+console.log('✅ dashboard.js carregado com DURAÇÃO DOS SERVIÇOS e MOBILE MELHORADO!');

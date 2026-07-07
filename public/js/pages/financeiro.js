@@ -1,5 +1,4 @@
-﻿
-// ============================================
+﻿// ============================================
 // FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
 // ============================================
 
@@ -79,7 +78,6 @@ async function carregarFinanceiro() {
 
         if (despesasResult.success) {
             despesasData = despesasResult.data;
-            // 🔥 CORRIGIR: Garantir que totais sejam números
             if (despesasData.totais) {
                 despesasData.totais.total = parseFloat(despesasData.totais.total) || 0;
                 despesasData.totais.pago = parseFloat(despesasData.totais.pago) || 0;
@@ -111,13 +109,16 @@ async function carregarFinanceiro() {
 }
 
 // ============================================
-// RENDERIZAR FINANCEIRO COMPLETO
+// RENDERIZAR FINANCEIRO COMPLETO (CORRIGIDO MOBILE)
 // ============================================
 
 function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario) {
     const totais = financeiro?.totais || {};
-    const isMobile = window.innerWidth < 768;
+    // 🔥 FORÇA A DETECÇÃO DE MOBILE
+    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
     const isDono = usuario.role === 'dono';
+
+    console.log("📱 Modo mobile (financeiro):", isMobile);
 
     let html = `
         <div class="fade-in financeiro-container">
@@ -140,52 +141,50 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
 
     if (isDono) {
         // ============================================
-        // CARDS DO DONO (RECEITAS)
+        // CARDS DO DONO (RECEITAS) - COM ESTILO INLINE
         // ============================================
         const despesasTotais = despesas?.totais || {};
+        const faturamentoBruto = parseFloat(totais.faturamento_bruto) || 0;
+        const totalDespesas = parseFloat(despesasTotais.total) || 0;
+        const lucroLiquido = faturamentoBruto - totalDespesas;
+        const faturamentoLiquido = parseFloat(totais.faturamento_liquido) || 0;
 
         html += `
-            <div style="margin-bottom: 8px;">
+            <div style="margin-bottom:8px;">
                 <h3 style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">
                     📊 RESULTADO DO MÊS
                 </h3>
-                <div class="card-grid">
-                    <div class="stat-card premium">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <div class="stat-value">R$ ${(parseFloat(totais.faturamento_bruto) || 0).toFixed(2)}</div>
-                            <div class="stat-label">Faturamento Bruto</div>
-                            <div class="stat-sub">📈 Total de serviços</div>
-                        </div>
+                <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:12px;margin-bottom:16px;">
+                    <!-- Card 1: Faturamento Bruto -->
+                    <div style="background:var(--gradient-primary);border-radius:16px;padding:16px;color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
+                        <div style="font-size:20px;margin-bottom:4px;">📊</div>
+                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;">R$ ${faturamentoBruto.toFixed(2)}</div>
+                        <div style="font-size:12px;opacity:0.8;">Faturamento Bruto</div>
+                        <div style="font-size:11px;opacity:0.6;">📈 Total de serviços</div>
                     </div>
                     
-                    <div class="stat-card" style="border-left: 4px solid #e53e3e;">
-                        <div class="stat-icon" style="background: #fee2e2;color:#dc2626;">📉</div>
-                        <div class="stat-content">
-                            <div class="stat-value" style="color:#dc2626;">- R$ ${(parseFloat(despesasTotais.total) || 0).toFixed(2) || '0.00'}</div>
-                            <div class="stat-label">Total de Despesas</div>
-                            <div class="stat-sub">${despesasTotais.quantidade || 0} despesas</div>
-                        </div>
+                    <!-- Card 2: Despesas -->
+                    <div style="background:var(--bg-card);border-radius:16px;padding:16px;border:1px solid var(--border-color);border-left:4px solid #ef4444;">
+                        <div style="font-size:20px;margin-bottom:4px;">📉</div>
+                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#ef4444;">- R$ ${totalDespesas.toFixed(2)}</div>
+                        <div style="font-size:12px;color:var(--text-muted);">Total de Despesas</div>
+                        <div style="font-size:11px;color:var(--text-muted);">${despesasTotais.quantidade || 0} despesas</div>
                     </div>
                     
-                    <div class="stat-card premium" style="border-left: 4px solid #16a34a;">
-                        <div class="stat-icon" style="background: #dcfce7;color:#16a34a;">💰</div>
-                        <div class="stat-content">
-                            <div class="stat-value" style="color:#16a34a;">
-                                R$ ${((parseFloat(totais.faturamento_bruto) || 0) - (parseFloat(despesasTotais.total) || 0)).toFixed(2)}
-                            </div>
-                            <div class="stat-label">Lucro Líquido</div>
-                            <div class="stat-sub">Bruto - Despesas</div>
-                        </div>
+                    <!-- Card 3: Lucro Líquido -->
+                    <div style="background:var(--bg-card);border-radius:16px;padding:16px;border:1px solid var(--border-color);border-left:4px solid #22c55e;">
+                        <div style="font-size:20px;margin-bottom:4px;">💰</div>
+                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#22c55e;">R$ ${lucroLiquido.toFixed(2)}</div>
+                        <div style="font-size:12px;color:var(--text-muted);">Lucro Líquido</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Bruto - Despesas</div>
                     </div>
                     
-                    <div class="stat-card">
-                        <div class="stat-icon green">💎</div>
-                        <div class="stat-content">
-                            <div class="stat-value">R$ ${(parseFloat(totais.faturamento_liquido) || 0).toFixed(2)}</div>
-                            <div class="stat-label">Lucro após Comissões</div>
-                            <div class="stat-sub">Bruto - Comissões</div>
-                        </div>
+                    <!-- Card 4: Lucro após Comissões -->
+                    <div style="background:var(--bg-card);border-radius:16px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="font-size:20px;margin-bottom:4px;">💎</div>
+                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:var(--primary);">R$ ${faturamentoLiquido.toFixed(2)}</div>
+                        <div style="font-size:12px;color:var(--text-muted);">Lucro após Comissões</div>
+                        <div style="font-size:11px;color:var(--text-muted);">Bruto - Comissões</div>
                     </div>
                 </div>
             </div>
@@ -195,20 +194,20 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
         // DETALHES DE RECEITAS E DESPESAS
         // ============================================
         html += `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:20px;">
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-arrow-up" style="color:#16a34a;"></i> Receitas</h3>
-                        <span class="badge badge-success">R$ ${(parseFloat(totais.faturamento_bruto) || 0).toFixed(2)}</span>
+                        <span class="badge badge-success">R$ ${faturamentoBruto.toFixed(2)}</span>
                     </div>
                     <div style="padding:12px;">
-                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);">
                             <span>✅ Serviços Concluídos</span>
                             <span><strong>${totais.total_servicos || 0}</strong></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;padding:8px 0;">
                             <span>💰 Valor Médio por Serviço</span>
-                            <span><strong>R$ ${(totais.total_servicos ? (totais.faturamento_bruto || 0) / totais.total_servicos : 0).toFixed(2)}</strong></span>
+                            <span><strong>R$ ${(totais.total_servicos ? faturamentoBruto / totais.total_servicos : 0).toFixed(2)}</strong></span>
                         </div>
                     </div>
                 </div>
@@ -216,16 +215,16 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                 <div class="card">
                     <div class="card-header">
                         <h3><i class="fas fa-arrow-down" style="color:#dc2626;"></i> Despesas</h3>
-                        <span class="badge badge-danger">R$ ${(parseFloat(despesasTotais.total) || 0).toFixed(2) || '0.00'}</span>
+                        <span class="badge badge-danger">R$ ${totalDespesas.toFixed(2)}</span>
                     </div>
                     <div style="padding:12px;">
-                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
+                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);">
                             <span>💳 Pagas</span>
-                            <span><strong>R$ ${(parseFloat(despesasTotais.pago) || 0).toFixed(2) || '0.00'}</strong></span>
+                            <span><strong>R$ ${(parseFloat(despesasTotais.pago) || 0).toFixed(2)}</strong></span>
                         </div>
                         <div style="display:flex;justify-content:space-between;padding:8px 0;">
                             <span>⏳ Pendentes</span>
-                            <span><strong style="color:#dc2626;">R$ ${(parseFloat(despesasTotais.pendente) || 0).toFixed(2) || '0.00'}</strong></span>
+                            <span><strong style="color:#dc2626;">R$ ${(parseFloat(despesasTotais.pendente) || 0).toFixed(2)}</strong></span>
                         </div>
                     </div>
                 </div>
@@ -236,36 +235,34 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
         // COMISSÕES POR PROFISSIONAL
         // ============================================
         if (financeiro?.comissoes_por_profissional && financeiro.comissoes_por_profissional.length > 0) {
-            const isMobileComissoes = window.innerWidth < 768;
-
             html += `
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-users"></i> Comissões por Profissional</h3>
-                <span class="badge badge-info">${financeiro.comissoes_por_profissional.length} profissionais</span>
-            </div>
-    `;
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-users"></i> Comissões por Profissional</h3>
+                        <span class="badge badge-info">${financeiro.comissoes_por_profissional.length} profissionais</span>
+                    </div>
+            `;
 
-            if (isMobileComissoes) {
+            if (isMobile) {
                 // ============================================
-                // VERSÃO MOBILE - CARDS DE COMISSÕES
+                // VERSÃO MOBILE - CARDS DE COMISSÕES (INLINE)
                 // ============================================
-                html += `<div class="comissoes-cards-mobile">`;
+                html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
 
                 for (let prof of financeiro.comissoes_por_profissional) {
                     const inicial = prof.nome ? prof.nome.charAt(0).toUpperCase() : '?';
                     const totalComissao = parseFloat(prof.total_comissao) || 0;
 
                     html += `
-                <div class="comissao-card-mobile">
-                    <div class="comissao-avatar">${inicial}</div>
-                    <div class="comissao-info">
-                        <span class="comissao-nome">${escapeHtml(prof.nome)}</span>
-                        <span class="comissao-detalhes">${prof.total_servicos} serviço(s)</span>
-                    </div>
-                    <div class="comissao-valor">R$ ${totalComissao.toFixed(2)}</div>
-                </div>
-            `;
+                        <div style="background:var(--bg-card);border-radius:16px;padding:14px 16px;border:1px solid var(--border-color);display:flex;align-items:center;gap:14px;">
+                            <div style="width:44px;height:44px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;flex-shrink:0;box-shadow:0 2px 8px rgba(102,126,234,0.3);">${inicial}</div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(prof.nome)}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">${prof.total_servicos} serviço(s)</div>
+                            </div>
+                            <div style="font-size:16px;font-weight:700;color:var(--primary);flex-shrink:0;background:rgba(102,126,234,0.1);padding:4px 14px;border-radius:12px;">R$ ${totalComissao.toFixed(2)}</div>
+                        </div>
+                    `;
                 }
 
                 html += `</div>`;
@@ -274,31 +271,32 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                 // VERSÃO DESKTOP - TABELA
                 // ============================================
                 html += `
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Profissional</th>
-                            <th>Serviços</th>
-                            <th>Total Comissão</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${financeiro.comissoes_por_profissional.map(prof => `
-                            <tr>
-                                <td><strong>${escapeHtml(prof.nome)}</strong></td>
-                                <td>${prof.total_servicos} serviço(s)</td>
-                                <td><span class="valor">R$ ${(parseFloat(prof.total_comissao) || 0).toFixed(2)}</span></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Profissional</th>
+                                    <th>Serviços</th>
+                                    <th>Total Comissão</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${financeiro.comissoes_por_profissional.map(prof => `
+                                    <tr>
+                                        <td><strong>${escapeHtml(prof.nome)}</strong></td>
+                                        <td>${prof.total_servicos} serviço(s)</td>
+                                        <td><span class="valor">R$ ${(parseFloat(prof.total_comissao) || 0).toFixed(2)}</span></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
             }
 
             html += `</div>`;
         }
+
         // ============================================
         // DESPESAS - LISTA COMPLETA
         // ============================================
@@ -314,14 +312,14 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                 </div>
                 
                 <!-- Filtros -->
-                <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border);">
+                <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-color);">
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <select id="filtroCategoriaDespesa" onchange="aplicarFiltrosDespesas()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;">
+                        <select id="filtroCategoriaDespesa" onchange="aplicarFiltrosDespesas()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
                             <option value="">Todas Categorias</option>
                             ${categorias.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
                         </select>
                         
-                        <select id="filtroPagoDespesa" onchange="aplicarFiltrosDespesas()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;">
+                        <select id="filtroPagoDespesa" onchange="aplicarFiltrosDespesas()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
                             <option value="">Todos</option>
                             <option value="true">✅ Pagas</option>
                             <option value="false">⏳ Pendentes</option>
@@ -329,66 +327,73 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
                         
                         <input type="month" id="filtroMesDespesa" value="${filtroAnoAtual}-${filtroMesAtual}" 
                                onchange="aplicarFiltrosDespesas()" 
-                               style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;">
+                               style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
                     </div>
                 </div>
         `;
 
         // Tabela de Despesas
         const despesasLista = despesas?.despesas || [];
-        const isMobile = window.innerWidth < 768;
 
         if (despesasLista.length === 0) {
             html += `
-        <div class="empty-state">
-            <i class="fas fa-receipt"></i>
-            <h4>Nenhuma despesa cadastrada</h4>
-            <p>Clique em "Nova Despesa" para começar a controlar seus custos</p>
-        </div>
-    `;
+                <div class="empty-state">
+                    <i class="fas fa-receipt"></i>
+                    <h4>Nenhuma despesa cadastrada</h4>
+                    <p>Clique em "Nova Despesa" para começar a controlar seus custos</p>
+                </div>
+            `;
         } else if (isMobile) {
             // ============================================
-            // VERSÃO MOBILE - CARDS DE DESPESAS
+            // VERSÃO MOBILE - CARDS DE DESPESAS (INLINE)
             // ============================================
-            html += `<div class="despesas-cards-mobile">`;
+            html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
 
             for (let d of despesasLista) {
                 const statusClass = d.pago ? 'pago' : 'pendente';
                 const statusLabel = d.pago ? '✅ Paga' : '⏳ Pendente';
                 const formaPagamento = d.forma_pagamento || 'Não informado';
+                const valorDespesa = parseFloat(d.valor) || 0;
 
                 html += `
-            <div class="despesa-card-mobile">
-                <div class="despesa-header">
-                    <div class="despesa-info">
-                        <span class="despesa-descricao">${escapeHtml(d.descricao)}</span>
-                        <span class="despesa-categoria">📂 ${escapeHtml(d.categoria)}</span>
-                        <span class="despesa-data">📅 ${formatarDataBr(d.data)}</span>
+                    <div style="background:var(--bg-card);border-radius:16px;padding:14px 16px;border:1px solid var(--border-color);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+                        <!-- Header -->
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border-color);gap:8px;">
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:15px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.descricao)}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">📂 ${escapeHtml(d.categoria)}</div>
+                                <div style="font-size:11px;color:var(--text-muted);">📅 ${formatarDataBr(d.data)}</div>
+                            </div>
+                            <span style="display:inline-flex;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600;background:${d.pago ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)'};color:${d.pago ? '#22c55e' : '#f59e0b'};white-space:nowrap;flex-shrink:0;">
+                                ${statusLabel}
+                            </span>
+                        </div>
+                        
+                        <!-- Valor -->
+                        <div style="font-size:20px;font-weight:700;color:#ef4444;text-align:center;padding:8px;background:rgba(239,68,68,0.06);border-radius:10px;margin:8px 0;">
+                            R$ ${valorDespesa.toFixed(2)}
+                        </div>
+                        
+                        <!-- Pagamento -->
+                        <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-top:4px;">
+                            <span>💳 ${escapeHtml(formaPagamento)}</span>
+                            ${d.data_vencimento ? `| 📅 Venc: ${formatarDataBr(d.data_vencimento)}` : ''}
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;margin-top:10px;border-top:1px solid var(--border-color);">
+                            <button onclick="editarDespesa(${d.id})" style="padding:6px 14px;border-radius:10px;border:1px solid rgba(102,126,234,0.3);background:var(--bg-hover);color:var(--primary);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;min-width:60px;">
+                                <i class="fas fa-pen"></i> Editar
+                            </button>
+                            <button onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" style="padding:6px 14px;border-radius:10px;border:1px solid ${d.pago ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'};background:var(--bg-hover);color:${d.pago ? '#ef4444' : '#22c55e'};font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;min-width:60px;">
+                                <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i> ${d.pago ? 'Desfazer' : 'Pagar'}
+                            </button>
+                            <button onclick="excluirDespesa(${d.id})" style="padding:6px 14px;border-radius:10px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;min-width:60px;">
+                                <i class="fas fa-trash"></i> Excluir
+                            </button>
+                        </div>
                     </div>
-                    <span class="despesa-status ${statusClass}">${statusLabel}</span>
-                </div>
-                
-                <div class="despesa-valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</div>
-                
-                <div class="despesa-pagamento">
-                    <span class="pagamento-icon">💳</span>
-                    ${escapeHtml(formaPagamento)}
-                    ${d.data_vencimento ? `| 📅 Venc: ${formatarDataBr(d.data_vencimento)}` : ''}
-                </div>
-                
-                <div class="despesa-actions">
-                    <button class="btn-icon btn-edit" onclick="editarDespesa(${d.id})" title="Editar">
-                        <i class="fas fa-pen"></i> Editar
-                    </button>
-                    <button class="btn-icon btn-toggle ${statusClass}" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
-                        <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i> ${d.pago ? 'Desfazer' : 'Pagar'}
-                    </button>
-                    <button class="btn-icon btn-delete" onclick="excluirDespesa(${d.id})" title="Excluir">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </div>
-            </div>
-        `;
+                `;
             }
 
             html += `</div>`;
@@ -397,50 +402,50 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
             // VERSÃO DESKTOP - TABELA
             // ============================================
             html += `
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>📅 Data</th>
-                        <th>📝 Descrição</th>
-                        <th>📂 Categoria</th>
-                        <th>💰 Valor</th>
-                        <th>📊 Status</th>
-                        <th>⚡ Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${despesasLista.map(d => `
-                        <tr>
-                            <td>${formatarDataBr(d.data)}</td>
-                            <td>${escapeHtml(d.descricao)}</td>
-                            <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
-                            <td><span class="valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</span></td>
-                            <td>
-                                ${d.pago
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>📅 Data</th>
+                                <th>📝 Descrição</th>
+                                <th>📂 Categoria</th>
+                                <th>💰 Valor</th>
+                                <th>📊 Status</th>
+                                <th>⚡ Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${despesasLista.map(d => `
+                                <tr>
+                                    <td>${formatarDataBr(d.data)}</td>
+                                    <td>${escapeHtml(d.descricao)}</td>
+                                    <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
+                                    <td><span class="valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</span></td>
+                                    <td>
+                                        ${d.pago
                     ? '<span class="badge badge-success">✅ Paga</span>'
                     : `<span class="badge badge-warning">⏳ Pendente</span>`
                 }
-                            </td>
-                            <td>
-                                <div style="display:flex;gap:4px;">
-                                    <button class="btn btn-outline btn-sm" onclick="editarDespesa(${d.id})" title="Editar">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
-                                    <button class="btn btn-outline btn-sm" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
-                                        <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i>
-                                    </button>
-                                    <button class="btn btn-outline btn-sm" onclick="excluirDespesa(${d.id})" title="Excluir" style="color:#dc2626;">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+                                    </td>
+                                    <td>
+                                        <div style="display:flex;gap:4px;">
+                                            <button class="btn btn-outline btn-sm" onclick="editarDespesa(${d.id})" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-outline btn-sm" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
+                                                <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i>
+                                            </button>
+                                            <button class="btn btn-outline btn-sm" onclick="excluirDespesa(${d.id})" title="Excluir" style="color:#dc2626;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         }
 
         html += `</div>`;
@@ -450,127 +455,304 @@ function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario)
         // PROFISSIONAL - CARDS SIMPLES
         // ============================================
         html += `
-            <div class="card-grid">
-                <div class="stat-card premium">
-                    <div class="stat-icon">💰</div>
-                    <div class="stat-content">
-                        <div class="stat-value">R$ ${(parseFloat(totais.total_comissoes) || 0).toFixed(2)}</div>
-                        <div class="stat-label">Total em Comissões</div>
-                        <div class="stat-sub">Todos os serviços concluídos</div>
-                    </div>
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:20px;">
+                <div style="background:var(--gradient-primary);border-radius:16px;padding:20px;color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
+                    <div style="font-size:24px;margin-bottom:4px;">💰</div>
+                    <div style="font-size:28px;font-weight:800;">R$ ${(parseFloat(totais.total_comissoes) || 0).toFixed(2)}</div>
+                    <div style="font-size:14px;opacity:0.8;">Total em Comissões</div>
+                    <div style="font-size:12px;opacity:0.6;">Todos os serviços concluídos</div>
                 </div>
                 
-                <div class="stat-card">
-                    <div class="stat-icon green">✅</div>
-                    <div class="stat-content">
-                        <div class="stat-value">${totais.total_servicos || 0}</div>
-                        <div class="stat-label">Serviços Concluídos</div>
-                        <div class="stat-sub">Total realizados por você</div>
-                    </div>
+                <div style="background:var(--bg-card);border-radius:16px;padding:20px;border:1px solid var(--border-color);border-left:4px solid #22c55e;">
+                    <div style="font-size:24px;margin-bottom:4px;">✅</div>
+                    <div style="font-size:28px;font-weight:800;color:#22c55e;">${totais.total_servicos || 0}</div>
+                    <div style="font-size:14px;color:var(--text-muted);">Serviços Concluídos</div>
+                    <div style="font-size:12px;color:var(--text-muted);">Total realizados por você</div>
                 </div>
             </div>
         `;
     }
 
     // ============================================
-    // HISTÓRICO DE SERVIÇOS (comum para todos)
+    // HISTÓRICO DE SERVIÇOS (comum para todos) - VERSÃO MELHORADA
     // ============================================
     const comissoes = financeiro?.comissoes || [];
 
+    // Ordenar por data (mais recente primeiro)
+    comissoes.sort((a, b) => {
+        return new Date(b.data) - new Date(a.data);
+    });
+
     html += `
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-history"></i> Histórico de Serviços Concluídos</h3>
-                <span class="badge badge-info">${comissoes.length} registros</span>
-            </div>
-    `;
+    <div class="card" style="margin-top:20px;">
+        <div class="card-header">
+            <h3><i class="fas fa-history"></i> Histórico de Serviços Concluídos</h3>
+            <span class="badge badge-info">${comissoes.length} registros</span>
+        </div>
+`;
 
     if (comissoes.length === 0) {
         html += `
-            <div class="empty-state">
-                <i class="fas fa-check-circle"></i>
-                <h4>Nenhum serviço concluído ainda</h4>
-                <p>Os serviços aparecerão aqui quando forem concluídos</p>
-            </div>
-        `;
+        <div class="empty-state">
+            <i class="fas fa-check-circle"></i>
+            <h4>Nenhum serviço concluído ainda</h4>
+            <p>Os serviços aparecerão aqui quando forem concluídos</p>
+        </div>
+    `;
     } else if (isMobile) {
-        html += `<div class="historico-cards-mobile">`;
+        // ============================================
+        // VERSÃO MOBILE - HISTÓRICO CARDS (MELHORADO)
+        // ============================================
+        html += `<div style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">`;
+
         for (let item of comissoes) {
             const temProfissional = item.profissional_id ? true : false;
             const profissionalDisplay = item.profissional_nome || 'Sem profissional';
-            let comissaoDisplay = '<span style="color: var(--gray);">R$ 0,00</span>';
-            if (temProfissional) {
-                comissaoDisplay = `R$ ${(parseFloat(item.comissao) || 0).toFixed(2)}`;
-            }
+            const valor = parseFloat(item.valor) || 0;
+            const comissao = parseFloat(item.comissao) || 0;
+            const isComissao = temProfissional && comissao > 0;
+            const clienteNome = item.cliente_nome || 'Cliente';
+            const servicoNome = item.servico_nome || item.servico || 'Serviço';
+            const dataFormatada = formatarDataBr(item.data);
+            const inicial = clienteNome.charAt(0).toUpperCase();
 
             html += `
-                <div class="historico-card-mobile">
-                    <div class="historico-card-header">
-                        <div>
-                            <span class="historico-cliente">${escapeHtml(item.cliente_nome || 'N/A')}</span>
-                            <span class="historico-servico">${escapeHtml(item.servico_nome || item.servico || 'N/A')}</span>
-                        </div>
-                        <span class="historico-data">${formatarDataBr(item.data)}</span>
-                    </div>
-                    <div class="historico-card-body">
-                        <div class="info-row">
-                            <span class="info-label">💰 Valor</span>
-                            <span class="info-value valor-mobile">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">👨‍💼 Profissional</span>
-                            <span class="info-value ${!temProfissional ? 'text-muted' : ''}">${escapeHtml(profissionalDisplay)}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">💰 Comissão</span>
-                            <span class="info-value ${temProfissional ? 'valor-mobile' : 'text-muted'}">${comissaoDisplay}</span>
+            <div style="
+                background: var(--bg-card);
+                border-radius: 16px;
+                padding: 16px;
+                border: 1px solid var(--border-color);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                transition: all 0.3s ease;
+            ">
+                <!-- Header com Avatar -->
+                <div style="
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 12px;
+                    padding-bottom: 12px;
+                    border-bottom: 1px solid var(--border-color);
+                ">
+                    <div style="
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 50%;
+                        background: var(--gradient-primary);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        color: white;
+                        font-weight: 700;
+                        font-size: 18px;
+                        flex-shrink: 0;
+                        box-shadow: 0 2px 8px rgba(102,126,234,0.3);
+                    ">${inicial}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="
+                            font-size: 16px;
+                            font-weight: 600;
+                            color: var(--text-primary);
+                            white-space: nowrap;
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                        ">${escapeHtml(clienteNome)}</div>
+                        <div style="
+                            font-size: 13px;
+                            color: var(--text-muted);
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            flex-wrap: wrap;
+                        ">
+                            <span>✂️ ${escapeHtml(servicoNome)}</span>
+                            <span style="
+                                font-size: 10px;
+                                background: var(--bg-hover);
+                                padding: 2px 10px;
+                                border-radius: 12px;
+                                color: var(--text-muted);
+                            ">${dataFormatada}</span>
                         </div>
                     </div>
                 </div>
-            `;
-        }
-        html += `</div>`;
-    } else {
-        html += `
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>📅 Data</th>
-                            <th>👤 Cliente</th>
-                            <th>✂️ Serviço</th>
-                            <th>💰 Valor</th>
-                            <th>👨‍💼 Profissional</th>
-                            <th>💰 Comissão</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${comissoes.map(item => {
-            const temProfissional = item.profissional_id ? true : false;
-            let comissaoDisplay = '<span style="color: var(--gray);">R$ 0,00</span>';
-            if (temProfissional) {
-                comissaoDisplay = `<span class="valor">R$ ${(parseFloat(item.comissao) || 0).toFixed(2)}</span>`;
-            }
-            return `
-                                <tr>
-                                    <td>${formatarDataBr(item.data)}</td>
-                                    <td>${escapeHtml(item.cliente_nome || 'N/A')}</td>
-                                    <td>${escapeHtml(item.servico_nome || item.servico || 'N/A')}</td>
-                                    <td><span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span></td>
-                                    <td class="${!temProfissional ? 'text-muted' : ''}">${escapeHtml(item.profissional_nome || 'Sem profissional')}</td>
-                                    <td>${comissaoDisplay}</td>
-                                </tr>
-                            `;
-        }).join('')}
-                    </tbody>
-                </table>
+
+                <!-- Body com Grid -->
+                <div style="
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px 16px;
+                ">
+                    <!-- Valor -->
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2px;
+                        padding: 6px 0;
+                        background: var(--bg-hover);
+                        border-radius: 10px;
+                        padding: 8px 12px;
+                        text-align: center;
+                    ">
+                        <span style="
+                            font-size: 10px;
+                            color: var(--text-muted);
+                            text-transform: uppercase;
+                            font-weight: 600;
+                            letter-spacing: 0.5px;
+                        ">💰 Valor</span>
+                        <span style="
+                            font-size: 16px;
+                            font-weight: 700;
+                            color: var(--primary);
+                        ">R$ ${valor.toFixed(2)}</span>
+                    </div>
+
+                    <!-- Profissional -->
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2px;
+                        padding: 6px 0;
+                        background: var(--bg-hover);
+                        border-radius: 10px;
+                        padding: 8px 12px;
+                        text-align: center;
+                    ">
+                        <span style="
+                            font-size: 10px;
+                            color: var(--text-muted);
+                            text-transform: uppercase;
+                            font-weight: 600;
+                            letter-spacing: 0.5px;
+                        ">👨‍💼 Profissional</span>
+                        <span style="
+                            font-size: 14px;
+                            font-weight: 500;
+                            color: ${temProfissional ? 'var(--text-primary)' : 'var(--text-muted)'};
+                        ">${escapeHtml(profissionalDisplay)}</span>
+                    </div>
+
+                    <!-- Comissão (ocupa 2 colunas se tiver comissão) -->
+                    <div style="
+                        display: flex;
+                        flex-direction: column;
+                        gap: 2px;
+                        padding: 6px 0;
+                        background: ${isComissao ? 'rgba(102,126,234,0.08)' : 'var(--bg-hover)'};
+                        border-radius: 10px;
+                        padding: 8px 12px;
+                        text-align: center;
+                        grid-column: ${isComissao ? 'span 2' : 'span 2'};
+                        border: ${isComissao ? '1px solid rgba(102,126,234,0.15)' : 'none'};
+                    ">
+                        <span style="
+                            font-size: 10px;
+                            color: var(--text-muted);
+                            text-transform: uppercase;
+                            font-weight: 600;
+                            letter-spacing: 0.5px;
+                        ">💰 Comissão</span>
+                        <span style="
+                            font-size: ${isComissao ? '18px' : '14px'};
+                            font-weight: ${isComissao ? '700' : '500'};
+                            color: ${isComissao ? 'var(--primary)' : 'var(--text-muted)'};
+                        ">
+                            ${isComissao ? `R$ ${comissao.toFixed(2)}` : 'R$ 0,00'}
+                            ${isComissao ? `<span style="font-size:11px;font-weight:400;color:var(--text-muted);">(${((comissao / valor) * 100).toFixed(0)}%)</span>` : ''}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Badge de status (se tiver comissão) -->
+                ${isComissao ? `
+                    <div style="
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        border-top: 1px solid var(--border-color);
+                        display: flex;
+                        justify-content: flex-end;
+                    ">
+                        <span style="
+                            font-size: 10px;
+                            color: var(--text-muted);
+                            background: rgba(102,126,234,0.08);
+                            padding: 2px 12px;
+                            border-radius: 12px;
+                        ">
+                            <i class="fas fa-check-circle" style="color:var(--success);"></i>
+                            Comissão calculada
+                        </span>
+                    </div>
+                ` : `
+                    <div style="
+                        margin-top: 10px;
+                        padding-top: 10px;
+                        border-top: 1px solid var(--border-color);
+                        display: flex;
+                        justify-content: flex-end;
+                    ">
+                        <span style="
+                            font-size: 10px;
+                            color: var(--text-muted);
+                            background: var(--bg-hover);
+                            padding: 2px 12px;
+                            border-radius: 12px;
+                        ">
+                            <i class="fas fa-info-circle"></i>
+                            Sem profissional vinculado
+                        </span>
+                    </div>
+                `}
             </div>
         `;
+        }
+
+        html += `</div>`;
+    } else {
+        // ============================================
+        // VERSÃO DESKTOP - TABELA (mantida igual)
+        // ============================================
+        html += `
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>📅 Data</th>
+                        <th>👤 Cliente</th>
+                        <th>✂️ Serviço</th>
+                        <th>💰 Valor</th>
+                        <th>👨‍💼 Profissional</th>
+                        <th>💰 Comissão</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${comissoes.map(item => {
+            const temProfissional = item.profissional_id ? true : false;
+            const comissaoDisplay = temProfissional ?
+                `<span class="valor" style="color:var(--primary);font-weight:700;">R$ ${(parseFloat(item.comissao) || 0).toFixed(2)}</span>` :
+                '<span style="color: var(--text-muted);">R$ 0,00</span>';
+            return `
+                            <tr>
+                                <td>${formatarDataBr(item.data)}</td>
+                                <td><strong>${escapeHtml(item.cliente_nome || 'N/A')}</strong></td>
+                                <td>${escapeHtml(item.servico_nome || item.servico || 'N/A')}</td>
+                                <td><span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span></td>
+                                <td class="${!temProfissional ? 'text-muted' : ''}">${escapeHtml(item.profissional_nome || 'Sem profissional')}</td>
+                                <td>${comissaoDisplay}</td>
+                            </tr>
+                        `;
+        }).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
     }
 
-    html += `</div></div>`;
+    html += `</div>`;
 
     document.getElementById('content').innerHTML = html;
+    console.log("✅ Financeiro renderizado com sucesso!");
 }
 
 // ============================================
@@ -604,7 +786,6 @@ function abrirModalDespesa(despesa = null) {
 
     const hoje = new Date().toISOString().split('T')[0];
 
-    // 🔥 CORES FIXAS PARA O TEMA ESCURO
     const bgDark = '#1a1a2e';
     const textLight = '#e0e0e0';
     const borderDark = '#2d2d44';
@@ -702,7 +883,6 @@ function abrirModalDespesa(despesa = null) {
         () => { }
     );
 
-    // Listener para nova categoria
     setTimeout(() => {
         const select = document.getElementById('despCategoria');
         if (select) {
@@ -710,7 +890,6 @@ function abrirModalDespesa(despesa = null) {
                 if (this.value === '__nova__') {
                     const novaCat = prompt('Digite o nome da nova categoria:');
                     if (novaCat && novaCat.trim()) {
-                        // Adicionar ao select
                         const option = document.createElement('option');
                         option.value = novaCat.trim();
                         option.textContent = novaCat.trim();
@@ -951,6 +1130,8 @@ window.togglePagoDespesa = togglePagoDespesa;
 window.excluirDespesa = excluirDespesa;
 window.fecharModalDespesa = fecharModalDespesa;
 window.aplicarFiltrosDespesas = aplicarFiltrosDespesas;
+
+console.log('✅ financeiro.js carregado com MOBILE FIX!');
 
 // ============================================
 // ATUALIZAR AO REDIMENSIONAR
