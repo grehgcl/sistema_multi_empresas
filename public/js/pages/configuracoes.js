@@ -4,13 +4,14 @@ let profissionaisData = [];
 let planoInfo = { plano: 'trial', limite: 1, ativos: 0, podeAdicionar: true };
 
 // ============================================
-// FUNÇÃO PRINCIPAL (chamada pelo menu)
+// FUNÇÃO PRINCIPAL (chamada pelo menu) - MOBILE MELHORADO
 // ============================================
 async function carregarConfiguracoes() {
     ativarBotao('configuracoes');
     showLoading();
 
     const token = localStorage.getItem('token');
+    const isMobile = window.innerWidth < 768;
 
     try {
         const [profissionaisRes, horariosRes, planoRes, empresaRes] = await Promise.all([
@@ -43,7 +44,6 @@ async function carregarConfiguracoes() {
             };
         }
 
-        // Buscar dias_bloqueio_geral da empresa
         let diasBloqueioGeral = 0;
         if (empresaData.success && empresaData.data) {
             diasBloqueioGeral = empresaData.data.dias_bloqueio_geral || 0;
@@ -53,40 +53,126 @@ async function carregarConfiguracoes() {
 
         let html = `
             <div class="fade-in">
-                <div class="dashboard-header">
+                <div class="dashboard-header" style="flex-direction:${isMobile ? 'column' : 'row'}; align-items:${isMobile ? 'flex-start' : 'center'}; gap:${isMobile ? '8px' : '0'};">
                     <div>
-                        <h2 class="page-title">⚙️ Configurações</h2>
-                        <p class="page-subtitle">Gerencie todas as configurações da sua empresa</p>
+                        <h2 class="page-title" style="font-size:${isMobile ? '20px' : '24px'};">⚙️ Configurações</h2>
+                        <p class="page-subtitle" style="font-size:${isMobile ? '13px' : '14px'};">Gerencie todas as configurações da sua empresa</p>
                     </div>
                 </div>
                 
-                <div class="config-tabs">
-                    <button class="config-tab active" onclick="switchConfigTab('profissionais')">
-                        <i class="fas fa-users"></i> Profissionais
+                <!-- TABS - VERSÃO MOBILE MELHORADA -->
+                <div class="config-tabs" style="
+                    display: flex;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    margin-bottom: ${isMobile ? '12px' : '24px'};
+                    flex-wrap: wrap;
+                    background: var(--bg-card);
+                    padding: ${isMobile ? '6px' : '8px'};
+                    border-radius: ${isMobile ? '12px' : '16px'};
+                    box-shadow: var(--card-shadow);
+                    border: 1px solid var(--border-color);
+                    ${isMobile ? 'overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;' : ''}
+                ">
+                    <button class="config-tab active" onclick="switchConfigTab('profissionais')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-users" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Prof' : 'Profissionais'}
                     </button>
-                    <button class="config-tab" onclick="switchConfigTab('horarios')">
-                        <i class="fas fa-clock"></i> Horários
+                    <button class="config-tab" onclick="switchConfigTab('horarios')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-clock" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Horários' : 'Horários'}
                     </button>
-                    <button class="config-tab" onclick="switchConfigTab('bloqueio')">
-                        <i class="fas fa-lock"></i> Bloqueio Geral
+                    <button class="config-tab" onclick="switchConfigTab('bloqueio')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-lock" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Bloqueio' : 'Bloqueio Geral'}
                     </button>
-                    <button class="config-tab" onclick="switchConfigTab('chatbot')">
-                        <i class="fas fa-robot"></i> Chatbot
+                    <button class="config-tab" onclick="switchConfigTab('chatbot')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-robot" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Chatbot' : 'Chatbot'}
                     </button>
-                    <button class="config-tab" onclick="switchConfigTab('tema')">
-                        <i class="fas fa-${temaSalvo === 'dark' ? 'moon' : 'sun'}"></i> Tema
+                    <button class="config-tab" onclick="switchConfigTab('tema')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-${temaSalvo === 'dark' ? 'moon' : 'sun'}" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Tema' : 'Tema'}
                     </button>
                 </div>
                 
                 <div id="configContent">
-                    ${renderProfissionais()}
+                    ${renderProfissionaisMobile(isMobile)}
                 </div>
             </div>
         `;
 
         document.getElementById('content').innerHTML = html;
 
-        // Inicializar eventos
         setTimeout(() => {
             inicializarHorariosEvents();
             carregarLinkChatbot();
@@ -101,17 +187,30 @@ async function carregarConfiguracoes() {
 }
 
 // ============================================
-// SWITCH TABS - CORRIGIDO
+// SWITCH TABS - CORRIGIDO COM MOBILE
 // ============================================
 function switchConfigTab(tab) {
-    document.querySelectorAll('.config-tab').forEach(t => t.classList.remove('active'));
+    // Atualizar tabs
+    document.querySelectorAll('.config-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.background = 'transparent';
+        t.style.color = 'var(--text-secondary)';
+        t.style.boxShadow = 'none';
+    });
+
     const tabs = document.querySelectorAll('.config-tab');
     const index = ['profissionais', 'horarios', 'bloqueio', 'chatbot', 'tema'].indexOf(tab);
-    if (tabs[index]) tabs[index].classList.add('active');
+    if (tabs[index]) {
+        tabs[index].classList.add('active');
+        tabs[index].style.background = 'var(--gradient)';
+        tabs[index].style.color = 'white';
+        tabs[index].style.boxShadow = '0 4px 12px rgba(102,126,234,0.3)';
+    }
 
+    // Carregar conteúdo
     switch (tab) {
         case 'profissionais':
-            document.getElementById('configContent').innerHTML = renderProfissionais();
+            document.getElementById('configContent').innerHTML = renderProfissionaisMobile(window.innerWidth < 768);
             break;
         case 'horarios':
             carregarHorarios();
@@ -157,9 +256,11 @@ async function carregarBloqueioGeral() {
 }
 
 // ============================================
-// RENDER BLOQUEIO GERAL (COM ESTILOS INLINE)
+// RENDER BLOQUEIO GERAL - VERSÃO MOBILE MELHORADA
 // ============================================
 function renderBloqueioGeral(diasAtual) {
+    const isMobile = window.innerWidth < 768;
+
     const opcoes = [
         { value: 0, label: '❌ Desativado (0 dias)', desc: 'Cliente pode agendar no dia seguinte (mas não no mesmo dia)' },
         { value: 7, label: '📅 7 dias', desc: 'Cliente só pode agendar 1 vez por semana' },
@@ -167,17 +268,24 @@ function renderBloqueioGeral(diasAtual) {
         { value: 30, label: '📅 30 dias', desc: 'Cliente só pode agendar 1 vez por mês' }
     ];
 
-    // Encontrar a descrição atual
     const descricaoAtual = opcoes.find(o => o.value === diasAtual)?.desc || '';
 
     return `
-        <div class="card">
+        <div class="card" style="padding: ${isMobile ? '14px' : '24px'};">
             <div class="card-header">
-                <h3><i class="fas fa-lock"></i> Bloqueio Geral de Agendamentos</h3>
+                <h3 style="font-size: ${isMobile ? '16px' : '18px'}; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-lock" style="color: var(--primary);"></i> Bloqueio Geral de Agendamentos
+                </h3>
             </div>
             
-            <div style="background: #fef3c720; padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
-                <p style="margin: 0; color: var(--text-secondary);">
+            <div style="
+                background: #fef3c720;
+                padding: ${isMobile ? '12px' : '16px'};
+                border-radius: 10px;
+                margin-bottom: 16px;
+                border-left: 4px solid #f59e0b;
+            ">
+                <p style="margin: 0; color: var(--text-secondary); font-size: ${isMobile ? '13px' : '14px'};">
                     <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
                     <strong>Regra fixa:</strong> Cliente NÃO pode fazer mais de 1 agendamento por dia.
                     <br>
@@ -185,16 +293,16 @@ function renderBloqueioGeral(diasAtual) {
                 </p>
             </div>
             
-            <div class="form-group" style="max-width: 400px;">
-                <label style="font-weight: 600; display: block; margin-bottom: 6px; color: var(--text-primary);">
+            <div class="form-group" style="max-width: ${isMobile ? '100%' : '400px'};">
+                <label style="font-weight: 600; display: block; margin-bottom: 6px; color: var(--text-primary); font-size: ${isMobile ? '13px' : '14px'};">
                     <i class="fas fa-calendar-alt"></i> Dias de bloqueio entre agendamentos:
                 </label>
                 <select id="bloqueioGeralSelect" class="form-control" style="
                     width: 100%;
-                    padding: 12px 16px;
+                    padding: ${isMobile ? '10px 14px' : '12px 16px'};
                     border: 2px solid var(--border-color);
-                    border-radius: 12px;
-                    font-size: 15px;
+                    border-radius: 10px;
+                    font-size: ${isMobile ? '14px' : '15px'};
                     background: var(--bg-input);
                     color: var(--text-primary);
                     transition: all 0.3s ease;
@@ -212,8 +320,8 @@ function renderBloqueioGeral(diasAtual) {
                     display: block;
                     margin-top: 8px;
                     color: var(--text-muted);
-                    font-size: 13px;
-                    padding: 8px 12px;
+                    font-size: ${isMobile ? '12px' : '13px'};
+                    padding: ${isMobile ? '8px 10px' : '8px 12px'};
                     background: var(--bg-hover);
                     border-radius: 8px;
                     border-left: 3px solid var(--primary);
@@ -222,27 +330,28 @@ function renderBloqueioGeral(diasAtual) {
                 </small>
             </div>
             
-            <button onclick="salvarBloqueioGeral()" class="btn btn-primary" style="
+            <button onclick="salvarBloqueioGeral()" style="
                 margin-top: 10px;
-                padding: 12px 28px;
+                padding: ${isMobile ? '10px 24px' : '12px 28px'};
                 background: var(--gradient);
                 color: white;
                 border: none;
-                border-radius: 12px;
+                border-radius: 10px;
                 font-weight: 600;
-                font-size: 14px;
+                font-size: ${isMobile ? '13px' : '14px'};
                 cursor: pointer;
                 transition: all 0.3s ease;
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
+                ${isMobile ? 'width: 100%; justify-content: center;' : ''}
             ">
                 <i class="fas fa-save"></i> Salvar Bloqueio Geral
             </button>
             
-            <div style="margin-top: 20px; padding: 16px; background: var(--bg-hover); border-radius: 12px;">
-                <h4 style="margin: 0 0 10px 0; color: var(--text-primary);">📋 Como funciona:</h4>
-                <ul style="margin: 0; padding-left: 20px; line-height: 2; color: var(--text-secondary);">
+            <div style="margin-top: 16px; padding: ${isMobile ? '14px' : '16px'}; background: var(--bg-hover); border-radius: 10px;">
+                <h4 style="margin: 0 0 8px 0; color: var(--text-primary); font-size: ${isMobile ? '14px' : '16px'};">📋 Como funciona:</h4>
+                <ul style="margin: 0; padding-left: 20px; line-height: ${isMobile ? '2' : '2'}; color: var(--text-secondary); font-size: ${isMobile ? '13px' : '14px'};">
                     <li><strong>0 dias:</strong> Cliente pode agendar no dia seguinte (mas não no mesmo dia)</li>
                     <li><strong>7 dias:</strong> Cliente só pode agendar 1 vez por semana</li>
                     <li><strong>14 dias:</strong> Cliente só pode agendar 1 vez a cada 2 semanas</li>
@@ -360,59 +469,257 @@ async function carregarChatbot() {
 }
 
 // ============================================
-// RENDER PROFISSIONAIS
+// RENDER PROFISSIONAIS - VERSÃO MOBILE
 // ============================================
-function renderProfissionais() {
+function renderProfissionaisMobile(isMobile) {
+    const podeAdicionar = planoInfo.podeAdicionar;
+
     return `
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-users"></i> Profissionais</h3>
-                ${planoInfo.podeAdicionar ?
-            `<button class="btn-primary" onclick="abrirModalProfissional()">+ Novo Profissional</button>` :
-            `<button class="btn-secondary" disabled style="opacity: 0.6;">🔒 Limite Atingido</button>`
+        <div class="card" style="padding: ${isMobile ? '14px' : '24px'};">
+            <div class="card-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'stretch' : 'center'}; gap: ${isMobile ? '10px' : '0'};">
+                <h3 style="font-size: ${isMobile ? '16px' : '18px'}; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-users" style="color: var(--primary);"></i> Profissionais
+                </h3>
+                ${podeAdicionar ?
+            `<button onclick="abrirModalProfissional()" style="
+                        padding: ${isMobile ? '10px 16px' : '10px 24px'};
+                        background: var(--gradient);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        font-weight: 600;
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        justify-content: center;
+                        ${isMobile ? 'width: 100%;' : ''}
+                    ">
+                        <i class="fas fa-plus"></i> Novo Profissional
+                    </button>` :
+            `<button disabled style="
+                        padding: ${isMobile ? '10px 16px' : '10px 24px'};
+                        background: var(--bg-hover);
+                        color: var(--text-muted);
+                        border: 1px solid var(--border-color);
+                        border-radius: 10px;
+                        font-weight: 600;
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        cursor: not-allowed;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        justify-content: center;
+                        ${isMobile ? 'width: 100%;' : ''}
+                    ">
+                        <i class="fas fa-lock"></i> Limite Atingido
+                    </button>`
         }
             </div>
             
-            <div style="background: linear-gradient(135deg, ${planoInfo.is_trial ? '#f59e0b20' : '#667eea20'}, ${planoInfo.is_trial ? '#f59e0b20' : '#764ba220'}); padding: 16px; border-radius: 12px; margin-bottom: 20px; border-left: 4px solid ${planoInfo.is_trial ? '#f59e0b' : '#667eea'};">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                    <div>
-                        <strong>📋 Plano ${planoInfo.plano_nome}</strong>
+            <!-- Plano Info - Mobile Melhorado -->
+            <div style="
+                background: ${planoInfo.is_trial ? 'linear-gradient(135deg, #f59e0b20, #f59e0b08)' : 'linear-gradient(135deg, #667eea20, #764ba208)'};
+                padding: ${isMobile ? '14px' : '16px'};
+                border-radius: 12px;
+                margin-bottom: 16px;
+                border-left: 4px solid ${planoInfo.is_trial ? '#f59e0b' : '#667eea'};
+            ">
+                <div style="display: flex; flex-direction: ${isMobile ? 'column' : 'row'}; justify-content: space-between; align-items: ${isMobile ? 'flex-start' : 'center'}; gap: ${isMobile ? '10px' : '0'};">
+                    <div style="width: 100%;">
+                        <strong style="font-size: ${isMobile ? '14px' : '16px'};">📋 Plano ${planoInfo.plano_nome}</strong>
                         <br>
-                        <small>Limite: ${planoInfo.limite} profissional(is)</small>
-                        <div style="margin-top: 5px;">
-                            <div style="background: var(--bg-hover); border-radius: 10px; height: 6px; width: 200px; overflow: hidden;">
-                                <div style="width: ${Math.min((planoInfo.ativos / planoInfo.limite) * 100, 100)}%; background: var(--gradient); height: 100%;"></div>
+                        <small style="font-size: ${isMobile ? '12px' : '13px'}; color: var(--text-muted);">Limite: ${planoInfo.limite} profissional(is)</small>
+                        <div style="margin-top: 6px; width: 100%;">
+                            <div style="background: var(--bg-hover); border-radius: 10px; height: 6px; width: 100%; overflow: hidden;">
+                                <div style="width: ${Math.min((planoInfo.ativos / planoInfo.limite) * 100, 100)}%; background: var(--gradient); height: 100%; transition: width 0.5s ease;"></div>
                             </div>
-                            <small>${planoInfo.ativos} de ${planoInfo.limite} utilizado(s)</small>
+                            <small style="font-size: ${isMobile ? '11px' : '12px'}; color: var(--text-muted);">${planoInfo.ativos} de ${planoInfo.limite} utilizado(s)</small>
                         </div>
                     </div>
-                    <div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; ${isMobile ? 'width: 100%;' : ''}">
                         ${planoInfo.is_trial ?
-            `<span style="background: #f59e0b; color: white; padding: 4px 12px; border-radius: 20px;">🎯 Trial: ${planoInfo.dias_restantes} dias</span>` :
-            `<span style="background: #48bb78; color: white; padding: 4px 12px; border-radius: 20px;">✅ Válido até: ${planoInfo.valida_ate || 'N/A'}</span>`
+            `<span style="
+                                background: #f59e0b;
+                                color: white;
+                                padding: ${isMobile ? '4px 12px' : '4px 12px'};
+                                border-radius: 20px;
+                                font-size: ${isMobile ? '12px' : '13px'};
+                                font-weight: 600;
+                                ${isMobile ? 'width: 100%; text-align: center;' : ''}
+                            ">🎯 Trial: ${planoInfo.dias_restantes} dias</span>` :
+            `<span style="
+                                background: #48bb78;
+                                color: white;
+                                padding: ${isMobile ? '4px 12px' : '4px 12px'};
+                                border-radius: 20px;
+                                font-size: ${isMobile ? '12px' : '13px'};
+                                font-weight: 600;
+                                ${isMobile ? 'width: 100%; text-align: center;' : ''}
+                            ">✅ Válido até: ${planoInfo.valida_ate || 'N/A'}</span>`
         }
                         ${!planoInfo.podeAdicionar && planoInfo.ativos > 0 ?
-            `<button class="btn-primary" onclick="carregarPlanos()" style="margin-left: 10px;">💎 Upgrade</button>` : ''
+            `<button onclick="carregarPlanos()" style="
+                                background: var(--gradient);
+                                color: white;
+                                border: none;
+                                padding: ${isMobile ? '8px 16px' : '6px 16px'};
+                                border-radius: 20px;
+                                font-size: ${isMobile ? '12px' : '13px'};
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.3s ease;
+                                ${isMobile ? 'width: 100%;' : ''}
+                            ">💎 Upgrade</button>` : ''
         }
                     </div>
                 </div>
             </div>
             
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Nome</th>
-                            <th>Email</th>
-                            <th>Comissão</th>
-                            <th>Status</th>
-                            <th>Data</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="profissionaisTableBody">${renderProfissionaisList()}</tbody>
-                </table>
-            </div>
+            <!-- Lista de Profissionais - Mobile Cards -->
+            ${isMobile ? `
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${profissionaisData && profissionaisData.length > 0 ? profissionaisData.map(prof => `
+                        <div style="
+                            background: var(--bg-card);
+                            border-radius: 12px;
+                            padding: 14px 16px;
+                            border: 1px solid var(--border-color);
+                            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+                        ">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                <div>
+                                    <div style="font-size: 15px; font-weight: 600; color: var(--text-primary);">${escapeHtml(prof.nome)}</div>
+                                    <div style="font-size: 12px; color: var(--text-muted);">${escapeHtml(prof.email)}</div>
+                                </div>
+                                <div style="display: flex; gap: 4px;">
+                                    ${(prof.ativo === true || prof.ativo === 1) ?
+                '<span style="background: #22c55e; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">✅ Ativo</span>' :
+                '<span style="background: #ef4444; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">❌ Inativo</span>'
+            }
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+                                <span>💰 Comissão: <strong style="color: var(--text-primary);">${prof.comissao_percent}%</strong></span>
+                                <span>📅 ${formatarData(prof.created_at)}</span>
+                            </div>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                                <button onclick="editarProfissional(${prof.id})" style="
+                                    padding: 6px 14px;
+                                    border-radius: 8px;
+                                    border: 1px solid rgba(102,126,234,0.3);
+                                    background: var(--bg-hover);
+                                    color: var(--primary);
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                ">
+                                    <i class="fas fa-pen"></i> Editar
+                                </button>
+                                <button onclick="resetarSenhaProfissional(${prof.id}, '${escapeHtml(prof.nome)}')" style="
+                                    padding: 6px 14px;
+                                    border-radius: 8px;
+                                    border: 1px solid rgba(245,158,11,0.3);
+                                    background: var(--bg-hover);
+                                    color: #f59e0b;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                ">
+                                    <i class="fas fa-key"></i> Senha
+                                </button>
+                                <button onclick="alternarStatusProfissional(${prof.id}, ${(prof.ativo === true || prof.ativo === 1) ? 'false' : 'true'})" style="
+                                    padding: 6px 14px;
+                                    border-radius: 8px;
+                                    border: 1px solid ${(prof.ativo === true || prof.ativo === 1) ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'};
+                                    background: var(--bg-hover);
+                                    color: ${(prof.ativo === true || prof.ativo === 1) ? '#ef4444' : '#22c55e'};
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                ">
+                                    <i class="fas ${(prof.ativo === true || prof.ativo === 1) ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
+                                    ${(prof.ativo === true || prof.ativo === 1) ? 'Desativar' : 'Ativar'}
+                                </button>
+                                <button onclick="excluirProfissional(${prof.id}, '${escapeHtml(prof.nome)}')" style="
+                                    padding: 6px 14px;
+                                    border-radius: 8px;
+                                    border: 1px solid rgba(239,68,68,0.3);
+                                    background: var(--bg-hover);
+                                    color: #ef4444;
+                                    font-size: 12px;
+                                    font-weight: 500;
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 4px;
+                                    flex: 1;
+                                    justify-content: center;
+                                ">
+                                    <i class="fas fa-trash"></i> Excluir
+                                </button>
+                            </div>
+                        </div>
+                    `).join('') : `
+                        <div style="text-align: center; padding: 30px 20px; color: var(--text-muted);">
+                            <i class="fas fa-users" style="font-size: 32px; opacity: 0.3; display: block; margin-bottom: 10px;"></i>
+                            <p style="margin: 0;">Nenhum profissional cadastrado</p>
+                        </div>
+                    `}
+                </div>
+            ` : `
+                <!-- Desktop: Tabela -->
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                                <th>Comissão</th>
+                                <th>Status</th>
+                                <th>Data</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="profissionaisTableBody">${profissionaisData && profissionaisData.length > 0 ? profissionaisData.map(prof => `
+                            <tr>
+                                <td><strong>${escapeHtml(prof.nome)}</strong></td>
+                                <td>${escapeHtml(prof.email)}</td>
+                                <td><span class="badge">${prof.comissao_percent}%</span></td>
+                                <td>${(prof.ativo === true || prof.ativo === 1) ? '<span class="badge-success">✅ Ativo</span>' : '<span class="badge-danger">❌ Inativo</span>'}</td>
+                                <td>${formatarData(prof.created_at)}</td>
+                                <td class="actions-cell">
+                                    <button class="btn-icon btn-edit" onclick="editarProfissional(${prof.id})">✏️</button>
+                                    <button class="btn-icon btn-key" onclick="resetarSenhaProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🔑</button>
+                                    <button class="btn-icon btn-toggle" onclick="alternarStatusProfissional(${prof.id}, ${(prof.ativo === true || prof.ativo === 1) ? 'false' : 'true'})" title="${(prof.ativo === true || prof.ativo === 1) ? 'Desativar' : 'Ativar'}">
+                                        ${(prof.ativo === true || prof.ativo === 1) ? '🔴' : '🟢'}
+                                    </button>
+                                    <button class="btn-icon btn-delete" onclick="excluirProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🗑️</button>
+                                </td>
+                            </tr>
+                        `).join('') : `
+                            <tr><td colspan="6" style="text-align:center; padding: 30px;">Nenhum profissional cadastrado</td></tr>
+                        `}</tbody>
+                    </table>
+                </div>
+            `}
         </div>
     `;
 }
@@ -441,9 +748,10 @@ function renderProfissionaisList() {
 }
 
 // ============================================
-// RENDER HORÁRIOS
+// RENDER HORÁRIOS - VERSÃO MOBILE MELHORADA
 // ============================================
 function renderHorarios(horarios) {
+    const isMobile = window.innerWidth < 768;
     const dias = { 0: 'Domingo', 1: 'Segunda', 2: 'Terça', 3: 'Quarta', 4: 'Quinta', 5: 'Sexta', 6: 'Sábado' };
 
     let horariosMap = {};
@@ -453,82 +761,204 @@ function renderHorarios(horarios) {
         });
     }
 
-    let rows = '';
-    for (let dia = 0; dia <= 6; dia++) {
-        const h = horariosMap[dia] || {};
-        const aberto = h.aberto !== undefined ? (h.aberto === true || h.aberto === 1 ? 1 : 0) : (dia === 0 ? 0 : 1);
-        const disabled = aberto === 0 ? 'disabled' : '';
+    if (isMobile) {
+        // ============================================
+        // VERSÃO MOBILE - CARDS
+        // ============================================
+        let cards = '';
+        for (let dia = 0; dia <= 6; dia++) {
+            const h = horariosMap[dia] || {};
+            const aberto = h.aberto !== undefined ? (h.aberto === true || h.aberto === 1 ? 1 : 0) : (dia === 0 ? 0 : 1);
+            const disabled = aberto === 0 ? 'disabled' : '';
 
-        rows += `
-            <tr>
-                <td><strong>${dias[dia]}</strong></td>
-                <td>
-                    <label class="switch">
-                        <input type="checkbox" class="status-toggle" data-dia="${dia}" ${(aberto === true || aberto === 1) ? 'checked' : ''}>
-                        <span class="slider round"></span>
-                    </label>
-                </td>
-                <td>
-                    <input type="time" class="hora-inicio" data-dia="${dia}" value="${h.hora_inicio || '09:00'}" ${disabled}>
-                    às 
-                    <input type="time" class="hora-fim" data-dia="${dia}" value="${h.hora_fim || '18:00'}" ${disabled}>
-                </td>
-                <td>
-                    <input type="time" class="almoco-inicio" data-dia="${dia}" value="${h.almoco_inicio || '12:00'}" ${disabled}>
-                    às 
-                    <input type="time" class="almoco-fim" data-dia="${dia}" value="${h.almoco_fim || '13:00'}" ${disabled}>
-                </td>
-                <td>
-                    <select class="intervalo-select" data-dia="${dia}" ${disabled}>
-                        <option value="30" ${(h.intervalo_minutos || 30) === 30 ? 'selected' : ''}>30 min</option>
-                        <option value="45" ${(h.intervalo_minutos || 30) === 45 ? 'selected' : ''}>45 min</option>
-                        <option value="60" ${(h.intervalo_minutos || 30) === 60 ? 'selected' : ''}>60 min</option>
-                    </select>
-                </td>
-            </tr>
+            cards += `
+                <div style="
+                    background: var(--bg-card);
+                    border-radius: 12px;
+                    padding: 14px 16px;
+                    border: 1px solid var(--border-color);
+                    margin-bottom: 10px;
+                ">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <strong style="font-size: 15px; color: var(--text-primary);">${dias[dia]}</strong>
+                        <label class="switch">
+                            <input type="checkbox" class="status-toggle" data-dia="${dia}" ${(aberto === true || aberto === 1) ? 'checked' : ''}>
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <span style="font-size: 12px; color: var(--text-muted);">⏰ Horário:</span>
+                            <input type="time" class="hora-inicio" data-dia="${dia}" value="${h.hora_inicio || '09:00'}" ${disabled} style="
+                                padding: 4px 8px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 6px;
+                                background: var(--bg-input);
+                                color: var(--text-primary);
+                                font-size: 12px;
+                                flex: 1;
+                                min-width: 70px;
+                            ">
+                            <span style="color: var(--text-muted);">às</span>
+                            <input type="time" class="hora-fim" data-dia="${dia}" value="${h.hora_fim || '18:00'}" ${disabled} style="
+                                padding: 4px 8px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 6px;
+                                background: var(--bg-input);
+                                color: var(--text-primary);
+                                font-size: 12px;
+                                flex: 1;
+                                min-width: 70px;
+                            ">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <span style="font-size: 12px; color: var(--text-muted);">🍽️ Almoço:</span>
+                            <input type="time" class="almoco-inicio" data-dia="${dia}" value="${h.almoco_inicio || '12:00'}" ${disabled} style="
+                                padding: 4px 8px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 6px;
+                                background: var(--bg-input);
+                                color: var(--text-primary);
+                                font-size: 12px;
+                                flex: 1;
+                                min-width: 70px;
+                            ">
+                            <span style="color: var(--text-muted);">às</span>
+                            <input type="time" class="almoco-fim" data-dia="${dia}" value="${h.almoco_fim || '13:00'}" ${disabled} style="
+                                padding: 4px 8px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 6px;
+                                background: var(--bg-input);
+                                color: var(--text-primary);
+                                font-size: 12px;
+                                flex: 1;
+                                min-width: 70px;
+                            ">
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <span style="font-size: 12px; color: var(--text-muted);">⏱️ Intervalo:</span>
+                            <select class="intervalo-select" data-dia="${dia}" ${disabled} style="
+                                padding: 4px 8px;
+                                border: 1px solid var(--border-color);
+                                border-radius: 6px;
+                                background: var(--bg-input);
+                                color: var(--text-primary);
+                                font-size: 12px;
+                                flex: 1;
+                            ">
+                                <option value="30" ${(h.intervalo_minutos || 30) === 30 ? 'selected' : ''}>30 min</option>
+                                <option value="45" ${(h.intervalo_minutos || 30) === 45 ? 'selected' : ''}>45 min</option>
+                                <option value="60" ${(h.intervalo_minutos || 30) === 60 ? 'selected' : ''}>60 min</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="card" style="padding: 14px;">
+                <div class="card-header" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+                    <h3 style="font-size: 16px; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-clock" style="color: var(--primary);"></i> Horários de Funcionamento
+                    </h3>
+                    <p class="text-muted" style="font-size: 12px; margin: 0;">Configure os dias e horários. As alterações são salvas automaticamente.</p>
+                </div>
+                <div style="margin-top: 12px;">
+                    ${cards}
+                </div>
+            </div>
+        `;
+    } else {
+        // ============================================
+        // VERSÃO DESKTOP - TABELA
+        // ============================================
+        let rows = '';
+        for (let dia = 0; dia <= 6; dia++) {
+            const h = horariosMap[dia] || {};
+            const aberto = h.aberto !== undefined ? (h.aberto === true || h.aberto === 1 ? 1 : 0) : (dia === 0 ? 0 : 1);
+            const disabled = aberto === 0 ? 'disabled' : '';
+
+            rows += `
+                <tr>
+                    <td><strong>${dias[dia]}</strong></td>
+                    <td>
+                        <label class="switch">
+                            <input type="checkbox" class="status-toggle" data-dia="${dia}" ${(aberto === true || aberto === 1) ? 'checked' : ''}>
+                            <span class="slider round"></span>
+                        </label>
+                    </td>
+                    <td>
+                        <input type="time" class="hora-inicio" data-dia="${dia}" value="${h.hora_inicio || '09:00'}" ${disabled}>
+                        às 
+                        <input type="time" class="hora-fim" data-dia="${dia}" value="${h.hora_fim || '18:00'}" ${disabled}>
+                    </td>
+                    <td>
+                        <input type="time" class="almoco-inicio" data-dia="${dia}" value="${h.almoco_inicio || '12:00'}" ${disabled}>
+                        às 
+                        <input type="time" class="almoco-fim" data-dia="${dia}" value="${h.almoco_fim || '13:00'}" ${disabled}>
+                    </td>
+                    <td>
+                        <select class="intervalo-select" data-dia="${dia}" ${disabled}>
+                            <option value="30" ${(h.intervalo_minutos || 30) === 30 ? 'selected' : ''}>30 min</option>
+                            <option value="45" ${(h.intervalo_minutos || 30) === 45 ? 'selected' : ''}>45 min</option>
+                            <option value="60" ${(h.intervalo_minutos || 30) === 60 ? 'selected' : ''}>60 min</option>
+                        </select>
+                    </td>
+                </tr>
+            `;
+        }
+
+        return `
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-clock"></i> Horários de Funcionamento</h3>
+                </div>
+                <p class="text-muted">Configure os dias e horários. As alterações são salvas automaticamente.</p>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Dia</th>
+                                <th>Status</th>
+                                <th>Horário</th>
+                                <th>Almoço</th>
+                                <th>Intervalo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="horariosTableBody">
+                            ${rows}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         `;
     }
-
-    return `
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-clock"></i> Horários de Funcionamento</h3>
-            </div>
-            <p class="text-muted">Configure os dias e horários. As alterações são salvas automaticamente.</p>
-            <div class="table-responsive">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Dia</th>
-                            <th>Status</th>
-                            <th>Horário</th>
-                            <th>Almoço</th>
-                            <th>Intervalo</th>
-                        </tr>
-                    </thead>
-                    <tbody id="horariosTableBody">
-                        ${rows}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
 }
 
 // ============================================
-// RENDER CHATBOT
+// RENDER CHATBOT - VERSÃO MOBILE MELHORADA
 // ============================================
 function renderChatbot(link) {
+    const isMobile = window.innerWidth < 768;
+
     return `
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-robot"></i> Chatbot de Agendamento</h3>
+        <div class="card" style="padding: ${isMobile ? '14px' : '24px'};">
+            <div class="card-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'flex-start' : 'center'}; gap: ${isMobile ? '8px' : '0'};">
+                <h3 style="font-size: ${isMobile ? '16px' : '18px'}; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-robot" style="color: var(--primary);"></i> Chatbot de Agendamento
+                </h3>
             </div>
-            <p class="text-muted">Compartilhe o link com seus clientes para agendarem automaticamente.</p>
+            <p class="text-muted" style="font-size: ${isMobile ? '13px' : '14px'}; margin-top: 4px;">Compartilhe o link com seus clientes para agendarem automaticamente.</p>
             
-            <div style="background: var(--bg-hover); padding: 20px; border-radius: 16px; margin: 20px 0;">
-                <h4>📋 Regras do Chatbot:</h4>
-                <ul style="margin-left: 20px; margin-top: 8px;">
+            <div style="
+                background: var(--bg-hover);
+                padding: ${isMobile ? '14px' : '20px'};
+                border-radius: 12px;
+                margin: ${isMobile ? '12px 0' : '20px 0'};
+            ">
+                <h4 style="font-size: ${isMobile ? '14px' : '16px'}; margin: 0 0 8px 0;">📋 Regras do Chatbot:</h4>
+                <ul style="margin: 0; padding-left: 20px; line-height: 2; font-size: ${isMobile ? '13px' : '14px'}; color: var(--text-secondary);">
                     <li>✅ Respeita horários de funcionamento</li>
                     <li>✅ Respeita o bloqueio geral de dias</li>
                     <li>✅ Você pode bloquear clientes na tela de Clientes</li>
@@ -537,61 +967,165 @@ function renderChatbot(link) {
             </div>
             
             <div class="form-group">
-                <label>🔗 Link do Chatbot</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="chatbotLink" class="form-control" readonly style="flex:1; background: var(--bg-input);" value="${link || ''}">
-                    <button class="btn-primary" onclick="copiarLinkChatbot()">📋 Copiar</button>
+                <label style="font-weight: 600; display: block; margin-bottom: 6px; font-size: ${isMobile ? '13px' : '14px'};">
+                    <i class="fas fa-link"></i> Link do Chatbot
+                </label>
+                <div style="display: flex; gap: 8px; flex-direction: ${isMobile ? 'column' : 'row'};">
+                    <input type="text" id="chatbotLink" class="form-control" readonly style="
+                        flex: 1;
+                        padding: ${isMobile ? '10px 12px' : '10px 14px'};
+                        border: 2px solid var(--border-color);
+                        border-radius: 8px;
+                        background: var(--bg-input);
+                        color: var(--text-primary);
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        ${isMobile ? 'width: 100%;' : ''}
+                    " value="${link || ''}">
+                    <button onclick="copiarLinkChatbot()" style="
+                        padding: ${isMobile ? '10px 16px' : '8px 20px'};
+                        background: var(--gradient);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: 6px;
+                        justify-content: center;
+                        ${isMobile ? 'width: 100%;' : ''}
+                    ">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
                 </div>
             </div>
             
-            <div style="text-align: center; margin-top: 20px; padding: 20px; background: var(--bg-hover); border-radius: 16px;">
-                <p>📱 Escaneie o QR Code para acessar o chatbot:</p>
-                <div id="qrCode" style="display: flex; justify-content: center; margin-top: 12px;"></div>
-                <small style="color: var(--text-muted); display: block; margin-top: 8px;">Ou compartilhe o link acima com seus clientes</small>
+            <div style="text-align: center; margin-top: ${isMobile ? '16px' : '20px'}; padding: ${isMobile ? '16px' : '20px'}; background: var(--bg-hover); border-radius: 12px;">
+                <p style="font-size: ${isMobile ? '13px' : '14px'}; margin: 0 0 12px 0;">📱 Escaneie o QR Code para acessar o chatbot:</p>
+                <div id="qrCode" style="display: flex; justify-content: center;"></div>
+                <small style="color: var(--text-muted); display: block; margin-top: 8px; font-size: ${isMobile ? '11px' : '12px'};">Ou compartilhe o link acima com seus clientes</small>
             </div>
         </div>
     `;
 }
 
 // ============================================
-// RENDER TEMA
+// RENDER TEMA - VERSÃO MOBILE MELHORADA
 // ============================================
 function renderTema(temaAtual) {
+    const isMobile = window.innerWidth < 768;
     const isDark = temaAtual === 'dark';
 
     return `
-        <div class="card">
+        <div class="card" style="padding: ${isMobile ? '14px' : '24px'};">
             <div class="card-header">
-                <h3><i class="fas fa-${isDark ? 'moon' : 'sun'}"></i> Tema</h3>
+                <h3 style="font-size: ${isMobile ? '16px' : '18px'}; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-${isDark ? 'moon' : 'sun'}" style="color: var(--primary);"></i> Tema
+                </h3>
             </div>
             
             <div class="theme-settings">
-                <div class="theme-toggle-container">
-                    <div class="theme-info">
-                        <i class="fas fa-${isDark ? 'moon' : 'sun'} theme-icon"></i>
+                <div class="theme-toggle-container" style="
+                    display: flex;
+                    flex-direction: ${isMobile ? 'column' : 'row'};
+                    justify-content: space-between;
+                    align-items: ${isMobile ? 'center' : 'center'};
+                    padding: ${isMobile ? '14px' : '16px'};
+                    background: var(--bg-hover);
+                    border-radius: 10px;
+                    gap: ${isMobile ? '12px' : '16px'};
+                    text-align: ${isMobile ? 'center' : 'left'};
+                ">
+                    <div class="theme-info" style="
+                        display: flex;
+                        align-items: center;
+                        gap: 14px;
+                        flex-direction: ${isMobile ? 'column' : 'row'};
+                        text-align: ${isMobile ? 'center' : 'left'};
+                    ">
+                        <i class="fas fa-${isDark ? 'moon' : 'sun'} theme-icon" style="
+                            font-size: ${isMobile ? '28px' : '32px'};
+                            color: var(--primary);
+                        "></i>
                         <div>
-                            <h4>${isDark ? '🌙 Tema Escuro' : '☀️ Tema Claro'}</h4>
-                            <p>${isDark ? 'Interface escura para melhor visualização noturna' : 'Interface clara para melhor visualização durante o dia'}</p>
+                            <h4 style="font-size: ${isMobile ? '15px' : '16px'}; margin: 0; color: var(--text-primary);">
+                                ${isDark ? '🌙 Tema Escuro' : '☀️ Tema Claro'}
+                            </h4>
+                            <p style="font-size: ${isMobile ? '12px' : '13px'}; color: var(--text-muted); margin: 4px 0 0 0;">
+                                ${isDark ? 'Interface escura para melhor visualização noturna' : 'Interface clara para melhor visualização durante o dia'}
+                            </p>
                         </div>
                     </div>
-                    <div class="theme-switch-wrapper">
-                        <label class="theme-switch">
-                            <input type="checkbox" id="themeToggle" ${isDark ? 'checked' : ''} onchange="toggleTheme()">
-                            <span class="slider round"></span>
+                    <div class="theme-switch-wrapper" style="display: flex; align-items: center; gap: 10px;">
+                        <label class="theme-switch" style="position: relative; display: inline-block; width: 52px; height: 28px;">
+                            <input type="checkbox" id="themeToggle" ${isDark ? 'checked' : ''} onchange="toggleTheme()" style="opacity: 0; width: 0; height: 0;">
+                            <span class="slider" style="
+                                position: absolute;
+                                cursor: pointer;
+                                top: 0;
+                                left: 0;
+                                right: 0;
+                                bottom: 0;
+                                background: ${isDark ? 'var(--gradient)' : '#ccc'};
+                                transition: 0.4s;
+                                border-radius: 34px;
+                            "></span>
+                            <span class="slider:before" style="
+                                position: absolute;
+                                content: '';
+                                height: 22px;
+                                width: 22px;
+                                left: 3px;
+                                bottom: 3px;
+                                background: white;
+                                transition: 0.4s;
+                                border-radius: 50%;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                transform: ${isDark ? 'translateX(24px)' : 'none'};
+                            "></span>
                         </label>
-                        <span class="theme-label">${isDark ? '🌙' : '☀️'}</span>
+                        <span class="theme-label" style="font-size: ${isMobile ? '22px' : '24px'};">${isDark ? '🌙' : '☀️'}</span>
                     </div>
                 </div>
                 
-                <div class="theme-preview">
-                    <p style="color: var(--text-muted); font-size: 13px; margin-top: 12px;">
+                <div class="theme-preview" style="
+                    margin-top: 14px;
+                    padding: ${isMobile ? '14px' : '16px'};
+                    background: var(--bg-secondary);
+                    border-radius: 10px;
+                    border: 1px solid var(--border-color);
+                ">
+                    <p style="color: var(--text-muted); font-size: ${isMobile ? '12px' : '13px'}; margin: 0 0 10px 0;">
                         <i class="fas fa-info-circle"></i> 
                         O tema é salvo automaticamente no seu navegador
                     </p>
-                    <div class="theme-preview-row">
-                        <span class="preview-item">Exemplo Card</span>
-                        <span class="preview-item active-preview">Botão</span>
-                        <span class="preview-item">Texto</span>
+                    <div class="theme-preview-row" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <span class="preview-item" style="
+                            padding: ${isMobile ? '6px 12px' : '8px 16px'};
+                            background: var(--bg-card);
+                            border-radius: 8px;
+                            border: 1px solid var(--border-color);
+                            font-size: ${isMobile ? '12px' : '13px'};
+                            color: var(--text-secondary);
+                        ">Exemplo Card</span>
+                        <span class="preview-item active-preview" style="
+                            padding: ${isMobile ? '6px 12px' : '8px 16px'};
+                            background: var(--gradient);
+                            border-radius: 8px;
+                            border: 1px solid transparent;
+                            font-size: ${isMobile ? '12px' : '13px'};
+                            color: white;
+                        ">Botão</span>
+                        <span class="preview-item" style="
+                            padding: ${isMobile ? '6px 12px' : '8px 16px'};
+                            background: var(--bg-card);
+                            border-radius: 8px;
+                            border: 1px solid var(--border-color);
+                            font-size: ${isMobile ? '12px' : '13px'};
+                            color: var(--text-secondary);
+                        ">Texto</span>
                     </div>
                 </div>
             </div>

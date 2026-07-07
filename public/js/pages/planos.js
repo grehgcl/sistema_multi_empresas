@@ -95,13 +95,14 @@ const PLANOS_CONFIG = {
 };
 
 // ============================================
-// FUNÇÃO PRINCIPAL - CARREGAR PLANOS
+// FUNÇÃO PRINCIPAL - CARREGAR PLANOS (MOBILE MELHORADO)
 // ============================================
 
 async function carregarPlanos() {
     console.log('🔄 Carregando planos...');
     showLoading();
     const token = localStorage.getItem('token');
+    const isMobile = window.innerWidth < 768;
 
     try {
         // Buscar plano atual
@@ -124,51 +125,71 @@ async function carregarPlanos() {
             isTrial = planoData.data.is_trial || (planoAtual === 'trial');
         }
 
-        // Gerar HTML
+        // Gerar HTML - MOBILE MELHORADO
         let html = `
             <div class="fade-in">
                 <!-- Título -->
-                <div class="dashboard-header">
+                <div class="dashboard-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'flex-start' : 'center'}; gap: ${isMobile ? '8px' : '0'};">
                     <div>
-                        <h2 class="page-title">💎 Planos e Assinaturas</h2>
-                        <p class="page-subtitle">
+                        <h2 class="page-title" style="font-size: ${isMobile ? '20px' : '24px'};">💎 Planos e Assinaturas</h2>
+                        <p class="page-subtitle" style="font-size: ${isMobile ? '13px' : '14px'};">
                             <i class="fas fa-rocket"></i> 
                             Escolha o plano ideal para o seu negócio
                         </p>
                     </div>
                 </div>
 
-                <!-- Plano Atual -->
-                <div class="plano-atual-card" style="background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 30px; margin-bottom: 32px; color: white;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-                        <div>
-                            <h3 style="color: white; margin: 0 0 8px 0; font-size: 18px;">
+                <!-- Plano Atual - MOBILE MELHORADO -->
+                <div style="
+                    background: linear-gradient(135deg, #667eea, #764ba2); 
+                    border-radius: 16px; 
+                    padding: ${isMobile ? '20px' : '30px'}; 
+                    margin-bottom: 24px; 
+                    color: white;
+                ">
+                    <div style="display: flex; flex-direction: ${isMobile ? 'column' : 'row'}; justify-content: space-between; align-items: ${isMobile ? 'center' : 'center'}; gap: ${isMobile ? '16px' : '20px'}; text-align: ${isMobile ? 'center' : 'left'};">
+                        <div style="${isMobile ? 'width: 100%;' : ''}">
+                            <h3 style="color: white; margin: 0 0 8px 0; font-size: ${isMobile ? '16px' : '18px'};">
                                 <i class="fas fa-crown"></i> Plano Atual
                             </h3>
-                            <p style="font-size: 32px; font-weight: bold; margin: 0;">
+                            <p style="font-size: ${isMobile ? '24px' : '32px'}; font-weight: bold; margin: 0;">
                                 ${isTrial ? '🎯 Trial (Teste Grátis)' : PLANOS_CONFIG[planoAtual]?.nome || planoAtual}
                             </p>
                             ${isTrial ? `
-                                <p style="margin: 8px 0 0 0; opacity: 0.9;">
+                                <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
                                     ⏳ ${diasRestantes} dias restantes de teste
                                 </p>
                             ` : `
-                                <p style="margin: 8px 0 0 0; opacity: 0.9;">
+                                <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
                                     📅 Válido até: ${validaAte || 'N/A'}
                                 </p>
                             `}
-                            <p style="margin: 4px 0 0 0; opacity: 0.8;">
+                            <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
                                 👥 ${limiteAtual} profissional(is) ativo(s)
                             </p>
                         </div>
                         ${isTrial ? `
-                            <div style="text-align: center; background: rgba(255,255,255,0.2); padding: 20px 30px; border-radius: 12px;">
-                                <div style="font-size: 48px; font-weight: bold;">${diasRestantes}</div>
-                                <div style="font-size: 14px; opacity: 0.9;">dias restantes</div>
+                            <div style="
+                                text-align: center; 
+                                background: rgba(255,255,255,0.2); 
+                                padding: ${isMobile ? '16px 24px' : '20px 30px'}; 
+                                border-radius: 12px;
+                                ${isMobile ? 'width: 100%;' : ''}
+                            ">
+                                <div style="font-size: ${isMobile ? '36px' : '48px'}; font-weight: bold;">${diasRestantes}</div>
+                                <div style="font-size: ${isMobile ? '12px' : '14px'}; opacity: 0.9;">dias restantes</div>
                             </div>
                         ` : ''}
                         ${!isTrial ? `
-                            <button onclick="cancelarAssinatura()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+                            <button onclick="cancelarAssinatura()" style="
+                                background: rgba(255,255,255,0.2); 
+                                color: white; 
+                                border: 1px solid rgba(255,255,255,0.3); 
+                                padding: ${isMobile ? '10px 20px' : '10px 20px'}; 
+                                border-radius: 8px; 
+                                cursor: pointer;
+                                ${isMobile ? 'width: 100%;' : ''}
+                            ">
                                 ❌ Cancelar Assinatura
                             </button>
                         ` : ''}
@@ -179,8 +200,8 @@ async function carregarPlanos() {
         // Aviso de trial próximo do fim
         if (isTrial && diasRestantes <= 7 && diasRestantes > 0) {
             html += `
-                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px 20px; border-radius: 8px; margin-bottom: 24px;">
-                    <p style="margin: 0; color: #92400e;">
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: ${isMobile ? '12px 16px' : '15px 20px'}; border-radius: 8px; margin-bottom: 20px;">
+                    <p style="margin: 0; color: #92400e; font-size: ${isMobile ? '13px' : '14px'};">
                         ⚠️ <strong>Atenção!</strong> Seu período de teste termina em <strong>${diasRestantes} dias</strong>. 
                         Escolha um plano abaixo para não perder o acesso ao sistema.
                     </p>
@@ -188,18 +209,37 @@ async function carregarPlanos() {
             `;
         }
 
-        // Toggle Mensal/Anual
+        // Toggle Mensal/Anual - MOBILE MELHORADO
         html += `
-            <div style="text-align: center; margin-bottom: 32px;">
-                <div style="display: inline-flex; gap: 10px; background: #f3f4f6; padding: 6px; border-radius: 30px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-flex; gap: 8px; background: var(--bg-hover); padding: 4px; border-radius: 30px;">
                     <button onclick="togglePeriodo('mensal')" id="btnMensal" 
-                        style="padding: 10px 24px; border: none; border-radius: 24px; background: #667eea; color: white; cursor: pointer; font-weight: bold; transition: all 0.3s;">
+                        style="
+                            padding: ${isMobile ? '8px 16px' : '10px 24px'}; 
+                            border: none; 
+                            border-radius: 24px; 
+                            background: #667eea; 
+                            color: white; 
+                            cursor: pointer; 
+                            font-weight: bold; 
+                            transition: all 0.3s;
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
                         📅 Mensal
                     </button>
                     <button onclick="togglePeriodo('anual')" id="btnAnual" 
-                        style="padding: 10px 24px; border: none; border-radius: 24px; background: transparent; color: #6b7280; cursor: pointer; transition: all 0.3s;">
+                        style="
+                            padding: ${isMobile ? '8px 16px' : '10px 24px'}; 
+                            border: none; 
+                            border-radius: 24px; 
+                            background: transparent; 
+                            color: var(--text-muted); 
+                            cursor: pointer; 
+                            transition: all 0.3s;
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
                         📆 Anual 
-                        <span style="background: #10b981; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px; margin-left: 4px;">
+                        <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: ${isMobile ? '9px' : '11px'}; margin-left: 4px;">
                             -20%
                         </span>
                     </button>
@@ -207,9 +247,9 @@ async function carregarPlanos() {
             </div>
         `;
 
-        // Cards dos Planos
+        // Cards dos Planos - MOBILE MELHORADO
         html += `
-            <div id="planosContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px;">
+            <div id="planosContainer" style="display: grid; grid-template-columns: ${isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))'}; gap: ${isMobile ? '16px' : '24px'};">
         `;
 
         for (const [key, plano] of Object.entries(PLANOS_CONFIG)) {
@@ -221,68 +261,121 @@ async function carregarPlanos() {
 
             html += `
                 <div class="plano-card" style="
-                    background: white; 
-                    border-radius: 20px; 
-                    padding: 30px 25px; 
+                    background: var(--bg-card); 
+                    border-radius: 16px; 
+                    padding: ${isMobile ? '20px 16px' : '30px 25px'}; 
                     text-align: center; 
                     transition: all 0.3s ease; 
-                    border: 2px solid ${isCurrent ? plano.cor : '#e5e7eb'};
-                    box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+                    border: 2px solid ${isCurrent ? plano.cor : 'var(--border-color)'};
+                    box-shadow: ${isCurrent ? `0 10px 40px -5px ${plano.cor}40` : 'var(--shadow)'};
                     position: relative;
-                    ${isCurrent ? `box-shadow: 0 10px 40px -5px ${plano.cor}40;` : ''}
                     cursor: pointer;
                 "
-                onmouseenter="this.style.transform='translateY(-8px)'" 
+                onmouseenter="this.style.transform='translateY(-4px)'" 
                 onmouseleave="this.style.transform='translateY(0)'"
                 onclick="selecionarPlano('${key}')"
                 >
                     ${plano.popular ? `
-                        <div style="position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);">
+                        <div style="
+                            position: absolute; 
+                            top: -10px; 
+                            left: 50%; 
+                            transform: translateX(-50%); 
+                            background: linear-gradient(135deg, #f59e0b, #d97706); 
+                            color: white; 
+                            padding: ${isMobile ? '3px 12px' : '4px 16px'}; 
+                            border-radius: 20px; 
+                            font-size: ${isMobile ? '10px' : '12px'}; 
+                            font-weight: bold; 
+                            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+                            white-space: nowrap;
+                        ">
                             ⭐ MAIS POPULAR
                         </div>
                     ` : ''}
                     ${isCurrent ? `
-                        <div style="position: absolute; top: 12px; right: 12px; background: #10b981; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: bold;">
+                        <div style="
+                            position: absolute; 
+                            top: 10px; 
+                            right: 10px; 
+                            background: #10b981; 
+                            color: white; 
+                            padding: ${isMobile ? '2px 10px' : '4px 12px'}; 
+                            border-radius: 20px; 
+                            font-size: ${isMobile ? '9px' : '11px'}; 
+                            font-weight: bold;
+                        ">
                             ✅ ATUAL
                         </div>
                     ` : ''}
                     
-                    <div style="font-size: 14px; color: ${plano.cor}; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                    <div style="font-size: ${isMobile ? '12px' : '14px'}; color: ${plano.cor}; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">
                         ${plano.nome}
                     </div>
                     
-                    <div style="font-size: 42px; font-weight: bold; color: ${plano.cor}; margin: 16px 0 4px 0;">
+                    <div style="font-size: ${isMobile ? '32px' : '42px'}; font-weight: bold; color: ${plano.cor}; margin: 12px 0 4px 0;">
                         R$ ${valor.toFixed(2)}
-                        <span style="font-size: 14px; color: #6b7280; font-weight: normal;">${periodoLabel}</span>
+                        <span style="font-size: ${isMobile ? '12px' : '14px'}; color: var(--text-muted); font-weight: normal;">${periodoLabel}</span>
                     </div>
                     
                     ${periodoSelecionado === 'anual' && plano.valor_mensal ? `
-                        <div style="font-size: 13px; color: #10b981; margin-bottom: 12px;">
-                            Economia de ${economia}% (R$ ${(plano.valor_mensal * 12 - plano.valor_anual).toFixed(2)}/ano)
+                        <div style="font-size: ${isMobile ? '11px' : '13px'}; color: #10b981; margin-bottom: 8px;">
+                            Economia de ${economia}%
                         </div>
                     ` : ''}
                     
-                    <div style="font-size: 14px; background: #f3f4f6; padding: 8px 12px; border-radius: 8px; margin-bottom: 20px; display: inline-block;">
+                    <div style="
+                        font-size: ${isMobile ? '12px' : '14px'}; 
+                        background: var(--bg-hover); 
+                        padding: ${isMobile ? '6px 10px' : '8px 12px'}; 
+                        border-radius: 8px; 
+                        margin-bottom: 14px; 
+                        display: inline-block;
+                    ">
                         👥 ${plano.profs === 'Ilimitado' ? '♾️ Profissionais Ilimitados' : `Até ${plano.profs} profissionais`}
                     </div>
                     
-                    <ul style="list-style: none; padding: 0; margin: 20px 0; text-align: left;">
-                        ${plano.recursos.map(r => `<li style="padding: 6px 0; font-size: 14px; color: #374151;">${r}</li>`).join('')}
+                    <ul style="list-style: none; padding: 0; margin: 14px 0; text-align: left;">
+                        ${plano.recursos.slice(0, isMobile ? 4 : 6).map(r => `
+                            <li style="padding: ${isMobile ? '4px 0' : '6px 0'}; font-size: ${isMobile ? '13px' : '14px'}; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
+                                <span style="color: #10b981;">✅</span> ${r.replace('✅ ', '')}
+                            </li>
+                        `).join('')}
+                        ${plano.recursos.length > (isMobile ? 4 : 6) ? `
+                            <li style="padding: 4px 0; font-size: 12px; color: var(--text-muted); text-align: center;">
+                                + ${plano.recursos.length - (isMobile ? 4 : 6)} outros benefícios
+                            </li>
+                        ` : ''}
                     </ul>
                     
-                    ${plano.limitacoes.length > 0 ? `
-                        <ul style="list-style: none; padding: 0; margin: 10px 0 20px 0; text-align: left; border-top: 1px solid #e5e7eb; padding-top: 10px;">
-                            ${plano.limitacoes.map(r => `<li style="padding: 4px 0; font-size: 13px; color: #9ca3af;">${r}</li>`).join('')}
-                        </ul>
-                    ` : ''}
-                    
                     ${isCurrent ? `
-                        <button disabled style="background: #10b981; color: white; padding: 12px 32px; border: none; border-radius: 12px; cursor: default; font-weight: bold; width: 100%;">
+                        <button disabled style="
+                            background: #10b981; 
+                            color: white; 
+                            padding: ${isMobile ? '10px 20px' : '12px 32px'}; 
+                            border: none; 
+                            border-radius: 10px; 
+                            cursor: default; 
+                            font-weight: bold; 
+                            width: 100%;
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
                             ✅ Plano Atual
                         </button>
                     ` : `
                         <button onclick="event.stopPropagation(); escolherPlano('${key}')" 
-                            style="background: linear-gradient(135deg, ${plano.cor}, ${plano.cor}dd); color: white; padding: 12px 32px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; width: 100%; transition: all 0.3s;">
+                            style="
+                                background: linear-gradient(135deg, ${plano.cor}, ${plano.cor}dd); 
+                                color: white; 
+                                padding: ${isMobile ? '10px 20px' : '12px 32px'}; 
+                                border: none; 
+                                border-radius: 10px; 
+                                cursor: pointer; 
+                                font-weight: bold; 
+                                width: 100%; 
+                                transition: all 0.3s;
+                                font-size: ${isMobile ? '13px' : '14px'};
+                            ">
                             <i class="fas fa-rocket"></i> Escolher Plano
                         </button>
                     `}
@@ -294,14 +387,14 @@ async function carregarPlanos() {
             </div>
         `;
 
-        // Tabela Comparativa
-        html += gerarTabelaComparativa();
+        // Tabela Comparativa - MOBILE MELHORADA (rolagem horizontal)
+        html += gerarTabelaComparativaMobile(isMobile);
 
         // FAQ
-        html += gerarFAQ();
+        html += gerarFAQMobile(isMobile);
 
-        // Benefícios Adicionais
-        html += gerarBeneficiosAdicionais();
+        // Benefícios Adicionais - MOBILE MELHORADO
+        html += gerarBeneficiosAdicionaisMobile(isMobile);
 
         html += `</div>`;
 
@@ -363,22 +456,20 @@ function selecionarPlano(planoId) {
 }
 
 // ============================================
-// GERAR TABELA COMPARATIVA - CORRIGIDA
+// GERAR TABELA COMPARATIVA - MOBILE MELHORADA
 // ============================================
 
-function gerarTabelaComparativa() {
+function gerarTabelaComparativaMobile(isMobile) {
     const comparacao = [
         { recurso: 'Chatbot Inteligente', starter: '✅', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'Agendamentos/Mês', starter: '100', pro: '♾️ Ilimitado', business: '♾️ Ilimitado', enterprise: '♾️ Ilimitado' },
-        { recurso: 'Profissionais', starter: '1', pro: '5', business: '15', enterprise: '♾️ Ilimitado' },
+        { recurso: 'Agendamentos/Mês', starter: '100', pro: '♾️', business: '♾️', enterprise: '♾️' },
+        { recurso: 'Profissionais', starter: '1', pro: '5', business: '15', enterprise: '♾️' },
         { recurso: 'WhatsApp Business', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
         { recurso: 'Dashboard Analytics', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'Relatórios Avançados', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'API', starter: '❌', pro: '❌', business: '✅ Básica', enterprise: '✅ Completa' },
-        { recurso: 'Suporte', starter: '📧 Email', pro: '💬 WhatsApp', business: '🆘 Prioritário', enterprise: '👨‍💼 Dedicado' },
+        { recurso: 'Relatórios', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
+        { recurso: 'API', starter: '❌', pro: '❌', business: '✅', enterprise: '✅' },
+        { recurso: 'Suporte', starter: '📧', pro: '💬', business: '🆘', enterprise: '👨‍💼' },
         { recurso: 'Múltiplas Unidades', starter: '❌', pro: '❌', business: '✅', enterprise: '✅' },
-        { recurso: 'SLA Garantido', starter: '❌', pro: '❌', business: '❌', enterprise: '✅' },
-        { recurso: 'Treinamento', starter: '❌', pro: '❌', business: '❌', enterprise: '✅' }
     ];
 
     const valorMensal = {
@@ -397,154 +488,218 @@ function gerarTabelaComparativa() {
 
     const valores = periodoSelecionado === 'anual' ? valorAnual : valorMensal;
 
-    return `
-        <div style="margin-top: 48px; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
-            <h3 style="text-align: center; margin-bottom: 20px;">
-                📊 Comparação de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
-            </h3>
-            <div style="overflow-x: auto;">
-                <table class="data-table" style="min-width: 600px; font-size: 14px; border-collapse: collapse; width: 100%;">
-                    <thead>
-                        <tr>
-                            <th style="min-width: 180px; text-align: left; padding: 12px 16px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #1e293b;">Recurso</th>
-                            <th style="text-align: center; padding: 12px 16px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569;">Starter</th>
-                            <th style="text-align: center; padding: 12px 16px; background: #1e293b; border-bottom: 2px solid #f59e0b; font-weight: 600; color: #f59e0b; position: relative;">
-                                ⭐ Pro
-                                <span style="display: block; font-size: 10px; color: #94a3b8; font-weight: 400;">MAIS POPULAR</span>
-                            </th>
-                            <th style="text-align: center; padding: 12px 16px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569;">Business</th>
-                            <th style="text-align: center; padding: 12px 16px; background: #f8fafc; border-bottom: 2px solid #e2e8f0; font-weight: 600; color: #475569;">Enterprise</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${comparacao.map((row, index) => `
-                            <tr style="${index % 2 === 0 ? 'background: #fafbfc;' : 'background: white;'}">
-                                <td style="padding: 10px 16px; font-weight: 500; color: #1e293b; border-bottom: 1px solid #f1f5f9;">${row.recurso}</td>
-                                <td style="text-align: center; padding: 10px 16px; color: #475569; border-bottom: 1px solid #f1f5f9;">${row.starter}</td>
-                                <td style="text-align: center; padding: 10px 16px; background: #fef9e7; color: #92400e; font-weight: 500; border-bottom: 1px solid #f1f5f9;">${row.pro}</td>
-                                <td style="text-align: center; padding: 10px 16px; color: #475569; border-bottom: 1px solid #f1f5f9;">${row.business}</td>
-                                <td style="text-align: center; padding: 10px 16px; color: #475569; border-bottom: 1px solid #f1f5f9;">${row.enterprise}</td>
-                            </tr>
+    if (isMobile) {
+        // ============================================
+        // VERSÃO MOBILE - CARDS COMPARATIVOS
+        // ============================================
+        let cards = '';
+        const planos = ['starter', 'pro', 'business', 'enterprise'];
+        const planosNomes = {
+            starter: 'Starter',
+            pro: '⭐ Pro',
+            business: 'Business',
+            enterprise: 'Enterprise'
+        };
+        const planosCores = {
+            starter: '#667eea',
+            pro: '#f59e0b',
+            business: '#8b5cf6',
+            enterprise: '#ec4899'
+        };
+
+        for (let p of planos) {
+            const isPro = p === 'pro';
+            cards += `
+                <div style="
+                    background: ${isPro ? 'var(--bg-hover)' : 'var(--bg-card)'};
+                    border-radius: 12px;
+                    padding: 14px 16px;
+                    border: ${isPro ? '2px solid #f59e0b' : '1px solid var(--border-color)'};
+                    ${isPro ? 'box-shadow: 0 4px 12px rgba(245,158,11,0.15);' : ''}
+                ">
+                    <div style="
+                        font-size: 14px;
+                        font-weight: 700;
+                        color: ${planosCores[p]};
+                        text-align: center;
+                        margin-bottom: 8px;
+                        ${isPro ? 'font-size: 16px;' : ''}
+                    ">
+                        ${planosNomes[p]}
+                        ${isPro ? '<span style="display:block;font-size:10px;color:#f59e0b;">⭐ MAIS POPULAR</span>' : ''}
+                    </div>
+                    <div style="
+                        font-size: 18px;
+                        font-weight: 700;
+                        color: var(--text-primary);
+                        text-align: center;
+                        margin-bottom: 10px;
+                    ">
+                        ${valores[p]}
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px;">
+                        ${comparacao.map(row => `
+                            <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid var(--border-color);">
+                                <span style="color: var(--text-muted);">${row.recurso}</span>
+                                <span style="font-weight: 500; color: var(--text-primary);">${row[p]}</span>
+                            </div>
                         `).join('')}
-                        <tr style="font-weight: bold; background: #f1f5f9;">
-                            <td style="padding: 12px 16px; color: #1e293b; border-top: 2px solid #e2e8f0;">💰 Valor</td>
-                            <td style="text-align: center; padding: 12px 16px; color: #3b82f6; border-top: 2px solid #e2e8f0;">${valores.starter}</td>
-                            <td style="text-align: center; padding: 12px 16px; background: #fbbf24; color: #1e293b; font-weight: 700; border-top: 2px solid #f59e0b; border-radius: 0 0 8px 8px;">
-                                ${valores.pro}
-                                <span style="display: block; font-size: 10px; font-weight: 400; color: #78350f;">⭐ Melhor custo-benefício</span>
-                            </td>
-                            <td style="text-align: center; padding: 12px 16px; color: #8b5cf6; border-top: 2px solid #e2e8f0;">${valores.business}</td>
-                            <td style="text-align: center; padding: 12px 16px; color: #ec4899; border-top: 2px solid #e2e8f0;">${valores.enterprise}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                    </div>
+                    <button onclick="escolherPlano('${p}')" style="
+                        width: 100%;
+                        margin-top: 10px;
+                        padding: 8px;
+                        background: ${isPro ? 'linear-gradient(135deg, #f59e0b, #d97706)' : planosCores[p]};
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        font-weight: 600;
+                        font-size: 13px;
+                        cursor: pointer;
+                    ">
+                        Escolher
+                    </button>
+                </div>
+            `;
+        }
+
+        return `
+            <div style="margin-top: 32px; background: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--border-color);">
+                <h3 style="text-align: center; margin-bottom: 16px; font-size: 16px;">
+                    📊 Comparação de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
+                </h3>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${cards}
+                </div>
+                <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--text-muted);">
+                    <i class="fas fa-info-circle"></i> 
+                    ${periodoSelecionado === 'anual' ? '💰 Plano anual com 20% de desconto!' : '📅 Planos mensais sem fidelidade'}
+                </div>
             </div>
-            <div style="text-align: center; margin-top: 16px; font-size: 13px; color: #6b7280;">
-                <i class="fas fa-info-circle"></i> 
-                ${periodoSelecionado === 'anual' ? '💰 Plano anual com 20% de desconto!' : '📅 Planos mensais sem fidelidade'}
+        `;
+    } else {
+        // ============================================
+        // VERSÃO DESKTOP - TABELA
+        // ============================================
+        return `
+            <div style="margin-top: 48px; background: var(--bg-card); border-radius: 16px; padding: 24px; border: 1px solid var(--border-color);">
+                <h3 style="text-align: center; margin-bottom: 20px;">
+                    📊 Comparação de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
+                </h3>
+                <div style="overflow-x: auto;">
+                    <table class="data-table" style="min-width: 600px; font-size: 14px; border-collapse: collapse; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 180px; text-align: left; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-primary);">Recurso</th>
+                                <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Starter</th>
+                                <th style="text-align: center; padding: 12px 16px; background: #1e293b; border-bottom: 2px solid #f59e0b; font-weight: 600; color: #f59e0b; position: relative;">
+                                    ⭐ Pro
+                                    <span style="display: block; font-size: 10px; color: #94a3b8; font-weight: 400;">MAIS POPULAR</span>
+                                </th>
+                                <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Business</th>
+                                <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Enterprise</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${comparacao.map((row, index) => `
+                                <tr style="${index % 2 === 0 ? 'background: var(--bg-hover);' : 'background: var(--bg-card);'}">
+                                    <td style="padding: 10px 16px; font-weight: 500; color: var(--text-primary); border-bottom: 1px solid var(--border-color);">${row.recurso}</td>
+                                    <td style="text-align: center; padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">${row.starter}</td>
+                                    <td style="text-align: center; padding: 10px 16px; background: #fef9e7; color: #92400e; font-weight: 500; border-bottom: 1px solid var(--border-color);">${row.pro}</td>
+                                    <td style="text-align: center; padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">${row.business}</td>
+                                    <td style="text-align: center; padding: 10px 16px; color: var(--text-secondary); border-bottom: 1px solid var(--border-color);">${row.enterprise}</td>
+                                </tr>
+                            `).join('')}
+                            <tr style="font-weight: bold; background: var(--bg-hover);">
+                                <td style="padding: 12px 16px; color: var(--text-primary); border-top: 2px solid var(--border-color);">💰 Valor</td>
+                                <td style="text-align: center; padding: 12px 16px; color: #3b82f6; border-top: 2px solid var(--border-color);">${valores.starter}</td>
+                                <td style="text-align: center; padding: 12px 16px; background: #fbbf24; color: #1e293b; font-weight: 700; border-top: 2px solid #f59e0b; border-radius: 0 0 8px 8px;">
+                                    ${valores.pro}
+                                    <span style="display: block; font-size: 10px; font-weight: 400; color: #78350f;">⭐ Melhor custo-benefício</span>
+                                </td>
+                                <td style="text-align: center; padding: 12px 16px; color: #8b5cf6; border-top: 2px solid var(--border-color);">${valores.business}</td>
+                                <td style="text-align: center; padding: 12px 16px; color: #ec4899; border-top: 2px solid var(--border-color);">${valores.enterprise}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div style="text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted);">
+                    <i class="fas fa-info-circle"></i> 
+                    ${periodoSelecionado === 'anual' ? '💰 Plano anual com 20% de desconto!' : '📅 Planos mensais sem fidelidade'}
+                </div>
+            </div>
+        `;
+    }
+}
+
+// ============================================
+// GERAR FAQ - MOBILE MELHORADA
+// ============================================
+
+function gerarFAQMobile(isMobile) {
+    const faqs = [
+        {
+            q: 'Posso mudar de plano depois?',
+            a: 'Sim! Você pode fazer upgrade ou downgrade a qualquer momento. O valor é proporcional aos dias utilizados.'
+        },
+        {
+            q: 'O que acontece se meu plano expirar?',
+            a: 'Você volta para o plano Trial com 7 dias de acesso para regularizar sua assinatura. Seus dados são mantidos.'
+        },
+        {
+            q: 'Posso cancelar quando quiser?',
+            a: 'Sim! Você pode cancelar sua assinatura a qualquer momento sem multa ou fidelidade.'
+        },
+        {
+            q: 'Tem desconto para pagamento anual?',
+            a: 'Sim! Planos anuais têm 20% de desconto, o que equivale a 2 meses grátis no ano.'
+        },
+        {
+            q: 'O que é o período de teste?',
+            a: 'Você tem 45 dias de teste grátis com acesso a todas as funcionalidades do plano Starter.'
+        }
+    ];
+
+    return `
+        <div style="margin-top: 32px; background: var(--bg-hover); padding: ${isMobile ? '20px' : '30px'}; border-radius: 16px;">
+            <h3 style="text-align: center; margin-bottom: 16px; font-size: ${isMobile ? '18px' : '22px'};">❓ Perguntas Frequentes</h3>
+            <div style="max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px;">
+                ${faqs.map(faq => `
+                    <details style="background: var(--bg-card); padding: ${isMobile ? '12px 16px' : '16px 20px'}; border-radius: 10px; border: 1px solid var(--border-color);">
+                        <summary style="font-weight: 600; cursor: pointer; color: var(--text-primary); font-size: ${isMobile ? '14px' : '15px'};">
+                            <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
+                            ${faq.q}
+                        </summary>
+                        <p style="margin-top: 10px; color: var(--text-secondary); padding-left: 24px; font-size: ${isMobile ? '13px' : '14px'};">
+                            ${faq.a}
+                        </p>
+                    </details>
+                `).join('')}
             </div>
         </div>
     `;
 }
-
 // ============================================
-// GERAR FAQ
+// GERAR BENEFÍCIOS ADICIONAIS - MOBILE MELHORADO
 // ============================================
 
-function gerarFAQ() {
+function gerarBeneficiosAdicionaisMobile(isMobile) {
+    const beneficios = [
+        { icon: '🔒', title: 'Segurança', desc: 'Dados criptografados e backups automáticos' },
+        { icon: '📱', title: 'Mobile Ready', desc: 'Acesso completo pelo celular ou tablet' },
+        { icon: '🔄', title: 'Atualizações', desc: 'Novas funcionalidades sempre incluídas' },
+        { icon: '💳', title: 'Pagamento Seguro', desc: 'Processado via Mercado Pago com criptografia' }
+    ];
+
     return `
-        <div style="margin-top: 48px; background: #f9fafb; padding: 30px; border-radius: 16px;">
-            <h3 style="text-align: center; margin-bottom: 24px;">❓ Perguntas Frequentes</h3>
-            <div style="max-width: 700px; margin: 0 auto;">
-                <details style="margin-bottom: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <summary style="font-weight: 600; cursor: pointer; color: #1f2937;">
-                        <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
-                        Posso mudar de plano depois?
-                    </summary>
-                    <p style="margin-top: 12px; color: #4b5563; padding-left: 24px;">
-                        Sim! Você pode fazer upgrade ou downgrade a qualquer momento. O valor é proporcional aos dias utilizados.
-                    </p>
-                </details>
-                <details style="margin-bottom: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <summary style="font-weight: 600; cursor: pointer; color: #1f2937;">
-                        <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
-                        O que acontece se meu plano expirar?
-                    </summary>
-                    <p style="margin-top: 12px; color: #4b5563; padding-left: 24px;">
-                        Você volta para o plano Trial com 7 dias de acesso para regularizar sua assinatura. Seus dados são mantidos.
-                    </p>
-                </details>
-                <details style="margin-bottom: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <summary style="font-weight: 600; cursor: pointer; color: #1f2937;">
-                        <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
-                        Posso cancelar quando quiser?
-                    </summary>
-                    <p style="margin-top: 12px; color: #4b5563; padding-left: 24px;">
-                        Sim! Você pode cancelar sua assinatura a qualquer momento sem multa ou fidelidade.
-                    </p>
-                </details>
-                <details style="margin-bottom: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <summary style="font-weight: 600; cursor: pointer; color: #1f2937;">
-                        <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
-                        Tem desconto para pagamento anual?
-                    </summary>
-                    <p style="margin-top: 12px; color: #4b5563; padding-left: 24px;">
-                        Sim! Planos anuais têm <strong>20% de desconto</strong>, o que equivale a 2 meses grátis no ano.
-                    </p>
-                </details>
-                <details style="margin-bottom: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <summary style="font-weight: 600; cursor: pointer; color: #1f2937;">
-                        <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
-                        O que é o período de teste?
-                    </summary>
-                    <p style="margin-top: 12px; color: #4b5563; padding-left: 24px;">
-                        Você tem <strong>45 dias de teste grátis</strong> com acesso a todas as funcionalidades do plano Starter.
-                    </p>
-                </details>
-                <details style="margin-bottom: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    <summary style="font-weight: 600; cursor: pointer; color: #1f2937;">
-                        <i class="fas fa-chevron-right" style="color: #667eea; margin-right: 8px;"></i>
-                        Como funciona o suporte?
-                    </summary>
-                    <p style="margin-top: 12px; color: #4b5563; padding-left: 24px;">
-                        <strong>Starter:</strong> Suporte por Email<br>
-                        <strong>Pro:</strong> Suporte via WhatsApp<br>
-                        <strong>Business:</strong> Suporte Prioritário 24/7<br>
-                        <strong>Enterprise:</strong> Suporte Dedicado com gerente de conta
-                    </p>
-                </details>
-            </div>
-        </div>
-    `;
-}
-
-// ============================================
-// GERAR BENEFÍCIOS ADICIONAIS
-// ============================================
-
-function gerarBeneficiosAdicionais() {
-    return `
-        <div style="margin-top: 48px; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
-            <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <div style="font-size: 32px;">🔒</div>
-                <h4 style="margin: 8px 0;">Segurança</h4>
-                <p style="font-size: 13px; color: #6b7280; margin: 0;">Dados criptografados e backups automáticos</p>
-            </div>
-            <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <div style="font-size: 32px;">📱</div>
-                <h4 style="margin: 8px 0;">Mobile Ready</h4>
-                <p style="font-size: 13px; color: #6b7280; margin: 0;">Acesso completo pelo celular ou tablet</p>
-            </div>
-            <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <div style="font-size: 32px;">🔄</div>
-                <h4 style="margin: 8px 0;">Atualizações</h4>
-                <p style="font-size: 13px; color: #6b7280; margin: 0;">Novas funcionalidades sempre incluídas</p>
-            </div>
-            <div style="text-align: center; padding: 20px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                <div style="font-size: 32px;">💳</div>
-                <h4 style="margin: 8px 0;">Pagamento Seguro</h4>
-                <p style="font-size: 13px; color: #6b7280; margin: 0;">Processado via Mercado Pago com criptografia</p>
-            </div>
+        <div style="margin-top: 32px; display: grid; grid-template-columns: ${isMobile ? '1fr 1fr' : 'repeat(auto-fit, minmax(200px, 1fr))'}; gap: ${isMobile ? '12px' : '20px'};">
+            ${beneficios.map(b => `
+                <div style="text-align: center; padding: ${isMobile ? '16px' : '20px'}; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="font-size: ${isMobile ? '28px' : '32px'};">${b.icon}</div>
+                    <h4 style="margin: 8px 0 4px 0; font-size: ${isMobile ? '14px' : '16px'}; color: var(--text-primary);">${b.title}</h4>
+                    <p style="font-size: ${isMobile ? '12px' : '13px'}; color: var(--text-muted); margin: 0;">${b.desc}</p>
+                </div>
+            `).join('')}
         </div>
     `;
 }

@@ -64,9 +64,7 @@ async function enviarEvolution(numero, mensagem) {
     try {
         const url = `${config.evolution.apiUrl}/message/sendText/${config.evolution.instance}`;
 
-        // Formatar número (remover tudo que não é dígito)
         const numeroLimpo = numero.replace(/\D/g, '');
-        // Adicionar 55 se não tiver código do país
         const numeroFinal = numeroLimpo.length === 11 ? `55${numeroLimpo}` : numeroLimpo;
 
         const payload = {
@@ -129,29 +127,40 @@ async function send(numero, mensagem) {
 }
 
 // ============================================
-// GERAR MENSAGEM DE CONFIRMAÇÃO
+// GERAR MENSAGEM DE CONFIRMAÇÃO - CORRIGIDA
 // ============================================
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa) {
-    let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
+    // 🔥 CONVERTER VALOR PARA NÚMERO COM SEGURANÇA
+    let valor = 0;
+    if (servico && servico.valor !== undefined && servico.valor !== null) {
+        valor = parseFloat(servico.valor) || 0;
+    }
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+
+    const telefoneDono = empresa?.telefone_dono || '';
+    const telefoneDonoFormatado = formatarTelefone(telefoneDono);
+    const endereco = empresa?.endereco || 'não informado';
+    const nomeEmpresa = empresa?.nome || 'See&Agende';
+
+    let mensagem = `🌟 *${nomeEmpresa} - Sua Agenda Inteligente*\n\n` +
         `Olá *${cliente?.nome || 'Cliente'}*! Seu agendamento foi confirmado com sucesso! ✅\n\n` +
         `📋 *DETALHES DO AGENDAMENTO:*\n` +
         `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
         `📅 Data: *${formatarDataBr(data)}*\n` +
         `⏰ Hora: *${hora}*\n` +
-        `💰 Valor: *R$ ${(servico?.valor || 0).toFixed(2).replace('.', ',')}*\n\n`;
+        `💰 Valor: *R$ ${valorFormatado}*\n\n`;
 
     if (profissional?.nome) {
         mensagem += `👤 Profissional: *${profissional.nome}*\n\n`;
     }
 
-    if (empresa?.endereco) {
-        mensagem += `📍 *${empresa.nome || 'Estabelecimento'}*\n`;
-        mensagem += `${empresa.endereco}\n\n`;
+    if (endereco && endereco !== 'não informado') {
+        mensagem += `📍 *${nomeEmpresa}*\n`;
+        mensagem += `${endereco}\n\n`;
     }
 
-    if (empresa?.telefone_dono) {
-        const telefoneFormatado = formatarTelefone(empresa.telefone_dono);
-        mensagem += `📞 Contato: ${telefoneFormatado}\n\n`;
+    if (telefoneDonoFormatado) {
+        mensagem += `📞 Contato: ${telefoneDonoFormatado}\n\n`;
     }
 
     mensagem += `💡 *Dicas:*\n` +
@@ -164,7 +173,7 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
 }
 
 // ============================================
-// ENVIAR CONFIRMAÇÃO DE AGENDAMENTO
+// ENVIAR CONFIRMAÇÃO DE AGENDAMENTO - CORRIGIDA
 // ============================================
 async function enviarConfirmacao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
@@ -174,7 +183,12 @@ async function enviarConfirmacao(dados) {
         return { success: false, error: 'Cliente sem telefone' };
     }
 
-    const mensagem = gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa);
+    const servicoComValor = {
+        ...servico,
+        valor: parseFloat(servico?.valor) || 0
+    };
+
+    const mensagem = gerarMensagemConfirmacao(cliente, servicoComValor, data, hora, profissional, empresa);
 
     console.log(`📱 WhatsApp - Dados recebidos:`, {
         empresa_nome: empresa?.nome,
@@ -182,13 +196,14 @@ async function enviarConfirmacao(dados) {
         endereco: empresa?.endereco,
         cliente: cliente?.nome,
         servico: servico?.nome,
+        valor: servicoComValor.valor
     });
 
     return await send(cliente.telefone, mensagem);
 }
 
 // ============================================
-// ENVIAR NOTIFICAÇÃO PARA PROFISSIONAL
+// ENVIAR NOTIFICAÇÃO PARA PROFISSIONAL - CORRIGIDA
 // ============================================
 async function enviarNovoAgendamentoProfissional(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
@@ -198,13 +213,20 @@ async function enviarNovoAgendamentoProfissional(dados) {
         return { success: false, error: 'Profissional sem telefone' };
     }
 
+    const valor = parseFloat(servico?.valor) || 0;
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+
+    const telefoneDono = empresa?.telefone_dono || '';
+    const telefoneDonoFormatado = formatarTelefone(telefoneDono);
+
     const mensagem = `📢 *Novo Agendamento!*\n\n` +
         `Olá *${profissional.nome}*! Você tem um novo agendamento:\n\n` +
         `👤 Cliente: *${cliente?.nome || 'Cliente'}*\n` +
         `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
+        `💰 Valor: *R$ ${valorFormatado}*\n` +
         `📅 Data: *${formatarDataBr(data)}*\n` +
         `⏰ Hora: *${hora}*\n` +
-        (empresa?.telefone_dono ? `📞 Contato: ${formatarTelefone(empresa.telefone_dono)}\n` : '') +
+        (telefoneDonoFormatado ? `📞 Contato: ${telefoneDonoFormatado}\n` : '') +
         `\n🙏 Prepare-se para atender!`;
 
     return await send(profissional.telefone, mensagem);
