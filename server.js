@@ -589,7 +589,7 @@ app.post('/api/login', (req, res) => {
         : `SELECT p.*, e.nome as empresa_nome, e.trial_expira, e.plano, e.assinatura_ativa, e.assinatura_valida_ate, e.limite_profissionais
            FROM profissionais p 
            LEFT JOIN empresas e ON p.empresa_id = e.id 
-           WHERE p.email = ? AND p.ativo = 1`;
+           WHERE p.email = ? AND p.ativo = true`;
 
     db.get(sqlProfissional, [email], (err, profissional) => {
         if (err) {
@@ -737,47 +737,47 @@ app.post('/api/login', (req, res) => {
 });
 
 app.post('/api/cadastro', (req, res) => {
-    const { nome, email, senha, empresa_nome, telefone } = req.body; // ? ADICIONEI telefone
+    const { nome, email, senha, empresa_nome, telefone } = req.body;
 
     if (!nome || !email || !senha || !empresa_nome) {
-        return res.json({ success: false, message: 'Todos os campos s�o obrigat�rios' });
+        return res.json({ success: false, message: 'Todos os campos são obrigatórios' });
     }
 
-    console.log('?? Tentando cadastrar:', { nome, email, empresa_nome, telefone });
+    console.log('📝 Tentando cadastrar:', { nome, email, empresa_nome, telefone });
 
-    // ?? VERIFICAR SE EMAIL J� EXISTE
+    // ✅ VERIFICAR SE EMAIL JÁ EXISTE
     const sqlCheck = isProduction
         ? 'SELECT id FROM usuarios WHERE email = $1'
         : 'SELECT id FROM usuarios WHERE email = ?';
 
     db.get(sqlCheck, [email], (err, user) => {
         if (err) {
-            console.error('? Erro ao verificar email:', err.message);
+            console.error('❌ Erro ao verificar email:', err.message);
             return res.json({ success: false, message: 'Erro ao verificar email' });
         }
 
         if (user) {
-            return res.json({ success: false, message: 'Email j� cadastrado' });
+            return res.json({ success: false, message: 'Email já cadastrado' });
         }
 
-        // ?? LIMPAR O TELEFONE (APENAS N�MEROS)
+        // ✅ LIMPAR O TELEFONE (APENAS NÚMEROS)
         const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
-        console.log('?? Telefone limpo:', telefoneLimpo);
+        console.log('📱 Telefone limpo:', telefoneLimpo);
 
-        // ?? CRIAR EMPRESA (COM TELEFONE_DONO)
+        // 🔥 CORREÇÃO: Criar empresa com valor booleano correto
         const sqlEmpresa = isProduction
             ? `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa, telefone_dono) 
-               VALUES ($1, 'trial', 1, (CURRENT_TIMESTAMP + INTERVAL '45 days'), 1, $2) RETURNING id`
+               VALUES ($1, 'trial', 1, (CURRENT_TIMESTAMP + INTERVAL '45 days'), TRUE, $2) RETURNING id`
             : `INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, assinatura_ativa, telefone_dono) 
                VALUES (?, 'trial', 1, datetime('now', '+45 days'), 1, ?)`;
 
         db.run(sqlEmpresa, [empresa_nome, telefoneLimpo], function (err) {
             if (err) {
-                console.error('? Erro ao criar empresa:', err.message);
+                console.error('❌ Erro ao criar empresa:', err.message);
                 return res.json({ success: false, message: 'Erro ao criar empresa' });
             }
 
-            // ?? BUSCAR ID DA EMPRESA
+            // ✅ BUSCAR ID DA EMPRESA
             let sqlFind;
             let paramsFind;
 
@@ -791,15 +791,15 @@ app.post('/api/cadastro', (req, res) => {
 
             db.get(sqlFind, paramsFind, (err, row) => {
                 if (err || !row) {
-                    console.error('? Erro ao buscar ID da empresa:', err?.message);
+                    console.error('❌ Erro ao buscar ID da empresa:', err?.message);
                     return res.json({ success: false, message: 'Erro ao buscar ID da empresa' });
                 }
 
                 const empresa_id = row.id;
-                console.log('? Empresa criada com ID:', empresa_id);
-                console.log('?? Telefone do dono salvo:', telefoneLimpo);
+                console.log('✅ Empresa criada com ID:', empresa_id);
+                console.log('📱 Telefone do dono salvo:', telefoneLimpo);
 
-                // ?? CRIAR USU�RIO (COM TELEFONE)
+                // ✅ CRIAR USUÁRIO (COM TELEFONE)
                 const senhaHash = bcrypt.hashSync(senha, 10);
                 const sqlUsuario = isProduction
                     ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone) 
@@ -809,91 +809,83 @@ app.post('/api/cadastro', (req, res) => {
 
                 db.run(sqlUsuario, [nome, email, senhaHash, empresa_id, telefoneLimpo], function (err) {
                     if (err) {
-                        console.error('? Erro ao criar usu�rio:', err.message);
-                        return res.json({ success: false, message: 'Erro ao criar usu�rio' });
+                        console.error('❌ Erro ao criar usuário:', err.message);
+                        return res.json({ success: false, message: 'Erro ao criar usuário' });
                     }
 
-                    console.log('? Usu�rio criado com sucesso!');
-                    console.log('?? Telefone do usu�rio salvo:', telefoneLimpo);
+                    console.log('✅ Usuário criado com sucesso!');
+                    console.log('📱 Telefone do usuário salvo:', telefoneLimpo);
 
-                    // ?? INSERIR HOR�RIOS PADR�O
-                    console.log('?? Inserindo hor�rios padr�o para empresa:', empresa_id);
+                    // ============================================================
+                    // 🔥 AQUI É ONDE VOCÊ COLOCA O CÓDIGO NOVO DOS HORÁRIOS
+                    // ============================================================
 
-                    const diasSemana = [0, 1, 2, 3, 4, 5, 6];
-                    let horariosInseridos = 0;
-                    let totalErros = 0;
+                    // ✅ INSERIR HORÁRIOS PADRÃO (COM LIMPEZA PRÉVIA)
+                    console.log('📅 Inserindo horários padrão para empresa:', empresa_id);
 
-                    for (const dia of diasSemana) {
-                        const sqlHorario = isProduction
-                            ? `
-                            INSERT INTO horarios_funcionamento 
-                            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                            VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                            ON CONFLICT (empresa_id, dia_semana) DO NOTHING
-                        `
-                            : `
-                            INSERT OR IGNORE INTO horarios_funcionamento 
-                            (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                            VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                        `;
+                    // Primeiro, deleta horários existentes para esta empresa
+                    const sqlDelete = isProduction
+                        ? `DELETE FROM horarios_funcionamento WHERE empresa_id = $1`
+                        : `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`;
 
-                        db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
-                            if (err) {
-                                console.error(`? Erro ao inserir hor�rio dia ${dia}:`, err.message);
-                                totalErros++;
-                            } else {
-                                horariosInseridos++;
-                                console.log(`? Hor�rio dia ${dia} inserido (${horariosInseridos}/7)`);
-                            }
+                    db.run(sqlDelete, [empresa_id], function (err) {
+                        if (err) {
+                            console.warn('⚠️ Erro ao limpar horários antigos:', err.message);
+                        }
 
-                            if (horariosInseridos + totalErros === 7 || horariosInseridos === 7) {
-                                const sqlCheck = isProduction
-                                    ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
-                                    : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
+                        const diasSemana = [0, 1, 2, 3, 4, 5, 6];
+                        let horariosInseridos = 0;
+                        let totalErros = 0;
 
-                                db.get(sqlCheck, [empresa_id], (err, result) => {
-                                    if (!err && result) {
-                                        console.log(`? ${result.total} hor�rios confirmados no banco`);
-                                    }
+                        for (const dia of diasSemana) {
+                            const sqlHorario = isProduction
+                                ? `
+                                INSERT INTO horarios_funcionamento 
+                                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                VALUES ($1, $2, TRUE, '09:00', '18:00', '12:00', '13:00', 30)
+                            `
+                                : `
+                                INSERT OR IGNORE INTO horarios_funcionamento 
+                                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
+                            `;
 
-                                    res.json({
-                                        success: true,
-                                        message: 'Cadastro realizado! Voc� tem 45 dias de teste.',
-                                        data: {
-                                            empresa_id: empresa_id,
-                                            horarios_inseridos: horariosInseridos,
-                                            telefone_dono: telefoneLimpo
-                                        }
-                                    });
-                                });
-                            }
-                        });
-                    }
-
-                    // TIMEOUT DE SEGURAN�A
-                    setTimeout(() => {
-                        console.log('? Verificando hor�rios ap�s timeout...');
-                        const sqlCheck = isProduction
-                            ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
-                            : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
-
-                        db.get(sqlCheck, [empresa_id], (err, result) => {
-                            if (!err && result && result.total > 0) {
-                                console.log(`? ${result.total} hor�rios encontrados`);
-                            } else {
-                                console.warn('?? Inserindo hor�rios manualmente...');
-                                for (const dia of [0, 1, 2, 3, 4, 5, 6]) {
-                                    const sqlManual = isProduction
-                                        ? `INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                           VALUES ($1, $2, 1, '09:00', '18:00', '12:00', '13:00', 30) ON CONFLICT DO NOTHING`
-                                        : `INSERT OR IGNORE INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                           VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)`;
-
-                                    db.run(sqlManual, isProduction ? [empresa_id, dia] : [empresa_id, dia]);
+                            db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
+                                if (err) {
+                                    console.error(`❌ Erro ao inserir horário dia ${dia}:`, err.message);
+                                    totalErros++;
+                                } else {
+                                    horariosInseridos++;
+                                    console.log(`✅ Horário dia ${dia} inserido (${horariosInseridos}/7)`);
                                 }
-                            }
-                        });
-                    }, 5000);
+
+                                if (horariosInseridos + totalErros === 7) {
+                                    const sqlCheck = isProduction
+                                        ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
+                                        : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
+
+                                    db.get(sqlCheck, [empresa_id], (err, result) => {
+                                        if (!err && result) {
+                                            console.log(`📊 ${result.total} horários confirmados no banco`);
+                                        }
+
+                                        res.json({
+                                            success: true,
+                                            message: 'Cadastro realizado! Você tem 45 dias de teste.',
+                                            data: {
+                                                empresa_id: empresa_id,
+                                                horarios_inseridos: horariosInseridos,
+                                                telefone_dono: telefoneLimpo
+                                            }
+                                        });
+                                    });
+                                }
+                            });
+                        }
+                    });
+                    // ============================================================
+                    // FIM DO CÓDIGO NOVO DOS HORÁRIOS
+                    // ============================================================
                 });
             });
         });
@@ -1301,29 +1293,32 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
     });
 });
 
-// ============================================================
-// ?? ROTA: ATUALIZAR PROFISSIONAL (VIA SUPER ADMIN)
-// ============================================================
+// ============================================
+// PUT /api/admin/profissionais/:id - ATUALIZAR PROFISSIONAL
+// ============================================
 app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
 
-    console.log(`?? Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
+    console.log(`🔍 Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent, telefone });
 
+    // Verificar se o profissional existe
     const sqlCheck = isProduction
         ? `SELECT id, empresa_id FROM profissionais WHERE id = $1`
         : `SELECT id, empresa_id FROM profissionais WHERE id = ?`;
 
     db.get(sqlCheck, [id], (err, profissional) => {
         if (err) {
-            console.error('? Erro ao verificar profissional:', err);
+            console.error('❌ Erro ao verificar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            return res.json({ success: false, message: 'Profissional n�o encontrado' });
+            console.log(`❌ Profissional ID ${id} não encontrado`);
+            return res.json({ success: false, message: 'Profissional não encontrado' });
         }
 
+        // Construir query de atualização
         let query = isProduction
             ? `UPDATE profissionais SET 
                nome = COALESCE($1, nome), 
@@ -1347,8 +1342,9 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
         }
 
         if (ativo !== undefined && ativo !== null) {
+            const ativoValor = isProduction ? (ativo ? 'TRUE' : 'FALSE') : (ativo ? 1 : 0);
             query += isProduction ? `, ativo = $${counter++}` : `, ativo = ?`;
-            params.push(ativo ? 1 : 0);
+            params.push(ativoValor);
         }
 
         if (senha && senha.trim() !== '') {
@@ -1357,16 +1353,19 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
             params.push(senhaHash);
         }
 
-        query += isProduction ? ` WHERE id = $${counter++}` : ` WHERE id = ?`;
+        query += isProduction ? ` WHERE id = $${counter}` : ` WHERE id = ?`;
         params.push(id);
+
+        console.log('📝 SQL:', query);
+        console.log('📝 Params:', params);
 
         db.run(query, params, function (err) {
             if (err) {
-                console.error('? Erro ao atualizar profissional:', err);
+                console.error('❌ Erro ao atualizar profissional:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            console.log('? Profissional atualizado com sucesso!');
+            console.log(`✅ Profissional ${id} atualizado com sucesso!`);
             res.json({
                 success: true,
                 message: 'Profissional atualizado com sucesso!'
@@ -1374,8 +1373,6 @@ app.put('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
         });
     });
 });
-
-
 
 // ============================================================
 // ?? ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
@@ -1494,16 +1491,19 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// 2. LISTAR EMPRESAS COM M�TRICAS (MELHORADA)
+// 2. LISTAR EMPRESAS COM MÉTRICAS (CORRIGIDO - POSTGRESQL)
 // ============================================
 app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
-    console.log('?? Super Admin - Listando todas as empresas...');
+    console.log('🔍 Super Admin - Listando todas as empresas...');
+
+    const ativoCond = isProduction ? 'TRUE' : '1';
 
     const sql = isProduction
         ? `SELECT e.*, 
            u.nome as dono_nome,
            u.email as dono_email,
-           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais,
+           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
+           (SELECT COUNT(*) FROM profissionais WHERE empresa_id = e.id AND ativo = ${ativoCond}) as total_profissionais,
            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as total_concluidos,
@@ -1514,7 +1514,8 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
         : `SELECT e.*, 
            u.nome as dono_nome,
            u.email as dono_email,
-           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais,
+           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
+           (SELECT COUNT(*) FROM profissionais WHERE empresa_id = e.id AND ativo = true) as total_profissionais,
            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as total_concluidos,
@@ -1525,22 +1526,21 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, empresas) => {
         if (err) {
-            console.error('? Erro ao listar empresas:', err);
+            console.error('❌ Erro ao listar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log(`? ${empresas.length} empresas encontradas`);
+        console.log(`✅ ${empresas.length} empresas encontradas`);
         res.json({ success: true, data: empresas });
     });
 });
 
 // ============================================
-// 3. LISTAR TODOS OS USU�RIOS (CORRIGIDO - COM TELEFONE)
+// 3. LISTAR TODOS OS USUÁRIOS E PROFISSIONAIS (CORRIGIDO)
 // ============================================
 app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
-    console.log('?? Super Admin - Listando todos os usu�rios...');
+    console.log('🔍 Super Admin - Listando todos os usuários e profissionais...');
 
-    // ?? CORRIGIDO: Buscar telefone da tabela usuarios
     const sql = isProduction
         ? `SELECT 
             u.id, 
@@ -1548,47 +1548,79 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
             u.email, 
             u.role, 
             u.empresa_id, 
-            u.created_at, 
+            u.created_at as data_cadastro, 
             e.nome as empresa_nome,
-            u.telefone,  -- ?? ADICIONADO: telefone do usu�rio
-            p.comissao_percent
+            u.telefone,
+            NULL as comissao_percent,
+            'usuario' as tipo
            FROM usuarios u
            LEFT JOIN empresas e ON u.empresa_id = e.id
-           LEFT JOIN profissionais p ON u.email = p.email AND u.empresa_id = p.empresa_id
-           ORDER BY u.created_at DESC`
+           
+           UNION ALL
+           
+           SELECT 
+            p.id, 
+            p.nome, 
+            p.email, 
+            'profissional' as role,
+            p.empresa_id, 
+            p.created_at as data_cadastro, 
+            e.nome as empresa_nome,
+            p.telefone,
+            p.comissao_percent,
+            'profissional' as tipo
+           FROM profissionais p
+           LEFT JOIN empresas e ON p.empresa_id = e.id
+           WHERE p.ativo = true
+           
+           ORDER BY data_cadastro DESC`
         : `SELECT 
             u.id, 
             u.nome, 
             u.email, 
             u.role, 
             u.empresa_id, 
-            u.created_at, 
+            u.created_at as data_cadastro, 
             e.nome as empresa_nome,
-            u.telefone,  -- ?? ADICIONADO: telefone do usu�rio
-            p.comissao_percent
+            u.telefone,
+            NULL as comissao_percent,
+            'usuario' as tipo
            FROM usuarios u
            LEFT JOIN empresas e ON u.empresa_id = e.id
-           LEFT JOIN profissionais p ON u.email = p.email AND u.empresa_id = p.empresa_id
-           ORDER BY u.created_at DESC`;
+           
+           UNION ALL
+           
+           SELECT 
+            p.id, 
+            p.nome, 
+            p.email, 
+            'profissional' as role,
+            p.empresa_id, 
+            p.created_at as data_cadastro, 
+            e.nome as empresa_nome,
+            p.telefone,
+            p.comissao_percent,
+            'profissional' as tipo
+           FROM profissionais p
+           LEFT JOIN empresas e ON p.empresa_id = e.id
+           WHERE p.ativo = true
+           
+           ORDER BY data_cadastro DESC`;
 
     db.all(sql, [], (err, usuarios) => {
         if (err) {
-            console.error('? Erro ao listar usu�rios:', err);
+            console.error('❌ Erro ao listar usuários:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        // Remover senhas e formatar
-        const usuariosSemSenha = usuarios.map(u => {
-            const { senha, ...rest } = u;
-            return {
-                ...rest,
-                telefone: u.telefone || '-',
-                comissao_percent: u.comissao_percent || 0
-            };
-        });
+        // Adicionar created_at para compatibilidade com o frontend
+        const dadosFormatados = usuarios.map(u => ({
+            ...u,
+            created_at: u.data_cadastro
+        }));
 
-        console.log(`? ${usuariosSemSenha.length} usu�rios encontrados`);
-        res.json({ success: true, data: usuariosSemSenha });
+        console.log(`✅ ${dadosFormatados.length} usuários/profissionais encontrados`);
+        res.json({ success: true, data: dadosFormatados });
     });
 });
 // ============================================
@@ -1634,13 +1666,15 @@ app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// 5. USU�RIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO - COM TELEFONE)
+// 5. USUÁRIOS E PROFISSIONAIS DE UMA EMPRESA (CORRIGIDO - POSTGRESQL)
 // ============================================
 app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`?? Super Admin - Buscando usu�rios e profissionais da empresa ${id}...`);
+    console.log(`🔍 Super Admin - Buscando usuários e profissionais da empresa ${id}...`);
 
-    // ?? CORRIGIDO: Buscar TELEFONE tanto de donos quanto de profissionais
+    // 🔥 CORREÇÃO: PostgreSQL usa TRUE/FALSE, SQLite usa 1/0
+    const ativoCond = isProduction ? 'TRUE' : '1';
+
     const sql = isProduction
         ? `SELECT 
             'dono' as tipo,
@@ -1649,7 +1683,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             u.email, 
             u.role, 
             u.created_at,
-            u.telefone,  -- ?? ADICIONADO: telefone do dono
+            u.telefone,
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
@@ -1664,11 +1698,11 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             p.email, 
             'profissional' as role,
             p.created_at,
-            p.telefone,  -- ?? J� ESTAVA: telefone do profissional
+            p.telefone,
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
-           WHERE p.empresa_id = $2 AND p.ativo = 1
+           WHERE p.empresa_id = $2 AND p.ativo = ${ativoCond}
            
            ORDER BY tipo, nome`
         : `SELECT 
@@ -1678,7 +1712,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             u.email, 
             u.role, 
             u.created_at,
-            u.telefone,  -- ?? ADICIONADO: telefone do dono
+            u.telefone,
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
@@ -1693,17 +1727,17 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             p.email, 
             'profissional' as role,
             p.created_at,
-            p.telefone,  -- ?? J� ESTAVA: telefone do profissional
+            p.telefone,
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
-           WHERE p.empresa_id = ? AND p.ativo = 1
+           WHERE p.empresa_id = ? AND p.ativo = true
            
            ORDER BY tipo, nome`;
 
     db.all(sql, [id, id], (err, usuarios) => {
         if (err) {
-            console.error('? Erro ao buscar usu�rios e profissionais:', err);
+            console.error('❌ Erro ao buscar usuários e profissionais:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -1717,7 +1751,7 @@ app.get('/api/admin/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res
             };
         });
 
-        console.log(`? ${dadosFormatados.length} usu�rios/profissionais encontrados`);
+        console.log(`✅ ${dadosFormatados.length} usuários/profissionais encontrados`);
         console.log(`   - Donos: ${dadosFormatados.filter(u => u.tipo === 'dono').length}`);
         console.log(`   - Profissionais: ${dadosFormatados.filter(u => u.tipo === 'profissional').length}`);
 
@@ -1785,8 +1819,8 @@ app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res
                 db.get(sqlUsuarios, [e.id], (err, usuarios) => {
                     // Buscar total de profissionais
                     const sqlProfissionais = isProduction
-                        ? `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = $1 AND ativo = 1`
-                        : `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = ? AND ativo = 1`;
+                        ? `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = $1 AND ativo = true`
+                        : `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = ? AND ativo = true`;
 
                     db.get(sqlProfissionais, [e.id], (err, profissionais) => {
                         // Buscar total de clientes
@@ -1856,6 +1890,7 @@ app.get('/api/admin/empresas/estatisticas', auth, verificarSuperAdmin, (req, res
         });
     });
 });
+
 
 // Fun��o auxiliar para formatar data/hora
 function formatarDataHora(dataStr) {
@@ -1981,51 +2016,75 @@ app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// 9. BUSCAR USU�RIO PARA EDI��O (CORRIGIDO)
+// 9. BUSCAR USUÁRIO PARA EDIÇÃO (CORRIGIDO)
 // ============================================
 app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`?? Super Admin - Buscando usu�rio ${id}...`);
+    console.log(`🔍 Super Admin - Buscando usuário ${id}...`);
 
-    const sql = isProduction
-        ? `SELECT id, nome, email, role, empresa_id, created_at 
+    // Primeiro, buscar na tabela usuarios
+    const sqlUsuario = isProduction
+        ? `SELECT id, nome, email, role, empresa_id, created_at, telefone 
            FROM usuarios 
            WHERE id = $1`
-        : `SELECT id, nome, email, role, empresa_id, created_at 
+        : `SELECT id, nome, email, role, empresa_id, created_at, telefone 
            FROM usuarios 
            WHERE id = ?`;
 
-    db.get(sql, [id], (err, usuario) => {
+    db.get(sqlUsuario, [id], (err, usuario) => {
         if (err) {
-            console.error('? Erro ao buscar usu�rio:', err);
+            console.error('❌ Erro ao buscar usuário:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        if (!usuario) {
-            return res.json({ success: false, message: 'Usu�rio n�o encontrado' });
-        }
+        // Se encontrou na tabela usuarios, retorna
+        if (usuario) {
+            delete usuario.senha;
 
-        delete usuario.senha;
+            // Se for profissional, buscar comissão
+            if (usuario.role === 'profissional') {
+                const sqlProf = isProduction
+                    ? `SELECT comissao_percent FROM profissionais WHERE email = $1`
+                    : `SELECT comissao_percent FROM profissionais WHERE email = ?`;
 
-        if (usuario.role === 'profissional') {
-            const sqlProf = isProduction
-                ? `SELECT comissao_percent FROM profissionais WHERE email = $1`
-                : `SELECT comissao_percent FROM profissionais WHERE email = ?`;
-
-            db.get(sqlProf, [usuario.email], (err, prof) => {
-                if (!err && prof) {
-                    usuario.comissao_percent = prof.comissao_percent || 30;
-                } else {
-                    usuario.comissao_percent = 30;
-                }
-                console.log('? Usu�rio encontrado:', usuario.nome);
+                db.get(sqlProf, [usuario.email], (err, prof) => {
+                    usuario.comissao_percent = (prof?.comissao_percent || 30);
+                    console.log('✅ Usuário encontrado:', usuario.nome);
+                    res.json({ success: true, data: usuario });
+                });
+            } else {
+                usuario.comissao_percent = null;
+                console.log('✅ Usuário encontrado:', usuario.nome);
                 res.json({ success: true, data: usuario });
-            });
-        } else {
-            usuario.comissao_percent = null;
-            console.log('? Usu�rio encontrado:', usuario.nome);
-            res.json({ success: true, data: usuario });
+            }
+            return;
         }
+
+        // Se não encontrou na tabela usuarios, buscar na tabela profissionais
+        console.log(`🔍 Usuário ${id} não encontrado em usuarios, buscando em profissionais...`);
+
+        const sqlProfissional = isProduction
+            ? `SELECT id, nome, email, 'profissional' as role, empresa_id, created_at, telefone, comissao_percent
+               FROM profissionais 
+               WHERE id = $1 AND ativo = TRUE`
+            : `SELECT id, nome, email, 'profissional' as role, empresa_id, created_at, telefone, comissao_percent
+               FROM profissionais 
+               WHERE id = ? AND ativo = true`;
+
+        db.get(sqlProfissional, [id], (err, profissional) => {
+            if (err) {
+                console.error('❌ Erro ao buscar profissional:', err);
+                return res.json({ success: false, message: err.message });
+            }
+
+            if (!profissional) {
+                console.log(`❌ Usuário ${id} não encontrado em nenhuma tabela`);
+                return res.json({ success: false, message: 'Usuário não encontrado' });
+            }
+
+            console.log('✅ Profissional encontrado:', profissional.nome);
+            res.json({ success: true, data: profissional });
+        });
     });
 });
 // ============================================
@@ -2326,34 +2385,39 @@ app.post('/api/admin/empresas/:id/extender-trial', auth, verificarSuperAdmin, (r
         });
     });
 });
-// ============================================================
-// ?? ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
-// ============================================================
+// ============================================
+// ROTA: BUSCAR PROFISSIONAL (VIA SUPER ADMIN)
+// ============================================
 app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
 
-    console.log(`?? Super Admin - Buscando profissional ${id}...`);
+    console.log(`🔍 Super Admin - Buscando profissional ${id}...`);
+
+    const ativoCond = isProduction ? 'TRUE' : '1';
 
     const sql = isProduction
         ? `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
            FROM profissionais 
-           WHERE id = $1`
+           WHERE id = $1 AND ativo = ${ativoCond}`
         : `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
            FROM profissionais 
-           WHERE id = ?`;
+           WHERE id = ? AND ativo = true`;
 
     db.get(sql, [id], (err, profissional) => {
         if (err) {
-            console.error('? Erro ao buscar profissional:', err);
+            console.error('❌ Erro ao buscar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            console.log(`? Profissional ID ${id} n�o encontrado`);
-            return res.json({ success: false, message: 'Profissional n�o encontrado' });
+            console.log(`❌ Profissional ID ${id} não encontrado`);
+            return res.json({ success: false, message: 'Profissional não encontrado' });
         }
 
-        console.log(`? Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
+        // Adicionar role para compatibilidade com o frontend
+        profissional.role = 'profissional';
+
+        console.log(`✅ Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
         res.json({ success: true, data: profissional });
     });
 });
@@ -3128,8 +3192,9 @@ app.post('/api/agendamentos',
 
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
             const sqlServico = isProduction
-                ? `SELECT duracao, nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2`
-                : `SELECT duracao, nome, valor FROM servicos WHERE id = ? AND empresa_id = ?`;
+                ? `SELECT nome, valor, duracao FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = true`
+                : `SELECT nome, valor, duracao FROM servicos WHERE id = ? AND empresa_id = ? AND ativo = 1`;
+
 
             const servicoInfo = await new Promise((resolve) => {
                 db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, row) => {
@@ -3266,15 +3331,25 @@ app.post('/api/agendamentos',
                     });
 
                     const dadosNotificacao = {
-                        cliente: { nome: cliente?.nome || 'Cliente', telefone: cliente?.telefone || null },
-                        servico: { nome: servico?.nome || servicoNome, valor: servico?.valor || servicoValor },
-                        profissional: profissional ? { nome: profissional.nome, telefone: profissional.telefone || null } : null,
+                        cliente: {
+                            nome: cliente?.nome || 'Cliente',
+                            telefone: cliente?.telefone || null
+                        },
+                        servico: {
+                            nome: servico?.nome || servicoNome,
+                            valor: parseFloat(servico?.valor || servicoValor || 0)  // 🔥 CONVERTER PARA NÚMERO
+                        },
+                        profissional: profissional ? {
+                            nome: profissional.nome,
+                            telefone: profissional.telefone || null
+                        } : null,
                         data: data,
                         hora: hora,
                         empresa: {
+                            id: empresa?.id,
                             nome: empresa?.nome || 'Barbearia',
                             endereco: empresa?.endereco || '',
-                            telefone_dono: empresa?.telefone_dono || ''  // ?? ADICIONE ESTA LINHA!
+                            telefone_dono: empresa?.telefone_dono || ''
                         },
                     };
                     console.log('?? Dados do WhatsApp:', {
@@ -3585,7 +3660,7 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
                 return res.json({ success: false, message: err.message });
             }
             if (!agendamento) {
-                return res.json({ success: false, message: 'Agendamento n�o encontrado' });
+                return res.json({ success: false, message: 'Agendamento não encontrado' });
             }
 
             let comissao = 0;
@@ -3606,25 +3681,44 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
                         return res.json({ success: false, message: err.message });
                     }
 
+                    // 🔥 ENVIAR MENSAGEM DE CONCLUSÃO COM LINK DO CHATBOT
                     if (agendamento.telefone) {
                         try {
-                            await whatsappService.send(
-                                agendamento.telefone,
-                                `? *Atendimento Conclu�do!*\n\n` +
-                                `Ol� *${agendamento.cliente_nome || 'Cliente'}*! Seu atendimento foi conclu�do com sucesso. ?\n\n` +
-                                `Agradecemos pela prefer�ncia! ??\n\n` +
-                                `J� pensou em agendar seu pr�ximo corte? Agende pelo nosso chatbot! ??\n\n` +
-                                `_Esta � uma mensagem autom�tica._`
-                            );
-                            console.log(`?? WhatsApp: Agradecimento enviado para ${agendamento.telefone}`);
+                            // Buscar dados da empresa para o link
+                            const empresa = await new Promise((resolve) => {
+                                db.get('SELECT id, nome, telefone_dono FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                                    resolve(row || {});
+                                });
+                            });
+
+                            const dadosConclusao = {
+                                cliente: {
+                                    nome: agendamento.cliente_nome || 'Cliente',
+                                    telefone: agendamento.telefone
+                                },
+                                servico: {
+                                    nome: agendamento.servico_nome || agendamento.servico || 'Serviço'
+                                },
+                                data: agendamento.data,
+                                hora: agendamento.hora,
+                                empresa: {
+                                    id: empresaId,
+                                    nome: empresa?.nome || 'Barbearia',
+                                    telefone_dono: empresa?.telefone_dono || ''
+                                }
+                            };
+
+                            // Usar a nova função enviarConclusao
+                            await whatsappService.enviarConclusao(dadosConclusao);
+                            console.log(`✅ WhatsApp: Conclusão enviada para ${agendamento.telefone}`);
                         } catch (whatsappError) {
-                            console.error('?? Erro ao enviar WhatsApp:', whatsappError.message);
+                            console.error('❌ Erro ao enviar WhatsApp de conclusão:', whatsappError.message);
                         }
                     }
 
                     res.json({
                         success: true,
-                        message: 'Agendamento conclu�do com sucesso!',
+                        message: 'Agendamento concluído com sucesso!',
                         comissao: comissao
                     });
                 }
@@ -4676,22 +4770,38 @@ app.get('/api/chatbot/empresa/:id', (req, res) => {
 
 app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
     const { empresaId } = req.params;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.all('SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome',
-        [empresaId], (err, servicos) => {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, servicos });
-        });
+    const sql = isProduction
+        ? 'SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = $1 AND ativo = true ORDER BY nome'
+        : 'SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome';
+
+    db.all(sql, [empresaId], (err, servicos) => {
+        if (err) {
+            console.error('❌ db.all error:', err.message);
+            console.error('❌ SQL:', sql);
+            console.error('❌ Params:', [empresaId]);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, servicos });
+    });
 });
 
 app.get('/api/chatbot/profissionais/:empresaId', (req, res) => {
     const { empresaId } = req.params;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    db.all('SELECT id, nome FROM profissionais WHERE empresa_id = ? AND ativo = 1 ORDER BY nome',
-        [empresaId], (err, profissionais) => {
-            if (err) return res.json({ success: false, message: err.message });
-            res.json({ success: true, profissionais });
-        });
+    const sql = isProduction
+        ? 'SELECT id, nome FROM profissionais WHERE empresa_id = $1 AND ativo = true ORDER BY nome'
+        : 'SELECT id, nome FROM profissionais WHERE empresa_id = ? AND ativo = 1 ORDER BY nome';
+
+    db.all(sql, [empresaId], (err, profissionais) => {
+        if (err) {
+            console.error('❌ db.all error:', err.message);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, profissionais });
+    });
 });
 
 app.get('/api/chatbot/dono/:empresaId', (req, res) => {
@@ -5303,7 +5413,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         // 6. BUSCAR SERVI�O
         // ============================================
         const sqlServico = isProduction
-            ? `SELECT nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = 1`
+            ? `SELECT nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = true`
             : `SELECT nome, valor FROM servicos WHERE id = ? AND empresa_id = ? AND ativo = 1`;
 
         const servico = await new Promise((resolve) => {

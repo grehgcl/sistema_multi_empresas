@@ -6,8 +6,9 @@ let empresasData = [];
 let usuariosData = [];
 let empresasTimeout = null;
 
+
 // ============================================
-// CARREGAR DASHBOARD SUPER ADMIN (VERSÃO SIMPLES)
+// 🏢 SUPER ADMIN - DASHBOARD COMPLETO
 // ============================================
 
 async function carregarDashboardSuperAdmin() {
@@ -17,7 +18,6 @@ async function carregarDashboardSuperAdmin() {
     const token = localStorage.getItem('token');
 
     try {
-        // 🔥 USAR A ROTA QUE JÁ FUNCIONA
         const [statsRes, empresasRes, usuariosRes] = await Promise.all([
             fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/admin/empresas', { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -28,185 +28,249 @@ async function carregarDashboardSuperAdmin() {
         const empresas = (await empresasRes.json()).data || [];
         const usuarios = (await usuariosRes.json()).data || [];
 
-        console.log('📊 EMPRESAS CARREGADAS:', empresas.length);
-        console.log('📊 PRIMEIRA EMPRESA:', empresas[0]);
+        console.log('✅ Empresas carregadas:', empresas.length);
 
-        empresasData = empresas;
-        usuariosData = usuarios;
-
-        // ============================================
-        // CÁLCULOS E MÉTRICAS
-        // ============================================
-
+        // Cálculos
         const totalEmpresas = empresas.length;
-        const empresasAtivas = empresas.filter(e => e.assinatura_ativa === 1).length;
+        const empresasAtivas = empresas.filter(e => e.assinatura_ativa === 1 || e.assinatura_ativa === true).length;
         const empresasTrial = empresas.filter(e => e.plano === 'trial' || e.plano === 'Trial').length;
         const empresasPagas = empresas.filter(e => e.plano !== 'trial' && e.plano !== 'Trial' && e.plano !== null).length;
+        const empresasExpiradas = empresas.filter(e => {
+            if (!e.trial_expira) return false;
+            const hoje = new Date();
+            const expira = new Date(e.trial_expira);
+            return expira < hoje && (e.plano === 'trial' || e.plano === 'Trial');
+        });
 
         const totalDonos = usuarios.filter(u => u.role === 'dono').length;
         const totalProfissionais = usuarios.filter(u => u.role === 'profissional').length;
         const totalClientes = stats.total_clientes || 0;
         const totalAgendamentos = stats.total_agendamentos || 0;
-
         const agendamentosMes = stats.agendamentos_mes || 0;
         const faturamentoMes = stats.faturamento_mes || 0;
 
         // ============================================
-        // HTML DO DASHBOARD
+        // HTML COM ESTILO DIRETO (SEM DEPENDER DE CLASSES)
         // ============================================
-
         const html = `
-            <div class="fade-in">
+            <div style="padding:16px;max-width:1400px;margin:0 auto;">
+
                 <!-- CABEÇALHO -->
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #2d2d3f;">
                     <div>
-                        <h2 style="margin:0;font-size:22px;">🏢 Dashboard Super Admin</h2>
-                        <p style="margin:4px 0 0;color:var(--text-muted);font-size:13px;">Visão completa do ecossistema See&Agende</p>
+                        <h1 style="font-size:24px;font-weight:700;margin:0;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">🏢 Dashboard Super Admin</h1>
+                        <p style="color:#888;font-size:13px;margin:2px 0 0;">
+                            <i class="fas fa-calendar-alt"></i> ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
                     </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <span style="background:var(--bg-hover);padding:4px 14px;border-radius:8px;font-size:12px;color:var(--text-muted);">
-                            <i class="fas fa-calendar"></i> ${new Date().toLocaleDateString('pt-BR')}
-                        </span>
-                        <button onclick="carregarDashboardSuperAdmin()" style="background:var(--primary);border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;">
-                            <i class="fas fa-sync"></i> Atualizar
-                        </button>
+                    <button onclick="carregarDashboardSuperAdmin()" style="background:#667eea;border:none;padding:8px 20px;border-radius:8px;color:white;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
+                        <i class="fas fa-sync"></i> Atualizar
+                    </button>
+                </div>
+
+                <!-- ALERTA -->
+                <div style="padding:12px 18px;border-radius:12px;margin-bottom:20px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <span style="font-size:20px;">✅</span>
+                    <div>
+                        <div style="font-size:14px;font-weight:600;color:#22c55e;">Todas as empresas com trial em dia!</div>
+                        <div style="font-size:12px;color:#888;">Nenhum alerta pendente no momento.</div>
                     </div>
                 </div>
-                
-                <!-- CARDS PRINCIPAIS -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px;">
-                    <div style="background:linear-gradient(135deg,rgba(102,126,234,0.08),rgba(118,75,162,0.05));border-radius:12px;padding:14px 16px;border:1px solid rgba(102,126,234,0.1);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">🏢</span>
-                            <div>
-                                <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${totalEmpresas}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Total Empresas</div>
-                                <div style="font-size:10px;display:flex;gap:6px;color:var(--text-muted);">
-                                    <span style="color:#22c55e;">${empresasAtivas} ativas</span>
-                                    <span style="color:#f59e0b;">${empresasTrial} trial</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
+                <!-- CARDS -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;">
                     
-                    <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">👨‍💼</span>
-                            <div>
-                                <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${totalDonos}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Donos</div>
-                                <div style="font-size:10px;color:var(--text-muted);">${totalProfissionais} profissionais</div>
-                            </div>
+                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;transition:all 0.3s;">
+                        <div style="font-size:24px;display:block;margin-bottom:4px;">🏢</div>
+                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total Empresas</div>
+                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${totalEmpresas}</div>
+                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;flex-wrap:wrap;">
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(34,197,94,0.15);color:#22c55e;">${empresasAtivas} ativas</span>
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;">${empresasTrial} trial</span>
+                        </div>
+                        <div style="height:3px;background:#2d2d3f;border-radius:2px;margin-top:8px;overflow:hidden;">
+                            <div style="height:100%;width:${totalEmpresas > 0 ? (empresasAtivas / totalEmpresas * 100) : 0}%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:2px;"></div>
                         </div>
                     </div>
-                    
-                    <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">👥</span>
-                            <div>
-                                <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${totalClientes}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Clientes</div>
-                                <div style="font-size:10px;color:var(--text-muted);">em todas as empresas</div>
-                            </div>
+
+                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
+                        <div style="font-size:24px;display:block;margin-bottom:4px;">👥</div>
+                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Usuários</div>
+                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${usuarios.length}</div>
+                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;flex-wrap:wrap;">
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;">👑 ${totalDonos} donos</span>
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">👤 ${totalProfissionais} profs</span>
                         </div>
                     </div>
-                    
-                    <div style="background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.05));border-radius:12px;padding:14px 16px;border:1px solid rgba(16,185,129,0.1);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">✂️</span>
-                            <div>
-                                <div style="font-size:22px;font-weight:700;color:var(--text-primary);">${totalAgendamentos}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Agendamentos</div>
-                                <div style="font-size:10px;color:#22c55e;">+${agendamentosMes} este mês</div>
-                            </div>
+
+                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
+                        <div style="font-size:24px;display:block;margin-bottom:4px;">👤</div>
+                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Clientes</div>
+                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${totalClientes}</div>
+                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">em todas as empresas</span>
                         </div>
                     </div>
-                    
-                    <div style="background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(217,119,6,0.05));border-radius:12px;padding:14px 16px;border:1px solid rgba(245,158,11,0.1);">
-                        <div style="display:flex;align-items:center;gap:10px;">
-                            <span style="font-size:22px;">💰</span>
-                            <div>
-                                <div style="font-size:22px;font-weight:700;color:var(--text-primary);">R$ ${formatarMoeda(faturamentoMes)}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">Faturamento Mês</div>
-                                <div style="font-size:10px;color:var(--text-muted);">${empresasPagas} empresas pagas</div>
-                            </div>
+
+                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
+                        <div style="font-size:24px;display:block;margin-bottom:4px;">✂️</div>
+                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Agendamentos</div>
+                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${totalAgendamentos}</div>
+                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(34,197,94,0.15);color:#22c55e;">+${agendamentosMes} este mês</span>
                         </div>
                     </div>
+
+                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
+                        <div style="font-size:24px;display:block;margin-bottom:4px;">💰</div>
+                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Faturamento</div>
+                        <div style="font-size:28px;font-weight:700;color:#f59e0b;margin:2px 0;">R$ ${formatarMoeda(faturamentoMes)}</div>
+                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
+                            <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">${empresasPagas} empresas pagas</span>
+                        </div>
+                    </div>
+
                 </div>
-                
-                <!-- LISTA DE EMPRESAS -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-building" style="color:var(--primary);"></i> Todas as Empresas (${totalEmpresas})</h4>
-                        <div style="display:flex;gap:8px;">
-                            <input type="text" id="buscarEmpresa" placeholder="🔍 Buscar empresa..." style="background:var(--bg-hover);border:1px solid var(--border-color);border-radius:6px;padding:4px 12px;font-size:12px;color:var(--text-primary);width:180px;" oninput="filtrarEmpresas()">
-                            <button onclick="carregarDashboardSuperAdmin()" style="background:var(--primary);border:none;padding:4px 14px;border-radius:6px;color:white;font-size:12px;cursor:pointer;">
-                                <i class="fas fa-sync"></i>
-                            </button>
+
+                <!-- TABELA DE EMPRESAS -->
+                <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;margin-bottom:20px;">
+                    
+                    <!-- Cabeçalho da tabela -->
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2d2d3f;">
+                        <div>
+                            <h3 style="margin:0;font-size:16px;font-weight:600;color:#fff;">📋 Todas as Empresas <span style="font-size:12px;color:#888;font-weight:400;">(${totalEmpresas})</span></h3>
+                            <div style="display:flex;gap:12px;font-size:12px;color:#888;margin-top:4px;flex-wrap:wrap;">
+                                <span style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;background:#2d2d3f;color:#22c55e;">🟢 ${empresasAtivas} ativas</span>
+                                <span style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;background:#2d2d3f;color:#f59e0b;">🟡 ${empresasTrial} trial</span>
+                                <span style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;background:#2d2d3f;color:#ef4444;">🔴 ${empresasExpiradas.length} expiradas</span>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <input type="text" id="buscarEmpresa" placeholder="🔍 Buscar empresa..." oninput="filtrarEmpresas()" style="background:#2d2d3f;border:1px solid #3d3d5f;border-radius:8px;padding:6px 14px;font-size:12px;color:#fff;min-height:36px;">
+                            <select id="filtroStatus" onchange="filtrarEmpresas()" style="background:#2d2d3f;border:1px solid #3d3d5f;border-radius:8px;padding:6px 14px;font-size:12px;color:#fff;min-height:36px;">
+                                <option value="">📋 Todos</option>
+                                <option value="ativo">🟢 Ativos</option>
+                                <option value="trial">🟡 Trial</option>
+                                <option value="expirado">🔴 Expirados</option>
+                            </select>
                         </div>
                     </div>
-                    
-                    ${totalEmpresas > 0 ? `
-                    <div style="overflow-x:auto;">
-                        <table class="data-table" style="font-size:12px;">
+
+                    <!-- Tabela -->
+                    <div style="overflow-x:auto;margin:0 -4px;padding:0 4px;">
+                        <table style="width:100%;min-width:750px;border-collapse:separate;border-spacing:0 6px;font-size:13px;">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Empresa</th>
-                                    <th>Plano</th>
-                                    <th>Status</th>
-                                    <th>Donos</th>
-                                    <th>Profissionais</th>
-                                    <th>Clientes</th>
-                                    <th>Agendamentos</th>
-                                    <th>Ações</th>
+                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:8px 0 0 0;">#</th>
+                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">Empresa</th>
+                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">Plano</th>
+                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">Status</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">⏳ Dias</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👑</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👤</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👥</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">✂️</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:0 8px 0 0;">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="listaEmpresas">
                                 ${empresas.map((e, idx) => {
             const isTrial = e.plano === 'trial' || e.plano === 'Trial';
-            const isAtivo = e.assinatura_ativa === 1;
+            const isAtivo = e.assinatura_ativa === 1 || e.assinatura_ativa === true;
+
+            // 🔥 CALCULAR DIAS RESTANTES
+            let diasRestantes = 0;
+            let isIlimitado = false;
+
+            if (isTrial && e.trial_expira) {
+                const hoje = new Date();
+                const expira = new Date(e.trial_expira);
+                diasRestantes = Math.ceil((expira - hoje) / (1000 * 60 * 60 * 24));
+                if (diasRestantes < 0) diasRestantes = 0;
+            } else if (!isTrial && e.assinatura_valida_ate) {
+                const hoje = new Date();
+                const validaAte = new Date(e.assinatura_valida_ate);
+                diasRestantes = Math.ceil((validaAte - hoje) / (1000 * 60 * 60 * 24));
+                if (diasRestantes < 0) diasRestantes = 0;
+            } else {
+                isIlimitado = true;
+                diasRestantes = 999;
+            }
+
+            // 🔥 COR DOS DIAS RESTANTES
+            let diasColor = '#22c55e';
+            let diasTexto = '♾️';
+            if (!isIlimitado) {
+                if (diasRestantes <= 0) {
+                    diasColor = '#ef4444';
+                    diasTexto = '0d 🔴';
+                } else if (diasRestantes <= 3) {
+                    diasColor = '#ef4444';
+                    diasTexto = diasRestantes + 'd 🔴';
+                } else if (diasRestantes <= 7) {
+                    diasColor = '#f59e0b';
+                    diasTexto = diasRestantes + 'd ⚠️';
+                } else {
+                    diasColor = '#22c55e';
+                    diasTexto = diasRestantes + 'd';
+                }
+            }
 
             let statusColor = '#22c55e';
             let statusText = '✅ Ativo';
+            let statusBg = 'rgba(34,197,94,0.12)';
+            let statusBorder = 'rgba(34,197,94,0.15)';
+
             if (isTrial) {
-                statusColor = '#f59e0b';
-                statusText = '🔄 Trial';
-                if (e.trial_expira && new Date(e.trial_expira) < new Date()) {
+                if (diasRestantes <= 0) {
                     statusColor = '#ef4444';
                     statusText = '⛔ Expirado';
+                    statusBg = 'rgba(239,68,68,0.12)';
+                    statusBorder = 'rgba(239,68,68,0.15)';
+                } else {
+                    statusColor = '#f59e0b';
+                    statusText = '🔄 Trial';
+                    statusBg = 'rgba(245,158,11,0.12)';
+                    statusBorder = 'rgba(245,158,11,0.15)';
                 }
             } else if (!isAtivo) {
-                statusColor = '#ef4444';
+                statusColor = '#94a3b8';
                 statusText = '⛔ Inativo';
+                statusBg = 'rgba(148,163,184,0.12)';
+                statusBorder = 'rgba(148,163,184,0.15)';
             }
 
-            const donos = usuarios.filter(u => u.empresa_id === e.id && u.role === 'dono');
-            const profissionais = usuarios.filter(u => u.empresa_id === e.id && u.role === 'profissional');
+            let planoColor = '#f59e0b';
+            let planoBg = 'rgba(245,158,11,0.12)';
+            let planoText = 'Trial';
+            if (e.plano === 'Starter' || e.plano === 'starter') { planoColor = '#667eea'; planoBg = 'rgba(102,126,234,0.12)'; planoText = 'Starter'; }
+            else if (e.plano === 'Pro' || e.plano === 'pro') { planoColor = '#22c55e'; planoBg = 'rgba(34,197,94,0.12)'; planoText = 'Pro'; }
+            else if (e.plano === 'Business' || e.plano === 'business') { planoColor = '#8b5cf6'; planoBg = 'rgba(139,92,246,0.12)'; planoText = 'Business'; }
+            else if (e.plano === 'Enterprise' || e.plano === 'enterprise') { planoColor = '#d97706'; planoBg = 'rgba(245,158,11,0.12)'; planoText = 'Enterprise'; }
+            else if (isTrial) { planoText = 'Trial'; }
+
+            const donos = usuarios.filter(u => u.empresa_id === e.id && u.role === 'dono').length;
+            const profissionais = usuarios.filter(u => u.empresa_id === e.id && u.role === 'profissional').length;
+            const clientes = e.total_clientes || 0;
+            const agendamentos = e.total_agendamentos || 0;
 
             return `
-                                        <tr>
-                                            <td style="font-weight:600;color:var(--text-muted);">${idx + 1}</td>
-                                            <td style="font-weight:600;">${escapeHtml(e.nome)}</td>
-                                            <td><span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${isTrial ? 'rgba(245,158,11,0.15)' : 'rgba(102,126,234,0.15)'};color:${isTrial ? '#f59e0b' : 'var(--primary)'};">${isTrial ? 'Trial' : e.plano || 'N/A'}</span></td>
-                                            <td><span style="color:${statusColor};font-weight:600;font-size:11px;">${statusText}</span></td>
-                                            <td>${donos.length}</td>
-                                            <td>${profissionais.length}</td>
-                                            <td>${e.total_clientes || 0}</td>
-                                            <td>${e.total_agendamentos || 0}</td>
-                                            <td>
-                                                <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                                                    <button onclick="verEmpresa(${e.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 10px;border-radius:4px;color:var(--primary);font-size:10px;cursor:pointer;" title="Ver detalhes">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <button onclick="editarEmpresa(${e.id})" style="background:rgba(245,158,11,0.15);border:none;padding:2px 10px;border-radius:4px;color:#f59e0b;font-size:10px;cursor:pointer;" title="Editar">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    ${isTrial ? `
-                                                        <button onclick="estenderTrial(${e.id})" style="background:rgba(34,197,94,0.15);border:none;padding:2px 10px;border-radius:4px;color:#22c55e;font-size:10px;cursor:pointer;" title="Estender trial">
-                                                            <i class="fas fa-clock"></i>
-                                                        </button>
-                                                    ` : ''}
+                                        <tr data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" data-nome="${e.nome.toLowerCase()}" style="background:#252540;border-radius:10px;transition:all 0.2s;cursor:default;">
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:10px 0 0 10px;font-weight:600;color:#666;font-size:12px;text-align:center;">${idx + 1}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;font-size:14px;">${escapeHtml(e.nome)}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:3px 14px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}33;">${planoText}</span></td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">${statusText}</span></td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:700;color:${diasColor};text-align:center;font-size:14px;">${diasTexto}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${donos}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${profissionais}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${clientes}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#667eea;text-align:center;font-size:15px;">${agendamentos}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:0 10px 10px 0;">
+                                                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">
+                                                    <button onclick="verEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(102,126,234,0.2);color:#667eea;transition:all 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-eye"></i></button>
+                                                    <button onclick="editarEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
+                                                    ${isTrial ? `<button onclick="estenderTrial(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(34,197,94,0.2);color:#22c55e;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-clock"></i></button>` : ''}
+                                                    <button onclick="deletarEmpresa(${e.id}, '${escapeHtml(e.nome)}')" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);color:#ef4444;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-trash"></i></button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -215,52 +279,44 @@ async function carregarDashboardSuperAdmin() {
                             </tbody>
                         </table>
                     </div>
-                    ` : `
-                        <div style="text-align:center;padding:30px;color:var(--text-muted);">
-                            <i class="fas fa-building" style="font-size:48px;opacity:0.2;display:block;margin-bottom:12px;"></i>
-                            <p style="font-size:16px;font-weight:600;">Nenhuma empresa cadastrada</p>
-                            <p style="font-size:13px;">Ainda não há empresas no sistema.</p>
-                        </div>
-                    `}
                 </div>
-                
-                <!-- USUÁRIOS RECENTES -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Últimos Usuários Cadastrados</h4>
-                        <span style="font-size:11px;color:var(--text-muted);">Total: ${usuarios.length}</span>
+
+                <!-- USUÁRIOS -->
+                <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+                        <h3 style="margin:0;font-size:16px;font-weight:600;color:#fff;">👥 Últimos Usuários Cadastrados</h3>
+                        <span style="font-size:12px;color:#888;background:#2d2d3f;padding:4px 14px;border-radius:20px;">Total: ${usuarios.length}</span>
                     </div>
                     <div style="overflow-x:auto;">
-                        <table class="data-table" style="font-size:12px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px;">
                             <thead>
                                 <tr>
-                                    <th>Nome</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Empresa</th>
-                                    <th>Cadastro</th>
-                                    <th>Ações</th>
+                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Nome</th>
+                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Email</th>
+                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Role</th>
+                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Empresa</th>
+                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Cadastro</th>
+                                    <th style="padding:8px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${usuarios.slice(0, 10).map(u => {
             const empresa = empresas.find(e => e.id === u.empresa_id);
-            const roleLabels = {
-                'superadmin': '🔴 Super Admin',
-                'dono': '🟠 Dono',
-                'profissional': '🔵 Profissional'
-            };
+            let roleColor = '#f59e0b';
+            let roleBg = 'rgba(245,158,11,0.15)';
+            let roleLabel = '🟠 Dono';
+            if (u.role === 'superadmin') { roleColor = '#ef4444'; roleBg = 'rgba(239,68,68,0.15)'; roleLabel = '🔴 Super Admin'; }
+            else if (u.role === 'profissional') { roleColor = '#667eea'; roleBg = 'rgba(102,126,234,0.15)'; roleLabel = '🔵 Profissional'; }
+
             return `
-                                        <tr>
-                                            <td style="font-weight:600;">${escapeHtml(u.nome)}</td>
-                                            <td style="font-size:11px;color:var(--text-muted);">${escapeHtml(u.email)}</td>
-                                            <td><span style="font-size:11px;">${roleLabels[u.role] || u.role}</span></td>
-                                            <td style="font-size:11px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
-                                            <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(u.created_at)}</td>
-                                            <td>
-                                                <button onclick="editarUsuario(${u.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 10px;border-radius:4px;color:var(--primary);font-size:10px;cursor:pointer;">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
+                                        <tr style="transition:background 0.2s;cursor:default;" onmouseover="this.style.background='#2d2d3f'" onmouseout="this.style.background='transparent'">
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-weight:600;color:#fff;">${escapeHtml(u.nome)}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${escapeHtml(u.email)}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;"><span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:500;background:${roleBg};color:${roleColor};">${roleLabel}</span></td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${formatarDataBr(u.created_at)}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;text-align:center;">
+                                                <button onclick="editarUsuario(${u.id})" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
                                             </td>
                                         </tr>
                                     `;
@@ -269,6 +325,7 @@ async function carregarDashboardSuperAdmin() {
                         </table>
                     </div>
                 </div>
+
             </div>
         `;
 
@@ -276,13 +333,16 @@ async function carregarDashboardSuperAdmin() {
         hideLoading();
 
     } catch (error) {
-        console.error('❌ Erro ao carregar dashboard super admin:', error);
+        console.error('❌ Erro:', error);
         hideLoading();
         document.getElementById('content').innerHTML = `
-            <div class="error-state">
-                <i class="fas fa-exclamation-triangle" style="font-size:32px;color:#ef4444;"></i>
-                <p style="margin:12px 0;color:var(--text-muted);">Erro ao carregar dashboard</p>
-                <button onclick="carregarDashboardSuperAdmin()" class="btn btn-primary">Tentar Novamente</button>
+            <div style="text-align:center;padding:60px 20px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ef4444;"></i>
+                <p style="margin:12px 0;font-size:18px;color:#fff;">Erro ao carregar dashboard</p>
+                <p style="color:#888;font-size:14px;">${error.message}</p>
+                <button onclick="carregarDashboardSuperAdmin()" style="background:#667eea;border:none;padding:10px 24px;border-radius:8px;color:white;font-size:14px;cursor:pointer;margin-top:12px;">
+                    <i class="fas fa-sync"></i> Tentar Novamente
+                </button>
             </div>
         `;
     }
@@ -716,10 +776,6 @@ async function editarEmpresa(id) {
     }
 }
 
-// ============================================
-// EDITAR USUÁRIO (CORRIGIDO)
-// ============================================
-
 async function editarUsuario(id) {
     console.log('👤 Editando usuário ID:', id);
 
@@ -738,7 +794,7 @@ async function editarUsuario(id) {
     showLoading();
 
     try {
-        // 🔥 PRIMEIRO, BUSCAR O USUÁRIO PARA SABER O ROLE
+        // 🔥 BUSCAR O USUÁRIO PARA SABER O ROLE
         const resUser = await fetch(`/api/admin/usuarios/${id}`, {
             method: 'GET',
             headers: {
@@ -761,15 +817,17 @@ async function editarUsuario(id) {
         const usuario = userData.data;
         console.log('👤 Usuário carregado:', usuario.nome, 'Role:', usuario.role);
 
-        // 🔥 DECIDIR A ROTA BASEADA NO ROLE, NÃO NO ID!
+        // 🔥 DECIDIR A ROTA BASEADA NO ROLE
         let url;
-        if (usuario.role === 'profissional') {
-            url = `/api/admin/profissionais/${id}`;  // ← ROTA PARA PROFISSIONAL
-        } else {
-            url = `/api/admin/usuarios/${id}`;       // ← ROTA PARA DONO/SUPERADMIN
-        }
+        const isProfissional = usuario.role === 'profissional';
 
-        console.log(`📡 Buscando ${url}...`);
+        if (isProfissional) {
+            url = `/api/admin/profissionais/${id}`;
+            console.log('📡 Buscando PROFISSIONAL:', url);
+        } else {
+            url = `/api/admin/usuarios/${id}`;
+            console.log('📡 Buscando USUÁRIO:', url);
+        }
 
         const res = await fetch(url, {
             method: 'GET',
@@ -800,11 +858,10 @@ async function editarUsuario(id) {
 
         const usuarioCompleto = data.data;
         console.log('👤 Usuário carregado:', usuarioCompleto.nome);
+        console.log('👤 Role:', usuarioCompleto.role);
+        console.log('👤 É profissional?', isProfissional);
 
-        // 🔥 DETECTAR SE É PROFISSIONAL OU USUÁRIO
-        const isProfissional = usuarioCompleto.role === 'profissional';
-
-        // 🔥 PEGAR O TELEFONE (se existir)
+        // 🔥 PEGAR O TELEFONE
         const telefone = usuarioCompleto.telefone || '';
 
         const modalContent = `
@@ -823,7 +880,6 @@ async function editarUsuario(id) {
                         <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuarioCompleto.email || '')}" required>
                     </div>
                     
-                    <!-- 🔥 CAMPO TELEFONE PARA TODOS OS USUÁRIOS -->
                     <div class="form-group">
                         <label>📱 Telefone</label>
                         <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(telefone)}" placeholder="(11) 99999-9999">
@@ -896,9 +952,6 @@ function fecharModalEditarUsuario() {
     if (modal) modal.style.display = 'none';
 }
 
-// ============================================
-// SALVAR USUÁRIO (ATUALIZADO)
-// ============================================
 async function salvarUsuario() {
     const id = document.getElementById('editUsuarioId')?.value;
     const tipo = document.getElementById('editUsuarioTipo')?.value || 'usuario';
@@ -909,12 +962,17 @@ async function salvarUsuario() {
     const telefone = document.getElementById('editUsuarioTelefone')?.value;
     const role = document.getElementById('editUsuarioRole')?.value;
 
+    console.log('📝 SALVANDO USUÁRIO:');
+    console.log('  - ID:', id);
+    console.log('  - Tipo:', tipo);
+    console.log('  - Nome:', nome);
+    console.log('  - Email:', email);
+    console.log('  - Telefone:', telefone);
+
     if (!id || !nome || !email) {
         showToast('Nome e email são obrigatórios', 'error');
         return;
     }
-
-    console.log('📝 Salvando usuário...');
 
     const dados = {
         nome,
@@ -927,23 +985,26 @@ async function salvarUsuario() {
         if (comissao !== undefined && comissao !== '') {
             dados.comissao_percent = parseFloat(comissao);
         }
+        console.log('📝 É profissional, comissão:', dados.comissao_percent);
     } else {
         if (role) {
             dados.role = role;
         }
+        console.log('📝 É usuário, role:', dados.role);
     }
 
     console.log('📤 Enviando dados:', dados);
 
     try {
+        // 🔥 DECISÃO CORRETA BASEADA NO TIPO
         let url;
         if (tipo === 'profissional') {
             url = `/api/admin/profissionais/${id}`;
+            console.log('📡 Enviando para PROFISSIONAL:', url);
         } else {
             url = `/api/admin/usuarios/${id}`;
+            console.log('📡 Enviando para USUÁRIO:', url);
         }
-
-        console.log(`📡 Enviando para: ${url}`);
 
         const response = await fetch(url, {
             method: 'PUT',
@@ -955,18 +1016,18 @@ async function salvarUsuario() {
         });
 
         const data = await response.json();
+        console.log('📥 Resposta:', data);
 
         if (data.success) {
             showToast('✅ Usuário atualizado com sucesso!', 'success');
             fecharModal();
-            // 🔥 CORRIGIDO: usar a função correta
-            carregarDashboardSuperAdmin(); // ← ALTERADO AQUI!
+            carregarDashboardSuperAdmin();
         } else {
             showToast('❌ ' + data.message, 'error');
         }
     } catch (error) {
         console.error('❌ Erro ao salvar usuário:', error);
-        showToast('Erro ao salvar usuário', 'error');
+        showToast('Erro ao salvar usuário: ' + error.message, 'error');
     }
 }
 
@@ -1113,6 +1174,51 @@ document.addEventListener('DOMContentLoaded', function () {
 setTimeout(conectarFormEmpresa, 500);
 
 // ============================================
+// DELETAR EMPRESA
+// ============================================
+
+async function deletarEmpresa(id, nome) {
+    // Primeira confirmação
+    if (!confirm(`⚠️ TEM CERTEZA QUE DESEJA DELETAR A EMPRESA "${nome}"?\n\nIsso vai deletar PERMANENTEMENTE:\n• Todos os usuários (donos e profissionais)\n• Todos os clientes\n• Todos os agendamentos\n• Todos os serviços\n• Todos os horários\n• Todas as despesas\n• Todos os acessos\n\n📌 Esta ação NÃO pode ser desfeita!`)) {
+        return;
+    }
+
+    // Segunda confirmação com digitação
+    const confirmacao = prompt(`Digite "DELETAR" para confirmar a exclusão da empresa "${nome}":`);
+    if (confirmacao !== 'DELETAR') {
+        showToast('❌ Exclusão cancelada - confirmação incorreta', 'warning');
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch(`/api/admin/empresas/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast(`✅ Empresa "${nome}" deletada com sucesso!`, 'success');
+            setTimeout(() => carregarDashboardSuperAdmin(), 1000);
+        } else {
+            showToast('❌ ' + data.message, 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao deletar empresa:', error);
+        showToast('❌ Erro ao deletar empresa: ' + error.message, 'error');
+    }
+}
+
+// ============================================
 // EXPORTAR FUNÇÕES
 // ============================================
 
@@ -1127,5 +1233,6 @@ window.fecharModalEditarUsuario = fecharModalEditarUsuario;
 window.salvarUsuario = salvarUsuario;
 window.salvarEmpresa = salvarEmpresa;
 window.fecharModal = fecharModal;
+window.deletarEmpresa = deletarEmpresa;  // 🔥 ADICIONE ESTA LINHA
 
 console.log('✅ empresas.js carregado com Dashboard Super Admin completo!');

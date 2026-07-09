@@ -654,22 +654,28 @@ async function verificarLimiteAgendamentos(clienteId) {
 }
 
 // ============================================
-// MOSTRAR SERVIÇOS
+// MOSTRAR SERVIÇOS - CORRIGIDO
 // ============================================
 function mostrarServicos() {
     if (servicosList.length === 0) {
         adicionarMensagem(
-            '❌ Desculpe, não há serviços disponíveis no momento.<br><br>Por favor, entre em contato com a barbearia.',
+            '❌ Desculpe, não há serviços disponíveis no momento. Por favor, entre em contato com a barbearia.',
             'bot'
         );
         estado = 'inicio';
         return;
     }
 
-    const botoesServicos = servicosList.map(s => ({
-        label: `${s.nome} - R$ ${s.valor.toFixed(2)}`,
-        valor: s.nome
-    }));
+    var botoesServicos = [];
+    for (var i = 0; i < servicosList.length; i++) {
+        var s = servicosList[i];
+        var valor = parseFloat(s.valor) || 0;
+        var valorFormatado = valor.toFixed(2).replace('.', ',');
+        botoesServicos.push({
+            label: s.nome + ' - R$ ' + valorFormatado,
+            valor: s.nome
+        });
+    }
 
     adicionarMensagemComBotoes(
         '📋 <strong>Escolha o serviço desejado:</strong>',
@@ -689,10 +695,14 @@ function perguntarProfissional() {
         return;
     }
 
-    const botoesProfissionais = profissionaisList.map(p => ({
-        label: p.nome,
-        valor: p.nome
-    }));
+    var botoesProfissionais = [];
+    for (var i = 0; i < profissionaisList.length; i++) {
+        var p = profissionaisList[i];
+        botoesProfissionais.push({
+            label: p.nome,
+            valor: p.nome
+        });
+    }
 
     botoesProfissionais.push({
         label: '👤 Qualquer profissional',
@@ -709,9 +719,9 @@ function perguntarProfissional() {
 // PERGUNTAR DATA
 // ============================================
 async function perguntarData() {
-    const hoje = new Date();
-    const mesAtual = hoje.getMonth() + 1;
-    const anoAtual = hoje.getFullYear();
+    var hoje = new Date();
+    var mesAtual = hoje.getMonth() + 1;
+    var anoAtual = hoje.getFullYear();
 
     await carregarDatasDisponiveis(mesAtual, anoAtual);
 
@@ -728,29 +738,29 @@ async function perguntarData() {
         return;
     }
 
-    const datasOrdenadas = [...datasDisponiveis].sort();
-    const primeiraData = datasOrdenadas[0];
-    const partes = primeiraData.split('-');
-    const mesData = parseInt(partes[1]);
-    const anoData = parseInt(partes[0]);
+    var datasOrdenadas = [...datasDisponiveis].sort();
+    var primeiraData = datasOrdenadas[0];
+    var partes = primeiraData.split('-');
+    var mesData = parseInt(partes[1]);
+    var anoData = parseInt(partes[0]);
 
     calendarioAtual = new Date(anoData, mesData - 1, 1);
 
     console.log('📅 Calendário ajustado para:', calendarioAtual.getMonth() + 1, '/', calendarioAtual.getFullYear());
 
-    let textoDatas = '📅 <strong>Datas disponíveis:</strong><br><br>';
-    const maxDatas = Math.min(datasOrdenadas.length, 10);
-    for (let i = 0; i < maxDatas; i++) {
-        textoDatas += `• ${formatarDataBr(datasOrdenadas[i])}<br>`;
+    var textoDatas = '📅 <strong>Datas disponíveis:</strong><br><br>';
+    var maxDatas = Math.min(datasOrdenadas.length, 10);
+    for (var i = 0; i < maxDatas; i++) {
+        textoDatas += '• ' + formatarDataBr(datasOrdenadas[i]) + '<br>';
     }
     if (datasOrdenadas.length > 10) {
-        textoDatas += `... e mais ${datasOrdenadas.length - 10} datas`;
+        textoDatas += '... e mais ' + (datasOrdenadas.length - 10) + ' datas';
     }
     textoDatas += '<br><br>Selecione uma data no calendário abaixo:';
 
     adicionarMensagem(textoDatas, 'bot');
 
-    const calendario = renderizarCalendario();
+    var calendario = renderizarCalendario();
     adicionarMensagem('📅 <strong>Calendário:</strong>', 'bot', calendario);
 
     estado = 'aguardando_data';
@@ -760,13 +770,13 @@ async function perguntarData() {
 // CARREGAR DATAS DISPONÍVEIS - COM FALLBACK
 // ============================================
 async function carregarDatasDisponiveis(mes, ano) {
-    const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
-    const anoAtual = parseInt(ano) || new Date().getFullYear();
+    var mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+    var anoAtual = parseInt(ano) || new Date().getFullYear();
 
     try {
-        console.log(`🔍 Buscando datas para ${mesAtual}/${anoAtual}`);
+        console.log('🔍 Buscando datas para ' + mesAtual + '/' + anoAtual);
 
-        const res = await fetch('/api/chatbot/datas-disponiveis-mes', {
+        var res = await fetch('/api/chatbot/datas-disponiveis-mes', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -775,21 +785,21 @@ async function carregarDatasDisponiveis(mes, ano) {
                 ano: anoAtual
             })
         });
-        const data = await res.json();
+        var data = await res.json();
         console.log('📦 Resposta datas:', data);
 
         if (data.success && data.diasDisponiveis && data.diasDisponiveis.length > 0) {
             datasDisponiveis = data.diasDisponiveis;
-            console.log(`✅ ${datasDisponiveis.length} datas disponíveis`);
+            console.log('✅ ' + datasDisponiveis.length + ' datas disponíveis');
         } else {
             console.warn('⚠ Nenhuma data da API, usando fallback...');
             datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
-            console.log(`📦 ${datasDisponiveis.length} datas de fallback`);
+            console.log('📦 ' + datasDisponiveis.length + ' datas de fallback');
         }
     } catch (error) {
         console.error('❌ Erro ao carregar datas:', error);
         datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
-        console.log(`📦 ${datasDisponiveis.length} datas de fallback (erro)`);
+        console.log('📦 ' + datasDisponiveis.length + ' datas de fallback (erro)');
     }
 }
 
@@ -797,14 +807,14 @@ async function carregarDatasDisponiveis(mes, ano) {
 // GERAR DATAS FALLBACK
 // ============================================
 function gerarDatasFallback(mes, ano) {
-    const datas = [];
-    const hoje = new Date();
+    var datas = [];
+    var hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    for (let i = 1; i <= 15; i++) {
-        const data = new Date(hoje);
+    for (var i = 1; i <= 15; i++) {
+        var data = new Date(hoje);
         data.setDate(data.getDate() + i);
-        const dataStr = data.toISOString().split('T')[0];
+        var dataStr = data.toISOString().split('T')[0];
         datas.push(dataStr);
     }
 
@@ -812,7 +822,7 @@ function gerarDatasFallback(mes, ano) {
 }
 
 // ============================================
-// RENDERIZAR CALENDÁRIO
+// RENDERIZAR CALENDÁRIO - CORRIGIDO
 // ============================================
 function renderizarCalendario() {
     const hoje = new Date();
@@ -824,7 +834,7 @@ function renderizarCalendario() {
     console.log(`📅 Renderizando calendário: ${mes + 1}/${ano}`);
     console.log(`📅 Datas disponíveis:`, datasDisponiveis);
 
-    const datasDoMes = datasDisponiveis.filter(data => {
+    const datasDoMes = datasDisponiveis.filter(function (data) {
         const partes = data.split('-');
         return parseInt(partes[1]) === mes + 1 && parseInt(partes[0]) === ano;
     });
@@ -900,9 +910,14 @@ function renderizarCalendario() {
             diaDiv.style.alignItems = 'center';
             diaDiv.style.justifyContent = 'center';
             diaDiv.title = 'Disponível - Clique para selecionar';
-            diaDiv.onclick = function () {
-                selecionarDataCalendario(dataStr);
-            };
+
+            // 🔥 CORREÇÃO: Capturar o valor correto da data usando closure
+            (function (dataSelecionada) {
+                diaDiv.onclick = function () {
+                    selecionarDataCalendario(dataSelecionada);
+                };
+            })(dataStr);
+
             diaDiv.onmouseover = function () {
                 this.style.transform = 'scale(1.1)';
                 this.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
@@ -994,31 +1009,30 @@ function renderizarCalendario() {
 
     return container;
 }
-
 // ============================================
 // MUDAR MÊS DO CALENDÁRIO
 // ============================================
 window.mudarMesCalendario = function (delta) {
     calendarioAtual.setMonth(calendarioAtual.getMonth() + delta);
-    const mes = calendarioAtual.getMonth() + 1;
-    const ano = calendarioAtual.getFullYear();
+    var mes = calendarioAtual.getMonth() + 1;
+    var ano = calendarioAtual.getFullYear();
 
-    console.log(`🔄 Mudando para mês: ${mes}/${ano}`);
+    console.log('🔄 Mudando para mês: ' + mes + '/' + ano);
 
-    carregarDatasDisponiveis(mes, ano).then(() => {
-        const containers = document.querySelectorAll('.calendario-container');
-        const ultimoContainer = containers[containers.length - 1];
+    carregarDatasDisponiveis(mes, ano).then(function () {
+        var containers = document.querySelectorAll('.calendario-container');
+        var ultimoContainer = containers[containers.length - 1];
         if (ultimoContainer) {
-            const parent = ultimoContainer.closest('.message-content');
+            var parent = ultimoContainer.closest('.message-content');
             if (parent) {
-                const novoCalendario = renderizarCalendario();
+                var novoCalendario = renderizarCalendario();
                 parent.innerHTML = '';
-                const newText = document.createElement('div');
+                var newText = document.createElement('div');
                 newText.className = 'message-text';
                 newText.innerHTML = '📅 <strong>Calendário:</strong>';
                 parent.appendChild(newText);
                 parent.appendChild(novoCalendario);
-                const timeDiv = document.createElement('span');
+                var timeDiv = document.createElement('span');
                 timeDiv.className = 'message-time';
                 timeDiv.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
                 parent.appendChild(timeDiv);
@@ -1031,7 +1045,7 @@ window.mudarMesCalendario = function (delta) {
 // SELECIONAR DATA DO CALENDÁRIO
 // ============================================
 function selecionarDataCalendario(dataStr) {
-    adicionarMensagem(`📅 ${formatarDataBr(dataStr)}`, 'user');
+    adicionarMensagem('📅 ' + formatarDataBr(dataStr), 'user');
     processarResposta(dataStr);
 }
 
@@ -1040,7 +1054,7 @@ function selecionarDataCalendario(dataStr) {
 // ============================================
 async function perguntarHorario(data) {
     try {
-        const body = {
+        var body = {
             empresaId: empresaId,
             data: data
         };
@@ -1049,24 +1063,28 @@ async function perguntarHorario(data) {
             body.profissionalId = agendamentoAtual.profissional_id;
         }
 
-        const res = await fetch('/api/chatbot/horarios-disponiveis', {
+        var res = await fetch('/api/chatbot/horarios-disponiveis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
-        const result = await res.json();
+        var result = await res.json();
 
         if (result.success && result.horarios && result.horarios.length > 0) {
             horariosDisponiveis = result.horarios;
-            const dataFormatada = formatarDataBr(data);
+            var dataFormatada = formatarDataBr(data);
 
-            const botoesHorarios = horariosDisponiveis.map(h => ({
-                label: h,
-                valor: h
-            }));
+            var botoesHorarios = [];
+            for (var i = 0; i < horariosDisponiveis.length; i++) {
+                var h = horariosDisponiveis[i];
+                botoesHorarios.push({
+                    label: h,
+                    valor: h
+                });
+            }
 
             adicionarMensagemComBotoes(
-                `⏰ Para o dia <strong>${dataFormatada}</strong>, escolha o horário desejado:`,
+                '⏰ Para o dia <strong>' + dataFormatada + '</strong>, escolha o horário desejado:',
                 botoesHorarios
             );
         } else {
@@ -1084,26 +1102,27 @@ async function perguntarHorario(data) {
 }
 
 // ============================================
-// CONFIRMAR AGENDAMENTO
+// CONFIRMAR AGENDAMENTO - CORRIGIDO
 // ============================================
 function confirmarAgendamento() {
-    const nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
-    const servico = agendamentoAtual.servico_nome || 'Não definido';
-    const valor = agendamentoAtual.valor || 0;
-    const data = formatarDataBr(agendamentoAtual.data);
-    const hora = agendamentoAtual.hora;
+    var nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
+    var servico = agendamentoAtual.servico_nome || 'Não definido';
+    var valor = parseFloat(agendamentoAtual.valor) || 0;
+    var valorFormatado = valor.toFixed(2).replace('.', ',');
+    var data = formatarDataBr(agendamentoAtual.data);
+    var hora = agendamentoAtual.hora;
 
     adicionarMensagemComBotoes(
-        `📋 <strong>Confirme os dados do agendamento:</strong><br><br>
-        👤 <strong>Cliente:</strong> ${clienteAtual.nome}<br>
-        📞 <strong>Telefone:</strong> ${clienteAtual.telefone}<br>
-        ✂️ <strong>Serviço:</strong> ${servico}<br>
-        💰 <strong>Valor:</strong> R$ ${valor.toFixed(2)}<br>
-        ⏱️ <strong>Duração:</strong> ${agendamentoAtual.duracao || 30}min<br>
-        👨‍💼 <strong>Profissional:</strong> ${nomeProfissional}<br>
-        📅 <strong>Data:</strong> ${data}<br>
-        ⏰ <strong>Horário:</strong> ${hora}<br><br>
-        <strong>Deseja confirmar o agendamento?</strong>`,
+        '📋 <strong>Confirme os dados do agendamento:</strong><br><br>' +
+        '👤 <strong>Cliente:</strong> ' + clienteAtual.nome + '<br>' +
+        '📞 <strong>Telefone:</strong> ' + clienteAtual.telefone + '<br>' +
+        '✂️ <strong>Serviço:</strong> ' + servico + '<br>' +
+        '💰 <strong>Valor:</strong> R$ ' + valorFormatado + '<br>' +
+        '⏱️ <strong>Duração:</strong> ' + (agendamentoAtual.duracao || 30) + 'min<br>' +
+        '👨‍💼 <strong>Profissional:</strong> ' + nomeProfissional + '<br>' +
+        '📅 <strong>Data:</strong> ' + data + '<br>' +
+        '⏰ <strong>Horário:</strong> ' + hora + '<br><br>' +
+        '<strong>Deseja confirmar o agendamento?</strong>',
         [
             { label: '✅ SIM, confirmar', valor: 'sim', primary: true },
             { label: '❌ NÃO, cancelar', valor: 'não', primary: false }
@@ -1116,7 +1135,7 @@ function confirmarAgendamento() {
 // ============================================
 async function verificarEConfirmar() {
     try {
-        const res = await fetch('/api/chatbot/horarios-disponiveis', {
+        var res = await fetch('/api/chatbot/horarios-disponiveis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1125,7 +1144,7 @@ async function verificarEConfirmar() {
                 data: agendamentoAtual.data
             })
         });
-        const result = await res.json();
+        var result = await res.json();
 
         if (result.success && result.horarios && result.horarios.includes(agendamentoAtual.hora)) {
             await finalizarAgendamento();
@@ -1159,7 +1178,7 @@ async function finalizarAgendamento() {
             if (telefoneCliente) {
                 console.log('🔍 Buscando cliente pelo telefone:', telefoneCliente);
                 try {
-                    const res = await fetch('/api/chatbot/cliente/buscar', {
+                    var res = await fetch('/api/chatbot/cliente/buscar', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -1167,7 +1186,7 @@ async function finalizarAgendamento() {
                             empresaId: empresaId
                         })
                     });
-                    const data = await res.json();
+                    var data = await res.json();
                     console.log('📦 Resposta da busca:', data);
 
                     if (data.success && data.cliente) {
@@ -1181,14 +1200,14 @@ async function finalizarAgendamento() {
 
             if (!clienteAtual || !clienteAtual.id) {
                 try {
-                    const res = await fetch('/api/clientes', {
+                    var res2 = await fetch('/api/clientes', {
                         headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
                     });
-                    const data = await res.json();
-                    if (data.success && data.data) {
-                        const encontrado = data.data.find(c =>
-                            c.nome.toLowerCase() === nomeCliente?.toLowerCase()
-                        );
+                    var data2 = await res2.json();
+                    if (data2.success && data2.data) {
+                        var encontrado = data2.data.find(function (c) {
+                            return c.nome.toLowerCase() === nomeCliente?.toLowerCase();
+                        });
                         if (encontrado) {
                             clienteAtual = encontrado;
                             console.log('✅ Cliente encontrado pelo nome:', clienteAtual);
@@ -1219,14 +1238,14 @@ async function finalizarAgendamento() {
             return;
         }
 
-        let empresaIdFinal = empresaId;
+        var empresaIdFinal = empresaId;
         if (!empresaIdFinal) {
-            const params = new URLSearchParams(window.location.search);
+            var params = new URLSearchParams(window.location.search);
             empresaIdFinal = params.get('empresa') || '1';
             console.log('🏢 empresaId recuperado da URL:', empresaIdFinal);
         }
 
-        let profissionalId = agendamentoAtual.profissional_id;
+        var profissionalId = agendamentoAtual.profissional_id;
 
         if (profissionalId && typeof profissionalId === 'string' && profissionalId.includes('dono')) {
             profissionalId = null;
@@ -1237,7 +1256,7 @@ async function finalizarAgendamento() {
             profissionalId = null;
         }
 
-        const body = {
+        var body = {
             clienteId: parseInt(clienteAtual.id),
             servicoId: parseInt(agendamentoAtual.servico_id),
             profissionalId: profissionalId ? parseInt(profissionalId) : null,
@@ -1250,35 +1269,37 @@ async function finalizarAgendamento() {
 
         console.log('📤 Enviando agendamento:', JSON.stringify(body, null, 2));
 
-        const res = await fetch('/api/chatbot/agendar', {
+        var res3 = await fetch('/api/chatbot/agendar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
 
-        const result = await res.json();
-        console.log('📥 Resposta do servidor:', result);
+        var result3 = await res3.json();
+        console.log('📥 Resposta do servidor:', result3);
 
-        if (result.success) {
-            const dataFormatada = formatarDataBr(agendamentoAtual.data);
-            const nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
+        if (result3.success) {
+            var dataFormatada = formatarDataBr(agendamentoAtual.data);
+            var nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
+            var valorFinal = parseFloat(agendamentoAtual.valor) || 0;
+            var valorFinalFormatado = valorFinal.toFixed(2).replace('.', ',');
 
             adicionarMensagem(
-                `✅ <strong>AGENDAMENTO CONFIRMADO, ${clienteAtual.nome}!</strong><br><br>
-                📋 <strong>Resumo:</strong><br>
-                📅 Data: ${dataFormatada} às ${agendamentoAtual.hora}<br>
-                👨‍💼 Profissional: ${nomeProfissional}<br>
-                ✂️ Serviço: ${agendamentoAtual.servico_nome}<br>
-                💰 Valor: R$ ${(agendamentoAtual.valor || 0).toFixed(2)}<br><br>
-                🔔 Você receberá um lembrete próximo ao horário.<br><br>
-                Obrigado por escolher a ${dadosEmpresa?.nome || 'nossa barbearia'}! ✨`,
+                '✅ <strong>AGENDAMENTO CONFIRMADO, ' + clienteAtual.nome + '!</strong><br><br>' +
+                '📋 <strong>Resumo:</strong><br>' +
+                '📅 Data: ' + dataFormatada + ' às ' + agendamentoAtual.hora + '<br>' +
+                '👨‍💼 Profissional: ' + nomeProfissional + '<br>' +
+                '✂️ Serviço: ' + agendamentoAtual.servico_nome + '<br>' +
+                '💰 Valor: R$ ' + valorFinalFormatado + '<br><br>' +
+                '🔔 Você receberá um lembrete próximo ao horário.<br><br>' +
+                'Obrigado por escolher a ' + (dadosEmpresa?.nome || 'nossa barbearia') + '! ✨',
                 'bot'
             );
             estado = 'inicio';
             agendamentoAtual = {};
         } else {
             adicionarMensagem(
-                `❌ Erro ao confirmar agendamento: ${result.message}<br><br>Tente novamente.`,
+                '❌ Erro ao confirmar agendamento: ' + result3.message + '<br><br>Tente novamente.',
                 'bot'
             );
             estado = 'inicio';
@@ -1296,8 +1317,8 @@ async function finalizarAgendamento() {
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        const [ano, mes, dia] = dataStr.split('-');
-        return `${dia}/${mes}/${ano}`;
+        var partes = dataStr.split('-');
+        return partes[2] + '/' + partes[1] + '/' + partes[0];
     } catch {
         return dataStr;
     }

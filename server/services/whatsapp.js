@@ -130,7 +130,7 @@ async function send(numero, mensagem) {
 // GERAR MENSAGEM DE CONFIRMAÇÃO - CORRIGIDA
 // ============================================
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa) {
-    // 🔥 CONVERTER VALOR PARA NÚMERO COM SEGURANÇA
+    // Converter valor para número
     let valor = 0;
     if (servico && servico.valor !== undefined && servico.valor !== null) {
         valor = parseFloat(servico.valor) || 0;
@@ -139,11 +139,12 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
 
     const telefoneDono = empresa?.telefone_dono || '';
     const telefoneDonoFormatado = formatarTelefone(telefoneDono);
-    const endereco = empresa?.endereco || 'não informado';
+    const endereco = empresa?.endereco || '';
     const nomeEmpresa = empresa?.nome || 'See&Agende';
+    const nomeCliente = cliente?.nome || 'Cliente';
 
     let mensagem = `🌟 *${nomeEmpresa} - Sua Agenda Inteligente*\n\n` +
-        `Olá *${cliente?.nome || 'Cliente'}*! Seu agendamento foi confirmado com sucesso! ✅\n\n` +
+        `Olá *${nomeCliente}*! Seu agendamento foi confirmado com sucesso! ✅\n\n` +
         `📋 *DETALHES DO AGENDAMENTO:*\n` +
         `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
         `📅 Data: *${formatarDataBr(data)}*\n` +
@@ -154,13 +155,14 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
         mensagem += `👤 Profissional: *${profissional.nome}*\n\n`;
     }
 
-    if (endereco && endereco !== 'não informado') {
-        mensagem += `📍 *${nomeEmpresa}*\n`;
-        mensagem += `${endereco}\n\n`;
+    // 🔥 ADICIONAR ENDEREÇO SE TIVER
+    if (endereco && endereco.trim() !== '') {
+        mensagem += `📍 *Endereço:* ${endereco}\n\n`;
     }
 
+    // 🔥 ADICIONAR TELEFONE PARA DÚVIDAS (IGUAL À MENSAGEM DE CONCLUSÃO)
     if (telefoneDonoFormatado) {
-        mensagem += `📞 Contato: ${telefoneDonoFormatado}\n\n`;
+        mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
     }
 
     mensagem += `💡 *Dicas:*\n` +
@@ -257,6 +259,51 @@ async function enviarCancelamento(dados) {
 }
 
 // ============================================
+// ENVIAR MENSAGEM DE CONCLUSÃO - COM LINK CHATBOT
+// ============================================
+async function enviarConclusao(dados) {
+    const { cliente, servico, data, hora, profissional, empresa } = dados;
+
+    if (!cliente?.telefone) {
+        console.log(`[WHATSAPP] ⚠️ Cliente sem telefone, não enviando conclusão`);
+        return { success: false, error: 'Cliente sem telefone' };
+    }
+
+    const nomeCliente = cliente?.nome || 'Cliente';
+    const nomeEmpresa = empresa?.nome || 'See&Agende';
+    const servicoNome = servico?.nome || 'Serviço';
+    const telefoneDono = empresa?.telefone_dono || '';
+    const telefoneDonoFormatado = formatarTelefone(telefoneDono);
+
+    // 🔥 CONVERTER VALOR
+    const valor = parseFloat(servico?.valor) || 0;
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+
+    // 🔥 GERAR LINK DO CHATBOT
+    const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
+    const empresaId = empresa?.id || '';
+    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
+
+    let mensagem = `✅ *Atendimento Concluído!*\n\n` +
+        `Olá *${nomeCliente}*! Seu atendimento foi concluído com sucesso. 😊\n\n` +
+        `📋 *Resumo do Atendimento:*\n` +
+        `✂️ Serviço: *${servicoNome}*\n` +
+        `📅 Data: *${formatarDataBr(data)}*\n` +
+        `⏰ Hora: *${hora}*\n\n`;
+
+    if (telefoneDonoFormatado) {
+        mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
+    }
+
+    mensagem += `🌟 *Já pensou em agendar seu próximo atendimento?*\n` +
+        `Agende pelo nosso chatbot! 🤖\n\n` +
+        `🔗 *Link do Chatbot:* ${chatbotLink}\n\n` +
+        `🙏 Agradecemos pela preferência!\n` +
+        `_Esta é uma mensagem automática do See&Agende._`;
+
+    return await send(cliente.telefone, mensagem);
+}
+// ============================================
 // EXPORTAR FUNÇÕES
 // ============================================
 module.exports = {
@@ -264,6 +311,7 @@ module.exports = {
     enviarConfirmacao,
     enviarNovoAgendamentoProfissional,
     enviarCancelamento,
+    enviarConclusao,  // 🔥 ADICIONAR ESTA LINHA
     formatarDataBr,
     formatarTelefone,
     gerarMensagemConfirmacao,
