@@ -1100,7 +1100,7 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
     if (!PLANOS[plano]) {
-        return res.status(400).json({ success: false, message: 'Plano inv�lido' });
+        return res.status(400).json({ success: false, message: 'Plano inválido' });
     }
 
     const config = PLANOS[plano];
@@ -1148,12 +1148,32 @@ app.post('/api/upgrade', auth, verificarDono, (req, res) => {
                    VALUES (?, ?, ?, ?, ?, ?)`;
 
             db.run(sqlHistorico, [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null], (err) => {
-                if (err) console.error('Erro ao salvar hist�rico:', err);
+                if (err) console.error('Erro ao salvar histórico:', err);
             });
+
+            // 🔥 HABILITAR AUTOMATICAMENTE WHATSAPP PRÓPRIO PARA BUSINESS/ENTERPRISE
+            if (['Business', 'Enterprise', 'business', 'enterprise'].includes(plano)) {
+                const sqlWhats = isProduction
+                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = TRUE WHERE id = $1'
+                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
+                db.run(sqlWhats, [empresaId], (err) => {
+                    if (err) console.error('Erro ao habilitar WhatsApp:', err);
+                    else console.log(`✅ WhatsApp próprio habilitado automaticamente para empresa ${empresaId} (plano: ${plano})`);
+                });
+            } else {
+                // Se fez downgrade, desabilitar WhatsApp próprio
+                const sqlWhats = isProduction
+                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = FALSE WHERE id = $1'
+                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 0 WHERE id = ?';
+                db.run(sqlWhats, [empresaId], (err) => {
+                    if (err) console.error('Erro ao desabilitar WhatsApp:', err);
+                    else console.log(`⚠️ WhatsApp próprio desabilitado para empresa ${empresaId} (plano: ${plano})`);
+                });
+            }
 
             res.json({
                 success: true,
-                message: `Parab�ns! Seu plano ${config.nome} foi ativado com sucesso.`,
+                message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
                 data: {
                     plano: plano,
                     plano_nome: config.nome,
@@ -1292,7 +1312,79 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
         res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! V�lido at� ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
     });
 });
+// ============================================
+// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN
+// ============================================
 
+// 🔹 Habilitar/Desabilitar WhatsApp próprio de uma empresa
+app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { habilitado } = req.body; // true ou false
+
+    console.log(`🔧 Super Admin - ${habilitado ? 'Habilitando' : 'Desabilitando'} WhatsApp próprio da empresa ${id}`);
+
+    const sql = isProduction
+        ? 'UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2'
+        : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
+
+    const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
+
+    db.run(sql, [valor, id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao atualizar:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log(`✅ WhatsApp próprio ${habilitado ? 'HABILITADO' : 'DESABILITADO'} para empresa ${id}`);
+        res.json({
+            success: true,
+            message: `WhatsApp próprio ${habilitado ? 'habilitado' : 'desabilitado'} com sucesso!`
+        });
+    });
+});
+
+// 🔹 Listar status do WhatsApp de todas as empresas (para o Super Admin)
+app.get('/api/admin/empresas/whatsapp-status', auth, verificarSuperAdmin, (req, res) => {
+    const sql = isProduction
+        ? `SELECT id, nome, plano, whatsapp_instance, whatsapp_connected, whatsapp_number, 
+              whatsapp_proprio_habilitado, created_at
+       FROM empresas 
+       ORDER BY created_at DESC`
+        : `SELECT id, nome, plano, whatsapp_instance, whatsapp_connected, whatsapp_number, 
+              whatsapp_proprio_habilitado, created_at
+       FROM empresas 
+       ORDER BY created_at DESC`;
+
+    db.all(sql, [], (err, empresas) => {
+        if (err) {
+            console.error('❌ Erro ao buscar status WhatsApp:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        // Formatar dados
+        const dados = empresas.map(e => {
+            const habilitado = e.whatsapp_proprio_habilitado === true ||
+                e.whatsapp_proprio_habilitado === 1 ||
+                e.whatsapp_proprio_habilitado === 't';
+            const conectado = e.whatsapp_connected === true ||
+                e.whatsapp_connected === 1 ||
+                e.whatsapp_connected === 't';
+
+            return {
+                id: e.id,
+                nome: e.nome,
+                plano: e.plano,
+                whatsapp_habilitado: habilitado,
+                whatsapp_conectado: conectado,
+                whatsapp_instancia: e.whatsapp_instance || null,
+                whatsapp_numero: e.whatsapp_number || null,
+                pode_habilitar: ['Business', 'Enterprise'].includes(e.plano)
+            };
+        });
+
+        res.json({ success: true, data: dados });
+    });
+});
 // ============================================
 // PUT /api/admin/profissionais/:id - ATUALIZAR PROFISSIONAL
 // ============================================
@@ -1495,11 +1587,9 @@ app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
     console.log('🔍 Super Admin - Listando todas as empresas...');
-
     const ativoCond = isProduction ? 'TRUE' : '1';
-
     const sql = isProduction
-        ? `SELECT e.*, 
+        ? `SELECT e.*,
            u.nome as dono_nome,
            u.email as dono_email,
            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
@@ -1507,19 +1597,27 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as total_concluidos,
-           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as total_pendentes
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as total_pendentes,
+           COALESCE(e.whatsapp_proprio_habilitado, FALSE) as whatsapp_proprio_habilitado,
+           COALESCE(e.whatsapp_connected, FALSE) as whatsapp_connected,
+           e.whatsapp_instance,
+           e.whatsapp_number
            FROM empresas e
            LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
            ORDER BY e.created_at DESC`
-        : `SELECT e.*, 
+        : `SELECT e.*,
            u.nome as dono_nome,
            u.email as dono_email,
            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
-           (SELECT COUNT(*) FROM profissionais WHERE empresa_id = e.id AND ativo = true) as total_profissionais,
+           (SELECT COUNT(*) FROM profissionais WHERE empresa_id = e.id AND ativo = 1) as total_profissionais,
            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as total_concluidos,
-           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as total_pendentes
+           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as total_pendentes,
+           COALESCE(e.whatsapp_proprio_habilitado, 0) as whatsapp_proprio_habilitado,
+           COALESCE(e.whatsapp_connected, 0) as whatsapp_connected,
+           e.whatsapp_instance,
+           e.whatsapp_number
            FROM empresas e
            LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
            ORDER BY e.created_at DESC`;
@@ -1529,7 +1627,6 @@ app.get('/api/admin/empresas', auth, verificarSuperAdmin, (req, res) => {
             console.error('❌ Erro ao listar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
-
         console.log(`✅ ${empresas.length} empresas encontradas`);
         res.json({ success: true, data: empresas });
     });
@@ -5807,6 +5904,255 @@ app.get('/api/agendamentos/periodo', auth, (req, res) => {
         }));
 
         res.json({ success: true, data: dadosFormatados });
+    });
+});
+
+const EvolutionInstances = require('./server/services/evolution-instances');
+
+// ============================================
+// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN
+// ============================================
+
+// 🔹 Habilitar/Desabilitar WhatsApp próprio de uma empresa
+app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
+    const { habilitado } = req.body;
+
+    console.log(`🔧 Super Admin - ${habilitado ? 'Habilitando' : 'Desabilitando'} WhatsApp próprio da empresa ${id}`);
+
+    const sql = isProduction
+        ? 'UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2'
+        : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
+
+    const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
+
+    db.run(sql, [valor, id], function (err) {
+        if (err) {
+            console.error('❌ Erro ao atualizar:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        console.log(`✅ WhatsApp próprio ${habilitado ? 'HABILITADO' : 'DESABILITADO'} para empresa ${id}`);
+        res.json({
+            success: true,
+            message: `WhatsApp próprio ${habilitado ? 'habilitado' : 'desabilitado'} com sucesso!`
+        });
+    });
+});
+
+// 🔹 Listar status do WhatsApp de todas as empresas (para o Super Admin)
+app.get('/api/admin/empresas/whatsapp-status', auth, verificarSuperAdmin, (req, res) => {
+    const sql = isProduction
+        ? `SELECT id, nome, plano, whatsapp_instance, whatsapp_connected, whatsapp_number, 
+                  whatsapp_proprio_habilitado, created_at
+           FROM empresas 
+           ORDER BY created_at DESC`
+        : `SELECT id, nome, plano, whatsapp_instance, whatsapp_connected, whatsapp_number, 
+                  whatsapp_proprio_habilitado, created_at
+           FROM empresas 
+           ORDER BY created_at DESC`;
+
+    db.all(sql, [], (err, empresas) => {
+        if (err) {
+            console.error('❌ Erro ao buscar status WhatsApp:', err);
+            return res.json({ success: false, message: err.message });
+        }
+
+        const dados = empresas.map(e => {
+            const habilitado = e.whatsapp_proprio_habilitado === true ||
+                e.whatsapp_proprio_habilitado === 1 ||
+                e.whatsapp_proprio_habilitado === 't';
+            const conectado = e.whatsapp_connected === true ||
+                e.whatsapp_connected === 1 ||
+                e.whatsapp_connected === 't';
+
+            return {
+                id: e.id,
+                nome: e.nome,
+                plano: e.plano,
+                whatsapp_habilitado: habilitado,
+                whatsapp_conectado: conectado,
+                whatsapp_instancia: e.whatsapp_instance || null,
+                whatsapp_numero: e.whatsapp_number || null,
+                pode_habilitar: ['Business', 'Enterprise', 'business', 'enterprise'].includes(e.plano)
+            };
+        });
+
+        res.json({ success: true, data: dados });
+    });
+});
+
+// 🔹 Buscar info do WhatsApp da empresa (considerando plano e permissão)
+app.get('/api/empresa/whatsapp/info', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const sql = isProduction
+        ? 'SELECT plano, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
+        : 'SELECT plano, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
+
+    db.get(sql, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro:', err);
+            return res.status(500).json({ success: false, message: 'Erro ao buscar info' });
+        }
+
+        if (!empresa) {
+            return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        // 🔥 SUPER ADMIN HABILITOU? (override manual)
+        const superAdminHabilitou = empresa.whatsapp_proprio_habilitado === true ||
+            empresa.whatsapp_proprio_habilitado === 1 ||
+            empresa.whatsapp_proprio_habilitado === 't';
+
+        // Plano permite automaticamente? (Business/Enterprise)
+        const planoPermitido = ['Business', 'Enterprise', 'business', 'enterprise'].includes(empresa.plano);
+
+        // Empresa pode usar WhatsApp próprio? (override OU plano permitido)
+        const podeUsarProprio = superAdminHabilitou || planoPermitido;
+
+        res.json({
+            success: true,
+            data: {
+                plano: empresa.plano,
+                planoPermitido: planoPermitido,
+                superAdminHabilitou: superAdminHabilitou,
+                podeUsarProprio: podeUsarProprio,
+                instanceName: empresa.whatsapp_instance || null,
+                connected: Boolean(empresa.whatsapp_connected),
+                number: empresa.whatsapp_number || null
+            }
+        });
+    });
+});
+
+// 🔹 Criar instância
+app.post('/api/empresa/whatsapp/criar-instancia', auth, async (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+
+    const sqlSelect = isProduction
+        ? 'SELECT nome, whatsapp_instance FROM empresas WHERE id = $1'
+        : 'SELECT nome, whatsapp_instance FROM empresas WHERE id = ?';
+
+    db.get(sqlSelect, [empresaId], async (err, empresa) => {
+        if (err || !empresa) {
+            return res.status(400).json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        if (empresa.whatsapp_instance) {
+            return res.json({
+                success: true,
+                message: 'Instância já existe',
+                instanceName: empresa.whatsapp_instance
+            });
+        }
+
+        const resultado = await EvolutionInstances.criarInstancia(empresaId, empresa.nome);
+
+        if (!resultado.success) {
+            return res.status(400).json({ success: false, message: resultado.message });
+        }
+
+        const sqlUpdate = isProduction
+            ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
+            : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
+
+        db.run(sqlUpdate, [resultado.instanceName, empresaId], (err) => {
+            if (err) {
+                console.error('❌ Erro ao salvar instância:', err);
+                return res.status(500).json({ success: false, message: 'Erro ao salvar' });
+            }
+
+            res.json({
+                success: true,
+                instanceName: resultado.instanceName,
+                message: 'Instância criada!'
+            });
+        });
+    });
+});
+
+// 🔹 Buscar QR Code
+app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const sql = isProduction
+        ? 'SELECT whatsapp_instance FROM empresas WHERE id = $1'
+        : 'SELECT whatsapp_instance FROM empresas WHERE id = ?';
+
+    db.get(sql, [empresaId], async (err, empresa) => {
+        if (err || !empresa?.whatsapp_instance) {
+            return res.status(400).json({ success: false, message: 'Crie uma instância primeiro' });
+        }
+
+        const resultado = await EvolutionInstances.getQrCode(empresa.whatsapp_instance);
+        res.json(resultado);
+    });
+});
+
+// 🔹 Verificar status
+app.get('/api/empresa/whatsapp/status', auth, async (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const sql = isProduction
+        ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_number FROM empresas WHERE id = $1'
+        : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_number FROM empresas WHERE id = ?';
+
+    db.get(sql, [empresaId], async (err, empresa) => {
+        if (err) {
+            return res.status(500).json({ success: false, message: 'Erro ao verificar' });
+        }
+
+        if (!empresa?.whatsapp_instance) {
+            return res.json({ success: true, data: { connected: false, status: 'no_instance' } });
+        }
+
+        const status = await EvolutionInstances.getStatus(empresa.whatsapp_instance);
+        const isConnected = status.state === 'open';
+
+        if (isConnected !== Boolean(empresa.whatsapp_connected)) {
+            const sqlUpdate = isProduction
+                ? 'UPDATE empresas SET whatsapp_connected = $1 WHERE id = $2'
+                : 'UPDATE empresas SET whatsapp_connected = ? WHERE id = ?';
+
+            db.run(sqlUpdate, [isConnected, empresaId], () => { });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                connected: isConnected,
+                status: status.state,
+                instanceName: empresa.whatsapp_instance,
+                number: empresa.whatsapp_number
+            }
+        });
+    });
+});
+
+// 🔹 Desconectar
+app.post('/api/empresa/whatsapp/disconnect', auth, async (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const sql = isProduction
+        ? 'SELECT whatsapp_instance FROM empresas WHERE id = $1'
+        : 'SELECT whatsapp_instance FROM empresas WHERE id = ?';
+
+    db.get(sql, [empresaId], async (err, empresa) => {
+        if (err || !empresa?.whatsapp_instance) {
+            return res.status(400).json({ success: false, message: 'Sem instância' });
+        }
+
+        await EvolutionInstances.logout(empresa.whatsapp_instance);
+
+        const sqlUpdate = isProduction
+            ? 'UPDATE empresas SET whatsapp_connected = FALSE, whatsapp_number = NULL WHERE id = $1'
+            : 'UPDATE empresas SET whatsapp_connected = 0, whatsapp_number = NULL WHERE id = ?';
+
+        db.run(sqlUpdate, [empresaId], (err) => {
+            if (err) {
+                console.error('❌ Erro ao desconectar:', err);
+                return res.status(500).json({ success: false, message: 'Erro ao desconectar' });
+            }
+
+            res.json({ success: true, message: 'WhatsApp desconectado' });
+        });
     });
 });
 

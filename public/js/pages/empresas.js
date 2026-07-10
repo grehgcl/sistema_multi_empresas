@@ -49,9 +49,6 @@ async function carregarDashboardSuperAdmin() {
         const agendamentosMes = stats.agendamentos_mes || 0;
         const faturamentoMes = stats.faturamento_mes || 0;
 
-        // ============================================
-        // HTML COM ESTILO DIRETO (SEM DEPENDER DE CLASSES)
-        // ============================================
         const html = `
             <div style="padding:16px;max-width:1400px;margin:0 auto;">
 
@@ -158,7 +155,7 @@ async function carregarDashboardSuperAdmin() {
 
                     <!-- Tabela -->
                     <div style="overflow-x:auto;margin:0 -4px;padding:0 4px;">
-                        <table style="width:100%;min-width:750px;border-collapse:separate;border-spacing:0 6px;font-size:13px;">
+                        <table style="width:100%;min-width:850px;border-collapse:separate;border-spacing:0 6px;font-size:13px;">
                             <thead>
                                 <tr>
                                     <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:8px 0 0 0;">#</th>
@@ -170,6 +167,7 @@ async function carregarDashboardSuperAdmin() {
                                     <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👤</th>
                                     <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👥</th>
                                     <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">✂️</th>
+                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">💬 WhatsApp</th>
                                     <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:0 8px 0 0;">Ações</th>
                                 </tr>
                             </thead>
@@ -254,27 +252,69 @@ async function carregarDashboardSuperAdmin() {
             const clientes = e.total_clientes || 0;
             const agendamentos = e.total_agendamentos || 0;
 
+            // 🔥 STATUS DO WHATSAPP PRÓPRIO (COM OVERRIDE DO SUPER ADMIN)
+            const whatsappHabilitado = e.whatsapp_proprio_habilitado === true ||
+                e.whatsapp_proprio_habilitado === 1 ||
+                e.whatsapp_proprio_habilitado === 't';
+            const whatsappConectado = e.whatsapp_connected === true ||
+                e.whatsapp_connected === 1 ||
+                e.whatsapp_connected === 't';
+
+            let whatsappStatus = '';
+            if (!whatsappHabilitado) {
+                // Não habilitado - botão para HABILITAR
+                whatsappStatus = `
+        <button onclick="toggleWhatsAppProprio(${e.id}, true)" 
+                style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(239,68,68,0.25)'"
+                onmouseout="this.style.background='rgba(239,68,68,0.15)'"
+                title="Clique para HABILITAR WhatsApp próprio">
+            🔴 OFF
+        </button>`;
+            } else if (!whatsappConectado) {
+                // Habilitado mas não conectado
+                whatsappStatus = `
+        <button onclick="toggleWhatsAppProprio(${e.id}, false)" 
+                style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(245,158,11,0.25)'"
+                onmouseout="this.style.background='rgba(245,158,11,0.15)'"
+                title="Habilitado mas não conectado. Clique para DESABILITAR">
+            🟡 PEND
+        </button>`;
+            } else {
+                // Habilitado e conectado
+                whatsappStatus = `
+        <button onclick="toggleWhatsAppProprio(${e.id}, false)" 
+                style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);transition:all 0.2s;"
+                onmouseover="this.style.background='rgba(34,197,94,0.25)'"
+                onmouseout="this.style.background='rgba(34,197,94,0.15)'"
+                title="✅ WhatsApp PRÓPRIO ativo! Clique para DESABILITAR">
+            🟢 ON
+        </button>`;
+            }
+
             return `
-                                        <tr data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" data-nome="${e.nome.toLowerCase()}" style="background:#252540;border-radius:10px;transition:all 0.2s;cursor:default;">
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:10px 0 0 10px;font-weight:600;color:#666;font-size:12px;text-align:center;">${idx + 1}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;font-size:14px;">${escapeHtml(e.nome)}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:3px 14px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}33;">${planoText}</span></td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">${statusText}</span></td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:700;color:${diasColor};text-align:center;font-size:14px;">${diasTexto}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${donos}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${profissionais}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${clientes}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#667eea;text-align:center;font-size:15px;">${agendamentos}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:0 10px 10px 0;">
-                                                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">
-                                                    <button onclick="verEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(102,126,234,0.2);color:#667eea;transition:all 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-eye"></i></button>
-                                                    <button onclick="editarEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
-                                                    ${isTrial ? `<button onclick="estenderTrial(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(34,197,94,0.2);color:#22c55e;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-clock"></i></button>` : ''}
-                                                    <button onclick="deletarEmpresa(${e.id}, '${escapeHtml(e.nome)}')" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);color:#ef4444;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-trash"></i></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `;
+                <tr data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" data-nome="${e.nome.toLowerCase()}" style="background:#252540;border-radius:10px;transition:all 0.2s;cursor:default;">
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:10px 0 0 10px;font-weight:600;color:#666;font-size:12px;text-align:center;">${idx + 1}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;font-size:14px;">${escapeHtml(e.nome)}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:3px 14px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}33;">${planoText}</span></td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">${statusText}</span></td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:700;color:${diasColor};text-align:center;font-size:14px;">${diasTexto}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${donos}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${profissionais}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${clientes}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#667eea;text-align:center;font-size:15px;">${agendamentos}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;text-align:center;">${whatsappStatus}</td>
+                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:0 10px 10px 0;">
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">
+                            <button onclick="verEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(102,126,234,0.2);color:#667eea;transition:all 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-eye"></i></button>
+                            <button onclick="editarEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
+                            ${isTrial ? `<button onclick="estenderTrial(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(34,197,94,0.2);color:#22c55e;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-clock"></i></button>` : ''}
+                            <button onclick="deletarEmpresa(${e.id}, '${escapeHtml(e.nome)}')" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);color:#ef4444;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
         }).join('')}
                             </tbody>
                         </table>
@@ -309,17 +349,17 @@ async function carregarDashboardSuperAdmin() {
             else if (u.role === 'profissional') { roleColor = '#667eea'; roleBg = 'rgba(102,126,234,0.15)'; roleLabel = '🔵 Profissional'; }
 
             return `
-                                        <tr style="transition:background 0.2s;cursor:default;" onmouseover="this.style.background='#2d2d3f'" onmouseout="this.style.background='transparent'">
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-weight:600;color:#fff;">${escapeHtml(u.nome)}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${escapeHtml(u.email)}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;"><span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:500;background:${roleBg};color:${roleColor};">${roleLabel}</span></td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${formatarDataBr(u.created_at)}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;text-align:center;">
-                                                <button onclick="editarUsuario(${u.id})" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
-                                            </td>
-                                        </tr>
-                                    `;
+                <tr style="transition:background 0.2s;cursor:default;" onmouseover="this.style.background='#2d2d3f'" onmouseout="this.style.background='transparent'">
+                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-weight:600;color:#fff;">${escapeHtml(u.nome)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${escapeHtml(u.email)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;"><span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:500;background:${roleBg};color:${roleColor};">${roleLabel}</span></td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${formatarDataBr(u.created_at)}</td>
+                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;text-align:center;">
+                        <button onclick="editarUsuario(${u.id})" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>
+            `;
         }).join('')}
                             </tbody>
                         </table>
@@ -349,6 +389,49 @@ async function carregarDashboardSuperAdmin() {
 }
 
 // ============================================
+// 🔥 TOGGLE WHATSAPP PRÓPRIO (SUPER ADMIN)
+// ============================================
+async function toggleWhatsAppProprio(empresaId, habilitar) {
+    const acao = habilitar ? 'HABILITAR' : 'DESABILITAR';
+    const emoji = habilitar ? '🟢' : '🔴';
+
+    if (!confirm(`${emoji} Deseja realmente ${acao.toLowerCase()} o WhatsApp próprio desta empresa?\n\n` +
+        (habilitar
+            ? '✅ A empresa poderá conectar seu próprio WhatsApp'
+            : '⚠️ A empresa voltará a usar o WhatsApp compartilhado'))) {
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch(`/api/admin/empresas/${empresaId}/whatsapp-proprio`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ habilitado: habilitar })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast(data.message, 'success');
+            carregarDashboardSuperAdmin();
+        } else {
+            showToast(data.message || 'Erro ao atualizar', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Erro:', error);
+        showToast('Erro ao atualizar WhatsApp', 'error');
+    }
+}
+
+// ============================================
 // FUNÇÃO PARA FILTRAR EMPRESAS
 // ============================================
 
@@ -372,7 +455,6 @@ async function verEmpresa(id) {
     const token = localStorage.getItem('token');
 
     try {
-        // Buscar todos os dados da empresa
         const [empresaRes, usuariosRes, clientesRes, agendamentosRes, acessosRes] = await Promise.all([
             fetch(`/api/admin/empresas/${id}`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/usuarios`, { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -387,21 +469,20 @@ async function verEmpresa(id) {
         const agendamentos = (await agendamentosRes.json()).data || [];
         const acessos = (await acessosRes.json()).data || [];
 
-        console.log('📊 Dados carregados:');
-        console.log('  - Empresa:', empresa.nome);
-        console.log('  - Usuários:', usuarios.length);
-        console.log('  - Clientes:', clientes.length);
-        console.log('  - Agendamentos:', agendamentos.length);
-        console.log('  - Acessos:', acessos.length);
+        console.log('📊 Dados carregados:', {
+            empresa: empresa.nome,
+            usuarios: usuarios.length,
+            clientes: clientes.length,
+            agendamentos: agendamentos.length,
+            acessos: acessos.length
+        });
 
-        // Separar donos e profissionais
         const donos = usuarios.filter(u => u.tipo === 'dono' || u.role === 'dono');
         const profissionais = usuarios.filter(u => u.tipo === 'profissional' || u.role === 'profissional');
 
         const isTrial = empresa.plano === 'trial' || empresa.plano === 'Trial';
         const isAtivo = empresa.assinatura_ativa === 1;
 
-        // Calcular dias restantes do trial
         let diasRestantes = 0;
         if (empresa.trial_expira) {
             const hoje = new Date();
@@ -427,7 +508,6 @@ async function verEmpresa(id) {
             statusText = '⛔ Inativo';
         }
 
-        // Calcular estatísticas de acessos
         const totalAcessos = acessos.length;
         const acessosHoje = acessos.filter(a => {
             const hoje = new Date().toISOString().split('T')[0];
@@ -437,19 +517,16 @@ async function verEmpresa(id) {
         const ultimoAcesso = acessos.length > 0 ? acessos[0].data_acesso : null;
         const ultimoAcessoFormatado = ultimoAcesso ? formatarDataHora(ultimoAcesso) : 'Nunca acessou';
 
-        // Agendamentos por status
         const agendamentosPendentes = agendamentos.filter(a => a.status === 'pendente' || a.status === 'agendado').length;
         const agendamentosConcluidos = agendamentos.filter(a => a.status === 'concluido').length;
         const agendamentosCancelados = agendamentos.filter(a => a.status === 'cancelado').length;
 
-        // Calcular faturamento total
         const faturamentoTotal = agendamentos
             .filter(a => a.status === 'concluido')
             .reduce((sum, a) => sum + (parseFloat(a.valor) || 0), 0);
 
         const html = `
             <div class="fade-in">
-                <!-- CABEÇALHO COM AÇÕES -->
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
                     <div>
                         <button onclick="carregarDashboardSuperAdmin()" style="background:var(--bg-hover);border:none;padding:4px 14px;border-radius:6px;cursor:pointer;color:var(--text-secondary);font-size:12px;">
@@ -476,7 +553,6 @@ async function verEmpresa(id) {
                     </div>
                 </div>
                 
-                <!-- CARDS DE MÉTRICAS -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;">
                     <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
                         <div style="font-size:11px;color:var(--text-muted);">Plano</div>
@@ -508,7 +584,6 @@ async function verEmpresa(id) {
                     </div>
                 </div>
                 
-                <!-- DONOS -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-crown" style="color:#f59e0b;"></i> Donos (${donos.length})</h4>
@@ -537,9 +612,6 @@ async function verEmpresa(id) {
                                                 <button onclick="editarUsuario(${d.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;" title="Editar usuário">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button onclick="verAcessosUsuario(${d.id})" style="background:rgba(16,185,129,0.15);border:none;padding:2px 12px;border-radius:4px;color:#22c55e;font-size:11px;cursor:pointer;" title="Ver acessos">
-                                                    <i class="fas fa-history"></i>
-                                                </button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -554,7 +626,6 @@ async function verEmpresa(id) {
                     `}
                 </div>
                 
-                <!-- PROFISSIONAIS -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Profissionais (${profissionais.length})</h4>
@@ -585,9 +656,6 @@ async function verEmpresa(id) {
                                                 <button onclick="editarUsuario(${p.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;" title="Editar usuário">
                                                     <i class="fas fa-edit"></i>
                                                 </button>
-                                                <button onclick="verAcessosUsuario(${p.id})" style="background:rgba(16,185,129,0.15);border:none;padding:2px 12px;border-radius:4px;color:#22c55e;font-size:11px;cursor:pointer;" title="Ver acessos">
-                                                    <i class="fas fa-history"></i>
-                                                </button>
                                             </td>
                                         </tr>
                                     `).join('')}
@@ -598,14 +666,10 @@ async function verEmpresa(id) {
                         <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
                             <i class="fas fa-user-slash" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px;"></i>
                             Nenhum profissional cadastrado nesta empresa.
-                            <div style="margin-top:8px;font-size:11px;color:var(--text-muted);">
-                                Profissionais são cadastrados pelo dono na tela de configurações.
-                            </div>
                         </div>
                     `}
                 </div>
                 
-                <!-- CLIENTES -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-address-book" style="color:#8b5cf6;"></i> Clientes (${clientes.length})</h4>
@@ -649,7 +713,6 @@ async function verEmpresa(id) {
                     `}
                 </div>
                 
-                <!-- AGENDAMENTOS -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Agendamentos (${agendamentos.length})</h4>
@@ -699,7 +762,6 @@ async function verEmpresa(id) {
                     `}
                 </div>
                 
-                <!-- ACESSOS RECENTES -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-history" style="color:#8b5cf6;"></i> Acessos Recentes (${Math.min(acessos.length, 10)})</h4>
@@ -766,7 +828,6 @@ async function editarEmpresa(id) {
             document.getElementById('editEmpresaPlano').value = empresa.plano || 'trial';
             document.getElementById('modalEditarEmpresa').style.display = 'block';
 
-            // Conectar o formulário
             setTimeout(conectarFormEmpresa, 100);
         } else {
             showToast('Erro ao carregar dados da empresa', 'error');
@@ -794,7 +855,6 @@ async function editarUsuario(id) {
     showLoading();
 
     try {
-        // 🔥 BUSCAR O USUÁRIO PARA SABER O ROLE
         const resUser = await fetch(`/api/admin/usuarios/${id}`, {
             method: 'GET',
             headers: {
@@ -817,7 +877,6 @@ async function editarUsuario(id) {
         const usuario = userData.data;
         console.log('👤 Usuário carregado:', usuario.nome, 'Role:', usuario.role);
 
-        // 🔥 DECIDIR A ROTA BASEADA NO ROLE
         let url;
         const isProfissional = usuario.role === 'profissional';
 
@@ -838,7 +897,7 @@ async function editarUsuario(id) {
         });
 
         if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            throw new Error(`HTTP ${res.status}: ${resUser.statusText}`);
         }
 
         const data = await res.json();
@@ -861,7 +920,6 @@ async function editarUsuario(id) {
         console.log('👤 Role:', usuarioCompleto.role);
         console.log('👤 É profissional?', isProfissional);
 
-        // 🔥 PEGAR O TELEFONE
         const telefone = usuarioCompleto.telefone || '';
 
         const modalContent = `
@@ -962,12 +1020,7 @@ async function salvarUsuario() {
     const telefone = document.getElementById('editUsuarioTelefone')?.value;
     const role = document.getElementById('editUsuarioRole')?.value;
 
-    console.log('📝 SALVANDO USUÁRIO:');
-    console.log('  - ID:', id);
-    console.log('  - Tipo:', tipo);
-    console.log('  - Nome:', nome);
-    console.log('  - Email:', email);
-    console.log('  - Telefone:', telefone);
+    console.log('📝 SALVANDO USUÁRIO:', { id, tipo, nome, email, telefone });
 
     if (!id || !nome || !email) {
         showToast('Nome e email são obrigatórios', 'error');
@@ -985,25 +1038,20 @@ async function salvarUsuario() {
         if (comissao !== undefined && comissao !== '') {
             dados.comissao_percent = parseFloat(comissao);
         }
-        console.log('📝 É profissional, comissão:', dados.comissao_percent);
     } else {
         if (role) {
             dados.role = role;
         }
-        console.log('📝 É usuário, role:', dados.role);
     }
 
     console.log('📤 Enviando dados:', dados);
 
     try {
-        // 🔥 DECISÃO CORRETA BASEADA NO TIPO
         let url;
         if (tipo === 'profissional') {
             url = `/api/admin/profissionais/${id}`;
-            console.log('📡 Enviando para PROFISSIONAL:', url);
         } else {
             url = `/api/admin/usuarios/${id}`;
-            console.log('📡 Enviando para USUÁRIO:', url);
         }
 
         const response = await fetch(url, {
@@ -1105,9 +1153,6 @@ async function salvarEmpresa() {
     }
 }
 
-// ============================================
-// FECHAR MODAL DE EDIÇÃO DE USUÁRIO
-// ============================================
 function fecharModal() {
     const modal = document.querySelector('.modal');
     if (modal) {
@@ -1115,14 +1160,9 @@ function fecharModal() {
     }
 }
 
-// ============================================
-// CONECTAR FORMULÁRIO DA EMPRESA
-// ============================================
-
 function conectarFormEmpresa() {
     const form = document.getElementById('formEmpresa');
     if (form) {
-        // Remover event listener antigo para evitar duplicação
         const newForm = form.cloneNode(true);
         form.parentNode.replaceChild(newForm, form);
 
@@ -1138,10 +1178,6 @@ function conectarFormEmpresa() {
         console.warn('⚠️ Formulário da empresa não encontrado');
     }
 }
-
-// ============================================
-// FUNÇÃO: FORMATAR DATA/HORA
-// ============================================
 
 function formatarDataHora(dataStr) {
     if (!dataStr) return 'Nunca';
@@ -1160,30 +1196,18 @@ function formatarDataHora(dataStr) {
     }
 }
 
-// ============================================
-// INICIALIZAR CONEXÕES
-// ============================================
-
-// Quando o DOM carregar, conectar os formulários
 document.addEventListener('DOMContentLoaded', function () {
     conectarFormEmpresa();
     console.log('✅ empresas.js - Formulários conectados!');
 });
 
-// Também conectar quando o dashboard for carregado
 setTimeout(conectarFormEmpresa, 500);
 
-// ============================================
-// DELETAR EMPRESA
-// ============================================
-
 async function deletarEmpresa(id, nome) {
-    // Primeira confirmação
     if (!confirm(`⚠️ TEM CERTEZA QUE DESEJA DELETAR A EMPRESA "${nome}"?\n\nIsso vai deletar PERMANENTEMENTE:\n• Todos os usuários (donos e profissionais)\n• Todos os clientes\n• Todos os agendamentos\n• Todos os serviços\n• Todos os horários\n• Todas as despesas\n• Todos os acessos\n\n📌 Esta ação NÃO pode ser desfeita!`)) {
         return;
     }
 
-    // Segunda confirmação com digitação
     const confirmacao = prompt(`Digite "DELETAR" para confirmar a exclusão da empresa "${nome}":`);
     if (confirmacao !== 'DELETAR') {
         showToast('❌ Exclusão cancelada - confirmação incorreta', 'warning');
@@ -1233,6 +1257,7 @@ window.fecharModalEditarUsuario = fecharModalEditarUsuario;
 window.salvarUsuario = salvarUsuario;
 window.salvarEmpresa = salvarEmpresa;
 window.fecharModal = fecharModal;
-window.deletarEmpresa = deletarEmpresa;  // 🔥 ADICIONE ESTA LINHA
+window.deletarEmpresa = deletarEmpresa;
+window.toggleWhatsAppProprio = toggleWhatsAppProprio;
 
 console.log('✅ empresas.js carregado com Dashboard Super Admin completo!');
