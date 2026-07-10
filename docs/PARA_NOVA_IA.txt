@@ -1,414 +1,130 @@
-﻿---
-
-## 📄 PARA_NOVA_IA.txt
-
-```markdown
-=========================================
+﻿=========================================
   GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 01/07/2026
+  ULTIMA ATUALIZACAO: 10/07/2026
 =========================================
 
-## 🚀 COMO EXECUTAR O PROJETO
-
-### Modo Local (Sem WhatsApp real - apenas LOG)
-```bash
-npm start
-Usa o arquivo .env padrão
-
-WhatsApp em modo LOG (só mostra logs, não envia mensagens)
-
-Banco SQLite local
-
-Acesse: http://localhost:3000
-
-USUARIOS:
-
-Super Admin: super@admin.com / super123
-
-Dono: admin@teste.com / 123456
-
-Modo com WhatsApp Evolution (Envia mensagens reais!)
-bash
-node -r dotenv/config server.js dotenv_config_path=.env.local
-Usa o arquivo .env.local
-
-WhatsApp Evolution conectado ao servidor externo (163.176.218.131:8080)
-
-Banco SQLite local
-
-Envia mensagens reais para os clientes
-
-Acesse: http://localhost:3000
-
-=========================================
-✅ IMPLEMENTADO (01/07/2026)
+🚀 COMO EXECUTAR O PROJETO
 =========================================
 
-1. WHATSAPP EVOLUTION - SISTEMA COMPLETO 📱
-Provedor: Evolution API (servidor externo: http://163.176.218.131:8080)
-
-Confirmação de Agendamento: Enviada automaticamente ao criar
-
-Lembrete 24h: Job automático às 09:00
-
-Cancelamento: Notifica o cliente
-
-Conclusão: Agradecimento automático
-
-Telefone do Dono: Aparece em todas as mensagens (campo telefone_dono)
-
-Endereço: Aparece nas mensagens (campo endereco)
-
-Formatação: Telefone formatado como (XX) XXXXX-XXXX
-
-2. SUPER ADMIN - DASHBOARD COMPLETO 🏢
-Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
-
-Lista completa de todas as empresas
-
-Status do trial (dias restantes, expirado, ativo)
-
-Total de usuários, profissionais, clientes e agendamentos por empresa
-
-Botões de ação (Ver detalhes, Editar, Estender trial)
-
-Filtro de busca de empresas em tempo real
-
-3. SUPER ADMIN - GESTÃO DE EMPRESAS 👨‍💼
-Ver detalhes completos da empresa
-
-Donos da empresa (nome, email, telefone, cadastro)
-
-Profissionais da empresa (nome, email, telefone, comissão, cadastro)
-
-Clientes da empresa (nome, telefone, email, status)
-
-Agendamentos da empresa (cliente, serviço, data, hora, valor, status)
-
-Estatísticas de acessos (total, hoje, último acesso)
-
-Editar nome e plano da empresa
-
-Estender trial com 1 clique (+30 dias)
-
-4. SUPER ADMIN - GESTÃO DE USUÁRIOS 👤
-Lista de todos os usuários do sistema
-
-Editar usuários (nome, email, telefone, role, senha, comissão)
-
-Ver acessos por usuário
-
-Donos e profissionais separados por empresa
-
-5. SISTEMA DE ACESSOS 📊
-Registro automático de acessos no login
-
-Captura de IP e User-Agent
-
-Estatísticas de acessos por empresa
-
-Último acesso com data/hora
-
-6. CORREÇÃO DE TIMEZONE NAS DATAS 🌐
-Data do agendamento agora é enviada com +1 dia para compensar conversão UTC do backend
-
-Modal mostra a data correta para o usuário
-
-Validação de data/hora passada no frontend e backend
-
-7. RECARREGAMENTO DA AGENDA INTELIGENTE 🔄
-Função window.forcarRecarregarAgenda() criada para forçar recarregamento
-
-Agenda recarrega automaticamente após criar um agendamento
-
-Bolinha fica VERMELHA (ocupada) imediatamente após o agendamento
-
-8. DESIGN MODERNO DA AGENDA 🎨
-Gradientes e sombras modernas
-
-Efeito pulse nas bolinhas
-
-Tamanho adaptativo das bolinhas
-
-Tooltips ricos com informações
-
-Barra de progresso do dia
-
-Indicador de agendamentos por dia
-
-Ícones nos horários
-
-Mini avatar dos profissionais
-
-Indicador de scroll
-
-Navegação com botões ◀◀ ◀ ▶ ▶▶
-
-9. SEMANA COMEÇANDO NO DIA ATUAL 📅
-A agenda sempre começa no dia atual (hoje)
-
-Navegação preserva a semana selecionada
-
-10. BLOQUEIO GERAL DE AGENDAMENTOS 🔒
-Configuração coletiva (afeta TODOS os clientes)
-
-Dono configura nas Configurações > Bloqueio Geral
-
-Opções: 0, 7, 14, 30 dias
-
-Chatbot respeita o bloqueio geral
-
-11. SIDEBAR MELHORADO
-Botão de fechar movido para abaixo do nome do proprietário
-
-Botão hambúrguer movido para o topo (mobile)
-
-Design responsivo
-
-=========================================
-🔄 O QUE JÁ EXISTE
-=========================================
-
-Autenticacao (Super Admin, Dono, Profissional)
-
-CRUD Clientes (apenas Dono) com dias_bloqueio
-
-CRUD Agendamentos (Dono e Profissional)
-
-Sistema de Comissoes (configurável, padrao 30%)
-
-Financeiro com:
-
-Faturamento Bruto
-
-Comissoes a Pagar
-
-Faturamento Liquido
-
-Cards por profissional
-
-Super Admin: gestao de empresas (COMPLETO)
-
-Sistema de Profissionais (com limite por plano)
-
-Sistema de Servicos
-
-Chatbot Inteligente
-
-Sistema de Planos de Assinatura
-
-Sistema de Pagamentos (Mercado Pago)
-
-Landing Page tela dividida
-
-Dashboard com métricas
-
-Configurações (Profissionais, Horários, Chatbot, Tema, BLOQUEIO GERAL)
-
-Tema escuro por padrão
-
-Limite de 100 agendamentos/mês para Starter
-
-Agenda Inteligente no Dashboard
-
-Dias de bloqueio individual por cliente
-
-BLOQUEIO GERAL (coletivo)
-
-Correção de timezone nas datas
-
-Recarregamento automático da agenda
-
-Dashboard Super Admin completo
-
-Gestão de empresas e usuários
-
-Sistema de acessos
-
-WhatsApp Evolution com telefone do dono nas mensagens
-
-=========================================
-📋 PLANOS COMPLETOS
-=========================================
-
-Plano	Valor	Profissionais	Agendamentos/Mês
-Trial	Grátis (45 dias)	1	100
-Starter	R$ 29,90/mês	1	100
-Pro	R$ 59,90/mês	5	Ilimitado
-Business	R$ 119,90/mês	15	Ilimitado
-Enterprise	R$ 249,90/mês	Ilimitado	Ilimitado
-=========================================
-📁 ESTRUTURA DOS ARQUIVOS
-=========================================
-
-server/
-├── config/
-│ ├── database.js
-│ └── whatsapp.js # Configuração do WhatsApp
-├── middlewares/
-│ └── auth.js (com verificarLimiteAgendamentos)
-├── services/
-│ └── whatsapp.js # Serviço WhatsApp (Evolution API)
-├── jobs/
-│ ├── lembretes.js # Job de lembretes 24h (09:00)
-│ └── reset-contador.js
-└── utils/
-├── constants.js
-└── helpers.js
-
-public/
-├── index.html
-├── chatbot.html
-├── css/
-│ ├── style.css
-│ └── chatbot.css
-└── js/
-├── ui.js
-└── pages/
-├── dashboard.js (com Agenda Inteligente)
-├── dashboard-profissional.js
-├── clientes.js (com dias_bloqueio)
-├── agendamentos.js
-├── agendamentos-profissional.js
-├── servicos.js
-├── financeiro.js
-├── empresas.js # Super Admin (COMPLETO)
-├── configuracoes.js (com BLOQUEIO GERAL)
-└── planos.js (com barra de progresso)
-
-=========================================
-🔧 COMANDOS ÚTEIS
-=========================================
-
-Iniciar servidor (modo local - LOG)
+Modo Local (SQLite - Desenvolvimento)
+-----------------------------------------
 npm start
 
-Iniciar com WhatsApp Evolution (envia mensagens reais!)
-node -r dotenv/config server.js dotenv_config_path=.env.local
-
-Migração do banco (dias_bloqueio individual)
-node scripts/migrate-dias-bloqueio.js
-
-Migração do banco (dias_bloqueio_geral)
-ALTER TABLE empresas ADD COLUMN IF NOT EXISTS dias_bloqueio_geral INTEGER DEFAULT 0;
-
-Adicionar telefone do dono e endereço
-ALTER TABLE empresas ADD COLUMN telefone_dono VARCHAR(20);
-ALTER TABLE empresas ADD COLUMN endereco TEXT;
-
-Testar job de lembretes manualmente
-node -e "require('./server/jobs/lembretes.js').enviarLembretes()"
-
-Ver logs do servidor
-npm start
-
-Acessar sistema
-http://localhost:3000
-
-=========================================
-ULTIMA ATUALIZACAO: 01/07/2026
-=========================================
-
----
-
-## 📄 **4. PARA_NOVA_IA.txt** - COLE DIRETO NO ARQUIVO
-
-```markdown
-=========================================
-  GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 06/07/2026
-=========================================
-
-## 🚀 COMO EXECUTAR O PROJETO
-
-### Modo Local (SQLite - Desenvolvimento)
-```bash
-npm start
-WhatsApp em modo LOG
-
-Banco SQLite local
-
-Acesse: http://localhost:3000
+- WhatsApp em modo LOG
+- Banco SQLite local
+- Acesse: http://localhost:3000
 
 Modo com PostgreSQL (Teste com dados reais)
-bash
+-----------------------------------------
 node -r dotenv/config server.js dotenv_config_path=.env.local
-WhatsApp Evolution REAL
 
-Banco PostgreSQL do Render
-
-Acesse: http://localhost:3000
+- WhatsApp Evolution REAL
+- Banco PostgreSQL do Render
+- Acesse: http://localhost:3000
 
 USUARIOS:
+-----------------------------------------
 Super Admin: super@admin.com / super123
-
 Dono: admin@teste.com / 123456
 
-✅ IMPLEMENTADO (06/07/2026)
-1. WHATSAPP EVOLUTION - SISTEMA COMPLETO 📱
-Confirmação de Agendamento: Enviada automaticamente
+=========================================
+✅ IMPLEMENTADO (10/07/2026)
+=========================================
 
-Lembrete 24h: Job automático às 09:00
+1. WHATSAPP EVOLUTION - SISTEMA MULTI-INSTÂNCIA 📱
+-----------------------------------------
+- Provedor: Evolution API (http://163.176.218.131:8080)
+- Instância Padrão: seeagende
+- Instância Própria: Cada empresa Business/Enterprise
+- Confirmação de Agendamento: Enviada automaticamente
+- Lembrete 24h: Job automático às 09:00
+- Cancelamento: Notifica o cliente
+- Conclusão: Agradecimento automático
+- Telefone do Dono: Aparece em todas as mensagens
+- Endereço: Aparece nas mensagens
+- Formatação: (XX) XXXXX-XXXX
 
-Cancelamento: Notifica o cliente
+2. NOVOS CAMPOS NO BANCO
+-----------------------------------------
+whatsapp_instance VARCHAR(100)
+whatsapp_connected BOOLEAN DEFAULT FALSE
+whatsapp_number VARCHAR(20)
+whatsapp_connected_at TIMESTAMP
+whatsapp_proprio_habilitado BOOLEAN DEFAULT FALSE
 
-Conclusão: Agradecimento automático
+3. SUPER ADMIN - DASHBOARD COMPLETO 🏢
+-----------------------------------------
+- Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
+- Lista completa de todas as empresas
+- Status do trial (dias restantes, expirado, ativo)
+- Gerenciar usuários (nome, email, telefone, role, senha, comissão)
+- Filtrar empresas por nome em tempo real
+- NOVO: Coluna 💬 WhatsApp com controle de habilitação
 
-Telefone do Dono: Aparece em todas as mensagens
+4. SUPER ADMIN - CONTROLE WHATSAPP
+-----------------------------------------
+- Habilitar/desabilitar WhatsApp próprio de qualquer empresa
+- Ver status de todas as empresas
+- 3 estados: 🔴 OFF, 🟡 PEND, 🟢 ON, 🔒 [plano]
 
-Endereço: Aparece nas mensagens
+5. DONO - WHATSAPP EXCLUSIVO 👨‍💼
+-----------------------------------------
+3 cenários:
+- Plano não permite → Tela de upgrade
+- Plano permite mas Super Admin não habilitou → "Aguarde o administrador"
+- Tudo OK → Pode criar instância e conectar WhatsApp
 
-Formatação: (XX) XXXXX-XXXX
+Funcionalidades:
+- Criar instância na Evolution API
+- Escanear QR Code com WhatsApp pessoal
+- Ver status de conexão
+- Desconectar WhatsApp
 
-2. SUPER ADMIN - DASHBOARD COMPLETO 🏢
-Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
+6. SISTEMA DE ACESSOS 📊
+-----------------------------------------
+- Registro automático de acessos no login
+- Captura de IP e User-Agent
+- Estatísticas por empresa (total, hoje, último acesso)
 
-Lista completa de todas as empresas
+7. CORREÇÃO DE BOOLEANOS 🎯
+-----------------------------------------
+- PostgreSQL: true/false, SQLite: 1/0
+- Função isAberto() para compatibilidade
 
-Status do trial (dias restantes, expirado, ativo)
+8. CORREÇÃO DE .toFixed() 🎯
+-----------------------------------------
+- PostgreSQL retorna strings
+- parseFloat() antes de toFixed()
 
-Gerenciar usuários (nome, email, telefone, role, senha, comissão)
+9. PRESERVAÇÃO DE HORÁRIO NA AGENDA 🎯
+-----------------------------------------
+- Horário é mantido ao selecionar serviço
+- Próximo horário disponível se o selecionado não estiver disponível
 
-Filtrar empresas por nome em tempo real
-
-3. SISTEMA DE ACESSOS 📊
-Registro automático de acessos no login
-
-Captura de IP e User-Agent
-
-Estatísticas por empresa (total, hoje, último acesso)
-
-4. CORREÇÃO DE BOOLEANOS 🎯
-PostgreSQL: true/false, SQLite: 1/0
-
-Função isAberto() para compatibilidade
-
-5. CORREÇÃO DE .toFixed() 🎯
-PostgreSQL retorna strings
-
-parseFloat() antes de toFixed()
-
-6. PRESERVAÇÃO DE HORÁRIO NA AGENDA 🎯
-Horário é mantido ao selecionar serviço
-
-Próximo horário disponível se o selecionado não estiver disponível
-
+=========================================
 🔧 CORREÇÕES NO BACKEND
+=========================================
+
 Middleware verificarAcessoAgendamentos
-javascript
+-----------------------------------------
 const isAtiva = empresa.assinatura_ativa === true || 
                 empresa.assinatura_ativa === 1 || 
                 empresa.assinatura_ativa === 'true';
+
 Rota de Despesas - Placeholders
-javascript
+-----------------------------------------
 let counter = 2;
 sql += ` AND EXTRACT(MONTH FROM d.data) = $${counter}::int`;
+
 Rota de Agendamentos - Valores
-javascript
+-----------------------------------------
 valor: parseFloat(a.valor) || 0,
 comissao: parseFloat(a.comissao) || 0
+
+=========================================
 🗄️ ESTRUTURA DOS ARQUIVOS
-text
+=========================================
+
 server/
 ├── config/
 │   ├── database.js
@@ -416,7 +132,8 @@ server/
 ├── middlewares/
 │   └── auth.js           # CORRIGIDO
 ├── services/
-│   └── whatsapp.js
+│   ├── whatsapp.js
+│   └── evolution-instances.js  # NOVO
 ├── jobs/
 │   ├── lembretes.js
 │   └── reset-contador.js
@@ -433,20 +150,38 @@ public/
 └── js/
     ├── ui.js
     └── pages/
-        ├── dashboard.js      # CORRIGIDO
-        ├── agendamentos.js   # CORRIGIDO
-        ├── configuracoes.js  # CORRIGIDO
-        ├── financeiro.js     # CORRIGIDO
-        └── servicos.js       # CORRIGIDO
+        ├── dashboard.js          # CORRIGIDO
+        ├── agendamentos.js       # CORRIGIDO
+        ├── configuracoes.js      # CORRIGIDO
+        ├── financeiro.js         # CORRIGIDO
+        ├── empresas.js           # COMPLETO
+        └── whatsapp-config.js    # NOVO
+
+scripts/
+├── migrate.js
+├── seed.js
+├── corrigir-booleanos.js
+├── corrigir-tofixed.js
+├── corrigir-placeholders.js
+├── migrate-whatsapp.js           # NOVO
+├── migrate-whatsapp-pg.js        # NOVO
+└── migrate-whatsapp-habilitado.js # NOVO
+
+=========================================
 📋 PLANOS COMPLETOS
-Plano	Valor	Profissionais	Agendamentos/Mês
-Trial	Grátis (45 dias)	1	100
-Starter	R$ 29,90/mês	1	100
-Pro	R$ 59,90/mês	5	Ilimitado
-Business	R$ 119,90/mês	15	Ilimitado
-Enterprise	R$ 249,90/mês	Ilimitado	Ilimitado
+=========================================
+
+Plano       Valor               Profissionais   Agendamentos/Mês   WhatsApp Próprio
+Trial       Grátis (45 dias)    1               100                ❌
+Starter     R$ 29,90/mês        1               100                ❌
+Pro         R$ 59,90/mês        5               Ilimitado          ❌
+Business    R$ 119,90/mês       15              Ilimitado          ✅
+Enterprise  R$ 249,90/mês       Ilimitado       Ilimitado          ✅
+
+=========================================
 🔧 COMANDOS ÚTEIS
-bash
+=========================================
+
 # SQLite (Desenvolvimento)
 npm start
 
@@ -460,22 +195,54 @@ node -c server.js
 node scripts/corrigir-booleanos.js
 node scripts/corrigir-tofixed.js
 node scripts/corrigir-placeholders.js
+
+# Migrações WhatsApp
+node scripts/migrate-whatsapp.js
+node scripts/migrate-whatsapp-pg.js
+node scripts/migrate-whatsapp-habilitado.js
+
+# Ver commits recentes
+git log -5 --oneline
+
+# Ver status do Git
+git status
+
+# Ver mudanças não commitadas
+git diff
+
+# Adicionar e commitar mudanças
+git add .
+git commit -m "✨ FEAT: WhatsApp Multi-Instância e melhorias"
+git push origin main
+
+=========================================
 🎯 O QUE FOI CORRIGIDO
-Problema	Solução	Status
-Booleanos no PostgreSQL	Função isAberto()	✅
-.toFixed() no PostgreSQL	parseFloat()	✅
-Placeholders PostgreSQL	Counter para $1, $2...	✅
-Assinatura ativa	Suporte true/false e 1/0	✅
-Horário na agenda	Preservação ao selecionar serviço	✅
-Profissionais status	isAberto() no frontend	✅
-Horários status	isAberto() no frontend	✅
+=========================================
+
+Problema                           Solução                              Status
+Booleanos no PostgreSQL            Função isAberto()                    ✅
+.toFixed() no PostgreSQL           parseFloat()                         ✅
+Placeholders PostgreSQL            Counter para $1, $2...              ✅
+Assinatura ativa                   Suporte true/false e 1/0            ✅
+Horário na agenda                  Preservação ao selecionar serviço    ✅
+Profissionais status               isAberto() no frontend              ✅
+Horários status                    isAberto() no frontend              ✅
+WhatsApp próprio                   Sistema Multi-Instância             ✅
+Super Admin WhatsApp               Controle por empresa                 ✅
+Dono WhatsApp                      Tela de configuração                 ✅
+
+=========================================
 ✅ STATUS ATUAL
+=========================================
+
 Tudo funcionando em AMBOS os bancos!
 
 ✅ SQLite (desenvolvimento local)
-
 ✅ PostgreSQL (Render e teste local)
+✅ WhatsApp Multi-Instância
+✅ Super Admin com controle WhatsApp
+✅ Dono com WhatsApp exclusivo
 
 =========================================
-ULTIMA ATUALIZACAO: 06/07/2026
+ULTIMA ATUALIZACAO: 10/07/2026
 =========================================

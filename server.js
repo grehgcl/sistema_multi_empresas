@@ -19,6 +19,23 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
+
+// Função para converter valores booleanos entre SQLite e PostgreSQL
+function converterBooleano(valor) {
+    if (isProduction) {
+        // PostgreSQL: true/false
+        if (typeof valor === 'boolean') return valor;
+        if (typeof valor === 'number') return valor === 1;
+        if (typeof valor === 'string') return valor === '1' || valor === 'true';
+        return false;
+    } else {
+        // SQLite: 1/0
+        if (typeof valor === 'boolean') return valor ? 1 : 0;
+        if (typeof valor === 'number') return valor;
+        if (typeof valor === 'string') return (valor === '1' || valor === 'true') ? 1 : 0;
+        return 0;
+    }
+}
 // ============================================================
 // IMPORTS DAS PARTES EXTRAT�DAS
 // ============================================================
@@ -2113,6 +2130,100 @@ app.put('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
+// 🗑️ DELETE /api/admin/empresas/:id - EXCLUIR EMPRESA (SUPER ADMIN)
+// ============================================
+app.delete('/api/admin/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
+    const { id } = req.params;
+
+    console.log(`🗑️ Super Admin - Deletando empresa ID: ${id}...`);
+
+    try {
+        // 1. VERIFICAR SE A EMPRESA EXISTE
+        const sqlCheck = isProduction
+            ? `SELECT id, nome FROM empresas WHERE id = $1`
+            : `SELECT id, nome FROM empresas WHERE id = ?`;
+
+        const empresa = await new Promise((resolve, reject) => {
+            db.get(sqlCheck, [id], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        console.log(`📌 Empresa encontrada: "${empresa.nome}" (ID: ${id})`);
+
+        // 2. EXCLUIR EM CASCATA (TUDO RELACIONADO)
+        const queries = [];
+
+        if (isProduction) {
+            // PostgreSQL
+            queries.push(
+                `DELETE FROM agendamentos WHERE empresa_id = $1`,
+                `DELETE FROM clientes WHERE empresa_id = $1`,
+                `DELETE FROM profissionais WHERE empresa_id = $1`,
+                `DELETE FROM servicos WHERE empresa_id = $1`,
+                `DELETE FROM horarios_funcionamento WHERE empresa_id = $1`,
+                `DELETE FROM despesas WHERE empresa_id = $1`,
+                `DELETE FROM acessos WHERE empresa_id = $1`,
+                `DELETE FROM planos_historico WHERE empresa_id = $1`,
+                `DELETE FROM transacoes_pagamento WHERE empresa_id = $1`,
+                `DELETE FROM usuarios WHERE empresa_id = $1`,
+                `DELETE FROM empresas WHERE id = $1`
+            );
+        } else {
+            // SQLite
+            queries.push(
+                `DELETE FROM agendamentos WHERE empresa_id = ?`,
+                `DELETE FROM clientes WHERE empresa_id = ?`,
+                `DELETE FROM profissionais WHERE empresa_id = ?`,
+                `DELETE FROM servicos WHERE empresa_id = ?`,
+                `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`,
+                `DELETE FROM despesas WHERE empresa_id = ?`,
+                `DELETE FROM acessos WHERE empresa_id = ?`,
+                `DELETE FROM planos_historico WHERE empresa_id = ?`,
+                `DELETE FROM transacoes_pagamento WHERE empresa_id = ?`,
+                `DELETE FROM usuarios WHERE empresa_id = ?`,
+                `DELETE FROM empresas WHERE id = ?`
+            );
+        }
+
+        // Executar todas as queries em sequência
+        for (const sql of queries) {
+            await new Promise((resolve, reject) => {
+                db.run(sql, [id], (err) => {
+                    if (err) {
+                        console.error('❌ Erro ao deletar dados:', err.message);
+                        reject(err);
+                    }
+                    resolve();
+                });
+            });
+        }
+
+        console.log(`✅ Empresa "${empresa.nome}" (ID: ${id}) deletada com sucesso!`);
+
+        res.json({
+            success: true,
+            message: `Empresa "${empresa.nome}" deletada com sucesso!`
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao deletar empresa:', error.message);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao deletar empresa: ' + error.message
+        });
+    }
+});
+
+// ============================================
 // 9. BUSCAR USUÁRIO PARA EDIÇÃO (CORRIGIDO)
 // ============================================
 app.get('/api/admin/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
@@ -2748,23 +2859,28 @@ app.post('/api/servicos', auth, verificarDono, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
 
     if (!nome || !valor) {
-        return res.json({ success: false, message: 'Nome e valor s�o obrigat�rios' });
+        return res.json({ success: false, message: 'Nome e valor são obrigatórios' });
     }
+
+    // 🔥 CONVERTER para o formato correto
+    const ativoValue = isProduction ? true : 1;
 
     const sql = isProduction
         ? `INSERT INTO servicos (nome, descricao, valor, duracao, empresa_id, ativo) 
-           VALUES ($1, $2, $3, $4, $5, 1) RETURNING id`
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`
         : `INSERT INTO servicos (nome, descricao, valor, duracao, empresa_id, ativo) 
-           VALUES (?, ?, ?, ?, ?, 1)`;
+           VALUES (?, ?, ?, ?, ?, ?)`;
 
-    db.run(sql, [nome, descricao || '', valor, duracao || 30, empresa_id], function (err) {
+    const params = [nome, descricao || '', valor, duracao || 30, empresa_id, ativoValue];
+
+    db.run(sql, params, function (err) {
         if (err) {
-            console.error('? Erro ao criar servi�o:', err.message);
+            console.error('❌ Erro ao criar serviço:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
         let id = this?.lastID || this?.id || null;
-        res.json({ success: true, data: { id: id }, message: 'Servi�o cadastrado' });
+        res.json({ success: true, data: { id: id }, message: 'Serviço cadastrado' });
     });
 });
 
@@ -2772,6 +2888,22 @@ app.put('/api/servicos/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { nome, descricao, valor, duracao, ativo } = req.body;
     const empresa_id = req.usuario.empresa_id;
+
+    // 🔥 CONVERTER ativo para o formato correto
+    let ativoValue = ativo;
+    if (isProduction) {
+        // PostgreSQL espera true/false
+        if (typeof ativo === 'boolean') ativoValue = ativo;
+        else if (typeof ativo === 'number') ativoValue = ativo === 1;
+        else if (typeof ativo === 'string') ativoValue = ativo === '1' || ativo === 'true';
+        else ativoValue = false;
+    } else {
+        // SQLite espera 1/0
+        if (typeof ativo === 'boolean') ativoValue = ativo ? 1 : 0;
+        else if (typeof ativo === 'number') ativoValue = ativo;
+        else if (typeof ativo === 'string') ativoValue = (ativo === '1' || ativo === 'true') ? 1 : 0;
+        else ativoValue = 0;
+    }
 
     const sql = isProduction
         ? `UPDATE servicos SET 
@@ -2789,12 +2921,17 @@ app.put('/api/servicos/:id', auth, verificarDono, (req, res) => {
            ativo = COALESCE(?, ativo) 
            WHERE id = ? AND empresa_id = ?`;
 
-    db.run(sql, [nome, descricao, valor, duracao, ativo, id, empresa_id], function (err) {
+    db.run(sql, [nome, descricao, valor, duracao, ativoValue, id, empresa_id], function (err) {
         if (err) {
-            console.error('? Erro ao editar servi�o:', err.message);
+            console.error('❌ Erro ao editar serviço:', err.message);
             return res.json({ success: false, message: err.message });
         }
-        res.json({ success: true, message: 'Servi�o atualizado' });
+
+        if (this.changes === 0) {
+            return res.json({ success: false, message: 'Serviço não encontrado' });
+        }
+
+        res.json({ success: true, message: 'Serviço atualizado' });
     });
 });
 
@@ -2808,21 +2945,24 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
     db.get(sqlCheck, [id], (err, result) => {
         if (err) {
-            console.error('? Erro ao verificar agendamentos:', err.message);
+            console.error('❌ Erro ao verificar agendamentos:', err.message);
             return res.json({ success: false, message: err.message });
         }
 
         if (result?.total > 0) {
-            const sqlUpdate = isProduction
-                ? `UPDATE servicos SET ativo = 0 WHERE id = $1 AND empresa_id = $2`
-                : `UPDATE servicos SET ativo = 0 WHERE id = ? AND empresa_id = ?`;
+            // 🔥 CONVERTER para booleano no PostgreSQL
+            const ativoValue = isProduction ? false : 0;
 
-            db.run(sqlUpdate, [id, empresa_id], (err) => {
+            const sqlUpdate = isProduction
+                ? `UPDATE servicos SET ativo = $1 WHERE id = $2 AND empresa_id = $3`
+                : `UPDATE servicos SET ativo = ? WHERE id = ? AND empresa_id = ?`;
+
+            db.run(sqlUpdate, [ativoValue, id, empresa_id], (err) => {
                 if (err) {
-                    console.error('? Erro ao desativar servi�o:', err.message);
+                    console.error('❌ Erro ao desativar serviço:', err.message);
                     return res.json({ success: false, message: err.message });
                 }
-                res.json({ success: true, message: 'Servi�o desativado (possui agendamentos)' });
+                res.json({ success: true, message: 'Serviço desativado (possui agendamentos)' });
             });
         } else {
             const sqlDelete = isProduction
@@ -2831,10 +2971,10 @@ app.delete('/api/servicos/:id', auth, verificarDono, (req, res) => {
 
             db.run(sqlDelete, [id, empresa_id], (err) => {
                 if (err) {
-                    console.error('? Erro ao excluir servi�o:', err.message);
+                    console.error('❌ Erro ao excluir serviço:', err.message);
                     return res.json({ success: false, message: err.message });
                 }
-                res.json({ success: true, message: 'Servi�o removido' });
+                res.json({ success: true, message: 'Serviço removido' });
             });
         }
     });
