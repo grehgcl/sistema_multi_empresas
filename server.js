@@ -6220,11 +6220,27 @@ app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
 
     db.get(sql, [empresaId], async (err, empresa) => {
         if (err || !empresa?.whatsapp_instance) {
-            return res.status(400).json({ success: false, message: 'Crie uma instância primeiro' });
+            return res.status(400).json({
+                success: false,
+                message: 'Crie uma instância primeiro'
+            });
         }
 
         const resultado = await EvolutionInstances.getQrCode(empresa.whatsapp_instance);
-        res.json(resultado);
+
+        // 🔥 Se o resultado tiver qrCode, retorna ele
+        if (resultado.success && resultado.qrCode) {
+            res.json({
+                success: true,
+                qrCode: resultado.qrCode,
+                pairingCode: resultado.pairingCode || null
+            });
+        } else {
+            res.json({
+                success: false,
+                message: resultado.message || 'Erro ao gerar QR Code'
+            });
+        }
     });
 });
 

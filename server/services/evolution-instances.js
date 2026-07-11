@@ -47,9 +47,27 @@ class EvolutionInstances {
     static async getQrCode(instanceName) {
         try {
             const response = await api.get(`/instance/connect/${instanceName}`);
-            return { success: true, data: response.data };
+
+            // 🔥 Verificar se veio o QR Code
+            if (response.data && response.data.base64) {
+                return {
+                    success: true,
+                    qrCode: response.data.base64,
+                    pairingCode: response.data.pairingCode || null,
+                    data: response.data
+                };
+            } else {
+                return {
+                    success: false,
+                    message: 'QR Code não disponível. A instância pode já estar conectada.'
+                };
+            }
         } catch (error) {
-            return { success: false, message: 'Erro ao buscar QR Code' };
+            console.error('❌ Erro ao buscar QR Code:', error.response?.data || error.message);
+            return {
+                success: false,
+                message: error.response?.data?.message || 'Erro ao buscar QR Code'
+            };
         }
     }
 
