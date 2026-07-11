@@ -6215,8 +6215,8 @@ app.post('/api/empresa/whatsapp/criar-instancia', auth, async (req, res) => {
 app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const sql = isProduction
-        ? 'SELECT whatsapp_instance FROM empresas WHERE id = $1'
-        : 'SELECT whatsapp_instance FROM empresas WHERE id = ?';
+        ? 'SELECT whatsapp_instance, whatsapp_connected FROM empresas WHERE id = $1'
+        : 'SELECT whatsapp_instance, whatsapp_connected FROM empresas WHERE id = ?';
 
     db.get(sql, [empresaId], async (err, empresa) => {
         if (err || !empresa?.whatsapp_instance) {
@@ -6226,9 +6226,21 @@ app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
             });
         }
 
+        // 🔥 Se já está conectado, não tenta gerar QR Code
+        const isConnected = empresa.whatsapp_connected === true ||
+            empresa.whatsapp_connected === 1 ||
+            empresa.whatsapp_connected === 't';
+
+        if (isConnected) {
+            return res.json({
+                success: false,
+                message: 'WhatsApp já está conectado!',
+                alreadyConnected: true
+            });
+        }
+
         const resultado = await EvolutionInstances.getQrCode(empresa.whatsapp_instance);
 
-        // 🔥 Se o resultado tiver qrCode, retorna ele
         if (resultado.success && resultado.qrCode) {
             res.json({
                 success: true,

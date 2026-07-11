@@ -172,8 +172,25 @@ async function buscarQrCode() {
 
     if (data.success && data.qrCode) {
       document.getElementById('qrcode-container').innerHTML = `<img src="${data.qrCode}" style="width: 256px; height: 256px;">`;
+    } else if (data.alreadyConnected) {
+      // 🔥 Se já está conectado, atualiza a página
+      document.getElementById('qrcode-container').innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: var(--success); font-size: 18px;">✅ WhatsApp já está conectado!</p>
+          <button onclick="carregarConfigWhatsApp()" class="btn btn-primary" style="margin-top: 10px;">
+            🔄 Atualizar Página
+          </button>
+        </div>
+      `;
     } else {
-      document.getElementById('qrcode-container').innerHTML = '<p style="color: var(--danger);">Erro ao gerar QR Code</p>';
+      document.getElementById('qrcode-container').innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: var(--warning);">${data.message || 'QR Code não disponível'}</p>
+          <button onclick="verificarStatus()" class="btn btn-primary" style="margin-top: 10px;">
+            ✅ Verificar Conexão
+          </button>
+        </div>
+      `;
     }
   } catch (error) {
     document.getElementById('qrcode-container').innerHTML = '<p style="color: var(--danger);">Erro ao buscar QR Code</p>';
