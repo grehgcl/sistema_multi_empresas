@@ -1159,18 +1159,36 @@ function toggleTheme() {
 // FUNÇÕES DE HORÁRIOS
 // ============================================
 function inicializarHorariosEvents() {
-    const tbody = document.getElementById('horariosTableBody');
-    if (!tbody) return;
+    const isMobile = window.innerWidth < 768;
+    
+    // 🔥 Para MOBILE: usar cards
+    if (isMobile) {
+        // Toggle status
+        document.querySelectorAll('.status-toggle').forEach(toggle => {
+            toggle.removeEventListener('change', handleStatusChangeMobile);
+            toggle.addEventListener('change', handleStatusChangeMobile);
+        });
 
-    tbody.querySelectorAll('.status-toggle').forEach(toggle => {
-        toggle.removeEventListener('change', handleStatusChange);
-        toggle.addEventListener('change', handleStatusChange);
-    });
+        // Inputs de horário
+        document.querySelectorAll('.hora-inicio, .hora-fim, .almoco-inicio, .almoco-fim, .intervalo-select').forEach(input => {
+            input.removeEventListener('change', handleHorarioChangeMobile);
+            input.addEventListener('change', handleHorarioChangeMobile);
+        });
+    } else {
+        // 🔥 Para DESKTOP: usar tabela
+        const tbody = document.getElementById('horariosTableBody');
+        if (!tbody) return;
 
-    tbody.querySelectorAll('.hora-inicio, .hora-fim, .almoco-inicio, .almoco-fim, .intervalo-select').forEach(input => {
-        input.removeEventListener('change', handleHorarioChange);
-        input.addEventListener('change', handleHorarioChange);
-    });
+        tbody.querySelectorAll('.status-toggle').forEach(toggle => {
+            toggle.removeEventListener('change', handleStatusChange);
+            toggle.addEventListener('change', handleStatusChange);
+        });
+
+        tbody.querySelectorAll('.hora-inicio, .hora-fim, .almoco-inicio, .almoco-fim, .intervalo-select').forEach(input => {
+            input.removeEventListener('change', handleHorarioChange);
+            input.addEventListener('change', handleHorarioChange);
+        });
+    }
 }
 
 function handleStatusChange(e) {
@@ -1214,6 +1232,37 @@ async function salvarHorario(dia, dados) {
         console.error('Erro:', error);
     }
 }
+// ============================================
+// HANDLERS PARA MOBILE (CARDS)
+// ============================================
+
+function handleStatusChangeMobile(e) {
+    const dia = e.target.getAttribute('data-dia');
+    const aberto = e.target.checked ? 1 : 0;
+    
+    // Encontrar o card pai
+    const card = e.target.closest('div[style*="background: var(--bg-card)"]');
+    if (card) {
+        card.querySelectorAll('input, select').forEach(input => {
+            if (input !== e.target && input.type !== 'checkbox') {
+                input.disabled = !aberto;
+            }
+        });
+    }
+    
+    salvarHorario(dia, { aberto });
+}
+
+function handleHorarioChangeMobile(e) {
+    const dia = e.target.getAttribute('data-dia');
+    const campo = e.target.classList.contains('hora-inicio') ? 'hora_inicio' :
+                  e.target.classList.contains('hora-fim') ? 'hora_fim' :
+                  e.target.classList.contains('almoco-inicio') ? 'almoco_inicio' :
+                  e.target.classList.contains('almoco-fim') ? 'almoco_fim' : 'intervalo_minutos';
+    const valor = campo === 'intervalo_minutos' ? parseInt(e.target.value) : e.target.value;
+    salvarHorario(dia, { [campo]: valor });
+}
+
 
 // ============================================
 // FUNÇÕES DO CHATBOT
