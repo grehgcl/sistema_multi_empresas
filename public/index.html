@@ -155,6 +155,13 @@
                 <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
             </div>
         </div>
+
+        <!-- 🔥 BOTÃO HAMBURGUER - SÓ DENTRO DO APP -->
+        <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
+            <i class="fas fa-bars"></i>
+        </button>
+        <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
+
         <div class="sidebar sidebar-glass" id="sidebar"></div>
         <div class="main">
             <div id="trialInfo" class="trial-info" style="display:none"></div>
@@ -234,10 +241,6 @@
         </div>
     </div>
 
-    <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
-        <i class="fas fa-bars"></i>
-    </button>
-    <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
     <canvas id="particlesCanvas"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;"></canvas>
@@ -665,31 +668,25 @@
             } else if (usuario.role === 'profissional') {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
-                    {
-                        id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt',
-                        funcao: 'carregarAgendamentosProfissional'
-                    },
+                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' },
                     { id: 'financeiro', nome: 'Minhas Comissões', icone: 'fa-coins', funcao: 'carregarFinanceiro' }
                 ];
-            }
-            else {
+            } else {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
-                    {
-                        id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check',
-                        funcao: 'carregarAgendamentos'
-                    },
+                    { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
                     { id: 'servicos', nome: 'Serviços', icone: 'fa-clipboard-list', funcao: 'carregarServicos' },
                     { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
                     { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
                     { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
-                    { id: 'whatsapp', nome: '📱 WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarConfigWhatsApp' }, // ← NOVO
+                    { id: 'whatsapp', nome: '📱 WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarConfigWhatsApp' },
                     { id: 'planos', nome: '💎 Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
                 ];
             }
+
             sidebar.innerHTML = botoes.map(b =>
-                `<button onclick="${b.funcao}()" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`).join(
-                    '');
+                `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`
+            ).join('');
         }
 
         function ativarBotao(id) {

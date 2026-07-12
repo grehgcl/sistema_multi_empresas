@@ -117,6 +117,16 @@ function initResponsiveSidebar() {
         document.body.style.overflow = '';
     }
 
+    // Fechar ao clicar em qualquer botão do sidebar (mobile)
+    sidebar.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (window.innerWidth <= 768) {
+                closeSidebar();
+            }
+        });
+    });
+
+    // Swipe para fechar
     sidebar.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
     });
@@ -128,6 +138,7 @@ function initResponsiveSidebar() {
         }
     });
 
+    // Botão hambúrguer
     menuBtn.onclick = function (e) {
         e.stopPropagation();
         if (sidebar.classList.contains('open')) {
@@ -137,18 +148,12 @@ function initResponsiveSidebar() {
         }
     };
 
+    // Overlay
     if (overlay) {
         overlay.onclick = closeSidebar;
     }
 
-    sidebar.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', function () {
-            if (window.innerWidth <= 768) {
-                closeSidebar();
-            }
-        });
-    });
-
+    // Fechar ao redimensionar para desktop
     window.addEventListener('resize', function () {
         if (window.innerWidth > 768) {
             closeSidebar();
@@ -157,10 +162,117 @@ function initResponsiveSidebar() {
 }
 
 // ============================================
+// FECHAR SIDEBAR MOBILE
+// ============================================
+
+function fecharSidebarMobile() {
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.querySelector('.sidebar-overlay');
+
+    if (window.innerWidth <= 768) {
+        if (sidebar) {
+            sidebar.classList.remove('open');
+        }
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+        document.body.style.overflow = '';
+    }
+}
+
+// ============================================
+// EXECUTAR AÇÃO E FECHAR SIDEBAR
+// ============================================
+
+function executarAcao(funcao, id) {
+    // Fechar sidebar primeiro (mobile)
+    fecharSidebarMobile();
+
+    // Ativar botão
+    ativarBotao(id);
+
+    // Executar a função
+    if (typeof window[funcao] === 'function') {
+        window[funcao]();
+    } else {
+        console.error('Função não encontrada:', funcao);
+    }
+}
+
+// ============================================
+// CONTROLAR MENU - MOSTRAR SÓ QUANDO LOGADO
+// ============================================
+
+function controlarMenu() {
+    const token = localStorage.getItem('token');
+    const menuBtn = document.getElementById('menuMobileBtn');
+    const overlay = document.getElementById('sidebarOverlay');
+    const landingContainer = document.getElementById('landingContainer');
+
+    // Verificar se está na landing page
+    const isLandingPage = landingContainer && landingContainer.style.display !== 'none';
+
+    if (menuBtn) {
+        if (isLandingPage || !token) {
+            menuBtn.style.display = 'none';
+            menuBtn.style.visibility = 'hidden';
+        } else {
+            menuBtn.style.display = 'flex';
+            menuBtn.style.visibility = 'visible';
+        }
+    }
+
+    if (overlay) {
+        if (isLandingPage || !token) {
+            overlay.style.display = 'none';
+        } else {
+            overlay.style.display = 'block';
+        }
+    }
+}
+
+// ============================================
+// FORÇAR CORES DO HEADER
+// ============================================
+
+function forcarCoresHeader() {
+    const userNameEl = document.getElementById('userName');
+    const userBadgeEl = document.getElementById('userBadge');
+
+    if (userNameEl) {
+        userNameEl.style.color = '#ffffff';
+        userNameEl.style.fontWeight = '500';
+        userNameEl.style.fontSize = '14px';
+        userNameEl.style.textShadow = '0 1px 4px rgba(0,0,0,0.3)';
+    }
+
+    if (userBadgeEl) {
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        if (usuario.role === 'superadmin') {
+            userBadgeEl.innerHTML = '<span style="color:#ef4444;background:rgba(239,68,68,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔴 SUPER ADMIN</span>';
+        } else if (usuario.role === 'profissional') {
+            userBadgeEl.innerHTML = '<span style="color:#667eea;background:rgba(102,126,234,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔵 PROFISSIONAL</span>';
+        } else {
+            userBadgeEl.innerHTML = '<span style="color:#f59e0b;background:rgba(245,158,11,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🟠 Proprietário</span>';
+        }
+    }
+}
+
+// ============================================
 // INICIAR UI
 // ============================================
 document.addEventListener('DOMContentLoaded', function () {
     initResponsiveSidebar();
+    controlarMenu();
+    setTimeout(forcarCoresHeader, 500);
+});
+
+// Chamar quando o token mudar (login/logout)
+window.addEventListener('storage', function (e) {
+    if (e.key === 'token' || e.key === 'usuario') {
+        controlarMenu();
+        setTimeout(forcarCoresHeader, 500);
+    }
 });
 
 // ============================================
@@ -171,5 +283,9 @@ window.showLoading = showLoading;
 window.hideLoading = hideLoading;
 window.showModal = showModal;
 window.initResponsiveSidebar = initResponsiveSidebar;
+window.controlarMenu = controlarMenu;
+window.forcarCoresHeader = forcarCoresHeader;
+window.fecharSidebarMobile = fecharSidebarMobile;
+window.executarAcao = executarAcao;
 
 console.log('✅ UI.js carregado com sucesso - v6.0');
