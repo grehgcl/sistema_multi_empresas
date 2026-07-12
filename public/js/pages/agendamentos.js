@@ -320,12 +320,25 @@ async function carregarListaAgendamentosComFiltro() {
             return;
         }
 
-        let html = '';
-
         if (isMobile) {
             // ============================================
-            // VERSÃO MOBILE - CARDS
+            // VERSÃO MOBILE - CARDS SUBSTITUINDO A TABELA
             // ============================================
+
+            // 🔥 ENCONTRAR O CONTAINER DA TABELA
+            const tableContainer = tbody.closest('.table-responsive');
+            const cardContainer = document.createElement('div');
+            cardContainer.className = 'agendamentos-mobile-container';
+            cardContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 8px 4px;
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+            `;
+
             for (let item of listaFiltrada) {
                 const statusMap = {
                     'concluido': { class: 'concluido', label: '✅ Concluído' },
@@ -336,69 +349,172 @@ async function carregarListaAgendamentosComFiltro() {
                 const statusInfo = statusMap[item.status] || statusMap['pendente'];
                 const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
-                html += `
-                    <tr>
-                        <td colspan="7" style="padding: 8px 0; border-bottom: none;">
-                            <div class="agendamento-card-mobile">
-                                <div class="card-header-mobile">
-                                    <div class="cliente-info-mobile">
-                                        <span class="cliente-avatar-mobile">${item.cliente_nome ? item.cliente_nome.charAt(0).toUpperCase() : '?'}</span>
-                                        <div>
-                                            <span class="cliente-nome-mobile">${escapeHtml(item.cliente_nome || 'N/A')}</span>
-                                            <span class="servico-mobile">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
-                                        </div>
-                                    </div>
-                                    <span class="status-badge ${statusInfo.class}">
-                                        <span class="dot"></span>
-                                        ${statusInfo.label}
-                                    </span>
-                                </div>
-                                <div class="card-body-mobile">
-                                    <div class="info-row">
-                                        <span class="info-label">📅 Data</span>
-                                        <span class="info-value">${formatarDataBr(item.data)}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">⏰ Horário</span>
-                                        <span class="info-value">${item.hora || '-'}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">👨‍💼 Profissional</span>
-                                        <span class="info-value">${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
-                                    </div>
-                                    <div class="info-row">
-                                        <span class="info-label">💰 Valor</span>
-                                        <span class="info-value valor-mobile">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span>
-                                    </div>
-                                </div>
-                                <div class="card-actions-mobile">
-                                    ${podeEditar ? `
-                                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${item.id})" title="Editar">
-                                            <i class="fas fa-pen"></i> Editar
-                                        </button>
-                                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${item.id})" title="Concluir">
-                                            <i class="fas fa-check"></i> Concluir
-                                        </button>
-                                    ` : ''}
-                                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${item.id})" title="Excluir">
-                                        <i class="fas fa-trash"></i> Excluir
-                                    </button>
-                                </div>
-                            </div>
-                        </td>
-                    </tr>
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: var(--bg-card);
+                    border-radius: 14px;
+                    padding: 14px 16px;
+                    border: 1px solid var(--border-color);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+                    width: 100%;
+                    max-width: 100%;
+                    box-sizing: border-box;
+                    overflow: hidden;
                 `;
+
+                card.innerHTML = `
+                    <!-- Cabeçalho: Cliente + Status -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                            <span style="
+                                width: 38px;
+                                height: 38px;
+                                border-radius: 50%;
+                                background: var(--gradient);
+                                color: white;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: 700;
+                                font-size: 15px;
+                                flex-shrink: 0;
+                            ">${item.cliente_nome ? item.cliente_nome.charAt(0).toUpperCase() : '?'}</span>
+                            <div style="min-width: 0; flex: 1;">
+                                <span style="display: block; font-weight: 600; color: var(--text-primary); font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.cliente_nome || 'N/A')}</span>
+                                <span style="display: block; font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
+                            </div>
+                        </div>
+                        <span style="
+                            padding: 3px 10px;
+                            border-radius: 20px;
+                            font-size: 10px;
+                            font-weight: 600;
+                            white-space: nowrap;
+                            flex-shrink: 0;
+                            background: ${statusInfo.class === 'concluido' ? 'rgba(34,197,94,0.15)' :
+                        statusInfo.class === 'cancelado' ? 'rgba(239,68,68,0.15)' :
+                            'rgba(245,158,11,0.15)'};
+                            color: ${statusInfo.class === 'concluido' ? '#22c55e' :
+                        statusInfo.class === 'cancelado' ? '#ef4444' :
+                            '#f59e0b'};
+                        ">
+                            ${statusInfo.label}
+                        </span>
+                    </div>
+                    
+                    <!-- Grid de informações -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 4px 12px;
+                        background: var(--bg-hover);
+                        padding: 10px 14px;
+                        border-radius: 10px;
+                        margin-bottom: 12px;
+                        width: 100%;
+                        box-sizing: border-box;
+                    ">
+                        <div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">📅 Data</div>
+                            <div style="font-weight: 500; color: var(--text-primary); font-size: 14px;">${formatarDataBr(item.data)}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">⏰ Horário</div>
+                            <div style="font-weight: 500; color: var(--text-primary); font-size: 14px;">${item.hora || '-'}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">👨‍💼 Profissional</div>
+                            <div style="font-weight: 500; color: var(--text-primary); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.profissional_nome || 'Não atribuído')}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px;">💰 Valor</div>
+                            <div style="font-weight: 700; color: #22c55e; font-size: 15px;">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botões de ação -->
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                        ${podeEditar ? `
+                            <button onclick="editarAgendamento(${item.id})" style="
+                                padding: 6px 12px;
+                                border-radius: 8px;
+                                border: 1px solid rgba(102,126,234,0.25);
+                                background: var(--bg-hover);
+                                color: var(--primary);
+                                font-size: 12px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                gap: 4px;
+                                flex: 1;
+                                justify-content: center;
+                            ">
+                                <i class="fas fa-pen" style="font-size: 11px;"></i> Editar
+                            </button>
+                            <button onclick="concluirAgendamento(${item.id})" style="
+                                padding: 6px 12px;
+                                border-radius: 8px;
+                                border: 1px solid rgba(34,197,94,0.25);
+                                background: var(--bg-hover);
+                                color: #22c55e;
+                                font-size: 12px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                gap: 4px;
+                                flex: 1;
+                                justify-content: center;
+                            ">
+                                <i class="fas fa-check" style="font-size: 11px;"></i> Concluir
+                            </button>
+                        ` : ''}
+                        <button onclick="excluirAgendamento(${item.id})" style="
+                            padding: 6px 12px;
+                            border-radius: 8px;
+                            border: 1px solid rgba(239,68,68,0.25);
+                            background: var(--bg-hover);
+                            color: #ef4444;
+                            font-size: 12px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 4px;
+                            ${podeEditar ? 'flex: 0.7;' : 'flex: 1;'}
+                            justify-content: center;
+                        ">
+                            <i class="fas fa-trash" style="font-size: 11px;"></i> Excluir
+                        </button>
+                    </div>
+                `;
+
+                cardContainer.appendChild(card);
             }
+
+            // 🔥 SUBSTITUIR A TABELA PELOS CARDS
+            if (tableContainer) {
+                tableContainer.replaceWith(cardContainer);
+            } else {
+                const parent = tbody.parentElement;
+                if (parent) {
+                    parent.replaceWith(cardContainer);
+                }
+            }
+
+            return; // Sair da função (não executar a parte desktop)
+
         } else {
             // ============================================
-            // VERSÃO DESKTOP - TABELA
+            // VERSÃO DESKTOP - TABELA NORMAL
             // ============================================
+            let html = '';
             for (let item of listaFiltrada) {
                 html += renderizarLinhaAgendamento(item);
             }
+            tbody.innerHTML = html;
         }
-
-        tbody.innerHTML = html;
 
     } catch (error) {
         console.error('❌ Erro ao carregar agendamentos:', error);
