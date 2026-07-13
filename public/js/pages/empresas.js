@@ -1,34 +1,45 @@
 ﻿// ============================================
-// SUPER ADMIN - GESTÃO COMPLETA DE EMPRESAS
+// SUPER ADMIN - GESTÃO COMPLETA DE EMPRESAS (VERSÃO FUNDIDA E MELHORADA)
 // ============================================
-
 let empresasData = [];
 let usuariosData = [];
 let empresasTimeout = null;
 
-
 // ============================================
-// 🏢 SUPER ADMIN - DASHBOARD COMPLETO
+// 🏢 SUPER ADMIN - DASHBOARD COMPLETO (COM MODO DE PAGAMENTO + RIQUEZA DE DETALHES)
 // ============================================
-
 async function carregarDashboardSuperAdmin() {
     ativarBotao('dashboard');
     showLoading();
-
     const token = localStorage.getItem('token');
 
     try {
-        const [statsRes, empresasRes, usuariosRes] = await Promise.all([
+        const [statsRes, empresasRes, usuariosRes, paymentRes] = await Promise.all([
             fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/admin/empresas', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/admin/usuarios', { headers: { 'Authorization': 'Bearer ' + token } })
+            fetch('/api/admin/usuarios', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/payment/config', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
         const stats = (await statsRes.json()).data || {};
         const empresas = (await empresasRes.json()).data || [];
         const usuarios = (await usuariosRes.json()).data || [];
 
+        // 🔥 MODO DE PAGAMENTO - COM FALLBACK
+        let paymentData = { mode: 'simulation', label: '🟡 Simulação' };
+        try {
+            if (paymentRes.ok) {
+                const paymentJson = await paymentRes.json();
+                if (paymentJson.success) {
+                    paymentData = paymentJson.data;
+                }
+            }
+        } catch (paymentError) {
+            console.warn('⚠️ Erro ao buscar modo de pagamento:', paymentError.message);
+        }
+
         console.log('✅ Empresas carregadas:', empresas.length);
+        console.log('💳 Modo de pagamento:', paymentData.mode);
 
         // Cálculos
         const totalEmpresas = empresas.length;
@@ -49,9 +60,10 @@ async function carregarDashboardSuperAdmin() {
         const agendamentosMes = stats.agendamentos_mes || 0;
         const faturamentoMes = stats.faturamento_mes || 0;
 
+        const isReal = paymentData.mode === 'real';
+
         const html = `
             <div style="padding:16px;max-width:1400px;margin:0 auto;">
-
                 <!-- CABEÇALHO -->
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #2d2d3f;">
                     <div>
@@ -65,18 +77,60 @@ async function carregarDashboardSuperAdmin() {
                     </button>
                 </div>
 
+                <!-- 🔥 CARD - MODO DE PAGAMENTO (NOVO) -->
+                <div style="
+                    background: ${isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)'}; 
+                    border: 1px solid ${isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}; 
+                    border-radius: 12px; 
+                    padding: 16px 20px; 
+                    margin-bottom: 20px;
+                    display: flex; 
+                    justify-content: space-between; 
+                    align-items: center; 
+                    flex-wrap: wrap;
+                    gap: 12px;
+                ">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 28px;">${isReal ? '🔴' : '🟡'}</span>
+                        <div>
+                            <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">
+                                💳 Modo de Pagamento: <span style="color: ${isReal ? '#ef4444' : '#f59e0b'};">${paymentData.label}</span>
+                            </div>
+                            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">
+                                ${isReal ? '⚠️ Pagamentos REAIS estão ativos! Os clientes serão cobrados de verdade.' : '🔸 Modo SIMULAÇÃO ativo. Nenhum pagamento real é processado.'}
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="alternarModoPagamento()" style="
+                        padding: 8px 20px;
+                        border: none;
+                        border-radius: 10px;
+                        background: ${isReal ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
+                        color: ${isReal ? '#ef4444' : '#22c55e'};
+                        font-weight: 600;
+                        font-size: 14px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                    " onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                        <i class="fas fa-${isReal ? 'toggle-on' : 'toggle-off'}"></i>
+                        ${isReal ? 'Desativar Pagamentos Reais' : 'Ativar Pagamentos Reais'}
+                    </button>
+                </div>
+
                 <!-- ALERTA -->
                 <div style="padding:12px 18px;border-radius:12px;margin-bottom:20px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
                     <span style="font-size:20px;">✅</span>
                     <div>
-                        <div style="font-size:14px;font-weight:600;color:#22c55e;">Todas as empresas com trial em dia!</div>
-                        <div style="font-size:12px;color:#888;">Nenhum alerta pendente no momento.</div>
+                        <div style="font-size:14px;font-weight:600;color:#22c55e;">Painel de Controle Completo</div>
+                        <div style="font-size:12px;color:#888;">Gerencie empresas, planos, usuários e configurações de pagamento.</div>
                     </div>
                 </div>
 
-                <!-- CARDS -->
+                <!-- CARDS DE MÉTRICAS -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;">
-                    
                     <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;transition:all 0.3s;">
                         <div style="font-size:24px;display:block;margin-bottom:4px;">🏢</div>
                         <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total Empresas</div>
@@ -107,6 +161,7 @@ async function carregarDashboardSuperAdmin() {
                         <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
                             <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">em todas as empresas</span>
                         </div>
+
                     </div>
 
                     <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
@@ -126,13 +181,10 @@ async function carregarDashboardSuperAdmin() {
                             <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">${empresasPagas} empresas pagas</span>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- TABELA DE EMPRESAS -->
+                <!-- TABELA DE EMPRESAS (RICA, COM TODAS AS COLUNAS) -->
                 <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;margin-bottom:20px;">
-                    
-                    <!-- Cabeçalho da tabela -->
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2d2d3f;">
                         <div>
                             <h3 style="margin:0;font-size:16px;font-weight:600;color:#fff;">📋 Todas as Empresas <span style="font-size:12px;color:#888;font-weight:400;">(${totalEmpresas})</span></h3>
@@ -153,9 +205,8 @@ async function carregarDashboardSuperAdmin() {
                         </div>
                     </div>
 
-                    <!-- Tabela -->
                     <div style="overflow-x:auto;margin:0 -4px;padding:0 4px;">
-                        <table style="width:100%;min-width:850px;border-collapse:separate;border-spacing:0 6px;font-size:13px;">
+                        <table style="width:100%;min-width:950px;border-collapse:separate;border-spacing:0 6px;font-size:13px;">
                             <thead>
                                 <tr>
                                     <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:8px 0 0 0;">#</th>
@@ -176,7 +227,6 @@ async function carregarDashboardSuperAdmin() {
             const isTrial = e.plano === 'trial' || e.plano === 'Trial';
             const isAtivo = e.assinatura_ativa === 1 || e.assinatura_ativa === true;
 
-            // 🔥 CALCULAR DIAS RESTANTES
             let diasRestantes = 0;
             let isIlimitado = false;
 
@@ -195,23 +245,13 @@ async function carregarDashboardSuperAdmin() {
                 diasRestantes = 999;
             }
 
-            // 🔥 COR DOS DIAS RESTANTES
             let diasColor = '#22c55e';
             let diasTexto = '♾️';
             if (!isIlimitado) {
-                if (diasRestantes <= 0) {
-                    diasColor = '#ef4444';
-                    diasTexto = '0d 🔴';
-                } else if (diasRestantes <= 3) {
-                    diasColor = '#ef4444';
-                    diasTexto = diasRestantes + 'd 🔴';
-                } else if (diasRestantes <= 7) {
-                    diasColor = '#f59e0b';
-                    diasTexto = diasRestantes + 'd ⚠️';
-                } else {
-                    diasColor = '#22c55e';
-                    diasTexto = diasRestantes + 'd';
-                }
+                if (diasRestantes <= 0) { diasColor = '#ef4444'; diasTexto = '0d 🔴'; }
+                else if (diasRestantes <= 3) { diasColor = '#ef4444'; diasTexto = diasRestantes + 'd 🔴'; }
+                else if (diasRestantes <= 7) { diasColor = '#f59e0b'; diasTexto = diasRestantes + 'd ⚠️'; }
+                else { diasColor = '#22c55e'; diasTexto = diasRestantes + 'd'; }
             }
 
             let statusColor = '#22c55e';
@@ -221,21 +261,15 @@ async function carregarDashboardSuperAdmin() {
 
             if (isTrial) {
                 if (diasRestantes <= 0) {
-                    statusColor = '#ef4444';
-                    statusText = '⛔ Expirado';
-                    statusBg = 'rgba(239,68,68,0.12)';
-                    statusBorder = 'rgba(239,68,68,0.15)';
+                    statusColor = '#ef4444'; statusText = '⛔ Expirado';
+                    statusBg = 'rgba(239,68,68,0.12)'; statusBorder = 'rgba(239,68,68,0.15)';
                 } else {
-                    statusColor = '#f59e0b';
-                    statusText = '🔄 Trial';
-                    statusBg = 'rgba(245,158,11,0.12)';
-                    statusBorder = 'rgba(245,158,11,0.15)';
+                    statusColor = '#f59e0b'; statusText = '🔄 Trial';
+                    statusBg = 'rgba(245,158,11,0.12)'; statusBorder = 'rgba(245,158,11,0.15)';
                 }
             } else if (!isAtivo) {
-                statusColor = '#94a3b8';
-                statusText = '⛔ Inativo';
-                statusBg = 'rgba(148,163,184,0.12)';
-                statusBorder = 'rgba(148,163,184,0.15)';
+                statusColor = '#94a3b8'; statusText = '⛔ Inativo';
+                statusBg = 'rgba(148,163,184,0.12)'; statusBorder = 'rgba(148,163,184,0.15)';
             }
 
             let planoColor = '#f59e0b';
@@ -245,83 +279,53 @@ async function carregarDashboardSuperAdmin() {
             else if (e.plano === 'Pro' || e.plano === 'pro') { planoColor = '#22c55e'; planoBg = 'rgba(34,197,94,0.12)'; planoText = 'Pro'; }
             else if (e.plano === 'Business' || e.plano === 'business') { planoColor = '#8b5cf6'; planoBg = 'rgba(139,92,246,0.12)'; planoText = 'Business'; }
             else if (e.plano === 'Enterprise' || e.plano === 'enterprise') { planoColor = '#d97706'; planoBg = 'rgba(245,158,11,0.12)'; planoText = 'Enterprise'; }
-            else if (isTrial) { planoText = 'Trial'; }
 
             const donos = usuarios.filter(u => u.empresa_id === e.id && u.role === 'dono').length;
             const profissionais = usuarios.filter(u => u.empresa_id === e.id && u.role === 'profissional').length;
             const clientes = e.total_clientes || 0;
             const agendamentos = e.total_agendamentos || 0;
 
-            // 🔥 STATUS DO WHATSAPP PRÓPRIO (COM OVERRIDE DO SUPER ADMIN)
-            const whatsappHabilitado = e.whatsapp_proprio_habilitado === true ||
-                e.whatsapp_proprio_habilitado === 1 ||
-                e.whatsapp_proprio_habilitado === 't';
-            const whatsappConectado = e.whatsapp_connected === true ||
-                e.whatsapp_connected === 1 ||
-                e.whatsapp_connected === 't';
+            const whatsappHabilitado = e.whatsapp_proprio_habilitado === true || e.whatsapp_proprio_habilitado === 1 || e.whatsapp_proprio_habilitado === 't';
+            const whatsappConectado = e.whatsapp_connected === true || e.whatsapp_connected === 1 || e.whatsapp_connected === 't';
 
             let whatsappStatus = '';
             if (!whatsappHabilitado) {
-                // Não habilitado - botão para HABILITAR
-                whatsappStatus = `
-        <button onclick="toggleWhatsAppProprio(${e.id}, true)" 
-                style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);transition:all 0.2s;"
-                onmouseover="this.style.background='rgba(239,68,68,0.25)'"
-                onmouseout="this.style.background='rgba(239,68,68,0.15)'"
-                title="Clique para HABILITAR WhatsApp próprio">
-            🔴 OFF
-        </button>`;
+                whatsappStatus = `<button onclick="toggleWhatsAppProprio(${e.id}, true)" style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'" title="Clique para HABILITAR">🔴 OFF</button>`;
             } else if (!whatsappConectado) {
-                // Habilitado mas não conectado
-                whatsappStatus = `
-        <button onclick="toggleWhatsAppProprio(${e.id}, false)" 
-                style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);transition:all 0.2s;"
-                onmouseover="this.style.background='rgba(245,158,11,0.25)'"
-                onmouseout="this.style.background='rgba(245,158,11,0.15)'"
-                title="Habilitado mas não conectado. Clique para DESABILITAR">
-            🟡 PEND
-        </button>`;
+                whatsappStatus = `<button onclick="toggleWhatsAppProprio(${e.id}, false)" style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.25)'" onmouseout="this.style.background='rgba(245,158,11,0.15)'" title="Habilitado mas não conectado">🟡 PEND</button>`;
             } else {
-                // Habilitado e conectado
-                whatsappStatus = `
-        <button onclick="toggleWhatsAppProprio(${e.id}, false)" 
-                style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);transition:all 0.2s;"
-                onmouseover="this.style.background='rgba(34,197,94,0.25)'"
-                onmouseout="this.style.background='rgba(34,197,94,0.15)'"
-                title="✅ WhatsApp PRÓPRIO ativo! Clique para DESABILITAR">
-            🟢 ON
-        </button>`;
+                whatsappStatus = `<button onclick="toggleWhatsAppProprio(${e.id}, false)" style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.25)'" onmouseout="this.style.background='rgba(34,197,94,0.15)'" title="✅ WhatsApp PRÓPRIO ativo!">🟢 ON</button>`;
             }
 
             return `
-                <tr data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" data-nome="${e.nome.toLowerCase()}" style="background:#252540;border-radius:10px;transition:all 0.2s;cursor:default;">
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:10px 0 0 10px;font-weight:600;color:#666;font-size:12px;text-align:center;">${idx + 1}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;font-size:14px;">${escapeHtml(e.nome)}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:3px 14px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}33;">${planoText}</span></td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">${statusText}</span></td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:700;color:${diasColor};text-align:center;font-size:14px;">${diasTexto}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${donos}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${profissionais}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${clientes}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#667eea;text-align:center;font-size:15px;">${agendamentos}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;text-align:center;">${whatsappStatus}</td>
-                    <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:0 10px 10px 0;">
-                        <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">
-                            <button onclick="verEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(102,126,234,0.2);color:#667eea;transition:all 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-eye"></i></button>
-                            <button onclick="editarEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
-                            ${isTrial ? `<button onclick="estenderTrial(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(34,197,94,0.2);color:#22c55e;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-clock"></i></button>` : ''}
-                            <button onclick="deletarEmpresa(${e.id}, '${escapeHtml(e.nome)}')" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);color:#ef4444;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </td>
-                </tr>
-            `;
+                                        <tr data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" data-nome="${e.nome.toLowerCase()}" style="background:#252540;border-radius:10px;transition:all 0.2s;cursor:default;">
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:10px 0 0 10px;font-weight:600;color:#666;font-size:12px;text-align:center;">${idx + 1}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;font-size:14px;">${escapeHtml(e.nome)}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:3px 14px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}33;">${planoText}</span></td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">${statusText}</span></td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:700;color:${diasColor};text-align:center;font-size:14px;">${diasTexto}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${donos}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${profissionais}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${clientes}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#667eea;text-align:center;font-size:15px;">${agendamentos}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;text-align:center;">${whatsappStatus}</td>
+                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:0 10px 10px 0;">
+                                                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">
+                                                    <button onclick="verEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(102,126,234,0.2);color:#667eea;transition:all 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Ver detalhes"><i class="fas fa-eye"></i></button>
+                                                    <button onclick="editarEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Editar plano/nome"><i class="fas fa-edit"></i></button>
+                                                    ${isTrial ? `<button onclick="estenderTrial(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(34,197,94,0.2);color:#22c55e;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Estender Trial"><i class="fas fa-clock"></i></button>` : ''}
+                                                    <button onclick="deletarEmpresa(${e.id}, '${escapeHtml(e.nome)}')" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);color:#ef4444;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Deletar"><i class="fas fa-trash"></i></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    `;
         }).join('')}
                             </tbody>
                         </table>
                     </div>
                 </div>
 
-                <!-- USUÁRIOS -->
+                <!-- SEÇÃO: ÚLTIMOS USUÁRIOS CADASTRADOS -->
                 <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
                         <h3 style="margin:0;font-size:16px;font-weight:600;color:#fff;">👥 Últimos Usuários Cadastrados</h3>
@@ -349,23 +353,22 @@ async function carregarDashboardSuperAdmin() {
             else if (u.role === 'profissional') { roleColor = '#667eea'; roleBg = 'rgba(102,126,234,0.15)'; roleLabel = '🔵 Profissional'; }
 
             return `
-                <tr style="transition:background 0.2s;cursor:default;" onmouseover="this.style.background='#2d2d3f'" onmouseout="this.style.background='transparent'">
-                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-weight:600;color:#fff;">${escapeHtml(u.nome)}</td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${escapeHtml(u.email)}</td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;"><span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:500;background:${roleBg};color:${roleColor};">${roleLabel}</span></td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${formatarDataBr(u.created_at)}</td>
-                    <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;text-align:center;">
-                        <button onclick="editarUsuario(${u.id})" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
-                    </td>
-                </tr>
-            `;
+                                        <tr style="transition:background 0.2s;cursor:default;" onmouseover="this.style.background='#2d2d3f'" onmouseout="this.style.background='transparent'">
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-weight:600;color:#fff;">${escapeHtml(u.nome)}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${escapeHtml(u.email)}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;"><span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:500;background:${roleBg};color:${roleColor};">${roleLabel}</span></td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${formatarDataBr(u.created_at)}</td>
+                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;text-align:center;">
+                                                <button onclick="editarUsuario(${u.id})" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
+                                            </td>
+                                        </tr>
+                                    `;
         }).join('')}
                             </tbody>
                         </table>
                     </div>
                 </div>
-
             </div>
         `;
 
@@ -389,6 +392,49 @@ async function carregarDashboardSuperAdmin() {
 }
 
 // ============================================
+// 🔥 ALTERNAR MODO DE PAGAMENTO (SUPER ADMIN)
+// ============================================
+async function alternarModoPagamento() {
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch('/api/payment/config', { headers: { 'Authorization': 'Bearer ' + token } });
+        if (!res.ok) { showToast('⚠️ Rota de pagamento não encontrada', 'warning'); return; }
+
+        const data = await res.json();
+        if (!data.success) { showToast('Erro ao buscar configuração', 'error'); return; }
+
+        const modoAtual = data.data.mode;
+        const novoModo = modoAtual === 'simulation' ? 'real' : 'simulation';
+        const label = novoModo === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO';
+        const descricao = novoModo === 'real'
+            ? '⚠️ ATENÇÃO: Isso ativará os pagamentos REAIS! Os clientes serão cobrados de verdade.'
+            : '🔸 Isso ativará o modo de SIMULAÇÃO. Nenhum pagamento real será processado.';
+
+        if (!confirm(`Deseja alterar o modo de pagamento para ${label}?\n\n${descricao}`)) return;
+
+        showLoading();
+        const resUpdate = await fetch('/api/payment/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ mode: novoModo })
+        });
+        const result = await resUpdate.json();
+        hideLoading();
+
+        if (result.success) {
+            showToast(result.message, 'success');
+            setTimeout(() => carregarDashboardSuperAdmin(), 500);
+        } else {
+            showToast(result.message || 'Erro ao alterar modo', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Erro:', error);
+        showToast('Erro ao alterar modo de pagamento: ' + error.message, 'error');
+    }
+}
+
+// ============================================
 // 🔥 TOGGLE WHATSAPP PRÓPRIO (SUPER ADMIN)
 // ============================================
 async function toggleWhatsAppProprio(empresaId, habilitar) {
@@ -396,9 +442,7 @@ async function toggleWhatsAppProprio(empresaId, habilitar) {
     const emoji = habilitar ? '🟢' : '🔴';
 
     if (!confirm(`${emoji} Deseja realmente ${acao.toLowerCase()} o WhatsApp próprio desta empresa?\n\n` +
-        (habilitar
-            ? '✅ A empresa poderá conectar seu próprio WhatsApp'
-            : '⚠️ A empresa voltará a usar o WhatsApp compartilhado'))) {
+        (habilitar ? '✅ A empresa poderá conectar seu próprio WhatsApp' : '⚠️ A empresa voltará a usar o WhatsApp compartilhado'))) {
         return;
     }
 
@@ -408,10 +452,7 @@ async function toggleWhatsAppProprio(empresaId, habilitar) {
     try {
         const res = await fetch(`/api/admin/empresas/${empresaId}/whatsapp-proprio`, {
             method: 'PUT',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
             body: JSON.stringify({ habilitado: habilitar })
         });
 
@@ -434,21 +475,25 @@ async function toggleWhatsAppProprio(empresaId, habilitar) {
 // ============================================
 // FUNÇÃO PARA FILTRAR EMPRESAS
 // ============================================
-
 function filtrarEmpresas() {
     const termo = document.getElementById('buscarEmpresa').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtroStatus').value;
     const rows = document.querySelectorAll('#listaEmpresas tr');
 
     rows.forEach(row => {
         const nome = row.querySelector('td:nth-child(2)')?.textContent?.toLowerCase() || '';
-        row.style.display = nome.includes(termo) ? '' : 'none';
+        const status = row.getAttribute('data-status') || '';
+
+        const matchNome = nome.includes(termo);
+        const matchStatus = filtroStatus === '' || status === filtroStatus;
+
+        row.style.display = (matchNome && matchStatus) ? '' : 'none';
     });
 }
 
 // ============================================
-// VER EMPRESA - VERSÃO COMPLETA E DETALHADA
+// VER EMPRESA - VERSÃO COMPLETA E DETALHADA (RESTAURADA)
 // ============================================
-
 async function verEmpresa(id) {
     console.log('👁️ Ver empresa ID:', id);
     showLoading();
@@ -469,19 +514,11 @@ async function verEmpresa(id) {
         const agendamentos = (await agendamentosRes.json()).data || [];
         const acessos = (await acessosRes.json()).data || [];
 
-        console.log('📊 Dados carregados:', {
-            empresa: empresa.nome,
-            usuarios: usuarios.length,
-            clientes: clientes.length,
-            agendamentos: agendamentos.length,
-            acessos: acessos.length
-        });
-
         const donos = usuarios.filter(u => u.tipo === 'dono' || u.role === 'dono');
         const profissionais = usuarios.filter(u => u.tipo === 'profissional' || u.role === 'profissional');
 
         const isTrial = empresa.plano === 'trial' || empresa.plano === 'Trial';
-        const isAtivo = empresa.assinatura_ativa === 1;
+        const isAtivo = empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === true;
 
         let diasRestantes = 0;
         if (empresa.trial_expira) {
@@ -493,16 +530,9 @@ async function verEmpresa(id) {
         let statusColor = '#22c55e';
         let statusText = '✅ Ativo';
         if (isTrial) {
-            if (diasRestantes <= 0) {
-                statusColor = '#ef4444';
-                statusText = '⛔ Expirado';
-            } else if (diasRestantes <= 7) {
-                statusColor = '#f59e0b';
-                statusText = `⚠️ ${diasRestantes} dias restantes`;
-            } else {
-                statusColor = '#22c55e';
-                statusText = `✅ ${diasRestantes} dias restantes`;
-            }
+            if (diasRestantes <= 0) { statusColor = '#ef4444'; statusText = '⛔ Expirado'; }
+            else if (diasRestantes <= 7) { statusColor = '#f59e0b'; statusText = `⚠️ ${diasRestantes} dias restantes`; }
+            else { statusColor = '#22c55e'; statusText = `✅ ${diasRestantes} dias restantes`; }
         } else if (!isAtivo) {
             statusColor = '#ef4444';
             statusText = '⛔ Inativo';
@@ -539,11 +569,9 @@ async function verEmpresa(id) {
                         </p>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <span style="background:${statusColor}22;padding:4px 14px;border-radius:8px;color:${statusColor};font-size:12px;font-weight:600;border:1px solid ${statusColor}44;">
-                            ${statusText}
-                        </span>
+                        <span style="background:${statusColor}22;padding:4px 14px;border-radius:8px;color:${statusColor};font-size:12px;font-weight:600;border:1px solid ${statusColor}44;">${statusText}</span>
                         <button onclick="editarEmpresa(${empresa.id})" style="background:var(--primary);border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;">
-                            <i class="fas fa-edit"></i> Editar
+                            <i class="fas fa-edit"></i> Editar Plano
                         </button>
                         ${isTrial ? `
                             <button onclick="estenderTrial(${empresa.id})" style="background:#22c55e;border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;">
@@ -584,223 +612,107 @@ async function verEmpresa(id) {
                     </div>
                 </div>
                 
+                <!-- Seções de Detalhes (Donos, Profissionais, Clientes, Agendamentos, Acessos) -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-crown" style="color:#f59e0b;"></i> Donos (${donos.length})</h4>
-                        <span style="font-size:11px;color:var(--text-muted);">Responsáveis pela gestão da empresa</span>
                     </div>
                     ${donos.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>Email</th>
-                                        <th>Telefone</th>
-                                        <th>Cadastro</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
+                            <table class="data-table" style="font-size:12px;width:100%">
+                                <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Cadastro</th><th>Ações</th></tr></thead>
                                 <tbody>
-                                    ${donos.map(d => `
-                                        <tr>
-                                            <td style="font-weight:600;">${escapeHtml(d.nome)}</td>
-                                            <td>${escapeHtml(d.email)}</td>
-                                            <td>${escapeHtml(d.telefone || '-')}</td>
-                                            <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(d.created_at)}</td>
-                                            <td>
-                                                <button onclick="editarUsuario(${d.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;" title="Editar usuário">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
+                                    ${donos.map(d => `<tr>
+                                        <td style="font-weight:600;">${escapeHtml(d.nome)}</td>
+                                        <td>${escapeHtml(d.email)}</td>
+                                        <td>${escapeHtml(d.telefone || '-')}</td>
+                                        <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(d.created_at)}</td>
+                                        <td><button onclick="editarUsuario(${d.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;"><i class="fas fa-edit"></i></button></td>
+                                    </tr>`).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : `
-                        <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
-                            <i class="fas fa-user-slash" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px;"></i>
-                            Nenhum dono cadastrado nesta empresa.
-                        </div>
-                    `}
+                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum dono cadastrado.</div>'}
                 </div>
-                
+
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Profissionais (${profissionais.length})</h4>
-                        <span style="font-size:11px;color:var(--text-muted);">Atendentes e prestadores de serviço</span>
                     </div>
                     ${profissionais.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>Email</th>
-                                        <th>Telefone</th>
-                                        <th>Comissão</th>
-                                        <th>Cadastro</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
+                            <table class="data-table" style="font-size:12px;width:100%">
+                                <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Comissão</th><th>Cadastro</th><th>Ações</th></tr></thead>
                                 <tbody>
-                                    ${profissionais.map(p => `
-                                        <tr>
-                                            <td style="font-weight:600;">${escapeHtml(p.nome)}</td>
-                                            <td>${escapeHtml(p.email)}</td>
-                                            <td>${escapeHtml(p.telefone || '-')}</td>
-                                            <td><span style="background:rgba(16,185,129,0.15);padding:2px 10px;border-radius:12px;color:#22c55e;font-weight:600;">${p.comissao_percent || 0}%</span></td>
-                                            <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(p.created_at)}</td>
-                                            <td>
-                                                <button onclick="editarUsuario(${p.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;" title="Editar usuário">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
+                                    ${profissionais.map(p => `<tr>
+                                        <td style="font-weight:600;">${escapeHtml(p.nome)}</td>
+                                        <td>${escapeHtml(p.email)}</td>
+                                        <td>${escapeHtml(p.telefone || '-')}</td>
+                                        <td><span style="background:rgba(16,185,129,0.15);padding:2px 10px;border-radius:12px;color:#22c55e;font-weight:600;">${p.comissao_percent || 0}%</span></td>
+                                        <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(p.created_at)}</td>
+                                        <td><button onclick="editarUsuario(${p.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;"><i class="fas fa-edit"></i></button></td>
+                                    </tr>`).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : `
-                        <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
-                            <i class="fas fa-user-slash" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px;"></i>
-                            Nenhum profissional cadastrado nesta empresa.
-                        </div>
-                    `}
+                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum profissional cadastrado.</div>'}
                 </div>
-                
+
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-address-book" style="color:#8b5cf6;"></i> Clientes (${clientes.length})</h4>
-                        <span style="font-size:11px;color:var(--text-muted);">Base de clientes da empresa</span>
                     </div>
                     ${clientes.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead>
-                                    <tr>
-                                        <th>Nome</th>
-                                        <th>Telefone</th>
-                                        <th>Email</th>
-                                        <th>Cadastro</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
+                            <table class="data-table" style="font-size:12px;width:100%">
+                                <thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Cadastro</th><th>Status</th></tr></thead>
                                 <tbody>
-                                    ${clientes.slice(0, 20).map(c => `
-                                        <tr>
-                                            <td style="font-weight:600;">${escapeHtml(c.nome)}</td>
-                                            <td>${escapeHtml(c.telefone || '-')}</td>
-                                            <td>${escapeHtml(c.email || '-')}</td>
-                                            <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(c.created_at)}</td>
-                                            <td>${c.bloqueado_chatbot === 1 ? '🔒 Bloqueado' : '✅ Ativo'}</td>
-                                        </tr>
-                                    `).join('')}
+                                    ${clientes.slice(0, 20).map(c => `<tr>
+                                        <td style="font-weight:600;">${escapeHtml(c.nome)}</td>
+                                        <td>${escapeHtml(c.telefone || '-')}</td>
+                                        <td>${escapeHtml(c.email || '-')}</td>
+                                        <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(c.created_at)}</td>
+                                        <td>${c.bloqueado_chatbot === 1 ? '🔒 Bloqueado' : '✅ Ativo'}</td>
+                                    </tr>`).join('')}
                                 </tbody>
                             </table>
-                            ${clientes.length > 20 ? `
-                                <div style="text-align:center;padding:8px;color:var(--text-muted);font-size:12px;">
-                                    + ${clientes.length - 20} clientes a mais...
-                                </div>
-                            ` : ''}
+                            ${clientes.length > 20 ? `<div style="text-align:center;padding:8px;color:var(--text-muted);font-size:12px;">+ ${clientes.length - 20} clientes a mais...</div>` : ''}
                         </div>
-                    ` : `
-                        <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
-                            <i class="fas fa-users-slash" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px;"></i>
-                            Nenhum cliente cadastrado nesta empresa.
-                        </div>
-                    `}
+                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum cliente cadastrado.</div>'}
                 </div>
-                
+
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Agendamentos (${agendamentos.length})</h4>
                         <div style="display:flex;gap:8px;font-size:11px;">
-                            <span style="color:#f59e0b;">⏳ ${agendamentosPendentes} pendentes</span>
-                            <span style="color:#22c55e;">✅ ${agendamentosConcluidos} concluídos</span>
-                            ${agendamentosCancelados > 0 ? `<span style="color:#ef4444;">❌ ${agendamentosCancelados} cancelados</span>` : ''}
+                            <span style="color:#f59e0b;">⏳ ${agendamentosPendentes}</span>
+                            <span style="color:#22c55e;">✅ ${agendamentosConcluidos}</span>
+                            ${agendamentosCancelados > 0 ? `<span style="color:#ef4444;">❌ ${agendamentosCancelados}</span>` : ''}
                         </div>
                     </div>
                     ${agendamentos.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead>
-                                    <tr>
-                                        <th>Cliente</th>
-                                        <th>Serviço</th>
-                                        <th>Data</th>
-                                        <th>Hora</th>
-                                        <th>Valor</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
+                            <table class="data-table" style="font-size:12px;width:100%">
+                                <thead><tr><th>Cliente</th><th>Serviço</th><th>Data</th><th>Hora</th><th>Valor</th><th>Status</th></tr></thead>
                                 <tbody>
-                                    ${agendamentos.slice(0, 15).map(a => `
-                                        <tr>
-                                            <td>${escapeHtml(a.cliente_nome || 'N/A')}</td>
-                                            <td>${escapeHtml(a.servico || a.servico_nome || '-')}</td>
-                                            <td>${formatarDataBr(a.data)}</td>
-                                            <td>${a.hora || '-'}</td>
-                                            <td>R$ ${formatarMoeda(a.valor)}</td>
-                                            <td><span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${a.status === 'concluido' ? 'rgba(34,197,94,0.15)' : a.status === 'cancelado' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'};color:${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">${a.status || 'pendente'}</span></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                            ${agendamentos.length > 15 ? `
-                                <div style="text-align:center;padding:8px;color:var(--text-muted);font-size:12px;">
-                                    + ${agendamentos.length - 15} agendamentos a mais...
-                                </div>
-                            ` : ''}
-                        </div>
-                    ` : `
-                        <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
-                            <i class="fas fa-calendar-times" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px;"></i>
-                            Nenhum agendamento encontrado para esta empresa.
-                        </div>
-                    `}
-                </div>
-                
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-history" style="color:#8b5cf6;"></i> Acessos Recentes (${Math.min(acessos.length, 10)})</h4>
-                        <span style="font-size:11px;color:var(--text-muted);">Total: ${totalAcessos} acessos</span>
-                    </div>
-                    ${acessos.length > 0 ? `
-                        <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;">
-                                <thead>
-                                    <tr>
-                                        <th>Data/Hora</th>
-                                        <th>Usuário</th>
-                                        <th>IP</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${acessos.slice(0, 10).map(a => `
-                                        <tr>
-                                            <td style="font-size:11px;">${formatarDataHora(a.data_acesso)}</td>
-                                            <td>${escapeHtml(a.usuario_nome || 'N/A')}</td>
-                                            <td style="font-size:11px;color:var(--text-muted);">${a.ip || '-'}</td>
-                                        </tr>
-                                    `).join('')}
+                                    ${agendamentos.slice(0, 15).map(a => `<tr>
+                                        <td>${escapeHtml(a.cliente_nome || 'N/A')}</td>
+                                        <td>${escapeHtml(a.servico || a.servico_nome || '-')}</td>
+                                        <td>${formatarDataBr(a.data)}</td>
+                                        <td>${a.hora || '-'}</td>
+                                        <td>R$ ${formatarMoeda(a.valor)}</td>
+                                        <td><span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${a.status === 'concluido' ? 'rgba(34,197,94,0.15)' : a.status === 'cancelado' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'};color:${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">${a.status || 'pendente'}</span></td>
+                                    </tr>`).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : `
-                        <div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">
-                            <i class="fas fa-clock" style="font-size:24px;opacity:0.3;display:block;margin-bottom:8px;"></i>
-                            Nenhum acesso registrado para esta empresa.
-                        </div>
-                    `}
+                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum agendamento encontrado.</div>'}
                 </div>
             </div>
         `;
 
         document.getElementById('content').innerHTML = html;
         hideLoading();
-
     } catch (error) {
         hideLoading();
         console.error('❌ Erro ao carregar detalhes da empresa:', error);
@@ -809,24 +721,61 @@ async function verEmpresa(id) {
 }
 
 // ============================================
-// EDITAR EMPRESA
+// EDITAR EMPRESA (PARA MUDAR PLANO/NOME)
 // ============================================
-
 async function editarEmpresa(id) {
     const token = localStorage.getItem('token');
-
     try {
-        const res = await fetch(`/api/admin/empresas/${id}`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        const res = await fetch(`/api/admin/empresas/${id}`, { headers: { 'Authorization': 'Bearer ' + token } });
         const data = await res.json();
 
         if (data.success) {
             const empresa = data.data;
+            // Cria o modal dinamicamente se não existir no HTML
+            let modal = document.getElementById('modalEditarEmpresa');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'modalEditarEmpresa';
+                modal.className = 'modal';
+                modal.style.display = 'none';
+                modal.innerHTML = `
+                    <div class="modal-content" style="max-width: 500px;">
+                        <div class="modal-header">
+                            <h3>✏️ Editar Empresa</h3>
+                            <button onclick="fecharModal('modalEditarEmpresa')" class="modal-close">&times;</button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="formEmpresa" style="display:flex;flex-direction:column;gap:12px;">
+                                <input type="hidden" id="editEmpresaId">
+                                <div class="form-group">
+                                    <label>Nome da Empresa *</label>
+                                    <input type="text" id="editEmpresaNome" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Plano *</label>
+                                    <select id="editEmpresaPlano" class="form-control">
+                                        <option value="trial">Trial (Grátis)</option>
+                                        <option value="starter">Starter (R$ 29,90/mês)</option>
+                                        <option value="pro">Pro (R$ 59,90/mês)</option>
+                                        <option value="business">Business (R$ 119,90/mês)</option>
+                                        <option value="enterprise">Enterprise (R$ 249,90/mês)</option
+                                    </select>
+                                </div>
+                                <div style="display:flex;gap:8px;margin-top:8px;">
+                                    <button type="submit" class="btn-3d" style="flex:1;"><i class="fas fa-save"></i> Salvar Alterações</button>
+                                    <button type="button" onclick="fecharModal('modalEditarEmpresa')" class="btn-secondary">Cancelar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
             document.getElementById('editEmpresaId').value = empresa.id;
             document.getElementById('editEmpresaNome').value = empresa.nome || '';
             document.getElementById('editEmpresaPlano').value = empresa.plano || 'trial';
-            document.getElementById('modalEditarEmpresa').style.display = 'block';
+            modal.style.display = 'block';
 
             setTimeout(conectarFormEmpresa, 100);
         } else {
@@ -837,89 +786,83 @@ async function editarEmpresa(id) {
     }
 }
 
-async function editarUsuario(id) {
-    console.log('👤 Editando usuário ID:', id);
+// ============================================
+// SALVAR EMPRESA (EDITAR)
+// ============================================
+async function salvarEmpresa() {
+    const id = document.getElementById('editEmpresaId').value;
+    const nome = document.getElementById('editEmpresaNome').value;
+    const plano = document.getElementById('editEmpresaPlano').value;
 
-    if (!id) {
-        showToast('ID do usuário não informado', 'error');
-        return;
-    }
-
-    const token = localStorage.getItem('token');
-
-    if (!token) {
-        showToast('Token não encontrado. Faça login novamente.', 'error');
+    if (!nome) {
+        showToast('Nome da empresa é obrigatório', 'warning');
         return;
     }
 
     showLoading();
+    const token = localStorage.getItem('token');
 
+    try {
+        const res = await fetch(`/api/admin/empresas/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ nome, plano })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('✅ Empresa e Plano atualizados com sucesso!', 'success');
+            fecharModal('modalEditarEmpresa');
+            carregarDashboardSuperAdmin();
+        } else {
+            showToast(data.message || 'Erro ao atualizar empresa', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao salvar empresa:', error);
+        showToast('Erro ao atualizar empresa', 'error');
+    }
+}
+
+// ============================================
+// EDITAR USUÁRIO (RESTAURADO COMPLETO)
+// ============================================
+async function editarUsuario(id) {
+    console.log('👤 Editando usuário ID:', id);
+    if (!id) { showToast('ID do usuário não informado', 'error'); return; }
+
+    const token = localStorage.getItem('token');
+    if (!token) { showToast('Token não encontrado. Faça login novamente.', 'error'); return; }
+
+    showLoading();
     try {
         const resUser = await fetch(`/api/admin/usuarios/${id}`, {
             method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
         });
 
-        if (!resUser.ok) {
-            throw new Error(`HTTP ${resUser.status}: ${resUser.statusText}`);
-        }
-
+        if (!resUser.ok) throw new Error(`HTTP ${resUser.status}: ${resUser.statusText}`);
         const userData = await resUser.json();
-
-        if (!userData.success || !userData.data) {
-            showToast('Usuário não encontrado', 'error');
-            return;
-        }
+        if (!userData.success || !userData.data) { showToast('Usuário não encontrado', 'error'); return; }
 
         const usuario = userData.data;
-        console.log('👤 Usuário carregado:', usuario.nome, 'Role:', usuario.role);
-
-        let url;
-        const isProfissional = usuario.role === 'profissional';
-
-        if (isProfissional) {
-            url = `/api/admin/profissionais/${id}`;
-            console.log('📡 Buscando PROFISSIONAL:', url);
-        } else {
-            url = `/api/admin/usuarios/${id}`;
-            console.log('📡 Buscando USUÁRIO:', url);
-        }
+        let url = usuario.role === 'profissional' ? `/api/admin/profissionais/${id}` : `/api/admin/usuarios/${id}`;
 
         const res = await fetch(url, {
             method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
         });
 
-        if (!res.ok) {
-            throw new Error(`HTTP ${res.status}: ${resUser.statusText}`);
-        }
-
+        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
         const data = await res.json();
-        console.log('📡 Dados recebidos:', data);
-
         hideLoading();
 
-        if (!data.success) {
-            showToast(data.message || 'Erro ao carregar usuário', 'error');
-            return;
-        }
-
-        if (!data.data) {
-            showToast('Usuário não encontrado', 'error');
-            return;
-        }
+        if (!data.success || !data.data) { showToast('Usuário não encontrado', 'error'); return; }
 
         const usuarioCompleto = data.data;
-        console.log('👤 Usuário carregado:', usuarioCompleto.nome);
-        console.log('👤 Role:', usuarioCompleto.role);
-        console.log('👤 É profissional?', isProfissional);
-
+        const isProfissional = usuarioCompleto.role === 'profissional';
         const telefone = usuarioCompleto.telefone || '';
 
         const modalContent = `
@@ -932,23 +875,19 @@ async function editarUsuario(id) {
                         <label>Nome *</label>
                         <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuarioCompleto.nome || '')}" required>
                     </div>
-                    
                     <div class="form-group">
                         <label>Email *</label>
                         <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuarioCompleto.email || '')}" required>
                     </div>
-                    
                     <div class="form-group">
                         <label>📱 Telefone</label>
                         <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(telefone)}" placeholder="(11) 99999-9999">
                         <small style="color:var(--text-muted);font-size:11px;">Este número aparecerá nas mensagens do WhatsApp</small>
                     </div>
-                    
                     ${isProfissional ? `
                         <div class="form-group">
                             <label>Comissão (%)</label>
                             <input type="number" id="editUsuarioComissao" class="form-control" value="${usuarioCompleto.comissao_percent || 30}" min="0" max="100">
-                            <small style="color:var(--text-muted);font-size:11px;">Percentual de comissão para profissionais</small>
                         </div>
                     ` : `
                         <div class="form-group">
@@ -958,23 +897,15 @@ async function editarUsuario(id) {
                                 <option value="profissional" ${usuarioCompleto.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
                                 <option value="superadmin" ${usuarioCompleto.role === 'superadmin' ? 'selected' : ''}>🔴 Super Admin</option>
                             </select>
-                            <small style="color:var(--text-muted);font-size:11px;">Alterar role pode afetar permissões do usuário</small>
                         </div>
                     `}
-                    
                     <div class="form-group">
                         <label>Nova Senha (opcional)</label>
-                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Digite nova senha (mínimo 6 caracteres)">
-                        <small style="color:var(--text-muted);font-size:11px;">Deixe em branco para manter a senha atual</small>
+                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Deixe em branco para manter a atual">
                     </div>
-                    
                     <div style="display:flex;gap:8px;margin-top:8px;">
-                        <button type="submit" class="btn-3d" style="flex:1;">
-                            <i class="fas fa-save"></i> Salvar
-                        </button>
-                        <button type="button" onclick="fecharModalEditarUsuario()" class="btn-secondary">
-                            Cancelar
-                        </button>
+                        <button type="submit" class="btn-3d" style="flex:1;"><i class="fas fa-save"></i> Salvar</button>
+                        <button type="button" onclick="fecharModalEditarUsuario()" class="btn-secondary">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -987,14 +918,11 @@ async function editarUsuario(id) {
             if (form) {
                 const newForm = form.cloneNode(true);
                 form.parentNode.replaceChild(newForm, form);
-
                 newForm.addEventListener('submit', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
                     salvarUsuario();
                 });
-
-                console.log('✅ Formulário de usuário conectado!');
             }
         }, 200);
 
@@ -1020,52 +948,27 @@ async function salvarUsuario() {
     const telefone = document.getElementById('editUsuarioTelefone')?.value;
     const role = document.getElementById('editUsuarioRole')?.value;
 
-    console.log('📝 SALVANDO USUÁRIO:', { id, tipo, nome, email, telefone });
-
     if (!id || !nome || !email) {
         showToast('Nome e email são obrigatórios', 'error');
         return;
     }
 
-    const dados = {
-        nome,
-        email,
-        senha: senha || undefined,
-        telefone: telefone || ''
-    };
-
+    const dados = { nome, email, senha: senha || undefined, telefone: telefone || '' };
     if (tipo === 'profissional') {
-        if (comissao !== undefined && comissao !== '') {
-            dados.comissao_percent = parseFloat(comissao);
-        }
+        if (comissao !== undefined && comissao !== '') dados.comissao_percent = parseFloat(comissao);
     } else {
-        if (role) {
-            dados.role = role;
-        }
+        if (role) dados.role = role;
     }
 
-    console.log('📤 Enviando dados:', dados);
-
     try {
-        let url;
-        if (tipo === 'profissional') {
-            url = `/api/admin/profissionais/${id}`;
-        } else {
-            url = `/api/admin/usuarios/${id}`;
-        }
-
+        const url = tipo === 'profissional' ? `/api/admin/profissionais/${id}` : `/api/admin/usuarios/${id}`;
         const response = await fetch(url, {
             method: 'PUT',
-            headers: {
-                'Authorization': 'Bearer ' + localStorage.getItem('token'),
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
             body: JSON.stringify(dados)
         });
 
         const data = await response.json();
-        console.log('📥 Resposta:', data);
-
         if (data.success) {
             showToast('✅ Usuário atualizado com sucesso!', 'success');
             fecharModal();
@@ -1082,10 +985,8 @@ async function salvarUsuario() {
 // ============================================
 // ESTENDER TRIAL
 // ============================================
-
 async function estenderTrial(empresaId) {
     if (!confirm('Estender trial por mais 30 dias?')) return;
-
     showLoading();
     const token = localStorage.getItem('token');
 
@@ -1110,99 +1011,8 @@ async function estenderTrial(empresaId) {
 }
 
 // ============================================
-// SALVAR EMPRESA (EDITAR)
+// DELETAR EMPRESA (COM CONFIRMAÇÃO RIGOROSA)
 // ============================================
-
-async function salvarEmpresa() {
-    const id = document.getElementById('editEmpresaId').value;
-    const nome = document.getElementById('editEmpresaNome').value;
-    const plano = document.getElementById('editEmpresaPlano').value;
-
-    if (!nome) {
-        showToast('Nome da empresa é obrigatório', 'warning');
-        return;
-    }
-
-    showLoading();
-    const token = localStorage.getItem('token');
-
-    try {
-        const res = await fetch(`/api/admin/empresas/${id}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ nome, plano })
-        });
-
-        const data = await res.json();
-        hideLoading();
-
-        if (data.success) {
-            showToast('✅ Empresa atualizada com sucesso!', 'success');
-            fecharModal('modalEditarEmpresa');
-            carregarDashboardSuperAdmin();
-        } else {
-            showToast(data.message || 'Erro ao atualizar empresa', 'error');
-        }
-    } catch (error) {
-        hideLoading();
-        console.error('❌ Erro ao salvar empresa:', error);
-        showToast('Erro ao atualizar empresa', 'error');
-    }
-}
-
-function fecharModal() {
-    const modal = document.querySelector('.modal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-}
-
-function conectarFormEmpresa() {
-    const form = document.getElementById('formEmpresa');
-    if (form) {
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-
-        newForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('📝 Formulário da empresa submetido!');
-            salvarEmpresa();
-        });
-
-        console.log('✅ Formulário da empresa conectado!');
-    } else {
-        console.warn('⚠️ Formulário da empresa não encontrado');
-    }
-}
-
-function formatarDataHora(dataStr) {
-    if (!dataStr) return 'Nunca';
-    try {
-        const data = new Date(dataStr);
-        if (isNaN(data.getTime())) return 'Nunca';
-        return data.toLocaleString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    } catch {
-        return dataStr;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    conectarFormEmpresa();
-    console.log('✅ empresas.js - Formulários conectados!');
-});
-
-setTimeout(conectarFormEmpresa, 500);
-
 async function deletarEmpresa(id, nome) {
     if (!confirm(`⚠️ TEM CERTEZA QUE DESEJA DELETAR A EMPRESA "${nome}"?\n\nIsso vai deletar PERMANENTEMENTE:\n• Todos os usuários (donos e profissionais)\n• Todos os clientes\n• Todos os agendamentos\n• Todos os serviços\n• Todos os horários\n• Todas as despesas\n• Todos os acessos\n\n📌 Esta ação NÃO pode ser desfeita!`)) {
         return;
@@ -1220,10 +1030,7 @@ async function deletarEmpresa(id, nome) {
     try {
         const res = await fetch(`/api/admin/empresas/${id}`, {
             method: 'DELETE',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
         });
 
         const data = await res.json();
@@ -1243,21 +1050,55 @@ async function deletarEmpresa(id, nome) {
 }
 
 // ============================================
-// EXPORTAR FUNÇÕES
+// FUNÇÕES AUXILIARES
 // ============================================
+function fecharModal(modalId) {
+    const modal = modalId ? document.getElementById(modalId) : document.querySelector('.modal');
+    if (modal) modal.style.display = 'none';
+}
 
+function conectarFormEmpresa() {
+    const form = document.getElementById('formEmpresa');
+    if (form) {
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        newForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('📝 Formulário da empresa submetido!');
+            salvarEmpresa();
+        });
+    }
+}
+
+function formatarDataHora(dataStr) {
+    if (!dataStr) return 'Nunca';
+    try {
+        const data = new Date(dataStr);
+        if (isNaN(data.getTime())) return 'Nunca';
+        return data.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return dataStr;
+    }
+}
+
+// ============================================
+// EXPORTAR FUNÇÕES GLOBAIS
+// ============================================
 window.carregarDashboardSuperAdmin = carregarDashboardSuperAdmin;
 window.carregarEmpresas = carregarDashboardSuperAdmin;
+window.alternarModoPagamento = alternarModoPagamento;
+window.toggleWhatsAppProprio = toggleWhatsAppProprio;
+window.filtrarEmpresas = filtrarEmpresas;
 window.verEmpresa = verEmpresa;
 window.editarEmpresa = editarEmpresa;
-window.editarUsuario = editarUsuario;
-window.estenderTrial = estenderTrial;
-window.filtrarEmpresas = filtrarEmpresas;
-window.fecharModalEditarUsuario = fecharModalEditarUsuario;
-window.salvarUsuario = salvarUsuario;
 window.salvarEmpresa = salvarEmpresa;
-window.fecharModal = fecharModal;
+window.editarUsuario = editarUsuario;
+window.salvarUsuario = salvarUsuario;
+window.fecharModalEditarUsuario = fecharModalEditarUsuario;
+window.estenderTrial = estenderTrial;
 window.deletarEmpresa = deletarEmpresa;
-window.toggleWhatsAppProprio = toggleWhatsAppProprio;
+window.fecharModal = fecharModal;
+window.conectarFormEmpresa = conectarFormEmpresa;
 
-console.log('✅ empresas.js carregado com Dashboard Super Admin completo!');
+console.log('✅ empresas.js carregado com Dashboard Super Admin COMPLETO e RICO!');

@@ -70,6 +70,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+
 // ============================================================
 // FUN��O AUXILIAR: FORMATAR DATA (BACKEND)
 // ============================================================
@@ -4677,7 +4678,197 @@ app.get('/api/despesas/categorias', auth, (req, res) => {
         }
     );
 });
+// ============================================
+// NOVAS ROTAS FINANCEIRO - RECEITAS E COMPARATIVO
+// ============================================
 
+// GET /api/financeiro/receitas - Listar receitas filtradas
+app.get('/api/financeiro/receitas', auth, (req, res) => {
+    const { mes, ano } = req.query;
+    const empresaId = req.usuario.empresa_id;
+
+    if (!mes || !ano) {
+        return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
+    }
+
+    const isProduction = process.env.RENDER === 'true';
+
+    let sql;
+    let params;
+
+    if (isProduction) {
+        sql = `
+            SELECT 
+                a.id,
+                a.data,
+                a.cliente_id,
+                a.servico,
+                a.valor,
+                a.comissao,
+                a.profissional_id,
+                a.status,
+                c.nome as cliente_nome,
+                s.nome as servico_nome,
+                p.nome as profissional_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            WHERE a.empresa_id = $1
+                AND a.status = 'concluido'
+                AND EXTRACT(MONTH FROM a.data) = $2
+                AND EXTRACT(YEAR FROM a.data) = $3
+            ORDER BY a.data DESC
+        `;
+        params = [empresaId, parseInt(mes), parseInt(ano)];
+    } else {
+        sql = `
+            SELECT 
+                a.id,
+                a.data,
+                a.cliente_id,
+                a.servico,
+                a.valor,
+                a.comissao,
+                a.profissional_id,
+                a.status,
+                c.nome as cliente_nome,
+                s.nome as servico_nome,
+                p.nome as profissional_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            WHERE a.empresa_id = ?
+                AND a.status = 'concluido'
+                AND strftime('%m', a.data) = ?
+                AND strftime('%Y', a.data) = ?
+            ORDER BY a.data DESC
+        `;
+        params = [empresaId, mes.padStart(2, '0'), ano];
+    }
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('Erro ao buscar receitas:', err);
+            return res.json({ success: false, message: 'Erro ao buscar receitas' });
+        }
+
+        let total = 0;
+        rows.forEach(row => {
+            total += parseFloat(row.valor) || 0;
+        });
+
+        res.json({
+            success: true,
+            data: {
+                receitas: rows,
+                total: total,
+                quantidade: rows.length
+            }
+        });
+    });
+});
+
+// GET /api/financeiro/comparativo - Comparativo mês atual vs mês anterior
+app.get('/api/financeiro/comparativo', auth, (req, res) => {
+    const { mes_atual, ano_atual, mes_anterior, ano_anterior } = req.query;
+    const empresaId = req.usuario.empresa_id;
+
+    if (!mes_atual || !ano_atual || !mes_anterior || !ano_anterior) {
+        return res.json({ success: false, message: 'Parâmetros incompletos' });
+    }
+
+    const isProduction = process.env.RENDER === 'true';
+
+    async function getDados(mes, ano) {
+        return new Promise((resolve, reject) => {
+            // Faturamento do mês
+            let sqlFat, paramsFat;
+            if (isProduction) {
+                sqlFat = `
+                    SELECT COALESCE(SUM(valor), 0) as total
+                    FROM agendamentos
+                    WHERE empresa_id = $1
+                        AND status = 'concluido'
+                        AND EXTRACT(MONTH FROM data) = $2
+                        AND EXTRACT(YEAR FROM data) = $3
+                `;
+                paramsFat = [empresaId, parseInt(mes), parseInt(ano)];
+            } else {
+                sqlFat = `
+                    SELECT COALESCE(SUM(valor), 0) as total
+                    FROM agendamentos
+                    WHERE empresa_id = ?
+                        AND status = 'concluido'
+                        AND strftime('%m', data) = ?
+                        AND strftime('%Y', data) = ?
+                `;
+                paramsFat = [empresaId, mes.padStart(2, '0'), ano];
+            }
+
+            db.get(sqlFat, paramsFat, (err, fatRow) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                // Despesas do mês
+                let sqlDesp, paramsDesp;
+                if (isProduction) {
+                    sqlDesp = `
+                        SELECT COALESCE(SUM(valor), 0) as total
+                        FROM despesas
+                        WHERE empresa_id = $1
+                            AND EXTRACT(MONTH FROM data) = $2
+                            AND EXTRACT(YEAR FROM data) = $3
+                    `;
+                    paramsDesp = [empresaId, parseInt(mes), parseInt(ano)];
+                } else {
+                    sqlDesp = `
+                        SELECT COALESCE(SUM(valor), 0) as total
+                        FROM despesas
+                        WHERE empresa_id = ?
+                            AND strftime('%m', data) = ?
+                            AND strftime('%Y', data) = ?
+                    `;
+                    paramsDesp = [empresaId, mes.padStart(2, '0'), ano];
+                }
+
+                db.get(sqlDesp, paramsDesp, (err, despRow) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+
+                    const faturamento = parseFloat(fatRow?.total || 0);
+                    const despesas = parseFloat(despRow?.total || 0);
+                    const lucro = faturamento - despesas;
+
+                    resolve({ faturamento, despesas, lucro });
+                });
+            });
+        });
+    }
+
+    Promise.all([
+        getDados(mes_atual, ano_atual),
+        getDados(mes_anterior, ano_anterior)
+    ])
+        .then(([mesAtual, mesAnterior]) => {
+            res.json({
+                success: true,
+                data: {
+                    mes_atual: mesAtual,
+                    mes_anterior: mesAnterior
+                }
+            });
+        })
+        .catch(err => {
+            console.error('Erro no comparativo:', err);
+            res.json({ success: false, message: 'Erro ao gerar comparativo' });
+        });
+});
 // ============================================
 // POST /api/despesas - CRIAR DESPESA
 // ============================================
@@ -4978,9 +5169,7 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
         });
     });
 });
-// ============================================================
-// ROTAS DO CHATBOT (P�BLICAS)
-// ============================================================
+
 
 // ============================================================
 // ROTA: LINK DO CHATBOT (PROTEGIDA - APENAS DONO)
@@ -5888,6 +6077,72 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
     });
 });
 
+// ============================================
+// 💳 CONFIGURAÇÃO DE PAGAMENTOS
+// ============================================
+
+// Variável global para controlar o modo de pagamento
+let PAYMENT_MODE = process.env.PAYMENT_MODE || 'simulation';
+console.log(`💳 Modo de pagamento inicial: ${PAYMENT_MODE === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`);
+
+// 🔹 Rota para consultar o modo de pagamento atual
+app.get('/api/payment/config', auth, (req, res) => {
+    const isReal = PAYMENT_MODE === 'real';
+    const label = isReal ? '🔴 Pagamentos Reais' : '🟡 Modo Simulação';
+
+    console.log(`📊 GET /api/payment/config - Modo atual: ${PAYMENT_MODE}`);
+
+    res.json({
+        success: true,
+        data: {
+            mode: PAYMENT_MODE,
+            isReal: isReal,
+            isSimulation: !isReal,
+            label: label
+        }
+    });
+});
+
+// 🔹 Rota para alternar o modo de pagamento (APENAS SUPER ADMIN)
+app.put('/api/payment/config', auth, verificarSuperAdmin, (req, res) => {
+    const { mode } = req.body;
+
+    console.log(`🔄 PUT /api/payment/config - Tentando alterar para: ${mode}`);
+    console.log(`🔄 Modo atual antes da mudança: ${PAYMENT_MODE}`);
+
+    if (mode !== 'simulation' && mode !== 'real') {
+        return res.status(400).json({
+            success: false,
+            message: 'Modo inválido. Use "simulation" ou "real"'
+        });
+    }
+
+    // Atualizar a variável global
+    PAYMENT_MODE = mode;
+
+    console.log(`✅ Modo de pagamento alterado para: ${mode === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`);
+    console.log(`✅ Novo valor de PAYMENT_MODE: ${PAYMENT_MODE}`);
+
+    res.json({
+        success: true,
+        message: `Modo de pagamento alterado para: ${mode === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`,
+        data: {
+            mode: mode,
+            isReal: mode === 'real',
+            isSimulation: mode !== 'real'
+        }
+    });
+});
+
+// 🔹 Rota para verificar se a rota está funcionando
+app.get('/api/payment/status', (req, res) => {
+    res.json({
+        success: true,
+        message: 'Rota de pagamento funcionando',
+        mode: PAYMENT_MODE
+    });
+});
+
 // ============================================================
 // JOBS E SERVI�OS
 // ============================================================
@@ -6322,6 +6577,189 @@ app.post('/api/empresa/whatsapp/disconnect', auth, async (req, res) => {
             res.json({ success: true, message: 'WhatsApp desconectado' });
         });
     });
+});
+
+// ============================================================
+// 💳 MERCADO PAGO - PAGAMENTOS REAIS
+// ============================================================
+const mercadopago = require('./server/services/mercadopago');
+
+// 🔹 Criar preferência de pagamento (Checkout Pro)
+app.post('/api/create-payment', auth, async (req, res) => {
+    const { plano_id, plano_nome, valor, metodo_pagamento, periodo } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    console.log('💳 Criando pagamento:', { empresaId, plano_id, valor });
+
+    if (!plano_id || !valor) {
+        return res.status(400).json({
+            success: false,
+            message: 'Plano e valor são obrigatórios'
+        });
+    }
+
+    try {
+        // 🔥 CORREÇÃO: Usar email de teste válido do Mercado Pago
+        const emailTeste = 'test_user_1689549456@testuser.com';
+
+        const preference = {
+            items: [{
+                title: `Plano ${plano_nome} - ${periodo === 'anual' ? 'Anual' : 'Mensal'}`,
+                quantity: 1,
+                unit_price: parseFloat(valor),
+                currency_id: 'BRL'
+            }],
+            payer: {
+                email: emailTeste,
+                name: 'Test',
+                surname: 'User'
+            },
+            external_reference: `emp_${empresaId}_${plano_id}_${Date.now()}`,
+            notification_url: `${process.env.BASE_URL || 'http://localhost:3000'}/api/webhook/mercadopago`,
+            back_urls: {
+                success: `${process.env.BASE_URL || 'http://localhost:3000'}/?payment=success`,
+                failure: `${process.env.BASE_URL || 'http://localhost:3000'}/?payment=failure`,
+                pending: `${process.env.BASE_URL || 'http://localhost:3000'}/?payment=pending`
+            }
+            // 🔥 REMOVIDO: auto_return: 'approved' (causava problema em localhost)
+        };
+
+        const resultado = await mercadopago.criarPreferencia(preference);
+
+        if (resultado.success) {
+            // Salvar transação no banco
+            const sql = isProduction
+                ? `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, external_reference, created_at) VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,CURRENT_TIMESTAMP)`
+                : `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, external_reference, created_at) VALUES (?,?,?,?,?,?, 'pending',?,CURRENT_TIMESTAMP)`;
+
+            db.run(sql, [
+                empresaId,
+                plano_id,
+                plano_nome,
+                valor,
+                metodo_pagamento || 'checkout',
+                resultado.preference_id,
+                resultado.external_reference
+            ]);
+
+            res.json({
+                success: true,
+                init_point: resultado.init_point,
+                sandbox_init_point: resultado.sandbox_init_point,
+                preference_id: resultado.preference_id
+            });
+        } else {
+            console.error('❌ Erro do Mercado Pago:', resultado);
+            res.status(400).json({
+                success: false,
+                message: resultado.message || 'Erro ao criar pagamento'
+            });
+        }
+    } catch (error) {
+        console.error('❌ Erro ao criar pagamento:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro interno ao processar pagamento'
+        });
+    }
+});
+
+// 🔹 PIX Real
+app.post('/api/create-pix', auth, async (req, res) => {
+    const { plano_id, plano_nome, valor, periodo } = req.body;
+    const empresaId = req.usuario.empresa_id;
+    const emailUsuario = req.usuario.email; // 🔥 PEGAR EMAIL DO USUÁRIO LOGADO
+
+    const resultado = await mercadopago.criarPix(empresaId, plano_id, plano_nome, valor, periodo, emailUsuario);
+
+    if (resultado.success) {
+        const sql = isProduction
+            ? `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at) VALUES ($1,$2,$3,$4,'pix',$5,'pending',$6,$7,CURRENT_TIMESTAMP)`
+            : `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at) VALUES (?,?,?,?, 'pix',?,'pending',?,?,CURRENT_TIMESTAMP)`;
+
+        db.run(sql, [empresaId, plano_id, plano_nome, valor, resultado.payment_id, resultado.qr_code, resultado.qr_code_base64]);
+        res.json({ success: true, ...resultado });
+    } else {
+        res.status(400).json(resultado);
+    }
+});
+
+// 🔹 Boleto Real
+app.post('/api/create-boleto', auth, async (req, res) => {
+    const { plano_id, plano_nome, valor, cpf, periodo } = req.body;
+    const empresaId = req.usuario.empresa_id;
+    const emailUsuario = req.usuario.email; // 🔥 PEGAR EMAIL DO USUÁRIO LOGADO
+    const nomeUsuario = req.usuario.nome || 'Cliente';
+
+    const resultado = await mercadopago.criarBoleto(empresaId, plano_id, plano_nome, valor, cpf, nomeUsuario, emailUsuario);
+
+    if (resultado.success) {
+        res.json({ success: true, ...resultado });
+    } else {
+        res.status(400).json(resultado);
+    }
+});
+
+// 🔹 Consultar status do pagamento
+app.get('/api/check-payment/:paymentId', auth, async (req, res) => {
+    const { paymentId } = req.params;
+
+    // Se for pagamento simulado
+    if (paymentId.startsWith('sim_')) {
+        return res.json({ success: true, status: 'pending' });
+    }
+
+    const resultado = await mercadopago.consultarPagamento(paymentId);
+
+    if (resultado.success && resultado.status === 'approved') {
+        db.get('SELECT * FROM transacoes_pagamento WHERE pagamento_id = ?', [paymentId], (err, transacao) => {
+            if (transacao) {
+                const plano = PLANOS[transacao.plano_id];
+                if (plano) {
+                    const dataValidade = new Date();
+                    dataValidade.setMonth(dataValidade.getMonth() + 1);
+
+                    const sqlUpdate = isProduction
+                        ? `UPDATE empresas SET plano=$1, limite_profissionais=$2, assinatura_ativa=TRUE, assinatura_valida_ate=$3 WHERE id=$4`
+                        : `UPDATE empresas SET plano=?, limite_profissionais=?, assinatura_ativa=1, assinatura_valida_ate=? WHERE id=?`;
+
+                    db.run(sqlUpdate, [plano.nome, plano.limite, dataValidade.toISOString(), transacao.empresa_id]);
+                }
+            }
+        });
+    }
+
+    res.json(resultado);
+});
+
+// 🔹 Webhook do Mercado Pago
+app.post('/api/webhook/mercadopago', async (req, res) => {
+    console.log('📩 Webhook Mercado Pago:', req.body);
+
+    if (req.body.type === 'payment') {
+        const resultado = await mercadopago.consultarPagamento(req.body.data.id);
+
+        if (resultado.success && resultado.status === 'approved') {
+            db.get('SELECT * FROM transacoes_pagamento WHERE pagamento_id = ?', [req.body.data.id], (err, transacao) => {
+                if (transacao) {
+                    const plano = PLANOS[transacao.plano_id];
+                    if (plano) {
+                        const dataValidade = new Date();
+                        dataValidade.setMonth(dataValidade.getMonth() + 1);
+
+                        const sqlUpdate = isProduction
+                            ? `UPDATE empresas SET plano=$1, limite_profissionais=$2, assinatura_ativa=TRUE, assinatura_valida_ate=$3 WHERE id=$4`
+                            : `UPDATE empresas SET plano=?, limite_profissionais=?, assinatura_ativa=1, assinatura_valida_ate=? WHERE id=?`;
+
+                        db.run(sqlUpdate, [plano.nome, plano.limite, dataValidade.toISOString(), transacao.empresa_id]);
+                        console.log(`✅ Empresa ${transacao.empresa_id} atualizada para plano ${plano.nome}`);
+                    }
+                }
+            });
+        }
+    }
+
+    res.sendStatus(200);
 });
 
 // ============================================================

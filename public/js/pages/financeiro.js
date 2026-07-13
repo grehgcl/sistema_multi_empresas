@@ -29,13 +29,16 @@ function formatMoney(valor) {
 }
 
 // ============================================
-// FINANCEIRO COMPLETO - COM DESPESAS
+// FINANCEIRO COMPLETO - ESTILO CONFIGURAÇÕES
 // ============================================
 
 let financeiroData = null;
 let despesasData = null;
-let filtroMesAtual = null;
-let filtroAnoAtual = null;
+let receitasData = null;
+let mesAtual = null;
+let mesAnterior = null;
+let filtroMesReceitas = null;
+let filtroAnoReceitas = null;
 let filtroCategoriaAtual = null;
 let filtroPagoAtual = null;
 let despesaEditandoId = null;
@@ -50,27 +53,45 @@ async function carregarFinanceiro() {
 
     const token = localStorage.getItem('token');
     const usuario = JSON.parse(localStorage.getItem('usuario'));
-
     const hoje = new Date();
-    filtroMesAtual = filtroMesAtual || String(hoje.getMonth() + 1).padStart(2, '0');
-    filtroAnoAtual = filtroAnoAtual || String(hoje.getFullYear());
+
+    // Data atual e mês anterior
+    const mesAtualNum = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+    mesAtual = String(mesAtualNum).padStart(2, '0');
+
+    const dataAnterior = new Date(hoje);
+    dataAnterior.setMonth(dataAnterior.getMonth() - 1);
+    mesAnterior = String(dataAnterior.getMonth() + 1).padStart(2, '0');
+    const anoAnterior = dataAnterior.getFullYear();
+
+    filtroMesReceitas = filtroMesReceitas || mesAtual;
+    filtroAnoReceitas = filtroAnoReceitas || String(anoAtual);
 
     try {
-        const [financeiroRes, despesasRes, categoriasRes] = await Promise.all([
+        const [financeiroRes, despesasRes, receitasRes, categoriasRes, comparativoRes] = await Promise.all([
             fetch('/api/financeiro', {
                 headers: { 'Authorization': 'Bearer ' + token }
             }),
-            fetch(`/api/despesas?mes=${filtroMesAtual}&ano=${filtroAnoAtual}`, {
+            fetch(`/api/despesas?mes=${mesAtual}&ano=${anoAtual}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }),
+            fetch(`/api/financeiro/receitas?mes=${filtroMesReceitas}&ano=${filtroAnoReceitas}`, {
                 headers: { 'Authorization': 'Bearer ' + token }
             }),
             fetch('/api/despesas/categorias', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }),
+            fetch(`/api/financeiro/comparativo?mes_atual=${mesAtual}&ano_atual=${anoAtual}&mes_anterior=${mesAnterior}&ano_anterior=${anoAnterior}`, {
                 headers: { 'Authorization': 'Bearer ' + token }
             })
         ]);
 
         const financeiroResult = await financeiroRes.json();
         const despesasResult = await despesasRes.json();
+        const receitasResult = await receitasRes.json();
         const categoriasResult = await categoriasRes.json();
+        const comparativoResult = await comparativoRes.json();
 
         if (financeiroResult.success) {
             financeiroData = financeiroResult.data;
@@ -85,9 +106,14 @@ async function carregarFinanceiro() {
             }
         }
 
+        if (receitasResult.success) {
+            receitasData = receitasResult.data;
+        }
+
+        const comparativo = comparativoResult.success ? comparativoResult.data : null;
         const categorias = categoriasResult.success ? categoriasResult.data : [];
 
-        renderizarFinanceiroCompleto(financeiroData, despesasData, categorias, usuario);
+        renderizarFinanceiroCompleto(financeiroData, despesasData, receitasData, categorias, usuario, comparativo);
 
     } catch (error) {
         console.error('Erro:', error);
@@ -109,675 +135,1188 @@ async function carregarFinanceiro() {
 }
 
 // ============================================
-// RENDERIZAR FINANCEIRO COMPLETO (CORRIGIDO MOBILE)
+// RENDERIZAR FINANCEIRO COMPLETO
 // ============================================
 
-function renderizarFinanceiroCompleto(financeiro, despesas, categorias, usuario) {
-    const totais = financeiro?.totais || {};
-    // 🔥 FORÇA A DETECÇÃO DE MOBILE
-    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
-    const isDono = usuario.role === 'dono';
+function renderizarFinanceiroCompleto(financeiro, despesas, receitas, categorias, usuario, comparativo) {
+    const isMobile = window.innerWidth < 768;
+    const isDono = usuario?.role === 'dono';
+    const temaSalvo = localStorage.getItem('theme') || 'light';
 
-    console.log("📱 Modo mobile (financeiro):", isMobile);
+    // Dados do comparativo
+    const comp = comparativo || {};
+    const mesAtualData = comp.mes_atual || {};
+    const mesAnteriorData = comp.mes_anterior || {};
+
+    const fatAtual = toNumber(mesAtualData.faturamento);
+    const fatAnterior = toNumber(mesAnteriorData.faturamento);
+    const despesasAtual = toNumber(mesAtualData.despesas);
+    const despesasAnterior = toNumber(mesAnteriorData.despesas);
+    const lucroAtual = toNumber(mesAtualData.lucro);
+    const lucroAnterior = toNumber(mesAnteriorData.lucro);
+
+    // Variações percentuais
+    const variacaoFat = fatAnterior > 0 ? ((fatAtual - fatAnterior) / fatAnterior * 100) : 0;
+    const variacaoDesp = despesasAnterior > 0 ? ((despesasAtual - despesasAnterior) / despesasAnterior * 100) : 0;
+    const variacaoLucro = lucroAnterior > 0 ? ((lucroAtual - lucroAnterior) / lucroAnterior * 100) : 0;
+
+    const totais = financeiro?.totais || {};
+    const despesasTotais = despesas?.totais || {};
+    const faturamentoBruto = toNumber(totais.faturamento_bruto);
+    const totalDespesas = toNumber(despesasTotais.total);
+    const lucroLiquido = faturamentoBruto - totalDespesas;
+    const faturamentoLiquido = toNumber(totais.faturamento_liquido);
+    const totalServicos = totais.total_servicos || 0;
 
     let html = `
         <div class="fade-in financeiro-container">
             <!-- Header -->
-            <div class="dashboard-header">
+            <div class="dashboard-header" style="flex-direction:${isMobile ? 'column' : 'row'}; align-items:${isMobile ? 'flex-start' : 'center'}; gap:${isMobile ? '8px' : '0'};">
                 <div>
-                    <h2 class="page-title">💰 Financeiro</h2>
-                    <p class="page-subtitle">
+                    <h2 class="page-title" style="font-size:${isMobile ? '20px' : '24px'};">💰 Financeiro</h2>
+                    <p class="page-subtitle" style="font-size:${isMobile ? '13px' : '14px'};">
                         <i class="fas fa-chart-line"></i> 
                         ${isDono ? 'Visão completa das finanças' : 'Suas comissões'}
                     </p>
                 </div>
-                <div class="dashboard-actions">
+                <div class="dashboard-actions" style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button class="btn btn-outline btn-sm" onclick="carregarFinanceiro()">
                         <i class="fas fa-sync"></i> Atualizar
                     </button>
                 </div>
             </div>
+            
+            <!-- TABS - ESTILO CONFIGURAÇÕES -->
+            <div class="config-tabs" style="
+                display: flex;
+                gap: ${isMobile ? '4px' : '8px'};
+                margin-bottom: ${isMobile ? '12px' : '24px'};
+                flex-wrap: wrap;
+                background: var(--bg-card);
+                padding: ${isMobile ? '6px' : '8px'};
+                border-radius: ${isMobile ? '12px' : '16px'};
+                box-shadow: var(--card-shadow);
+                border: 1px solid var(--border-color);
+                ${isMobile ? 'overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch;' : ''}
+            ">
+                <button class="config-tab active" onclick="switchFinanceiroTab('resumo')" style="
+                    padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                    border: none;
+                    border-radius: ${isMobile ? '8px' : '12px'};
+                    background: var(--gradient);
+                    color: white;
+                    font-weight: 600;
+                    font-size: ${isMobile ? '12px' : '14px'};
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                    box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+                ">
+                    <i class="fas fa-chart-pie" style="font-size:${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Resumo' : 'Resumo'}
+                </button>
+                <button class="config-tab" onclick="switchFinanceiroTab('receitas')" style="
+                    padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                    border: none;
+                    border-radius: ${isMobile ? '8px' : '12px'};
+                    background: transparent;
+                    color: var(--text-secondary);
+                    font-weight: 600;
+                    font-size: ${isMobile ? '12px' : '14px'};
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                ">
+                    <i class="fas fa-arrow-up" style="font-size:${isMobile ? '14px' : '16px'};color:#22c55e;"></i> ${isMobile ? 'Receitas' : 'Receitas'}
+                </button>
+                <button class="config-tab" onclick="switchFinanceiroTab('despesas')" style="
+                    padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                    border: none;
+                    border-radius: ${isMobile ? '8px' : '12px'};
+                    background: transparent;
+                    color: var(--text-secondary);
+                    font-weight: 600;
+                    font-size: ${isMobile ? '12px' : '14px'};
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                ">
+                    <i class="fas fa-arrow-down" style="font-size:${isMobile ? '14px' : '16px'};color:#ef4444;"></i> ${isMobile ? 'Despesas' : 'Despesas'}
+                </button>
+                <button class="config-tab" onclick="switchFinanceiroTab('profissionais')" style="
+                    padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                    border: none;
+                    border-radius: ${isMobile ? '8px' : '12px'};
+                    background: transparent;
+                    color: var(--text-secondary);
+                    font-weight: 600;
+                    font-size: ${isMobile ? '12px' : '14px'};
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                ">
+                    <i class="fas fa-users" style="font-size:${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Comissões' : 'Comissões'}
+                </button>
+            </div>
+            
+            <div id="financeiroContent">
     `;
 
+    // ============================================
+    // TAB: RESUMO (PADRÃO)
+    // ============================================
     if (isDono) {
-        // ============================================
-        // CARDS DO DONO (RECEITAS) - COM ESTILO INLINE
-        // ============================================
-        const despesasTotais = despesas?.totais || {};
-        const faturamentoBruto = parseFloat(totais.faturamento_bruto) || 0;
-        const totalDespesas = parseFloat(despesasTotais.total) || 0;
-        const lucroLiquido = faturamentoBruto - totalDespesas;
-        const faturamentoLiquido = parseFloat(totais.faturamento_liquido) || 0;
+        html += renderTabResumo(isMobile, fatAtual, fatAnterior, variacaoFat, despesasAtual, despesasAnterior, variacaoDesp, lucroAtual, lucroAnterior, variacaoLucro, faturamentoBruto, totalDespesas, lucroLiquido, faturamentoLiquido, totalServicos, despesasTotais);
+    } else {
+        html += renderTabResumoProfissional(isMobile, totais);
+    }
 
-        html += `
-            <div style="margin-bottom:8px;">
-                <h3 style="font-size:14px;color:var(--text-muted);margin-bottom:12px;">
-                    📊 RESULTADO DO MÊS
-                </h3>
-                <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:12px;margin-bottom:16px;">
-                    <!-- Card 1: Faturamento Bruto -->
-                    <div style="background:var(--gradient-primary);border-radius:16px;padding:16px;color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
-                        <div style="font-size:20px;margin-bottom:4px;">📊</div>
-                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;">R$ ${faturamentoBruto.toFixed(2)}</div>
-                        <div style="font-size:12px;opacity:0.8;">Faturamento Bruto</div>
-                        <div style="font-size:11px;opacity:0.6;">📈 Total de serviços</div>
-                    </div>
-                    
-                    <!-- Card 2: Despesas -->
-                    <div style="background:var(--bg-card);border-radius:16px;padding:16px;border:1px solid var(--border-color);border-left:4px solid #ef4444;">
-                        <div style="font-size:20px;margin-bottom:4px;">📉</div>
-                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#ef4444;">- R$ ${totalDespesas.toFixed(2)}</div>
-                        <div style="font-size:12px;color:var(--text-muted);">Total de Despesas</div>
-                        <div style="font-size:11px;color:var(--text-muted);">${despesasTotais.quantidade || 0} despesas</div>
-                    </div>
-                    
-                    <!-- Card 3: Lucro Líquido -->
-                    <div style="background:var(--bg-card);border-radius:16px;padding:16px;border:1px solid var(--border-color);border-left:4px solid #22c55e;">
-                        <div style="font-size:20px;margin-bottom:4px;">💰</div>
-                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#22c55e;">R$ ${lucroLiquido.toFixed(2)}</div>
-                        <div style="font-size:12px;color:var(--text-muted);">Lucro Líquido</div>
-                        <div style="font-size:11px;color:var(--text-muted);">Bruto - Despesas</div>
-                    </div>
-                    
-                    <!-- Card 4: Lucro após Comissões -->
-                    <div style="background:var(--bg-card);border-radius:16px;padding:16px;border:1px solid var(--border-color);">
-                        <div style="font-size:20px;margin-bottom:4px;">💎</div>
-                        <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:var(--primary);">R$ ${faturamentoLiquido.toFixed(2)}</div>
-                        <div style="font-size:12px;color:var(--text-muted);">Lucro após Comissões</div>
-                        <div style="font-size:11px;color:var(--text-muted);">Bruto - Comissões</div>
-                    </div>
-                </div>
+    html += `
             </div>
-        `;
+        </div>
+    `;
 
-        // ============================================
-        // DETALHES DE RECEITAS E DESPESAS
-        // ============================================
-        html += `
-            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:20px;">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-arrow-up" style="color:#16a34a;"></i> Receitas</h3>
-                        <span class="badge badge-success">R$ ${faturamentoBruto.toFixed(2)}</span>
+    document.getElementById('content').innerHTML = html;
+    console.log('✅ Financeiro renderizado com sucesso!');
+}
+
+// ============================================
+// RENDER TAB RESUMO (DONO)
+// ============================================
+
+function renderTabResumo(isMobile, fatAtual, fatAnterior, variacaoFat, despesasAtual, despesasAnterior, variacaoDesp, lucroAtual, lucroAnterior, variacaoLucro, faturamentoBruto, totalDespesas, lucroLiquido, faturamentoLiquido, totalServicos, despesasTotais) {
+    // Função para cor da variação
+    const corVariacao = (valor) => {
+        if (valor > 0) return '#22c55e';
+        if (valor < 0) return '#ef4444';
+        return '#f59e0b';
+    };
+    const iconeVariacao = (valor) => {
+        if (valor > 0) return '📈';
+        if (valor < 0) return '📉';
+        return '➡️';
+    };
+
+    return `
+        <!-- CARDS DE COMPARATIVO MENSAL -->
+        <div style="margin-bottom:20px;">
+            <h3 style="font-size:${isMobile ? '15px' : '18px'};color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-calendar-alt" style="color:var(--primary);"></i>
+                Comparativo Mensal
+                <span style="font-size:${isMobile ? '11px' : '13px'};color:var(--text-muted);font-weight:400;">
+                    (${mesAnterior} vs ${mesAtual})
+                </span>
+            </h3>
+            
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : 'repeat(3,1fr)'};gap:12px;margin-bottom:16px;">
+                <!-- Faturamento -->
+                <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '14px' : '18px'};border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-muted);">💰 Faturamento</span>
+                        <span style="font-size:${isMobile ? '12px' : '14px'};font-weight:700;color:${corVariacao(variacaoFat)};">
+                            ${iconeVariacao(variacaoFat)} ${variacaoFat > 0 ? '+' : ''}${variacaoFat.toFixed(1)}%
+                        </span>
                     </div>
-                    <div style="padding:12px;">
-                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);">
-                            <span>✅ Serviços Concluídos</span>
-                            <span><strong>${totais.total_servicos || 0}</strong></span>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px;">
+                        <div>
+                            <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:var(--text-primary);">R$ ${fatAtual.toFixed(2)}</div>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Este mês</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:8px 0;">
-                            <span>💰 Valor Médio por Serviço</span>
-                            <span><strong>R$ ${(totais.total_servicos ? faturamentoBruto / totais.total_servicos : 0).toFixed(2)}</strong></span>
+                        <div style="text-align:right;">
+                            <div style="font-size:${isMobile ? '14px' : '18px'};font-weight:600;color:var(--text-muted);">R$ ${fatAnterior.toFixed(2)}</div>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Mês anterior</span>
                         </div>
                     </div>
                 </div>
                 
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-arrow-down" style="color:#dc2626;"></i> Despesas</h3>
-                        <span class="badge badge-danger">R$ ${totalDespesas.toFixed(2)}</span>
+                <!-- Despesas -->
+                <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '14px' : '18px'};border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-muted);">📉 Despesas</span>
+                        <span style="font-size:${isMobile ? '12px' : '14px'};font-weight:700;color:${corVariacao(variacaoDesp)};">
+                            ${iconeVariacao(variacaoDesp)} ${variacaoDesp > 0 ? '+' : ''}${variacaoDesp.toFixed(1)}%
+                        </span>
                     </div>
-                    <div style="padding:12px;">
-                        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color);">
-                            <span>💳 Pagas</span>
-                            <span><strong>R$ ${(parseFloat(despesasTotais.pago) || 0).toFixed(2)}</strong></span>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px;">
+                        <div>
+                            <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#ef4444;">- R$ ${despesasAtual.toFixed(2)}</div>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Este mês</span>
                         </div>
-                        <div style="display:flex;justify-content:space-between;padding:8px 0;">
-                            <span>⏳ Pendentes</span>
-                            <span><strong style="color:#dc2626;">R$ ${(parseFloat(despesasTotais.pendente) || 0).toFixed(2)}</strong></span>
+                        <div style="text-align:right;">
+                            <div style="font-size:${isMobile ? '14px' : '18px'};font-weight:600;color:var(--text-muted);">- R$ ${despesasAnterior.toFixed(2)}</div>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Mês anterior</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lucro -->
+                <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '14px' : '18px'};border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-muted);">💎 Lucro</span>
+                        <span style="font-size:${isMobile ? '12px' : '14px'};font-weight:700;color:${corVariacao(variacaoLucro)};">
+                            ${iconeVariacao(variacaoLucro)} ${variacaoLucro > 0 ? '+' : ''}${variacaoLucro.toFixed(1)}%
+                        </span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:8px;">
+                        <div>
+                            <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:${lucroAtual >= 0 ? '#22c55e' : '#ef4444'};">R$ ${lucroAtual.toFixed(2)}</div>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Este mês</span>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:${isMobile ? '14px' : '18px'};font-weight:600;color:${lucroAnterior >= 0 ? '#22c55e' : '#ef4444'};">R$ ${lucroAnterior.toFixed(2)}</div>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Mês anterior</span>
                         </div>
                     </div>
                 </div>
             </div>
-        `;
-
-        // ============================================
-        // COMISSÕES POR PROFISSIONAL
-        // ============================================
-        if (financeiro?.comissoes_por_profissional && financeiro.comissoes_por_profissional.length > 0) {
-            html += `
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-users"></i> Comissões por Profissional</h3>
-                        <span class="badge badge-info">${financeiro.comissoes_por_profissional.length} profissionais</span>
-                    </div>
-            `;
-
-            if (isMobile) {
-                // ============================================
-                // VERSÃO MOBILE - CARDS DE COMISSÕES (INLINE)
-                // ============================================
-                html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
-
-                for (let prof of financeiro.comissoes_por_profissional) {
-                    const inicial = prof.nome ? prof.nome.charAt(0).toUpperCase() : '?';
-                    const totalComissao = parseFloat(prof.total_comissao) || 0;
-
-                    html += `
-                        <div style="background:var(--bg-card);border-radius:16px;padding:14px 16px;border:1px solid var(--border-color);display:flex;align-items:center;gap:14px;">
-                            <div style="width:44px;height:44px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;flex-shrink:0;box-shadow:0 2px 8px rgba(102,126,234,0.3);">${inicial}</div>
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(prof.nome)}</div>
-                                <div style="font-size:12px;color:var(--text-muted);">${prof.total_servicos} serviço(s)</div>
-                            </div>
-                            <div style="font-size:16px;font-weight:700;color:var(--primary);flex-shrink:0;background:rgba(102,126,234,0.1);padding:4px 14px;border-radius:12px;">R$ ${totalComissao.toFixed(2)}</div>
-                        </div>
-                    `;
-                }
-
-                html += `</div>`;
-            } else {
-                // ============================================
-                // VERSÃO DESKTOP - TABELA
-                // ============================================
-                html += `
-                    <div class="table-responsive">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Profissional</th>
-                                    <th>Serviços</th>
-                                    <th>Total Comissão</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${financeiro.comissoes_por_profissional.map(prof => `
-                                    <tr>
-                                        <td><strong>${escapeHtml(prof.nome)}</strong></td>
-                                        <td>${prof.total_servicos} serviço(s)</td>
-                                        <td><span class="valor">R$ ${(parseFloat(prof.total_comissao) || 0).toFixed(2)}</span></td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            }
-
-            html += `</div>`;
-        }
-
-        // ============================================
-        // DESPESAS - LISTA COMPLETA
-        // ============================================
-        html += `
+        </div>
+        
+        <!-- CARDS DO MÊS ATUAL -->
+        <div style="margin-bottom:16px;">
+            <h3 style="font-size:${isMobile ? '15px' : '18px'};color:var(--text-primary);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+                <i class="fas fa-chart-simple" style="color:var(--primary);"></i>
+                Resumo do Mês Atual
+            </h3>
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:12px;margin-bottom:16px;">
+                <!-- Card 1: Faturamento Bruto -->
+                <div style="background:var(--gradient-primary);border-radius:16px;padding:${isMobile ? '14px' : '16px'};color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
+                    <div style="font-size:20px;margin-bottom:4px;">📊</div>
+                    <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;">R$ ${faturamentoBruto.toFixed(2)}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.8;">Faturamento Bruto</div>
+                    <div style="font-size:${isMobile ? '9px' : '11px'};opacity:0.6;">📈 ${totalServicos} serviços</div>
+                </div>
+                
+                <!-- Card 2: Despesas -->
+                <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '14px' : '16px'};border:1px solid var(--border-color);border-left:4px solid #ef4444;">
+                    <div style="font-size:20px;margin-bottom:4px;">📉</div>
+                    <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#ef4444;">- R$ ${totalDespesas.toFixed(2)}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Total de Despesas</div>
+                    <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">${despesasTotais.quantidade || 0} despesas</div>
+                </div>
+                
+                <!-- Card 3: Lucro Líquido -->
+                <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '14px' : '16px'};border:1px solid var(--border-color);border-left:4px solid #22c55e;">
+                    <div style="font-size:20px;margin-bottom:4px;">💰</div>
+                    <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#22c55e;">R$ ${lucroLiquido.toFixed(2)}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Lucro Líquido</div>
+                    <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">Bruto - Despesas</div>
+                </div>
+                
+                <!-- Card 4: Lucro após Comissões -->
+                <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '14px' : '16px'};border:1px solid var(--border-color);border-left:4px solid var(--primary);">
+                    <div style="font-size:20px;margin-bottom:4px;">💎</div>
+                    <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:var(--primary);">R$ ${faturamentoLiquido.toFixed(2)}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">Lucro após Comissões</div>
+                    <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">Bruto - Comissões</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- DETALHES RÁPIDOS -->
+        <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:16px;">
             <div class="card">
                 <div class="card-header">
-                    <h3><i class="fas fa-receipt"></i> Despesas</h3>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button class="btn btn-primary btn-sm" onclick="abrirModalDespesa()">
-                            <i class="fas fa-plus"></i> Nova Despesa
+                    <h3 style="font-size:${isMobile ? '14px' : '16px'};"><i class="fas fa-arrow-up" style="color:#16a34a;"></i> Receitas</h3>
+                    <span class="badge badge-success">R$ ${faturamentoBruto.toFixed(2)}</span>
+                </div>
+                <div style="padding:${isMobile ? '10px' : '12px'};">
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:${isMobile ? '13px' : '14px'};">
+                        <span>✅ Serviços Concluídos</span>
+                        <span><strong>${totalServicos}</strong></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:${isMobile ? '13px' : '14px'};">
+                        <span>💰 Valor Médio por Serviço</span>
+                        <span><strong>R$ ${totalServicos > 0 ? (faturamentoBruto / totalServicos).toFixed(2) : '0,00'}</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h3 style="font-size:${isMobile ? '14px' : '16px'};"><i class="fas fa-arrow-down" style="color:#dc2626;"></i> Despesas</h3>
+                    <span class="badge badge-danger">R$ ${totalDespesas.toFixed(2)}</span>
+                </div>
+                <div style="padding:${isMobile ? '10px' : '12px'};">
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border-color);font-size:${isMobile ? '13px' : '14px'};">
+                        <span>💳 Pagas</span>
+                        <span><strong>R$ ${(toNumber(despesasTotais.pago) || 0).toFixed(2)}</strong></span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:${isMobile ? '13px' : '14px'};">
+                        <span>⏳ Pendentes</span>
+                        <span><strong style="color:#dc2626;">R$ ${(toNumber(despesasTotais.pendente) || 0).toFixed(2)}</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// RENDER TAB RESUMO (PROFISSIONAL)
+// ============================================
+
+function renderTabResumoProfissional(isMobile, totais) {
+    return `
+        <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:20px;">
+            <div style="background:var(--gradient-primary);border-radius:16px;padding:${isMobile ? '18px' : '24px'};color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
+                <div style="font-size:${isMobile ? '28px' : '36px'};margin-bottom:4px;">💰</div>
+                <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;">R$ ${(toNumber(totais.total_comissoes) || 0).toFixed(2)}</div>
+                <div style="font-size:${isMobile ? '14px' : '16px'};opacity:0.8;">Total em Comissões</div>
+                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.6;">Todos os serviços concluídos</div>
+            </div>
+            
+            <div style="background:var(--bg-card);border-radius:16px;padding:${isMobile ? '18px' : '24px'};border:1px solid var(--border-color);border-left:4px solid #22c55e;">
+                <div style="font-size:${isMobile ? '28px' : '36px'};margin-bottom:4px;">✅</div>
+                <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;color:#22c55e;">${totais.total_servicos || 0}</div>
+                <div style="font-size:${isMobile ? '14px' : '16px'};color:var(--text-muted);">Serviços Concluídos</div>
+                <div style="font-size:${isMobile ? '11px' : '13px'};color:var(--text-muted);">Total realizados por você</div>
+            </div>
+        </div>
+        
+        <!-- Histórico de serviços (será carregado na tab Comissões) -->
+        <div class="card">
+            <div class="card-header">
+                <h3 style="font-size:${isMobile ? '14px' : '16px'};"><i class="fas fa-history"></i> Histórico de Serviços</h3>
+                <span class="badge badge-info">Acesse a tab "Comissões"</span>
+            </div>
+            <div style="padding:${isMobile ? '14px' : '20px'};text-align:center;color:var(--text-muted);">
+                <i class="fas fa-chevron-right" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                <p>Veja todos os seus serviços e comissões na aba <strong>Comissões</strong></p>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// SWITCH FINANCEIRO TABS
+// ============================================
+
+function switchFinanceiroTab(tab) {
+    // Atualizar tabs
+    document.querySelectorAll('.config-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.background = 'transparent';
+        t.style.color = 'var(--text-secondary)';
+        t.style.boxShadow = 'none';
+    });
+
+    const tabs = document.querySelectorAll('.config-tab');
+    const index = ['resumo', 'receitas', 'despesas', 'profissionais'].indexOf(tab);
+    if (tabs[index]) {
+        tabs[index].classList.add('active');
+        tabs[index].style.background = 'var(--gradient)';
+        tabs[index].style.color = 'white';
+        tabs[index].style.boxShadow = '0 4px 12px rgba(102,126,234,0.3)';
+    }
+
+    // Carregar conteúdo
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    const isDono = usuario?.role === 'dono';
+    const isMobile = window.innerWidth < 768;
+
+    switch (tab) {
+        case 'resumo':
+            // Recarregar tudo
+            carregarFinanceiro();
+            break;
+        case 'receitas':
+            if (isDono) {
+                document.getElementById('financeiroContent').innerHTML = renderTabReceitas(isMobile);
+                carregarReceitas();
+            } else {
+                showToast('Apenas o dono pode ver receitas', 'warning');
+                carregarFinanceiro();
+            }
+            break;
+        case 'despesas':
+            if (isDono) {
+                document.getElementById('financeiroContent').innerHTML = renderTabDespesas(isMobile);
+                carregarDespesasTab();
+            } else {
+                showToast('Apenas o dono pode ver despesas', 'warning');
+                carregarFinanceiro();
+            }
+            break;
+        case 'profissionais':
+            document.getElementById('financeiroContent').innerHTML = renderTabComissoes(isMobile);
+            carregarComissoesTab();
+            break;
+        default:
+            break;
+    }
+}
+
+// ============================================
+// RENDER TAB RECEITAS
+// ============================================
+
+function renderTabReceitas(isMobile) {
+    return `
+        <div class="card" style="padding:${isMobile ? '14px' : '20px'};">
+            <div class="card-header" style="flex-direction:${isMobile ? 'column' : 'row'};align-items:${isMobile ? 'stretch' : 'center'};gap:${isMobile ? '10px' : '0'};">
+                <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-arrow-up" style="color:#22c55e;"></i> Receitas
+                </h3>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <input type="month" id="filtroMesReceitas" value="${filtroAnoReceitas}-${filtroMesReceitas}" 
+                           onchange="aplicarFiltroReceitas()" 
+                           style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="carregarReceitas()">
+                        <i class="fas fa-sync"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div id="receitasList">
+                <div style="text-align:center;padding:30px;color:var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+                    <p>Carregando receitas...</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// CARREGAR RECEITAS
+// ============================================
+
+async function carregarReceitas() {
+    const token = localStorage.getItem('token');
+    const mes = document.getElementById('filtroMesReceitas')?.value || `${filtroAnoReceitas}-${filtroMesReceitas}`;
+    if (mes) {
+        const [ano, mesNum] = mes.split('-');
+        filtroAnoReceitas = ano;
+        filtroMesReceitas = mesNum;
+    }
+
+    try {
+        const res = await fetch(`/api/financeiro/receitas?mes=${filtroMesReceitas}&ano=${filtroAnoReceitas}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            receitasData = result.data;
+            renderizarReceitas(receitasData);
+        } else {
+            document.getElementById('receitasList').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Erro ao carregar receitas</h4>
+                    <p>${result.message || 'Tente novamente'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        document.getElementById('receitasList').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>Erro ao carregar receitas</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function aplicarFiltroReceitas() {
+    carregarReceitas();
+}
+
+function renderizarReceitas(receitas) {
+    const isMobile = window.innerWidth < 768;
+    const lista = receitas?.receitas || [];
+    const total = toNumber(receitas?.total);
+
+    if (lista.length === 0) {
+        document.getElementById('receitasList').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-coins"></i>
+                <h4>Nenhuma receita neste período</h4>
+                <p>Conclua serviços para gerar receitas</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div style="
+            background:var(--bg-hover);
+            padding:${isMobile ? '10px' : '14px'};
+            border-radius:10px;
+            margin-bottom:14px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:8px;
+        ">
+            <span style="font-weight:600;font-size:${isMobile ? '14px' : '16px'};">
+                Total: <span style="color:#22c55e;">R$ ${total.toFixed(2)}</span>
+            </span>
+            <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-muted);">
+                ${lista.length} serviços
+            </span>
+        </div>
+    `;
+
+    if (isMobile) {
+        html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
+        for (let item of lista) {
+            const valor = toNumber(item.valor);
+            const comissao = toNumber(item.comissao);
+            const temProfissional = item.profissional_id ? true : false;
+            html += `
+                <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                        <div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${escapeHtml(item.cliente_nome || 'Cliente')}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">✂️ ${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</div>
+                        </div>
+                        <span style="font-size:16px;font-weight:700;color:#22c55e;">R$ ${valor.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border-color);padding-top:8px;margin-top:8px;">
+                        <span>📅 ${formatarDataBr(item.data)}</span>
+                        <span>👨‍💼 ${temProfissional ? escapeHtml(item.profissional_nome || 'Profissional') : 'Sem profissional'}</span>
+                        ${temProfissional ? `<span>💰 Comissão: R$ ${comissao.toFixed(2)}</span>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        html += `</div>`;
+    } else {
+        html += `
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>📅 Data</th>
+                            <th>👤 Cliente</th>
+                            <th>✂️ Serviço</th>
+                            <th>💰 Valor</th>
+                            <th>👨‍💼 Profissional</th>
+                            <th>💰 Comissão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${lista.map(item => {
+            const temProf = item.profissional_id ? true : false;
+            return `
+                                <tr>
+                                    <td>${formatarDataBr(item.data)}</td>
+                                    <td><strong>${escapeHtml(item.cliente_nome || 'Cliente')}</strong></td>
+                                    <td>${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
+                                    <td><span style="color:#22c55e;font-weight:700;">R$ ${toNumber(item.valor).toFixed(2)}</span></td>
+                                    <td class="${!temProf ? 'text-muted' : ''}">${temProf ? escapeHtml(item.profissional_nome || 'Profissional') : 'Sem profissional'}</td>
+                                    <td>${temProf ? `R$ ${toNumber(item.comissao).toFixed(2)}` : 'R$ 0,00'}</td>
+                                </tr>
+                            `;
+        }).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    document.getElementById('receitasList').innerHTML = html;
+}
+
+// ============================================
+// RENDER TAB DESPESAS
+// ============================================
+
+function renderTabDespesas(isMobile) {
+    const token = localStorage.getItem('token');
+
+    // Buscar categorias para o filtro
+    fetch('/api/despesas/categorias', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                const select = document.getElementById('filtroCategoriaDespesa');
+                if (select) {
+                    select.innerHTML = `
+                    <option value="">Todas Categorias</option>
+                    ${result.data.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
+                `;
+                }
+            }
+        })
+        .catch(console.error);
+
+    return `
+        <div class="card" style="padding:${isMobile ? '14px' : '20px'};">
+            <div class="card-header" style="flex-direction:${isMobile ? 'column' : 'row'};align-items:${isMobile ? 'stretch' : 'center'};gap:${isMobile ? '10px' : '0'};">
+                <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-arrow-down" style="color:#ef4444;"></i> Despesas
+                </h3>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="abrirModalDespesa()">
+                        <i class="fas fa-plus"></i> Nova Despesa
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Filtros -->
+            <div style="padding:${isMobile ? '8px' : '12px'};display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-color);">
+                <select id="filtroCategoriaDespesa" onchange="aplicarFiltrosDespesasTab()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <option value="">Todas Categorias</option>
+                </select>
+                
+                <select id="filtroPagoDespesa" onchange="aplicarFiltrosDespesasTab()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <option value="">Todos</option>
+                    <option value="true">✅ Pagas</option>
+                    <option value="false">⏳ Pendentes</option>
+                </select>
+                
+                <input type="month" id="filtroMesDespesaTab" value="${filtroAnoReceitas || ''}-${filtroMesReceitas || ''}" 
+                       onchange="aplicarFiltrosDespesasTab()" 
+                       style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+            </div>
+            
+            <div id="despesasList">
+                <div style="text-align:center;padding:30px;color:var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+                    <p>Carregando despesas...</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// CARREGAR DESPESAS TAB
+// ============================================
+
+async function carregarDespesasTab() {
+    const token = localStorage.getItem('token');
+    const mesSelect = document.getElementById('filtroMesDespesaTab');
+    let mes = mesSelect?.value || `${filtroAnoReceitas || ''}-${filtroMesReceitas || ''}`;
+
+    if (mes) {
+        const [ano, mesNum] = mes.split('-');
+        filtroAnoReceitas = ano;
+        filtroMesReceitas = mesNum;
+    }
+
+    const categoria = document.getElementById('filtroCategoriaDespesa')?.value || '';
+    const pago = document.getElementById('filtroPagoDespesa')?.value || '';
+
+    let url = `/api/despesas?mes=${filtroMesReceitas}&ano=${filtroAnoReceitas}`;
+    if (categoria) url += `&categoria=${encodeURIComponent(categoria)}`;
+    if (pago) url += `&pago=${pago}`;
+
+    try {
+        const res = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            despesasData = result.data;
+            renderizarDespesasTab(despesasData);
+        } else {
+            document.getElementById('despesasList').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Erro ao carregar despesas</h4>
+                    <p>${result.message || 'Tente novamente'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        document.getElementById('despesasList').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>Erro ao carregar despesas</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function aplicarFiltrosDespesasTab() {
+    carregarDespesasTab();
+}
+
+function renderizarDespesasTab(despesas) {
+    const isMobile = window.innerWidth < 768;
+    const lista = despesas?.despesas || [];
+    const totais = despesas?.totais || {};
+
+    if (lista.length === 0) {
+        document.getElementById('despesasList').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-receipt"></i>
+                <h4>Nenhuma despesa cadastrada</h4>
+                <p>Clique em "Nova Despesa" para começar</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div style="
+            background:var(--bg-hover);
+            padding:${isMobile ? '10px' : '14px'};
+            border-radius:10px;
+            margin-bottom:14px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            flex-wrap:wrap;
+            gap:8px;
+        ">
+            <span style="font-weight:600;font-size:${isMobile ? '14px' : '16px'};">
+                Total: <span style="color:#ef4444;">R$ ${(toNumber(totais.total) || 0).toFixed(2)}</span>
+            </span>
+            <div style="display:flex;gap:12px;font-size:${isMobile ? '12px' : '14px'};">
+                <span>✅ Pagas: R$ ${(toNumber(totais.pago) || 0).toFixed(2)}</span>
+                <span style="color:#f59e0b;">⏳ Pendentes: R$ ${(toNumber(totais.pendente) || 0).toFixed(2)}</span>
+            </div>
+        </div>
+    `;
+
+    if (isMobile) {
+        html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
+        for (let d of lista) {
+            const valor = toNumber(d.valor);
+            const statusClass = d.pago ? 'pago' : 'pendente';
+            const statusLabel = d.pago ? '✅ Paga' : '⏳ Pendente';
+            html += `
+                <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+                        <div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${escapeHtml(d.descricao)}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">📂 ${escapeHtml(d.categoria)}</div>
+                        </div>
+                        <span style="font-size:16px;font-weight:700;color:#ef4444;">R$ ${valor.toFixed(2)}</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border-color);padding-top:8px;margin-top:8px;">
+                        <span>📅 ${formatarDataBr(d.data)}</span>
+                        <span>${statusLabel}</span>
+                    </div>
+                    <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-color);flex-wrap:wrap;">
+                        <button onclick="editarDespesa(${d.id})" style="padding:6px 14px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-hover);color:var(--text-primary);font-size:12px;cursor:pointer;flex:1;">
+                            <i class="fas fa-pen"></i> Editar
+                        </button>
+                        <button onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" style="padding:6px 14px;border-radius:8px;border:1px solid ${d.pago ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'};background:var(--bg-hover);color:${d.pago ? '#ef4444' : '#22c55e'};font-size:12px;cursor:pointer;flex:1;">
+                            <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i> ${d.pago ? 'Desfazer' : 'Pagar'}
+                        </button>
+                        <button onclick="excluirDespesa(${d.id})" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:12px;cursor:pointer;flex:1;">
+                            <i class="fas fa-trash"></i> Excluir
                         </button>
                     </div>
                 </div>
-                
-                <!-- Filtros -->
-                <div style="padding:12px;display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-color);">
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <select id="filtroCategoriaDespesa" onchange="aplicarFiltrosDespesas()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
-                            <option value="">Todas Categorias</option>
-                            ${categorias.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
-                        </select>
-                        
-                        <select id="filtroPagoDespesa" onchange="aplicarFiltrosDespesas()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
-                            <option value="">Todos</option>
-                            <option value="true">✅ Pagas</option>
-                            <option value="false">⏳ Pendentes</option>
-                        </select>
-                        
-                        <input type="month" id="filtroMesDespesa" value="${filtroAnoAtual}-${filtroMesAtual}" 
-                               onchange="aplicarFiltrosDespesas()" 
-                               style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
-                    </div>
-                </div>
+            `;
+        }
+        html += `</div>`;
+    } else {
+        html += `
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>📅 Data</th>
+                            <th>📝 Descrição</th>
+                            <th>📂 Categoria</th>
+                            <th>💰 Valor</th>
+                            <th>📊 Status</th>
+                            <th>⚡ Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${lista.map(d => `
+                            <tr>
+                                <td>${formatarDataBr(d.data)}</td>
+                                <td>${escapeHtml(d.descricao)}</td>
+                                <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
+                                <td><span style="color:#ef4444;font-weight:700;">R$ ${toNumber(d.valor).toFixed(2)}</span></td>
+                                <td>
+                                    ${d.pago
+                ? '<span class="badge badge-success">✅ Paga</span>'
+                : '<span class="badge badge-warning">⏳ Pendente</span>'
+            }
+                                </td>
+                                <td>
+                                    <div style="display:flex;gap:4px;">
+                                        <button class="btn btn-outline btn-sm" onclick="editarDespesa(${d.id})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline btn-sm" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})">
+                                            <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i>
+                                        </button>
+                                        <button class="btn btn-outline btn-sm" onclick="excluirDespesa(${d.id})" style="color:#ef4444;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
         `;
+    }
 
-        // Tabela de Despesas
-        const despesasLista = despesas?.despesas || [];
+    document.getElementById('despesasList').innerHTML = html;
+}
 
-        if (despesasLista.length === 0) {
-            html += `
+// ============================================
+// RENDER TAB COMISSÕES
+// ============================================
+
+function renderTabComissoes(isMobile) {
+    return `
+        <div class="card" style="padding:${isMobile ? '14px' : '20px'};">
+            <div class="card-header">
+                <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-users" style="color:var(--primary);"></i> Comissões por Profissional
+                </h3>
+                <span class="badge badge-info">Detalhamento</span>
+            </div>
+            <div id="comissoesList">
+                <div style="text-align:center;padding:30px;color:var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+                    <p>Carregando comissões...</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function carregarComissoesTab() {
+    const token = localStorage.getItem('token');
+    const usuario = JSON.parse(localStorage.getItem('usuario'));
+    const isDono = usuario?.role === 'dono';
+
+    try {
+        const res = await fetch('/api/financeiro', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+
+        if (result.success && result.data) {
+            const data = result.data;
+            renderizarComissoesTab(data, isDono);
+        } else {
+            document.getElementById('comissoesList').innerHTML = `
                 <div class="empty-state">
-                    <i class="fas fa-receipt"></i>
-                    <h4>Nenhuma despesa cadastrada</h4>
-                    <p>Clique em "Nova Despesa" para começar a controlar seus custos</p>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Erro ao carregar comissões</h4>
+                    <p>${result.message || 'Tente novamente'}</p>
                 </div>
             `;
-        } else if (isMobile) {
-            // ============================================
-            // VERSÃO MOBILE - CARDS DE DESPESAS (INLINE)
-            // ============================================
-            html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        document.getElementById('comissoesList').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>Erro ao carregar comissões</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
 
-            for (let d of despesasLista) {
-                const statusClass = d.pago ? 'pago' : 'pendente';
-                const statusLabel = d.pago ? '✅ Paga' : '⏳ Pendente';
-                const formaPagamento = d.forma_pagamento || 'Não informado';
-                const valorDespesa = parseFloat(d.valor) || 0;
+function renderizarComissoesTab(data, isDono) {
+    const isMobile = window.innerWidth < 768;
+    const comissoes = data.comissoes || [];
+    const comissoesPorProf = data.comissoes_por_profissional || [];
+
+    // Ordenar por data (mais recente primeiro)
+    comissoes.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+    let html = '';
+
+    // ============================================
+    // COMISSÕES POR PROFISSIONAL - VERSÃO MELHORADA MOBILE
+    // ============================================
+    if (isDono && comissoesPorProf.length > 0) {
+        // Título da seção
+        html += `
+            <div style="margin-bottom:16px;">
+                <h4 style="
+                    font-size:14px;
+                    font-weight:700;
+                    color:var(--text-primary);
+                    margin:0 0 10px 0;
+                    display:flex;
+                    align-items:center;
+                    gap:8px;
+                    padding-bottom:8px;
+                    border-bottom:2px solid var(--border-color);
+                ">
+                    <i class="fas fa-crown" style="color:#f59e0b;font-size:16px;"></i>
+                    Profissionais
+                    <span style="
+                        font-size:11px;
+                        font-weight:400;
+                        color:var(--text-muted);
+                        background:var(--bg-hover);
+                        padding:2px 10px;
+                        border-radius:12px;
+                    ">
+                        ${comissoesPorProf.length}
+                    </span>
+                </h4>
+            </div>
+        `;
+
+        if (isMobile) {
+            // VERSÃO MOBILE - CARDS MAIS DETALHADOS
+            html += `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">`;
+
+            for (let prof of comissoesPorProf) {
+                const totalComissao = toNumber(prof.total_comissao);
+                const totalServicos = prof.total_servicos || 0;
+                const mediaPorServico = totalServicos > 0 ? totalComissao / totalServicos : 0;
+                const inicial = prof.nome ? prof.nome.charAt(0).toUpperCase() : '?';
+                const cores = ['#667eea', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
+                const corIndex = comissoesPorProf.indexOf(prof) % cores.length;
+                const corProfissional = cores[corIndex];
 
                 html += `
-                    <div style="background:var(--bg-card);border-radius:16px;padding:14px 16px;border:1px solid var(--border-color);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                        <!-- Header -->
-                        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border-color);gap:8px;">
-                            <div style="flex:1;min-width:0;">
-                                <div style="font-size:15px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(d.descricao)}</div>
-                                <div style="font-size:12px;color:var(--text-muted);">📂 ${escapeHtml(d.categoria)}</div>
-                                <div style="font-size:11px;color:var(--text-muted);">📅 ${formatarDataBr(d.data)}</div>
+                    <div style="
+                        background:var(--bg-card);
+                        border-radius:14px;
+                        padding:16px;
+                        border:1px solid var(--border-color);
+                        box-shadow:0 2px 8px rgba(0,0,0,0.04);
+                        transition:all 0.2s ease;
+                    ">
+                        <!-- Header do Profissional -->
+                        <div style="
+                            display:flex;
+                            align-items:center;
+                            gap:14px;
+                            margin-bottom:12px;
+                            padding-bottom:12px;
+                            border-bottom:1px solid var(--border-color);
+                        ">
+                            <div style="
+                                width:48px;
+                                height:48px;
+                                border-radius:50%;
+                                background:${corProfissional};
+                                display:flex;
+                                align-items:center;
+                                justify-content:center;
+                                color:white;
+                                font-weight:700;
+                                font-size:20px;
+                                flex-shrink:0;
+                                box-shadow:0 2px 12px ${corProfissional}40;
+                            ">
+                                ${inicial}
                             </div>
-                            <span style="display:inline-flex;padding:4px 12px;border-radius:9999px;font-size:11px;font-weight:600;background:${d.pago ? 'rgba(34,197,94,0.15)' : 'rgba(245,158,11,0.15)'};color:${d.pago ? '#22c55e' : '#f59e0b'};white-space:nowrap;flex-shrink:0;">
-                                ${statusLabel}
-                            </span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="
+                                    font-size:16px;
+                                    font-weight:700;
+                                    color:var(--text-primary);
+                                    white-space:nowrap;
+                                    overflow:hidden;
+                                    text-overflow:ellipsis;
+                                ">
+                                    ${escapeHtml(prof.nome)}
+                                </div>
+                                <div style="
+                                    display:flex;
+                                    align-items:center;
+                                    gap:10px;
+                                    font-size:12px;
+                                    color:var(--text-muted);
+                                    flex-wrap:wrap;
+                                ">
+                                    <span>📋 ${totalServicos} serviço(s)</span>
+                                    <span>•</span>
+                                    <span>📊 ${mediaPorServico > 0 ? `R$ ${mediaPorServico.toFixed(2)}/serv` : '-'}</span>
+                                </div>
+                            </div>
+                            <div style="
+                                font-size:18px;
+                                font-weight:800;
+                                color:var(--primary);
+                                background:rgba(102,126,234,0.08);
+                                padding:6px 16px;
+                                border-radius:12px;
+                                flex-shrink:0;
+                            ">
+                                R$ ${totalComissao.toFixed(2)}
+                            </div>
                         </div>
                         
-                        <!-- Valor -->
-                        <div style="font-size:20px;font-weight:700;color:#ef4444;text-align:center;padding:8px;background:rgba(239,68,68,0.06);border-radius:10px;margin:8px 0;">
-                            R$ ${valorDespesa.toFixed(2)}
-                        </div>
-                        
-                        <!-- Pagamento -->
-                        <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-top:4px;">
-                            <span>💳 ${escapeHtml(formaPagamento)}</span>
-                            ${d.data_vencimento ? `| 📅 Venc: ${formatarDataBr(d.data_vencimento)}` : ''}
-                        </div>
-                        
-                        <!-- Actions -->
-                        <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:10px;margin-top:10px;border-top:1px solid var(--border-color);">
-                            <button onclick="editarDespesa(${d.id})" style="padding:6px 14px;border-radius:10px;border:1px solid rgba(102,126,234,0.3);background:var(--bg-hover);color:var(--primary);font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;min-width:60px;">
-                                <i class="fas fa-pen"></i> Editar
-                            </button>
-                            <button onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" style="padding:6px 14px;border-radius:10px;border:1px solid ${d.pago ? 'rgba(239,68,68,0.3)' : 'rgba(34,197,94,0.3)'};background:var(--bg-hover);color:${d.pago ? '#ef4444' : '#22c55e'};font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;min-width:60px;">
-                                <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i> ${d.pago ? 'Desfazer' : 'Pagar'}
-                            </button>
-                            <button onclick="excluirDespesa(${d.id})" style="padding:6px 14px;border-radius:10px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;min-width:60px;">
-                                <i class="fas fa-trash"></i> Excluir
-                            </button>
+                        <!-- Barra de progresso -->
+                        <div style="margin-top:4px;">
+                            <div style="
+                                display:flex;
+                                justify-content:space-between;
+                                font-size:10px;
+                                color:var(--text-muted);
+                                margin-bottom:4px;
+                            ">
+                                <span>Serviços realizados</span>
+                                <span>${totalServicos} de ${comissoes.length}</span>
+                            </div>
+                            <div style="
+                                background:var(--bg-hover);
+                                border-radius:8px;
+                                height:6px;
+                                overflow:hidden;
+                            ">
+                                <div style="
+                                    width:${comissoes.length > 0 ? (totalServicos / comissoes.length * 100) : 0}%;
+                                    height:100%;
+                                    background:${corProfissional};
+                                    border-radius:8px;
+                                    transition:width 0.5s ease;
+                                "></div>
+                            </div>
                         </div>
                     </div>
                 `;
             }
-
             html += `</div>`;
         } else {
-            // ============================================
-            // VERSÃO DESKTOP - TABELA
-            // ============================================
+            // VERSÃO DESKTOP - Grid
             html += `
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>📅 Data</th>
-                                <th>📝 Descrição</th>
-                                <th>📂 Categoria</th>
-                                <th>💰 Valor</th>
-                                <th>📊 Status</th>
-                                <th>⚡ Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${despesasLista.map(d => `
-                                <tr>
-                                    <td>${formatarDataBr(d.data)}</td>
-                                    <td>${escapeHtml(d.descricao)}</td>
-                                    <td><span class="badge badge-info">${escapeHtml(d.categoria)}</span></td>
-                                    <td><span class="valor">R$ ${(parseFloat(d.valor) || 0).toFixed(2)}</span></td>
-                                    <td>
-                                        ${d.pago
-                    ? '<span class="badge badge-success">✅ Paga</span>'
-                    : `<span class="badge badge-warning">⏳ Pendente</span>`
-                }
-                                    </td>
-                                    <td>
-                                        <div style="display:flex;gap:4px;">
-                                            <button class="btn btn-outline btn-sm" onclick="editarDespesa(${d.id})" title="Editar">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-outline btn-sm" onclick="togglePagoDespesa(${d.id}, ${d.pago ? 0 : 1})" title="${d.pago ? 'Marcar como pendente' : 'Marcar como paga'}">
-                                                <i class="fas ${d.pago ? 'fa-undo' : 'fa-check'}"></i>
-                                            </button>
-                                            <button class="btn btn-outline btn-sm" onclick="excluirDespesa(${d.id})" title="Excluir" style="color:#dc2626;">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px;margin-bottom:20px;">
+                    ${comissoesPorProf.map(prof => {
+                const totalComissao = toNumber(prof.total_comissao);
+                return `
+                            <div style="
+                                background:var(--bg-card);
+                                border-radius:12px;
+                                padding:16px;
+                                border:1px solid var(--border-color);
+                                text-align:center;
+                                box-shadow:0 2px 8px rgba(0,0,0,0.04);
+                            ">
+                                <div style="
+                                    width:48px;
+                                    height:48px;
+                                    border-radius:50%;
+                                    background:var(--gradient-primary);
+                                    display:inline-flex;
+                                    align-items:center;
+                                    justify-content:center;
+                                    color:white;
+                                    font-weight:700;
+                                    font-size:18px;
+                                    margin-bottom:8px;
+                                ">
+                                    ${prof.nome ? prof.nome.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <div style="font-size:16px;font-weight:600;color:var(--text-primary);">${escapeHtml(prof.nome)}</div>
+                                <div style="font-size:13px;color:var(--text-muted);">${prof.total_servicos} serviços</div>
+                                <div style="font-size:20px;font-weight:700;color:var(--primary);margin-top:6px;">R$ ${totalComissao.toFixed(2)}</div>
+                            </div>
+                        `;
+            }).join('')}
                 </div>
             `;
         }
-
-        html += `</div>`;
-
-    } else {
-        // ============================================
-        // PROFISSIONAL - CARDS SIMPLES
-        // ============================================
-        html += `
-            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:16px;margin-bottom:20px;">
-                <div style="background:var(--gradient-primary);border-radius:16px;padding:20px;color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
-                    <div style="font-size:24px;margin-bottom:4px;">💰</div>
-                    <div style="font-size:28px;font-weight:800;">R$ ${(parseFloat(totais.total_comissoes) || 0).toFixed(2)}</div>
-                    <div style="font-size:14px;opacity:0.8;">Total em Comissões</div>
-                    <div style="font-size:12px;opacity:0.6;">Todos os serviços concluídos</div>
-                </div>
-                
-                <div style="background:var(--bg-card);border-radius:16px;padding:20px;border:1px solid var(--border-color);border-left:4px solid #22c55e;">
-                    <div style="font-size:24px;margin-bottom:4px;">✅</div>
-                    <div style="font-size:28px;font-weight:800;color:#22c55e;">${totais.total_servicos || 0}</div>
-                    <div style="font-size:14px;color:var(--text-muted);">Serviços Concluídos</div>
-                    <div style="font-size:12px;color:var(--text-muted);">Total realizados por você</div>
-                </div>
-            </div>
-        `;
     }
 
     // ============================================
-    // HISTÓRICO DE SERVIÇOS (comum para todos) - VERSÃO MELHORADA
+    // HISTÓRICO DE SERVIÇOS
     // ============================================
-    const comissoes = financeiro?.comissoes || [];
-
-    // Ordenar por data (mais recente primeiro)
-    comissoes.sort((a, b) => {
-        return new Date(b.data) - new Date(a.data);
-    });
-
-    html += `
-    <div class="card" style="margin-top:20px;">
-        <div class="card-header">
-            <h3><i class="fas fa-history"></i> Histórico de Serviços Concluídos</h3>
-            <span class="badge badge-info">${comissoes.length} registros</span>
-        </div>
-`;
-
     if (comissoes.length === 0) {
         html += `
-        <div class="empty-state">
-            <i class="fas fa-check-circle"></i>
-            <h4>Nenhum serviço concluído ainda</h4>
-            <p>Os serviços aparecerão aqui quando forem concluídos</p>
-        </div>
-    `;
+            <div class="empty-state">
+                <i class="fas fa-check-circle"></i>
+                <h4>Nenhum serviço concluído ainda</h4>
+                <p>Os serviços aparecerão aqui quando forem concluídos</p>
+            </div>
+        `;
     } else if (isMobile) {
-        // ============================================
-        // VERSÃO MOBILE - HISTÓRICO CARDS (MELHORADO)
-        // ============================================
-        html += `<div style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">`;
-
+        html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
         for (let item of comissoes) {
             const temProfissional = item.profissional_id ? true : false;
-            const profissionalDisplay = item.profissional_nome || 'Sem profissional';
-            const valor = parseFloat(item.valor) || 0;
-            const comissao = parseFloat(item.comissao) || 0;
-            const isComissao = temProfissional && comissao > 0;
+            const valor = toNumber(item.valor);
+            const comissao = toNumber(item.comissao);
             const clienteNome = item.cliente_nome || 'Cliente';
             const servicoNome = item.servico_nome || item.servico || 'Serviço';
-            const dataFormatada = formatarDataBr(item.data);
             const inicial = clienteNome.charAt(0).toUpperCase();
 
             html += `
-            <div style="
-                background: var(--bg-card);
-                border-radius: 16px;
-                padding: 16px;
-                border: 1px solid var(--border-color);
-                box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-                transition: all 0.3s ease;
-            ">
-                <!-- Header com Avatar -->
-                <div style="
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                    margin-bottom: 12px;
-                    padding-bottom: 12px;
-                    border-bottom: 1px solid var(--border-color);
-                ">
-                    <div style="
-                        width: 44px;
-                        height: 44px;
-                        border-radius: 50%;
-                        background: var(--gradient-primary);
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-weight: 700;
-                        font-size: 18px;
-                        flex-shrink: 0;
-                        box-shadow: 0 2px 8px rgba(102,126,234,0.3);
-                    ">${inicial}</div>
-                    <div style="flex:1;min-width:0;">
-                        <div style="
-                            font-size: 16px;
-                            font-weight: 600;
-                            color: var(--text-primary);
-                            white-space: nowrap;
-                            overflow: hidden;
-                            text-overflow: ellipsis;
-                        ">${escapeHtml(clienteNome)}</div>
-                        <div style="
-                            font-size: 13px;
-                            color: var(--text-muted);
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                            flex-wrap: wrap;
-                        ">
-                            <span>✂️ ${escapeHtml(servicoNome)}</span>
-                            <span style="
-                                font-size: 10px;
-                                background: var(--bg-hover);
-                                padding: 2px 10px;
-                                border-radius: 12px;
-                                color: var(--text-muted);
-                            ">${dataFormatada}</span>
+                <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
+                    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border-color);">
+                        <div style="width:40px;height:40px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">${inicial}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(clienteNome)}</div>
+                            <div style="font-size:12px;color:var(--text-muted);">✂️ ${escapeHtml(servicoNome)}</div>
                         </div>
+                        <div style="font-size:14px;font-weight:700;color:var(--primary);">R$ ${valor.toFixed(2)}</div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);">
+                        <span>📅 ${formatarDataBr(item.data)}</span>
+                        <span>👨‍💼 ${temProfissional ? escapeHtml(item.profissional_nome || 'Profissional') : 'Sem profissional'}</span>
+                        ${temProfissional ? `<span style="color:var(--primary);font-weight:600;">💰 R$ ${comissao.toFixed(2)}</span>` : ''}
                     </div>
                 </div>
-
-                <!-- Body com Grid -->
-                <div style="
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 8px 16px;
-                ">
-                    <!-- Valor -->
-                    <div style="
-                        display: flex;
-                        flex-direction: column;
-                        gap: 2px;
-                        padding: 6px 0;
-                        background: var(--bg-hover);
-                        border-radius: 10px;
-                        padding: 8px 12px;
-                        text-align: center;
-                    ">
-                        <span style="
-                            font-size: 10px;
-                            color: var(--text-muted);
-                            text-transform: uppercase;
-                            font-weight: 600;
-                            letter-spacing: 0.5px;
-                        ">💰 Valor</span>
-                        <span style="
-                            font-size: 16px;
-                            font-weight: 700;
-                            color: var(--primary);
-                        ">R$ ${valor.toFixed(2)}</span>
-                    </div>
-
-                    <!-- Profissional -->
-                    <div style="
-                        display: flex;
-                        flex-direction: column;
-                        gap: 2px;
-                        padding: 6px 0;
-                        background: var(--bg-hover);
-                        border-radius: 10px;
-                        padding: 8px 12px;
-                        text-align: center;
-                    ">
-                        <span style="
-                            font-size: 10px;
-                            color: var(--text-muted);
-                            text-transform: uppercase;
-                            font-weight: 600;
-                            letter-spacing: 0.5px;
-                        ">👨‍💼 Profissional</span>
-                        <span style="
-                            font-size: 14px;
-                            font-weight: 500;
-                            color: ${temProfissional ? 'var(--text-primary)' : 'var(--text-muted)'};
-                        ">${escapeHtml(profissionalDisplay)}</span>
-                    </div>
-
-                    <!-- Comissão (ocupa 2 colunas se tiver comissão) -->
-                    <div style="
-                        display: flex;
-                        flex-direction: column;
-                        gap: 2px;
-                        padding: 6px 0;
-                        background: ${isComissao ? 'rgba(102,126,234,0.08)' : 'var(--bg-hover)'};
-                        border-radius: 10px;
-                        padding: 8px 12px;
-                        text-align: center;
-                        grid-column: ${isComissao ? 'span 2' : 'span 2'};
-                        border: ${isComissao ? '1px solid rgba(102,126,234,0.15)' : 'none'};
-                    ">
-                        <span style="
-                            font-size: 10px;
-                            color: var(--text-muted);
-                            text-transform: uppercase;
-                            font-weight: 600;
-                            letter-spacing: 0.5px;
-                        ">💰 Comissão</span>
-                        <span style="
-                            font-size: ${isComissao ? '18px' : '14px'};
-                            font-weight: ${isComissao ? '700' : '500'};
-                            color: ${isComissao ? 'var(--primary)' : 'var(--text-muted)'};
-                        ">
-                            ${isComissao ? `R$ ${comissao.toFixed(2)}` : 'R$ 0,00'}
-                            ${isComissao ? `<span style="font-size:11px;font-weight:400;color:var(--text-muted);">(${((comissao / valor) * 100).toFixed(0)}%)</span>` : ''}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Badge de status (se tiver comissão) -->
-                ${isComissao ? `
-                    <div style="
-                        margin-top: 10px;
-                        padding-top: 10px;
-                        border-top: 1px solid var(--border-color);
-                        display: flex;
-                        justify-content: flex-end;
-                    ">
-                        <span style="
-                            font-size: 10px;
-                            color: var(--text-muted);
-                            background: rgba(102,126,234,0.08);
-                            padding: 2px 12px;
-                            border-radius: 12px;
-                        ">
-                            <i class="fas fa-check-circle" style="color:var(--success);"></i>
-                            Comissão calculada
-                        </span>
-                    </div>
-                ` : `
-                    <div style="
-                        margin-top: 10px;
-                        padding-top: 10px;
-                        border-top: 1px solid var(--border-color);
-                        display: flex;
-                        justify-content: flex-end;
-                    ">
-                        <span style="
-                            font-size: 10px;
-                            color: var(--text-muted);
-                            background: var(--bg-hover);
-                            padding: 2px 12px;
-                            border-radius: 12px;
-                        ">
-                            <i class="fas fa-info-circle"></i>
-                            Sem profissional vinculado
-                        </span>
-                    </div>
-                `}
-            </div>
-        `;
+            `;
         }
-
         html += `</div>`;
     } else {
-        // ============================================
-        // VERSÃO DESKTOP - TABELA (mantida igual)
-        // ============================================
         html += `
-        <div class="table-responsive">
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>📅 Data</th>
-                        <th>👤 Cliente</th>
-                        <th>✂️ Serviço</th>
-                        <th>💰 Valor</th>
-                        <th>👨‍💼 Profissional</th>
-                        <th>💰 Comissão</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${comissoes.map(item => {
-            const temProfissional = item.profissional_id ? true : false;
-            const comissaoDisplay = temProfissional ?
-                `<span class="valor" style="color:var(--primary);font-weight:700;">R$ ${(parseFloat(item.comissao) || 0).toFixed(2)}</span>` :
-                '<span style="color: var(--text-muted);">R$ 0,00</span>';
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>📅 Data</th>
+                            <th>👤 Cliente</th>
+                            <th>✂️ Serviço</th>
+                            <th>💰 Valor</th>
+                            <th>👨‍💼 Profissional</th>
+                            <th>💰 Comissão</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${comissoes.map(item => {
+            const temProf = item.profissional_id ? true : false;
             return `
-                            <tr>
-                                <td>${formatarDataBr(item.data)}</td>
-                                <td><strong>${escapeHtml(item.cliente_nome || 'N/A')}</strong></td>
-                                <td>${escapeHtml(item.servico_nome || item.servico || 'N/A')}</td>
-                                <td><span class="valor">R$ ${(parseFloat(item.valor) || 0).toFixed(2)}</span></td>
-                                <td class="${!temProfissional ? 'text-muted' : ''}">${escapeHtml(item.profissional_nome || 'Sem profissional')}</td>
-                                <td>${comissaoDisplay}</td>
-                            </tr>
-                        `;
+                                <tr>
+                                    <td>${formatarDataBr(item.data)}</td>
+                                    <td><strong>${escapeHtml(item.cliente_nome || 'Cliente')}</strong></td>
+                                    <td>${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
+                                    <td><span class="valor">R$ ${toNumber(item.valor).toFixed(2)}</span></td>
+                                    <td class="${!temProf ? 'text-muted' : ''}">${temProf ? escapeHtml(item.profissional_nome || 'Profissional') : 'Sem profissional'}</td>
+                                    <td>${temProf ? `<span style="color:var(--primary);font-weight:700;">R$ ${toNumber(item.comissao).toFixed(2)}</span>` : 'R$ 0,00'}</td>
+                                </tr>
+                            `;
         }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+                    </tbody>
+                </table>
+            </div>
+        `;
     }
 
-    html += `</div>`;
-
-    document.getElementById('content').innerHTML = html;
-    console.log("✅ Financeiro renderizado com sucesso!");
+    document.getElementById('comissoesList').innerHTML = html;
 }
 
 // ============================================
-// FUNÇÕES DE FILTRO
-// ============================================
-
-function aplicarFiltrosDespesas() {
-    const mes = document.getElementById('filtroMesDespesa').value;
-    if (mes) {
-        const [ano, mesNum] = mes.split('-');
-        filtroAnoAtual = ano;
-        filtroMesAtual = mesNum;
-    }
-
-    const categoria = document.getElementById('filtroCategoriaDespesa').value;
-    filtroCategoriaAtual = categoria || null;
-
-    const pago = document.getElementById('filtroPagoDespesa').value;
-    filtroPagoAtual = pago || null;
-
-    carregarFinanceiro();
-}
-
-// ============================================
-// MODAL DE DESPESA
+// FUNÇÕES DE DESPESAS (MODAL E CRUD)
 // ============================================
 
 function abrirModalDespesa(despesa = null) {
@@ -785,7 +1324,6 @@ function abrirModalDespesa(despesa = null) {
     despesaEditandoId = despesa?.id || null;
 
     const hoje = new Date().toISOString().split('T')[0];
-
     const bgDark = '#1a1a2e';
     const textLight = '#e0e0e0';
     const borderDark = '#2d2d44';
@@ -906,10 +1444,6 @@ function abrirModalDespesa(despesa = null) {
     }, 100);
 }
 
-// ============================================
-// SALVAR DESPESA
-// ============================================
-
 async function salvarDespesa(event) {
     event.preventDefault();
 
@@ -970,10 +1504,6 @@ async function salvarDespesa(event) {
 
     hideLoading();
 }
-
-// ============================================
-// EDIÇÃO E EXCLUSÃO DE DESPESAS
-// ============================================
 
 function editarDespesa(id) {
     const despesa = despesasData?.despesas?.find(d => d.id === id);
@@ -1051,10 +1581,6 @@ async function excluirDespesa(id) {
     hideLoading();
 }
 
-// ============================================
-// FECHAR MODAL
-// ============================================
-
 function fecharModalDespesa() {
     despesaEditandoId = null;
     const modal = document.querySelector('.modal-overlay');
@@ -1123,15 +1649,20 @@ const categoriasDisponiveis = [
 // ============================================
 
 window.carregarFinanceiro = carregarFinanceiro;
+window.switchFinanceiroTab = switchFinanceiroTab;
 window.abrirModalDespesa = abrirModalDespesa;
 window.salvarDespesa = salvarDespesa;
 window.editarDespesa = editarDespesa;
 window.togglePagoDespesa = togglePagoDespesa;
 window.excluirDespesa = excluirDespesa;
 window.fecharModalDespesa = fecharModalDespesa;
-window.aplicarFiltrosDespesas = aplicarFiltrosDespesas;
+window.carregarReceitas = carregarReceitas;
+window.aplicarFiltroReceitas = aplicarFiltroReceitas;
+window.carregarDespesasTab = carregarDespesasTab;
+window.aplicarFiltrosDespesasTab = aplicarFiltrosDespesasTab;
+window.carregarComissoesTab = carregarComissoesTab;
 
-console.log('✅ financeiro.js carregado com MOBILE FIX!');
+console.log('✅ financeiro.js atualizado com TABS estilo configurações e COMPARATIVO MENSAL!');
 
 // ============================================
 // ATUALIZAR AO REDIMENSIONAR
@@ -1142,9 +1673,15 @@ window.addEventListener('resize', function () {
     clearTimeout(resizeTimeoutFinanceiro);
     resizeTimeoutFinanceiro = setTimeout(function () {
         if (document.querySelector('.financeiro-container')) {
-            const usuario = JSON.parse(localStorage.getItem('usuario'));
-            if (financeiroData) {
-                renderizarFinanceiroCompleto(financeiroData, despesasData, categoriasDisponiveis, usuario);
+            // Recarregar a view atual baseado na tab ativa
+            const activeTab = document.querySelector('.config-tab.active');
+            if (activeTab) {
+                const tabs = ['resumo', 'receitas', 'despesas', 'profissionais'];
+                const tabNames = ['Resumo', 'Receitas', 'Despesas', 'Comissões'];
+                const index = Array.from(document.querySelectorAll('.config-tab')).indexOf(activeTab);
+                if (index >= 0 && index < tabs.length) {
+                    switchFinanceiroTab(tabs[index]);
+                }
             }
         }
     }, 300);
