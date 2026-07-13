@@ -1,6 +1,8 @@
-const axios = require('axios');
+// ============================================
+// MERCADO PAGO SERVICE
+// ============================================
 
-// Carregar variáveis de ambiente do .env.local
+// Carregar variáveis de ambiente ANTES de tudo
 require('dotenv').config({ path: '.env.local' });
 
 const axios = require('axios');
@@ -8,18 +10,8 @@ const axios = require('axios');
 class MercadoPagoService {
     constructor() {
         this.token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+        this.url = 'https://api.mercadopago.com';
         console.log('🔑 Token do Mercado Pago:', this.token ? '✅ Configurado' : '❌ NÃO CONFIGURADO');
-        console.log('📌 Token:', this.token ? this.token.substring(0, 20) + '...' : 'N/A');
-        this.url = 'https://api.mercadopago.com';
-    }
-    // ... resto do código
-}
-
-module.exports = new MercadoPagoService();
-class MercadoPagoService {
-    constructor() {
-        this.token = process.env.MERCADOPAGO_ACCESS_TOKEN;
-        this.url = 'https://api.mercadopago.com';
     }
 
     // 🔥 GERAR CHAVE IDEMPOTENTE ÚNICA
@@ -29,7 +21,6 @@ class MercadoPagoService {
 
     // 🔥 EMAIL DE TESTE VÁLIDO DO MERCADO PAGO
     getEmailTeste() {
-        // Usar email genérico válido
         return 'cliente@teste.com';
     }
 
@@ -43,10 +34,8 @@ class MercadoPagoService {
                 };
             }
 
-            // 🔥 CORREÇÃO: Usar email válido do usuário ou email genérico
             if (preferenceData.payer && preferenceData.payer.email) {
                 const email = preferenceData.payer.email;
-                // Se for email fictício, usar email genérico válido
                 if (email.includes('@seeagende.com') || email.includes('@testuser.com')) {
                     preferenceData.payer.email = this.getEmailTeste();
                 }
@@ -84,14 +73,13 @@ class MercadoPagoService {
         }
     }
 
-    // PIX REAL - 🔥 CORRIGIDO
+    // PIX REAL
     async criarPix(empresaId, planoId, planoNome, valor, periodo, emailUsuario) {
         try {
             if (!this.token) {
                 return { success: false, message: 'Token do Mercado Pago não configurado' };
             }
 
-            // 🔥 USAR EMAIL DO USUÁRIO LOGADO OU EMAIL GENÉRICO
             const emailPayer = emailUsuario || this.getEmailTeste();
 
             console.log('💳 Criando PIX:', { empresaId, planoId, valor, email: emailPayer });
@@ -109,7 +97,6 @@ class MercadoPagoService {
             };
 
             const idempotencyKey = this.gerarIdempotencyKey();
-            console.log('🔑 Idempotency Key:', idempotencyKey);
 
             const res = await axios.post(`${this.url}/v1/payments`, payload, {
                 headers: {
@@ -149,7 +136,7 @@ class MercadoPagoService {
         }
     }
 
-    // BOLETO REAL - 🔥 CORRIGIDO
+    // BOLETO REAL
     async criarBoleto(empresaId, planoId, planoNome, valor, cpf, nome, emailUsuario) {
         try {
             if (!this.token) {
@@ -199,7 +186,7 @@ class MercadoPagoService {
         }
     }
 
-    // CARTÃO REAL - 🔥 CORRIGIDO
+    // CARTÃO REAL
     async criarCartao(empresaId, planoId, planoNome, valor, tokenCartao, emailUsuario) {
         try {
             if (!this.token) {
