@@ -1,5 +1,21 @@
 const axios = require('axios');
 
+// Carregar variáveis de ambiente do .env.local
+require('dotenv').config({ path: '.env.local' });
+
+const axios = require('axios');
+
+class MercadoPagoService {
+    constructor() {
+        this.token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+        console.log('🔑 Token do Mercado Pago:', this.token ? '✅ Configurado' : '❌ NÃO CONFIGURADO');
+        console.log('📌 Token:', this.token ? this.token.substring(0, 20) + '...' : 'N/A');
+        this.url = 'https://api.mercadopago.com';
+    }
+    // ... resto do código
+}
+
+module.exports = new MercadoPagoService();
 class MercadoPagoService {
     constructor() {
         this.token = process.env.MERCADOPAGO_ACCESS_TOKEN;
