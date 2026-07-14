@@ -3,10 +3,11 @@
 // ============================================
 
 const PLANOS = {
-    starter: { limite: 1, valor: 24.90, dias_acesso: 30, nome: 'Starter' },
-    pro: { limite: 5, valor: 49.90, dias_acesso: 30, nome: 'Pro' },
-    business: { limite: 12, valor: 99.90, dias_acesso: 30, nome: 'Business' },
-    enterprise: { limite: 999999, valor: 199.90, dias_acesso: 30, nome: 'Enterprise' }
+    'teste': { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 },  // ← ADICIONE ESTA LINHA
+    'starter': { nome: 'Starter', limite: 1, valor: 29.90 },
+    'pro': { nome: 'Pro', limite: 5, valor: 59.90 },
+    'business': { nome: 'Business', limite: 15, valor: 119.90 },
+    'enterprise': { nome: 'Enterprise', limite: 9999, valor: 249.90 }
 };
 
 const PLANOS_NOMES = {

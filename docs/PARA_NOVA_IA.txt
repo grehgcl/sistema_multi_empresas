@@ -246,3 +246,149 @@ Tudo funcionando em AMBOS os bancos!
 =========================================
 ULTIMA ATUALIZACAO: 10/07/2026
 =========================================
+
+=========================================
+  GUIA PARA IA - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 13/07/2026
+=========================================
+
+🚀 COMO EXECUTAR O PROJETO
+=========================================
+
+Modo Local (SQLite - Desenvolvimento)
+-----------------------------------------
+npm start
+
+- WhatsApp em modo LOG
+- Banco SQLite local
+- Acesse: http://localhost:3000
+
+Modo com PostgreSQL (Teste com dados reais)
+-----------------------------------------
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+- WhatsApp Evolution REAL
+- Banco PostgreSQL do Render
+- Acesse: http://localhost:3000
+
+USUARIOS:
+-----------------------------------------
+Super Admin: super@admin.com / super123
+Dono: admin@teste.com / 123456
+
+=========================================
+✅ IMPLEMENTADO (13/07/2026)
+=========================================
+
+1. FINANCEIRO COMPLETO COM TABS 💰
+-----------------------------------------
+- Abas: Resumo, Receitas, Despesas, Comissões
+- Comparativo mês atual vs mês anterior
+- Variação percentual com ícones (📈📉➡️)
+- Cards coloridos para Faturamento, Despesas e Lucro
+- Receitas filtradas por mês
+- Despesas com CRUD completo
+- Comissões por profissional com design melhorado no mobile
+
+2. NOVAS ROTAS
+-----------------------------------------
+GET /api/financeiro/receitas?mes=07&ano=2026
+GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_anterior=2026
+
+3. WHATSAPP MULTI-INSTÂNCIA
+-----------------------------------------
+- WhatsApp próprio por empresa (Business/Enterprise)
+- Controle pelo Super Admin
+- Fallback inteligente para instância padrão
+
+4. SUPER ADMIN
+-----------------------------------------
+- Dashboard completo com métricas
+- Gestão de empresas e usuários
+- Controle de WhatsApp próprio
+
+=========================================
+🗄️ ESTRUTURA DOS ARQUIVOS
+=========================================
+
+server/
+├── config/
+│   ├── database.js
+│   └── whatsapp.js
+├── middlewares/
+│   └── auth.js
+├── services/
+│   ├── whatsapp.js
+│   ├── evolution-instances.js
+│   └── mercadopago.js
+├── jobs/
+│   ├── lembretes.js
+│   └── reset-contador.js
+└── utils/
+    ├── constants.js
+    └── helpers.js
+
+public/
+├── index.html
+├── chatbot.html
+├── css/
+│   ├── style.css
+│   └── chatbot.css
+└── js/
+    ├── ui.js
+    └── pages/
+        ├── dashboard.js
+        ├── financeiro.js          # COMPLETO COM TABS ⭐
+        ├── configuracoes.js
+        ├── empresas.js
+        ├── planos.js
+        └── whatsapp-config.js
+
+=========================================
+📋 PLANOS COMPLETOS
+=========================================
+
+Plano       Valor               Profissionais   Agendamentos/Mês   WhatsApp Próprio
+Trial       Grátis (45 dias)    1               100                ❌
+Starter     R$ 29,90/mês        1               100                ❌
+Pro         R$ 59,90/mês        5               Ilimitado          ❌
+Business    R$ 119,90/mês       15              Ilimitado          ✅
+Enterprise  R$ 249,90/mês       Ilimitado       Ilimitado          ✅
+
+=========================================
+🔧 COMANDOS ÚTEIS
+=========================================
+
+# SQLite (Desenvolvimento)
+npm start
+
+# PostgreSQL (Teste)
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+# Verificar sintaxe
+node -c server.js
+
+# Migrações WhatsApp
+node scripts/migrate-whatsapp.js
+node scripts/migrate-whatsapp-pg.js
+
+# Commitar
+git add server.js public/js/pages/financeiro.js
+git commit -m "✨ FEAT: Financeiro com abas e comparativo mensal"
+git push origin main
+
+=========================================
+✅ STATUS ATUAL
+=========================================
+
+Tudo funcionando em AMBOS os bancos!
+
+✅ SQLite (desenvolvimento local)
+✅ PostgreSQL (Render e teste local)
+✅ WhatsApp Multi-Instância
+✅ Super Admin com controle WhatsApp
+✅ Financeiro com abas e comparativo mensal
+
+=========================================
+ULTIMA ATUALIZACAO: 13/07/2026
+=========================================

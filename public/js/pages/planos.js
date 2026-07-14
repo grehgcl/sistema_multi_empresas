@@ -32,6 +32,21 @@ async function carregarModoPagamento() {
 // ============================================
 
 const PLANOS_CONFIG = {
+    teste: {  // ← ADICIONE ESTE NOVO PLANO
+        id: 'teste',
+        nome: 'Teste R$ 1,00',
+        valor_mensal: 1.00,
+        valor_anual: 12.00,
+        profs: 1,
+        popular: false,
+        cor: '#10b981',
+        recursos: [
+            '✅ Teste de pagamento real',
+            '✅ Apenas R$ 1,00',
+            '✅ Plano Starter por 1 mês'
+        ],
+        limitacoes: []
+    },
     starter: {
         id: 'starter',
         nome: 'Starter',
@@ -787,11 +802,12 @@ function gerarBeneficiosAdicionaisMobile(isMobile) {
 
 async function escolherPlano(plano, valor) {
     const planosNomes = {
-        'starter': 'Starter',
-        'pro': 'Pro',
-        'business': 'Business',
-        'enterprise': 'Enterprise'
-    };
+    'teste': 'Teste R$ 1,00',  // ← ADICIONE ESTA LINHA
+    'starter': 'Starter',
+    'pro': 'Pro',
+    'business': 'Business',
+    'enterprise': 'Enterprise'
+};
 
     const planoConfig = PLANOS_CONFIG[plano];
     const valorFinal = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
@@ -815,67 +831,68 @@ async function escolherPlano(plano, valor) {
     const isReal = modoAtual === 'real';
 
     const modalContent = `
-        <div style="padding: 10px;">
-            <p>Você está escolhendo o plano <strong>${planosNomes[plano]}</strong> por <strong>R$ ${valorFinal.toFixed(2)}/${periodoLabel}</strong>.</p>
-            ${periodoSelecionado === 'anual' ? `<p style="color: #10b981; font-size: 14px;">🎉 Economia de 20% no plano anual!</p>` : ''}
-            
-            <!-- 🔥 INDICADOR DO MODO DE PAGAMENTO -->
-            <div style="margin: 16px 0; padding: 12px; border-radius: 8px; background: ${isReal ? '#dbeafe' : '#fef3c7'}; border: 1px solid ${isReal ? '#93c5fd' : '#fcd34d'};">
-                <p style="margin: 0; font-size: 13px; color: ${isReal ? '#1e40af' : '#92400e'};">
-                    <strong>${isReal ? '🔴 MODO REAL' : '🟡 MODO SIMULAÇÃO'}</strong>
-                    ${isReal ? '- Pagamentos processados com cobrança real' : '- Teste sem pagamento real'}
-                </p>
-            </div>
-            
-            <div class="form-group" style="margin-top: 20px;">
-                <label style="font-weight: 500;">Forma de pagamento:</label>
-                <select id="metodo_pagamento" class="form-control" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
-                    <option value="cartao">💳 Cartão de Crédito</option>
-                    <option value="pix">📱 PIX</option>
-                    <option value="boleto">📄 Boleto Bancário</option>
-                </select>
-            </div>
-            
-            <div id="cpfField" style="display: none; margin-top: 15px;">
-                <label style="font-weight: 500;">CPF (obrigatório para boleto):</label>
-                <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd;">
-            </div>
-            
-            <div id="cardField" style="display: none; margin-top: 20px;">
-                <p style="color: #667eea; margin-bottom: 10px;">🔒 Você será redirecionado para o ambiente seguro do Mercado Pago</p>
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 13px;">✓ Aceitamos Visa, Mastercard, Elo, Hipercard e American Express</p>
-                    <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Parcelamento em até 12x</p>
-                </div>
-            </div>
-            
-            <div id="pixField" style="display: none; margin-top: 20px;">
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 13px;">📱 Após confirmar, você receberá um QR Code PIX para pagamento</p>
-                    <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Pagamento instantâneo</p>
-                    <p style="margin: 0; font-size: 13px;">✓ Sem taxas adicionais</p>
-                </div>
-            </div>
-            
-            <div id="boletoField" style="display: none; margin-top: 20px;">
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
-                    <p style="margin: 0; font-size: 13px;">📄 O boleto será gerado e você poderá pagar em qualquer banco</p>
-                    <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Vencimento em 3 dias úteis</p>
-                    <p style="margin: 0; font-size: 13px;">✓ Sem taxas adicionais</p>
-                </div>
-            </div>
-            
-            ${isReal ? `
-                <div style="margin-top: 16px; padding: 10px; background: #dbeafe; border-radius: 8px; border: 1px solid #93c5fd;">
-                    <p style="margin: 0; font-size: 12px; color: #1e40af;">🔴 MODO REAL - Você será cobrado no cartão/PIX/boleto</p>
-                </div>
-            ` : `
-                <div style="margin-top: 16px; padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d;">
-                    <p style="margin: 0; font-size: 12px; color: #92400e;">🟡 MODO SIMULAÇÃO - Para teste sem pagamento real</p>
-                </div>
-            `}
+    <div style="padding: 10px;">
+        <p>Você está escolhendo o plano <strong>${planosNomes[plano]}</strong> por <strong>R$ ${valorFinal.toFixed(2)}/${periodoLabel}</strong>.</p>
+        ${periodoSelecionado === 'anual' ? `<p style="color: #10b981; font-size: 14px;">🎉 Economia de 20% no plano anual!</p>` : ''}
+        
+        <!-- 🔥 INDICADOR DO MODO DE PAGAMENTO -->
+        <div style="margin: 16px 0; padding: 12px; border-radius: 8px; background: ${isReal ? '#dbeafe' : '#fef3c7'}; border: 1px solid ${isReal ? '#93c5fd' : '#fcd34d'};">
+            <p style="margin: 0; font-size: 13px; color: ${isReal ? '#1e40af' : '#92400e'};">
+                <strong>${isReal ? '🔴 MODO REAL' : '🟡 MODO SIMULAÇÃO'}</strong>
+                ${isReal ? '- Pagamentos processados com cobrança real' : '- Teste sem pagamento real'}
+            </p>
         </div>
-    `;
+        
+        <div class="form-group" style="margin-top: 20px;">
+            <label style="font-weight: 500;">Forma de pagamento:</label>
+            <select id="metodo_pagamento" class="form-control" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
+                <option value="checkout">💳 Checkout Mercado Pago (Recomendado)</option>
+                <option value="cartao">💳 Cartão de Crédito</option>
+                <option value="pix">📱 PIX</option>
+                <option value="boleto">📄 Boleto Bancário</option>
+            </select>
+        </div>
+        
+        <div id="cpfField" style="display: none; margin-top: 15px;">
+            <label style="font-weight: 500;">CPF (obrigatório para boleto):</label>
+            <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        
+        <div id="cardField" style="display: none; margin-top: 20px;">
+            <p style="color: #667eea; margin-bottom: 10px;">🔒 Você será redirecionado para o ambiente seguro do Mercado Pago</p>
+            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 13px;">✓ Aceitamos Visa, Mastercard, Elo, Hipercard e American Express</p>
+                <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Parcelamento em até 12x</p>
+            </div>
+        </div>
+        
+        <div id="pixField" style="display: none; margin-top: 20px;">
+            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 13px;">📱 Após confirmar, você receberá um QR Code PIX para pagamento</p>
+                <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Pagamento instantâneo</p>
+                <p style="margin: 0; font-size: 13px;">✓ Sem taxas adicionais</p>
+            </div>
+        </div>
+        
+        <div id="boletoField" style="display: none; margin-top: 20px;">
+            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 13px;">📄 O boleto será gerado e você poderá pagar em qualquer banco</p>
+                <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Vencimento em 3 dias úteis</p>
+                <p style="margin: 0; font-size: 13px;">✓ Sem taxas adicionais</p>
+            </div>
+        </div>
+        
+        ${isReal ? `
+            <div style="margin-top: 16px; padding: 10px; background: #dbeafe; border-radius: 8px; border: 1px solid #93c5fd;">
+                <p style="margin: 0; font-size: 12px; color: #1e40af;">🔴 MODO REAL - Você será cobrado no cartão/PIX/boleto</p>
+            </div>
+        ` : `
+            <div style="margin-top: 16px; padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d;">
+                <p style="margin: 0; font-size: 12px; color: #92400e;">🟡 MODO SIMULAÇÃO - Para teste sem pagamento real</p>
+            </div>
+        `}
+    </div>
+`;
 
     showModal('Forma de Pagamento', modalContent, async () => {
         const metodo = document.getElementById('metodo_pagamento').value;
@@ -885,13 +902,45 @@ async function escolherPlano(plano, valor) {
         showLoading();
 
         try {
-            if (metodo === 'cartao') {
+            if (metodo === 'checkout' || metodo === 'cartao') {
                 if (!isReal) {
-                    mostrarFormularioCartaoSimulado(plano, valorFinal, planosNomes);
+                    // 🟡 MODO SIMULAÇÃO - Checkout Simulado
+                    const res = await fetch('/api/simulate-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': 'Bearer ' + token
+                        },
+                        body: JSON.stringify({
+                            plano_id: plano,
+                            plano_nome: planosNomes[plano],
+                            valor: valorFinal,
+                            periodo: periodoSelecionado
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        showToast('✅ Pagamento simulado aprovado!', 'success');
+                        setTimeout(() => {
+                            recarregarUsuario();
+                            carregarPlanos();
+                            if (typeof carregarDashboard === 'function') carregarDashboard();
+                        }, 1500);
+                        fecharModal('modalUpgrade');
+                    } else {
+                        showToast('Erro no pagamento simulado', 'error');
+                    }
                     hideLoading();
-                    fecharModal('modalUpgrade');
                 } else {
-                    // 🔴 MODO REAL - Integração com Mercado Pago
+                    // 🔴 MODO REAL - Checkout Mercado Pago
+                    console.log('📤 Enviando para /api/create-payment:', {
+                        plano_id: plano,
+                        plano_nome: planosNomes[plano],
+                        valor: valorFinal,
+                        metodo_pagamento: 'checkout',
+                        periodo: periodoSelecionado
+                    });
+
                     const res = await fetch('/api/create-payment', {
                         method: 'POST',
                         headers: {
@@ -902,18 +951,27 @@ async function escolherPlano(plano, valor) {
                             plano_id: plano,
                             plano_nome: planosNomes[plano],
                             valor: valorFinal,
-                            metodo_pagamento: metodo,
+                            metodo_pagamento: 'checkout',
                             periodo: periodoSelecionado
                         })
                     });
                     const data = await res.json();
+
+                    console.log('📥 Resposta do /api/create-payment:', data);
+
                     if (data.success) {
-                        window.open(data.init_point, '_blank');
-                        showToast('Redirecionando para pagamento...', 'info');
-                        setTimeout(() => verificarPagamento(), 5000);
+                        // Abrir o checkout do Mercado Pago
+                        const url = data.sandbox_init_point || data.init_point;
+                        if (url) {
+                            window.open(url, '_blank');
+                            showToast('Redirecionando para pagamento...', 'info');
+                            setTimeout(() => verificarPagamento(), 5000);
+                        } else {
+                            showToast('URL de pagamento não gerada', 'error');
+                        }
                         fecharModal('modalUpgrade');
                     } else {
-                        showToast('Erro ao processar pagamento', 'error');
+                        showToast(data.message || 'Erro ao processar pagamento', 'error');
                     }
                     hideLoading();
                 }
@@ -1036,20 +1094,19 @@ async function escolherPlano(plano, valor) {
         if (metodoSelect) {
             metodoSelect.addEventListener('change', function () {
                 document.getElementById('cpfField').style.display = this.value === 'boleto' ? 'block' : 'none';
-                document.getElementById('cardField').style.display = this.value === 'cartao' ? 'block' : 'none';
+                document.getElementById('cardField').style.display = (this.value === 'cartao' || this.value === 'checkout') ? 'block' : 'none';
                 document.getElementById('pixField').style.display = this.value === 'pix' ? 'block' : 'none';
                 document.getElementById('boletoField').style.display = this.value === 'boleto' ? 'block' : 'none';
             });
         }
     }, 100);
-}
 
-// ============================================
-// FUNÇÕES DE PAGAMENTO (MANTIDAS)
-// ============================================
+    // ============================================
+    // FUNÇÕES DE PAGAMENTO (MANTIDAS)
+    // ============================================
 
-function mostrarFormularioCartaoSimulado(plano, valor, planosNomes) {
-    const modalContent = `
+    function mostrarFormularioCartaoSimulado(plano, valor, planosNomes) {
+        const modalContent = `
         <div style="padding: 20px;">
             <h3 style="margin-bottom: 20px;">💳 Pagamento com Cartão (SIMULAÇÃO)</h3>
             <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
@@ -1081,51 +1138,51 @@ function mostrarFormularioCartaoSimulado(plano, valor, planosNomes) {
             </button>
         </div>
     `;
-    showModal('Pagamento com Cartão (Simulação)', modalContent, null);
-}
-
-async function processarPagamentoCartaoSimulado(plano, valor) {
-    const token = localStorage.getItem('token');
-    showLoading();
-    showToast('🔧 Modo simulação: Processando pagamento...', 'info');
-
-    try {
-        const res = await fetch('/api/simulate-card', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({
-                plano_id: plano,
-                plano_nome: plano === 'starter' ? 'Starter' : plano === 'pro' ? 'Pro' : plano === 'business' ? 'Business' : 'Enterprise',
-                valor: valor,
-                periodo: periodoSelecionado,
-                card_data: { simulado: true }
-            })
-        });
-        const data = await res.json();
-        hideLoading();
-
-        if (data.success && data.status === 'approved') {
-            showToast('✅ Pagamento aprovado! Seu plano foi ativado.', 'success');
-            fecharModal('modalUpgrade');
-            setTimeout(() => {
-                recarregarUsuario();
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') carregarDashboard();
-            }, 1500);
-        } else {
-            showToast('Erro no pagamento simulado', 'error');
-        }
-    } catch (error) {
-        hideLoading();
-        showToast('Erro ao processar pagamento', 'error');
+        showModal('Pagamento com Cartão (Simulação)', modalContent, null);
     }
-}
 
-function mostrarPixQRCode(qrCode, qrCodeBase64, paymentId) {
-    const modalContent = `
+    async function processarPagamentoCartaoSimulado(plano, valor) {
+        const token = localStorage.getItem('token');
+        showLoading();
+        showToast('🔧 Modo simulação: Processando pagamento...', 'info');
+
+        try {
+            const res = await fetch('/api/simulate-card', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                    plano_id: plano,
+                    plano_nome: plano === 'starter' ? 'Starter' : plano === 'pro' ? 'Pro' : plano === 'business' ? 'Business' : 'Enterprise',
+                    valor: valor,
+                    periodo: periodoSelecionado,
+                    card_data: { simulado: true }
+                })
+            });
+            const data = await res.json();
+            hideLoading();
+
+            if (data.success && data.status === 'approved') {
+                showToast('✅ Pagamento aprovado! Seu plano foi ativado.', 'success');
+                fecharModal('modalUpgrade');
+                setTimeout(() => {
+                    recarregarUsuario();
+                    carregarPlanos();
+                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                }, 1500);
+            } else {
+                showToast('Erro no pagamento simulado', 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            showToast('Erro ao processar pagamento', 'error');
+        }
+    }
+
+    function mostrarPixQRCode(qrCode, qrCodeBase64, paymentId) {
+        const modalContent = `
         <div style="text-align: center; padding: 20px;">
             <h3>📱 Pagamento via PIX</h3>
             <p>Escaneie o QR Code abaixo com seu banco:</p>
@@ -1143,14 +1200,14 @@ function mostrarPixQRCode(qrCode, qrCodeBase64, paymentId) {
             <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Fechar</button>
         </div>
     `;
-    showModal('Pagamento PIX', modalContent, null);
-    const interval = setInterval(() => {
-        verificarPagamentoPIX(paymentId, interval);
-    }, 5000);
-}
+        showModal('Pagamento PIX', modalContent, null);
+        const interval = setInterval(() => {
+            verificarPagamentoPIX(paymentId, interval);
+        }, 5000);
+    }
 
-function mostrarBoleto(boletoUrl, paymentId) {
-    const modalContent = `
+    function mostrarBoleto(boletoUrl, paymentId) {
+        const modalContent = `
         <div style="text-align: center; padding: 20px;">
             <h3>📄 Boleto Bancário</h3>
             <p>Clique no botão abaixo para visualizar e pagar seu boleto:</p>
@@ -1163,127 +1220,127 @@ function mostrarBoleto(boletoUrl, paymentId) {
             <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Fechar</button>
         </div>
     `;
-    showModal('Boleto Bancário', modalContent, null);
-}
-
-async function verificarPagamentoPIX(paymentId, interval = null) {
-    const token = localStorage.getItem('token');
-    const statusDiv = document.getElementById('statusPagamento');
-
-    if (statusDiv && !document.getElementById('btnConfirmarPagamento')) {
-        const btnConfirmar = document.createElement('button');
-        btnConfirmar.id = 'btnConfirmarPagamento';
-        btnConfirmar.innerHTML = '✅ Simular pagamento aprovado (teste)';
-        btnConfirmar.className = 'btn-primary';
-        btnConfirmar.style.marginTop = '15px';
-        btnConfirmar.style.width = '100%';
-        btnConfirmar.onclick = () => confirmarPagamentoSimulado(paymentId, interval);
-        statusDiv.appendChild(btnConfirmar);
+        showModal('Boleto Bancário', modalContent, null);
     }
 
-    try {
-        const res = await fetch(`/api/check-payment/${paymentId}`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (data.success && data.status === 'approved') {
-            if (interval) clearInterval(interval);
-            showToast('Pagamento confirmado!', 'success');
-            setTimeout(() => {
-                fecharModal('modalUpgrade');
-                recarregarUsuario();
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') carregarDashboard();
-            }, 2000);
-        }
-    } catch (error) {
-        console.error('Erro ao verificar:', error);
-    }
-}
-
-async function confirmarPagamentoSimulado(paymentId, interval) {
-    const token = localStorage.getItem('token');
-    showLoading();
-    try {
-        const res = await fetch(`/api/confirm-simulated-payment/${paymentId}`, {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (data.success) {
-            if (interval) clearInterval(interval);
-            showToast('✅ Pagamento confirmado manualmente!', 'success');
-            setTimeout(() => {
-                fecharModal('modalUpgrade');
-                recarregarUsuario();
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') carregarDashboard();
-            }, 2000);
-        } else {
-            showToast('Erro ao confirmar pagamento', 'error');
-        }
-    } catch (error) {
-        showToast('Erro ao confirmar', 'error');
-    }
-    hideLoading();
-}
-
-async function verificarPagamentoBoleto(paymentId) {
-    const token = localStorage.getItem('token');
-    showLoading();
-    try {
-        const res = await fetch(`/api/check-payment/${paymentId}`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (data.success && data.status === 'approved') {
-            showToast('Pagamento confirmado!', 'success');
-            setTimeout(() => {
-                fecharModal('modalUpgrade');
-                recarregarUsuario();
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') carregarDashboard();
-            }, 2000);
-        } else {
-            showToast('Pagamento ainda não confirmado', 'info');
-        }
-    } catch (error) {
-        showToast('Erro ao verificar pagamento', 'error');
-    }
-    hideLoading();
-}
-
-function copiarPix(codigo) {
-    navigator.clipboard.writeText(codigo);
-    showToast('Código PIX copiado!', 'success');
-}
-
-async function verificarPagamento() {
-    setTimeout(async () => {
+    async function verificarPagamentoPIX(paymentId, interval = null) {
         const token = localStorage.getItem('token');
+        const statusDiv = document.getElementById('statusPagamento');
+
+        if (statusDiv && !document.getElementById('btnConfirmarPagamento')) {
+            const btnConfirmar = document.createElement('button');
+            btnConfirmar.id = 'btnConfirmarPagamento';
+            btnConfirmar.innerHTML = '✅ Simular pagamento aprovado (teste)';
+            btnConfirmar.className = 'btn-primary';
+            btnConfirmar.style.marginTop = '15px';
+            btnConfirmar.style.width = '100%';
+            btnConfirmar.onclick = () => confirmarPagamentoSimulado(paymentId, interval);
+            statusDiv.appendChild(btnConfirmar);
+        }
+
         try {
-            const res = await fetch('/api/empresa/plano', {
+            const res = await fetch(`/api/check-payment/${paymentId}`, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
             const data = await res.json();
-            if (data.success && !data.data.is_trial) {
-                showToast('Plano ativado com sucesso!', 'success');
-                recarregarUsuario();
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') carregarDashboard();
+            if (data.success && data.status === 'approved') {
+                if (interval) clearInterval(interval);
+                showToast('Pagamento confirmado!', 'success');
+                setTimeout(() => {
+                    fecharModal('modalUpgrade');
+                    recarregarUsuario();
+                    carregarPlanos();
+                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                }, 2000);
             }
         } catch (error) {
-            console.error('Erro ao verificar plano:', error);
+            console.error('Erro ao verificar:', error);
         }
-    }, 10000);
-}
+    }
 
-// ============================================
-// CANCELAR ASSINATURA
-// ============================================
+    async function confirmarPagamentoSimulado(paymentId, interval) {
+        const token = localStorage.getItem('token');
+        showLoading();
+        try {
+            const res = await fetch(`/api/confirm-simulated-payment/${paymentId}`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success) {
+                if (interval) clearInterval(interval);
+                showToast('✅ Pagamento confirmado manualmente!', 'success');
+                setTimeout(() => {
+                    fecharModal('modalUpgrade');
+                    recarregarUsuario();
+                    carregarPlanos();
+                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                }, 2000);
+            } else {
+                showToast('Erro ao confirmar pagamento', 'error');
+            }
+        } catch (error) {
+            showToast('Erro ao confirmar', 'error');
+        }
+        hideLoading();
+    }
 
-async function cancelarAssinatura() {
-    const modalContent = `
+    async function verificarPagamentoBoleto(paymentId) {
+        const token = localStorage.getItem('token');
+        showLoading();
+        try {
+            const res = await fetch(`/api/check-payment/${paymentId}`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success && data.status === 'approved') {
+                showToast('Pagamento confirmado!', 'success');
+                setTimeout(() => {
+                    fecharModal('modalUpgrade');
+                    recarregarUsuario();
+                    carregarPlanos();
+                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                }, 2000);
+            } else {
+                showToast('Pagamento ainda não confirmado', 'info');
+            }
+        } catch (error) {
+            showToast('Erro ao verificar pagamento', 'error');
+        }
+        hideLoading();
+    }
+
+    function copiarPix(codigo) {
+        navigator.clipboard.writeText(codigo);
+        showToast('Código PIX copiado!', 'success');
+    }
+
+    async function verificarPagamento() {
+        setTimeout(async () => {
+            const token = localStorage.getItem('token');
+            try {
+                const res = await fetch('/api/empresa/plano', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && !data.data.is_trial) {
+                    showToast('Plano ativado com sucesso!', 'success');
+                    recarregarUsuario();
+                    carregarPlanos();
+                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                }
+            } catch (error) {
+                console.error('Erro ao verificar plano:', error);
+            }
+        }, 10000);
+    }
+
+    // ============================================
+    // CANCELAR ASSINATURA
+    // ============================================
+
+    async function cancelarAssinatura() {
+        const modalContent = `
         <div style="padding: 20px;">
             <h3 style="text-align: center;">❌ Cancelar Assinatura</h3>
             <p>Tem certeza que deseja cancelar sua assinatura?</p>
@@ -1302,86 +1359,89 @@ async function cancelarAssinatura() {
             </div>
         </div>
     `;
-    showModal('Cancelar Assinatura', modalContent, null);
-}
+        showModal('Cancelar Assinatura', modalContent, null);
+    }
 
-async function confirmarCancelamento() {
-    const token = localStorage.getItem('token');
-    showLoading();
+    async function confirmarCancelamento() {
+        const token = localStorage.getItem('token');
+        showLoading();
 
-    try {
-        const res = await fetch('/api/cancel-subscription', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({ motivo: 'Usuário cancelou manualmente' })
-        });
+        try {
+            const res = await fetch('/api/cancel-subscription', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ motivo: 'Usuário cancelou manualmente' })
+            });
 
-        const data = await res.json();
-        hideLoading();
+            const data = await res.json();
+            hideLoading();
 
-        if (data.success) {
-            showToast(data.message, 'success');
-            fecharModal('modalUpgrade');
-            await recarregarUsuario();
-            await carregarPlanos();
-            if (typeof carregarDashboard === 'function') {
-                carregarDashboard();
+            if (data.success) {
+                showToast(data.message, 'success');
+                fecharModal('modalUpgrade');
+                await recarregarUsuario();
+                await carregarPlanos();
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
+            } else {
+                showToast(data.message || 'Erro ao cancelar assinatura', 'error');
             }
-        } else {
-            showToast(data.message || 'Erro ao cancelar assinatura', 'error');
+        } catch (error) {
+            hideLoading();
+            console.error('Erro no cancelamento:', error);
+            showToast('Erro ao cancelar assinatura. Tente novamente.', 'error');
         }
-    } catch (error) {
-        hideLoading();
-        console.error('Erro no cancelamento:', error);
-        showToast('Erro ao cancelar assinatura. Tente novamente.', 'error');
     }
-}
 
-// ============================================
-// RECARREGAR USUÁRIO
-// ============================================
+    // ============================================
+    // RECARREGAR USUÁRIO
+    // ============================================
 
-async function recarregarUsuario() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    try {
-        const res = await fetch('/api/empresa/plano', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (data.success && data.data) {
-            const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-            usuario.plano = data.data.plano;
-            usuario.limite_profissionais = data.data.limite_profissionais;
-            usuario.is_trial = data.data.is_trial;
-            usuario.dias_restantes = data.data.dias_restantes;
-            localStorage.setItem('usuario', JSON.stringify(usuario));
+    async function recarregarUsuario() {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        try {
+            const res = await fetch('/api/empresa/plano', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success && data.data) {
+                const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+                usuario.plano = data.data.plano;
+                usuario.limite_profissionais = data.data.limite_profissionais;
+                usuario.is_trial = data.data.is_trial;
+                usuario.dias_restantes = data.data.dias_restantes;
+                localStorage.setItem('usuario', JSON.stringify(usuario));
+            }
+        } catch (error) {
+            console.error('Erro ao recarregar usuário:', error);
         }
-    } catch (error) {
-        console.error('Erro ao recarregar usuário:', error);
     }
-}
 
-// ============================================
-// EXPORTAR FUNÇÕES
-// ============================================
+    // ============================================
+    // EXPORTAR FUNÇÕES
+    // ============================================
 
-window.carregarPlanos = carregarPlanos;
-window.escolherPlano = escolherPlano;
-window.mostrarPixQRCode = mostrarPixQRCode;
-window.mostrarBoleto = mostrarBoleto;
-window.verificarPagamentoPIX = verificarPagamentoPIX;
-window.verificarPagamentoBoleto = verificarPagamentoBoleto;
-window.copiarPix = copiarPix;
-window.recarregarUsuario = recarregarUsuario;
-window.processarPagamentoCartaoSimulado = processarPagamentoCartaoSimulado;
-window.cancelarAssinatura = cancelarAssinatura;
-window.confirmarCancelamento = confirmarCancelamento;
-window.togglePeriodo = togglePeriodo;
-window.selecionarPlano = selecionarPlano;
+    window.carregarPlanos = carregarPlanos;
+    window.escolherPlano = escolherPlano;
+    window.mostrarPixQRCode = mostrarPixQRCode;
+    window.mostrarBoleto = mostrarBoleto;
+    window.verificarPagamentoPIX = verificarPagamentoPIX;
+    window.verificarPagamentoBoleto = verificarPagamentoBoleto;
+    window.copiarPix = copiarPix;
+    window.recarregarUsuario = recarregarUsuario;
+    window.processarPagamentoCartaoSimulado = processarPagamentoCartaoSimulado;
+    window.cancelarAssinatura = cancelarAssinatura;
+    window.confirmarCancelamento = confirmarCancelamento;
+    window.togglePeriodo = togglePeriodo;
+    window.selecionarPlano = selecionarPlano;
 
-console.log('✅ planos.js carregado - Modo simulação:', modoSimulacao);
-console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));
+    console.log('✅ planos.js carregado - Modo simulação:', modoSimulacao);
+    console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));
+
+    // Fechamento final - GARANTA QUE TENHA ESTA CHAVE
+}  // ← Fecha a função principal se existir

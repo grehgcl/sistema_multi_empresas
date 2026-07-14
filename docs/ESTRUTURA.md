@@ -237,3 +237,125 @@ WhatsApp Multi-Instância ✅       ✅           NOVO!
 =========================================
 ULTIMA ATUALIZACAO: 10/07/2026
 =========================================
+
+=========================================
+  ESTRUTURA.md - SEE&AGENDE
+  ULTIMA ATUALIZACAO: 13/07/2026
+=========================================
+
+🚀 COMO EXECUTAR O PROJETO
+=========================================
+
+Modo Local (SQLite - Desenvolvimento)
+-----------------------------------------
+npm start
+
+- Banco SQLite local (database/barbearia.db)
+- WhatsApp em modo LOG
+
+Modo com WhatsApp Evolution (Envia mensagens reais!)
+-----------------------------------------
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+- Banco PostgreSQL do Render
+- WhatsApp Evolution REAL
+- Acesse: http://localhost:3000
+
+📁 ESTRUTURA DE PASTAS
+=========================================
+
+├── database/
+│   └── barbearia.db          # SQLite (desenvolvimento local)
+├── public/
+│   ├── index.html            # Landing Page + Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
+│   ├── css/
+│   │   ├── style.css         # Estilos premium com tema escuro
+│   │   └── chatbot.css       # Estilos específicos do chatbot
+│   └── js/
+│       ├── ui.js             # UI Global (toasts, loading, modal)
+│       └── pages/
+│           ├── dashboard.js              # Dashboard com Agenda Inteligente
+│           ├── dashboard-profissional.js # Dashboard Profissional
+│           ├── clientes.js               # CRUD Clientes + dias_bloqueio
+│           ├── agendamentos.js           # CRUD Agendamentos
+│           ├── agendamentos-profissional.js # Agendamentos (Profissional)
+│           ├── servicos.js               # CRUD Servicos
+│           ├── financeiro.js             # FINANCEIRO COMPLETO COM TABS ⭐
+│           ├── empresas.js               # Gestao empresas (Super Admin)
+│           ├── configuracoes.js          # Configuracoes + Tema + Chatbot
+│           ├── planos.js                 # Página de Planos e Upgrade
+│           └── whatsapp-config.js        # Configuração WhatsApp (Dono)
+├── docs/                    # Documentacao
+│   ├── DEV_GUIDE.md
+│   ├── ESTRUTURA.md
+│   ├── IA_CONTEXT.md
+│   └── PARA_NOVA_IA.txt
+├── server/
+│   ├── config/
+│   │   ├── database.js      # Conexão com banco + criação das tabelas
+│   │   └── whatsapp.js      # Configuração do WhatsApp
+│   ├── middlewares/
+│   │   └── auth.js          # Middlewares de autenticação
+│   ├── services/
+│   │   ├── whatsapp.js      # Serviço de notificações WhatsApp
+│   │   ├── evolution-instances.js  # Gestão de instâncias WhatsApp
+│   │   └── mercadopago.js   # Integração com MercadoPago
+│   ├── jobs/
+│   │   ├── lembretes.js     # Job automático de lembretes (09:00)
+│   │   └── reset-contador.js # Job de reset de contadores
+│   └── utils/
+│       ├── constants.js     # Constantes (PLANOS, JWT_SECRET)
+│       └── helpers.js       # Funções auxiliares
+├── scripts/
+│   ├── migrate.js           # Migração do banco
+│   ├── seed.js              # População com dados iniciais
+│   ├── migrate-whatsapp.js  # Migração WhatsApp (SQLite)
+│   └── migrate-whatsapp-pg.js # Migração WhatsApp (PostgreSQL)
+├── .env                     # SQLite (desenvolvimento)
+├── .env.local               # PostgreSQL (teste com dados reais)
+├── server.js                # Backend completo + rotas
+└── package.json             # Dependências e scripts
+
+=========================================
+🗄️ TABELAS DO BANCO
+=========================================
+
+Tabela                      Colunas principais
+empresas                    id, nome, plano, limite_profissionais, trial_expira,
+                            assinatura_ativa, assinatura_valida_ate, agendamentos_mes,
+                            mes_referencia, dias_bloqueio_geral, telefone_dono, endereco,
+                            whatsapp_instance, whatsapp_connected, whatsapp_number,
+                            whatsapp_connected_at, whatsapp_proprio_habilitado, created_at
+usuarios                    id, nome, email, senha, role, empresa_id, telefone
+profissionais               id, nome, email, senha, comissao_percent, empresa_id, ativo, telefone
+clientes                    id, nome, telefone, email, empresa_id, bloqueado_chatbot, dias_bloqueio
+servicos                    id, nome, descricao, valor, duracao, ativo, empresa_id
+agendamentos                id, cliente_id, data, hora, servico_id, servico, valor, status, comissao, empresa_id, profissional_id
+despesas                    id, empresa_id, descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao
+horarios_funcionamento      id, empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim
+acessos                     id, empresa_id, usuario_id, data_acesso, ip, user_agent
+
+=========================================
+✅ STATUS DAS FUNCIONALIDADES
+=========================================
+
+Funcionalidade           SQLite   PostgreSQL   Status
+Login                    ✅       ✅           OK
+Dashboard                ✅       ✅           OK
+Agenda Inteligente       ✅       ✅           OK
+Agendamentos             ✅       ✅           OK
+Despesas                 ✅       ✅           OK
+Profissionais            ✅       ✅           OK
+Horários                 ✅       ✅           OK
+Serviços                 ✅       ✅           OK
+Financeiro com TABS      ✅       ✅           NOVO! ⭐
+Comparativo Mensal       ✅       ✅           NOVO! ⭐
+Receitas Filtradas       ✅       ✅           NOVO! ⭐
+Comissões Detalhadas     ✅       ✅           NOVO! ⭐
+Super Admin              ✅       ✅           OK
+WhatsApp Evolution       LOG      REAL         OK
+
+=========================================
+ULTIMA ATUALIZACAO: 13/07/2026
+=========================================

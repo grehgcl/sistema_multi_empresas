@@ -1160,7 +1160,7 @@ function toggleTheme() {
 // ============================================
 function inicializarHorariosEvents() {
     const isMobile = window.innerWidth < 768;
-    
+
     // 🔥 Para MOBILE: usar cards
     if (isMobile) {
         // Toggle status
@@ -1239,7 +1239,7 @@ async function salvarHorario(dia, dados) {
 function handleStatusChangeMobile(e) {
     const dia = e.target.getAttribute('data-dia');
     const aberto = e.target.checked ? 1 : 0;
-    
+
     // Encontrar o card pai
     const card = e.target.closest('div[style*="background: var(--bg-card)"]');
     if (card) {
@@ -1249,16 +1249,16 @@ function handleStatusChangeMobile(e) {
             }
         });
     }
-    
+
     salvarHorario(dia, { aberto });
 }
 
 function handleHorarioChangeMobile(e) {
     const dia = e.target.getAttribute('data-dia');
     const campo = e.target.classList.contains('hora-inicio') ? 'hora_inicio' :
-                  e.target.classList.contains('hora-fim') ? 'hora_fim' :
-                  e.target.classList.contains('almoco-inicio') ? 'almoco_inicio' :
-                  e.target.classList.contains('almoco-fim') ? 'almoco_fim' : 'intervalo_minutos';
+        e.target.classList.contains('hora-fim') ? 'hora_fim' :
+            e.target.classList.contains('almoco-inicio') ? 'almoco_inicio' :
+                e.target.classList.contains('almoco-fim') ? 'almoco_fim' : 'intervalo_minutos';
     const valor = campo === 'intervalo_minutos' ? parseInt(e.target.value) : e.target.value;
     salvarHorario(dia, { [campo]: valor });
 }
@@ -1507,12 +1507,19 @@ function formatarData(dataStr) {
 // FUNÇÃO PARA CARREGAR PLANOS
 // ============================================
 function carregarPlanos() {
-    if (typeof window.carregarPlanos === 'function') {
-        window.carregarPlanos();
+    // Simplesmente navega para a página de planos
+    const planosBtn = document.querySelector('#btnplanos');
+    if (planosBtn) {
+        planosBtn.click();
     } else {
-        showToast('Carregando página de planos...', 'info');
-        const planosBtn = document.querySelector('#btnplanos');
-        if (planosBtn) planosBtn.click();
+        // Fallback: mudar a hash da URL
+        window.location.hash = 'planos';
+        // Recarregar para garantir
+        setTimeout(() => {
+            if (typeof window.carregarPlanos === 'function') {
+                window.carregarPlanos();
+            }
+        }, 300);
     }
 }
 
@@ -1535,6 +1542,6 @@ window.fecharModalPersonalizado = fecharModalPersonalizado;
 window.copiarLinkChatbot = copiarLinkChatbot;
 window.carregarLinkChatbot = carregarLinkChatbot;
 window.toggleTheme = toggleTheme;
-window.carregarPlanos = carregarPlanos;
+//window.carregarPlanos = carregarPlanos;
 
 console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL!');

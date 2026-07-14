@@ -9,9 +9,14 @@ const axios = require('axios');
 
 class MercadoPagoService {
     constructor() {
+        // Forçar leitura do .env.local
+        require('dotenv').config({ path: '.env.local' });
+
         this.token = process.env.MERCADOPAGO_ACCESS_TOKEN;
+        this.mode = process.env.PAYMENT_MODE || 'sandbox';
         this.url = 'https://api.mercadopago.com';
-        console.log('🔑 Token do Mercado Pago:', this.token ? '✅ Configurado' : '❌ NÃO CONFIGURADO');
+        console.log('🔑 Modo FORÇADO:', this.mode);
+        console.log('🔑 Token configurado:', this.token ? '✅ Sim' : '❌ Não');
     }
 
     // 🔥 GERAR CHAVE IDEMPOTENTE ÚNICA
@@ -243,5 +248,6 @@ class MercadoPagoService {
         }
     }
 }
+
 
 module.exports = new MercadoPagoService();

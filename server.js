@@ -18,6 +18,10 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+// ============================================================
+// MERCADO PAGO
+// ============================================================
+const mercadopago = require('./server/services/mercadopago');
 
 
 // Função para converter valores booleanos entre SQLite e PostgreSQL
@@ -5974,7 +5978,7 @@ app.post('/api/simulate-card', auth, (req, res) => {
             ? `UPDATE empresas SET 
                plano = $1,
                limite_profissionais = $2,
-               assinatura_ativa = 1,
+               assinatura_ativa = true,
                assinatura_valida_ate = $3,
                ultima_cobranca = CURRENT_TIMESTAMP
                WHERE id = $4`
@@ -6046,7 +6050,7 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, (req, res) => {
                 ? `UPDATE empresas SET 
                    plano = $1,
                    limite_profissionais = $2,
-                   assinatura_ativa = 1,
+                   assinatura_ativa = true,
                    assinatura_valida_ate = $3,
                    ultima_cobranca = CURRENT_TIMESTAMP
                    WHERE id = $4`
@@ -6582,7 +6586,6 @@ app.post('/api/empresa/whatsapp/disconnect', auth, async (req, res) => {
 // ============================================================
 // 💳 MERCADO PAGO - PAGAMENTOS REAIS
 // ============================================================
-const mercadopago = require('./server/services/mercadopago');
 
 // 🔹 Criar preferência de pagamento (Checkout Pro)
 app.post('/api/create-payment', auth, async (req, res) => {
@@ -6760,6 +6763,95 @@ app.post('/api/webhook/mercadopago', async (req, res) => {
     }
 
     res.sendStatus(200);
+});
+
+// ============================================
+// CONFIRMAR PAGAMENTO SIMULADO (TESTE)
+// ============================================
+app.post('/api/confirm-simulated-payment/:paymentId', auth, async (req, res) => {
+    try {
+        const { paymentId } = req.params;
+        const usuario = req.usuario;
+        const { plano, status } = req.body;
+
+        console.log('🔄 Simulando pagamento:', { paymentId, plano, status });
+
+        // Verificar se é um ID simulado
+        if (!paymentId.startsWith('sim_')) {
+            return res.status(400).json({
+                success: false,
+                message: 'ID de pagamento inválido para simulação'
+            });
+        }
+
+        // Se o status for 'approved', ativar o plano
+        if (status === 'approved') {
+            // Define o plano conforme o ID
+            const planoId = plano || 'starter';
+            const planos = {
+                'teste': { nome: 'Teste R$ 1,00', limite: 1 },     // ← ADICIONE ESTA LINHA
+                'starter': { nome: 'Starter', limite: 1 },
+                'pro': { nome: 'Pro', limite: 5 },
+                'business': { nome: 'Business', limite: 15 },
+                'enterprise': { nome: 'Enterprise', limite: 9999 }
+            };
+
+            const planoInfo = planos[planoId] || planos['starter'];
+            const dataValidade = new Date();
+            dataValidade.setMonth(dataValidade.getMonth() + 1);
+
+            const isProduction = process.env.RENDER === 'true';
+
+            // Atualizar a empresa
+            const sqlUpdate = isProduction
+                ? `UPDATE empresas SET plano=$1, limite_profissionais=$2, assinatura_ativa=TRUE, assinatura_valida_ate=$3 WHERE id=$4`
+                : `UPDATE empresas SET plano=?, limite_profissionais=?, assinatura_ativa=1, assinatura_valida_ate=? WHERE id=?`;
+
+            await new Promise((resolve, reject) => {
+                db.run(sqlUpdate, [planoInfo.nome, planoInfo.limite, dataValidade.toISOString(), usuario.empresa_id], function (err) {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+
+            // Salvar transação simulada
+            const sqlTransacao = isProduction
+                ? `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at) VALUES ($1,$2,$3,$4,'simulacao',$5,'approved',CURRENT_TIMESTAMP)`
+                : `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at) VALUES (?,?,?,?,'simulacao',?,'approved',CURRENT_TIMESTAMP)`;
+
+            await new Promise((resolve, reject) => {
+                db.run(sqlTransacao, [usuario.empresa_id, planoId, planoInfo.nome, 0, paymentId], function (err) {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
+
+            console.log(`✅ Plano ${planoInfo.nome} ativado para empresa ${usuario.empresa_id}`);
+
+            return res.json({
+                success: true,
+                message: `Plano ${planoInfo.nome} ativado com sucesso!`,
+                data: {
+                    plano: planoInfo.nome,
+                    limite: planoInfo.limite,
+                    valida_ate: dataValidade.toISOString()
+                }
+            });
+        }
+
+        return res.json({
+            success: true,
+            status: 'pending',
+            message: 'Pagamento pendente'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao simular pagamento:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao simular pagamento'
+        });
+    }
 });
 
 // ============================================================
