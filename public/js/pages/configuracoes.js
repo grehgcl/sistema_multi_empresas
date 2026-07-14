@@ -1305,48 +1305,123 @@ function copiarLinkChatbot() {
 }
 
 // ============================================
-// FUNÇÕES DE PROFISSIONAIS
+// ABRIR MODAL PROFISSIONAL (SEM BOTÕES DUPLICADOS)
 // ============================================
 function abrirModalProfissional(profissional = null) {
     if (!profissional && !planoInfo.podeAdicionar) {
-        showModal('Limite Atingido',
-            `<p>Seu plano ${planoInfo.plano_nome} permite apenas ${planoInfo.limite} profissional(is).</p>
-             <button class="btn-primary" onclick="carregarPlanos()">💎 Ver Planos</button>
-             <button class="btn-secondary" onclick="fecharModalPersonalizado()">Fechar</button>`
-        );
+        showToast('Limite de profissionais atingido!', 'warning');
         return;
     }
 
     const isEdit = !!profissional;
-    const modalContent = `
-        <form id="formProfissional" onsubmit="salvarProfissional(event, ${isEdit ? profissional.id : 'null'})">
-            <div class="form-group">
-                <label>Nome *</label>
-                <input type="text" id="prof-nome" class="form-control" value="${isEdit ? escapeHtml(profissional.nome) : ''}" placeholder="Nome completo" required>
-            </div>
-            <div class="form-group">
-                <label>Email *</label>
-                <input type="email" id="prof-email" class="form-control" value="${isEdit ? escapeHtml(profissional.email) : ''}" placeholder="email@exemplo.com" required>
-            </div>
-            <div class="form-group">
-                <label>Telefone (opcional)</label>
-                <input type="text" id="prof-telefone" class="form-control" value="${isEdit ? (profissional.telefone || '') : ''}" placeholder="(00) 00000-0000">
-            </div>
-            <div class="form-group">
-                <label>${isEdit ? 'Nova Senha (opcional)' : 'Senha *'}</label>
-                <input type="password" id="prof-senha" class="form-control" placeholder="${isEdit ? 'Deixe em branco para manter' : 'Crie uma senha'}" ${!isEdit ? 'required' : ''}>
-            </div>
-            <div class="form-group">
-                <label>Comissão (%) *</label>
-                <input type="number" id="prof-comissao" class="form-control" value="${isEdit ? profissional.comissao_percent : '30'}" min="0" max="100" required>
-            </div>
-            <div class="modal-buttons">
-                <button type="submit" class="btn-primary">Salvar</button>
-                <button type="button" class="btn-secondary" onclick="fecharModalPersonalizado()">Cancelar</button>
-            </div>
-        </form>
+
+    // 🔥 CRIAR O MODAL MANUALMENTE (SEM BOTÕES AUTOMÁTICOS)
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+        animation: fadeIn 0.3s ease;
     `;
-    showModal(isEdit ? '✏️ Editar Profissional' : '➕ Novo Profissional', modalContent);
+
+    overlay.innerHTML = `
+        <div style="
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 480px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+        ">
+            <button onclick="fecharModalPersonalizado()" style="
+                position: absolute;
+                top: 10px;
+                right: 16px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                color: var(--text-muted);
+                cursor: pointer;
+            ">✕</button>
+            
+            <h3 style="margin: 0 0 20px 0; font-size: 20px; font-weight: 700; color: var(--text-primary);">
+                ${isEdit ? '✏️ Editar Profissional' : '➕ Novo Profissional'}
+            </h3>
+            
+            <form id="formProfissional" onsubmit="salvarProfissional(event, ${isEdit ? profissional.id : 'null'})">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">Nome *</label>
+                    <input type="text" id="prof-nome" class="form-control" value="${isEdit ? escapeHtml(profissional.nome) : ''}" 
+                           placeholder="Nome completo" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">Email *</label>
+                    <input type="email" id="prof-email" class="form-control" value="${isEdit ? escapeHtml(profissional.email) : ''}" 
+                           placeholder="email@exemplo.com" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">Telefone (opcional)</label>
+                    <input type="text" id="prof-telefone" class="form-control" value="${isEdit ? (profissional.telefone || '') : ''}" 
+                           placeholder="(00) 00000-0000" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">${isEdit ? 'Nova Senha (opcional)' : 'Senha *'}</label>
+                    <input type="password" id="prof-senha" class="form-control" 
+                           placeholder="${isEdit ? 'Deixe em branco para manter' : 'Crie uma senha'}" 
+                           ${!isEdit ? 'required' : ''} style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">Comissão (%) *</label>
+                    <input type="number" id="prof-comissao" class="form-control" value="${isEdit ? profissional.comissao_percent : '30'}" 
+                           min="0" max="100" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: var(--gradient);
+                        color: white;
+                        border: none;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 14px;
+                    ">
+                        <i class="fas fa-save"></i> ${isEdit ? 'Atualizar' : 'Salvar'}
+                    </button>
+                    <button type="button" onclick="fecharModalPersonalizado()" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: var(--bg-hover);
+                        color: var(--text-primary);
+                        border: 1px solid var(--border-color);
+                        border-radius: 8px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 14px;
+                    ">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
 }
 
 async function salvarProfissional(event, id) {
@@ -1522,7 +1597,17 @@ function carregarPlanos() {
         }, 300);
     }
 }
+// ============================================
+// FECHAR MODAL PERSONALIZADO
+// ============================================
+function fecharModalPersonalizado() {
+    const overlays = document.querySelectorAll('.modal-overlay');
+    overlays.forEach(overlay => overlay.remove());
 
+    // Fechar qualquer modal do ui.js
+    const modal = document.querySelector('.modal');
+    if (modal) modal.remove();
+}
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -1542,6 +1627,7 @@ window.fecharModalPersonalizado = fecharModalPersonalizado;
 window.copiarLinkChatbot = copiarLinkChatbot;
 window.carregarLinkChatbot = carregarLinkChatbot;
 window.toggleTheme = toggleTheme;
+window.fecharModalPersonalizado = fecharModalPersonalizado;
 //window.carregarPlanos = carregarPlanos;
 
 console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL!');

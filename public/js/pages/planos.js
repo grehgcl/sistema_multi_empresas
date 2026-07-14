@@ -802,12 +802,12 @@ function gerarBeneficiosAdicionaisMobile(isMobile) {
 
 async function escolherPlano(plano, valor) {
     const planosNomes = {
-    'teste': 'Teste R$ 1,00',  // ← ADICIONE ESTA LINHA
-    'starter': 'Starter',
-    'pro': 'Pro',
-    'business': 'Business',
-    'enterprise': 'Enterprise'
-};
+        'teste': 'Teste R$ 1,00',  // ← ADICIONE ESTA LINHA
+        'starter': 'Starter',
+        'pro': 'Pro',
+        'business': 'Business',
+        'enterprise': 'Enterprise'
+    };
 
     const planoConfig = PLANOS_CONFIG[plano];
     const valorFinal = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
@@ -1182,30 +1182,178 @@ async function escolherPlano(plano, valor) {
     }
 
     function mostrarPixQRCode(qrCode, qrCodeBase64, paymentId) {
-        const modalContent = `
-        <div style="text-align: center; padding: 20px;">
-            <h3>📱 Pagamento via PIX</h3>
-            <p>Escaneie o QR Code abaixo com seu banco:</p>
-            ${qrCodeBase64 ? `<img src="data:image/png;base64,${qrCodeBase64}" style="width: 200px; height: 200px; margin: 20px auto; display: block;">` : ''}
-            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; margin: 20px 0;">
-                <p style="font-size: 12px; margin: 0;">Código PIX:</p>
-                <p style="font-family: monospace; font-size: 12px; word-break: break-all;">${qrCode}</p>
-                <button onclick="copiarPix('${qrCode}')" class="btn-secondary" style="margin-top: 10px; padding: 8px 16px;">📋 Copiar código</button>
+        // 🔥 VERIFICAR SE ESTÁ EM SANDBOX
+        const isSandbox = window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1';
+
+        // 🔥 FECHAR QUALQUER MODAL ABERTO
+        const modalExistente = document.querySelector('.modal-overlay');
+        if (modalExistente) modalExistente.remove();
+
+        // 🔥 CRIAR O MODAL MANUALMENTE (SEM BOTÕES AUTOMÁTICOS)
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+        animation: fadeIn 0.3s ease;
+    `;
+
+        overlay.innerHTML = `
+        <div style="
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 420px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+        ">
+            <button onclick="fecharModalPersonalizado()" style="
+                position: absolute;
+                top: 10px;
+                right: 16px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                color: var(--text-muted);
+                cursor: pointer;
+            ">✕</button>
+            
+            <h3 style="text-align: center; margin-bottom: 16px;">📱 Pagamento via PIX</h3>
+            
+            <p style="text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
+                Escaneie o QR Code abaixo com seu banco:
+            </p>
+            
+            ${qrCodeBase64 ? `<img src="data:image/png;base64,${qrCodeBase64}" style="width: 180px; height: 180px; margin: 0 auto 16px; display: block; border-radius: 12px;">` : ''}
+            
+            <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                <p style="font-size: 11px; margin: 0; color: var(--text-muted);">Código PIX:</p>
+                <p style="font-family: monospace; font-size: 11px; word-break: break-all; margin: 4px 0 0;">${qrCode}</p>
+                <button onclick="copiarPix('${qrCode}')" style="margin-top: 8px; padding: 6px 16px; font-size: 12px; background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; color: var(--text-primary);">
+                    📋 Copiar código
+                </button>
             </div>
-            <div class="status-pagamento" id="statusPagamento">
-                <p>⏳ Aguardando pagamento...</p>
-                <div class="loading-spinner" style="margin: 10px auto;"></div>
+            
+            <div id="statusPagamento" style="text-align: center; margin: 16px 0;">
+                <p style="font-size: 14px;">⏳ Aguardando pagamento...</p>
+                <div style="margin: 10px auto; width: 30px; height: 30px; border: 3px solid var(--border-color); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
             </div>
-            <button onclick="verificarPagamentoPIX('${paymentId}')" class="btn-primary">🔄 Verificar pagamento</button>
-            <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Fechar</button>
+            
+            ${isSandbox ? `
+                <button onclick="simularPagamentoPIX('${paymentId}')" style="
+                    background: #f59e0b;
+                    color: white;
+                    padding: 12px;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    width: 100%;
+                    font-size: 14px;
+                    margin-bottom: 10px;
+                ">
+                    🟡 Simular pagamento aprovado (TESTE)
+                </button>
+            ` : ''}
+            
+            <div style="display: flex; gap: 10px;">
+                <button onclick="verificarPagamentoPIX('${paymentId}')" style="
+                    flex: 1;
+                    padding: 10px;
+                    background: var(--gradient);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 14px;
+                ">
+                    🔄 Verificar
+                </button>
+                <button onclick="fecharModalPersonalizado()" style="
+                    flex: 1;
+                    padding: 10px;
+                    background: var(--bg-hover);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                    font-size: 14px;
+                ">
+                    Fechar
+                </button>
+            </div>
         </div>
     `;
-        showModal('Pagamento PIX', modalContent, null);
-        const interval = setInterval(() => {
-            verificarPagamentoPIX(paymentId, interval);
-        }, 5000);
-    }
 
+        document.body.appendChild(overlay);
+
+        // 🔥 VERIFICAÇÃO AUTOMÁTICA (só em produção)
+        if (!isSandbox) {
+            const interval = setInterval(() => {
+                verificarPagamentoPIX(paymentId, interval);
+            }, 5000);
+        }
+    }
+    // ============================================
+    // SIMULAR PAGAMENTO PIX (APENAS PARA TESTE)
+    // ============================================
+    async function simularPagamentoPIX(paymentId) {
+        const token = localStorage.getItem('token');
+        showLoading();
+
+        try {
+            const res = await fetch(`/api/confirm-simulated-payment/${paymentId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                    status: 'approved',
+                    plano: 'teste'
+                })
+            });
+            const data = await res.json();
+            hideLoading();
+
+            if (data.success) {
+                // 🔥 FECHAR MODAL
+                fecharModalPersonalizado();
+
+                showToast('✅ Pagamento aprovado! Plano ativado!', 'success');
+                await recarregarUsuario();
+                await carregarPlanos();
+
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
+
+                setTimeout(() => {
+                    if (window.location.hash !== '#dashboard') {
+                        window.location.hash = 'dashboard';
+                    }
+                }, 1500);
+            } else {
+                showToast('❌ Erro ao simular pagamento', 'error');
+            }
+        } catch (error) {
+            hideLoading();
+            console.error('Erro:', error);
+            showToast('❌ Erro ao simular pagamento', 'error');
+        }
+    }
     function mostrarBoleto(boletoUrl, paymentId) {
         const modalContent = `
         <div style="text-align: center; padding: 20px;">
@@ -1225,39 +1373,37 @@ async function escolherPlano(plano, valor) {
 
     async function verificarPagamentoPIX(paymentId, interval = null) {
         const token = localStorage.getItem('token');
-        const statusDiv = document.getElementById('statusPagamento');
-
-        if (statusDiv && !document.getElementById('btnConfirmarPagamento')) {
-            const btnConfirmar = document.createElement('button');
-            btnConfirmar.id = 'btnConfirmarPagamento';
-            btnConfirmar.innerHTML = '✅ Simular pagamento aprovado (teste)';
-            btnConfirmar.className = 'btn-primary';
-            btnConfirmar.style.marginTop = '15px';
-            btnConfirmar.style.width = '100%';
-            btnConfirmar.onclick = () => confirmarPagamentoSimulado(paymentId, interval);
-            statusDiv.appendChild(btnConfirmar);
-        }
 
         try {
             const res = await fetch(`/api/check-payment/${paymentId}`, {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
             const data = await res.json();
+
             if (data.success && data.status === 'approved') {
                 if (interval) clearInterval(interval);
-                showToast('Pagamento confirmado!', 'success');
+
+                // 🔥 FECHAR MODAL
+                fecharModalPersonalizado();
+
+                showToast('✅ Pagamento confirmado! Plano ativado!', 'success');
+                await recarregarUsuario();
+                await carregarPlanos();
+
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
+
                 setTimeout(() => {
-                    fecharModal('modalUpgrade');
-                    recarregarUsuario();
-                    carregarPlanos();
-                    if (typeof carregarDashboard === 'function') carregarDashboard();
-                }, 2000);
+                    if (window.location.hash !== '#dashboard') {
+                        window.location.hash = 'dashboard';
+                    }
+                }, 1500);
             }
         } catch (error) {
             console.error('Erro ao verificar:', error);
         }
     }
-
     async function confirmarPagamentoSimulado(paymentId, interval) {
         const token = localStorage.getItem('token');
         showLoading();
@@ -1294,12 +1440,18 @@ async function escolherPlano(plano, valor) {
             });
             const data = await res.json();
             if (data.success && data.status === 'approved') {
-                showToast('Pagamento confirmado!', 'success');
+                // 🔥 FECHAR MODAL
+                fecharModal('modalUpgrade');
+                showToast('✅ Pagamento confirmado! Plano ativado!', 'success');
+                await recarregarUsuario();
+                await carregarPlanos();
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
                 setTimeout(() => {
-                    fecharModal('modalUpgrade');
-                    recarregarUsuario();
-                    carregarPlanos();
-                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                    if (window.location.hash !== '#dashboard') {
+                        window.location.hash = 'dashboard';
+                    }
                 }, 2000);
             } else {
                 showToast('Pagamento ainda não confirmado', 'info');
@@ -1324,10 +1476,19 @@ async function escolherPlano(plano, valor) {
                 });
                 const data = await res.json();
                 if (data.success && !data.data.is_trial) {
-                    showToast('Plano ativado com sucesso!', 'success');
+                    // 🔥 FECHAR MODAL
+                    fecharModal('modalUpgrade');
+                    showToast('✅ Plano ativado com sucesso!', 'success');
                     recarregarUsuario();
                     carregarPlanos();
-                    if (typeof carregarDashboard === 'function') carregarDashboard();
+                    if (typeof carregarDashboard === 'function') {
+                        carregarDashboard();
+                    }
+                    setTimeout(() => {
+                        if (window.location.hash !== '#dashboard') {
+                            window.location.hash = 'dashboard';
+                        }
+                    }, 2000);
                 }
             } catch (error) {
                 console.error('Erro ao verificar plano:', error);
@@ -1423,6 +1584,18 @@ async function escolherPlano(plano, valor) {
     }
 
     // ============================================
+    // FECHAR MODAL PERSONALIZADO
+    // ============================================
+    function fecharModalPersonalizado() {
+        const overlay = document.querySelector('.modal-overlay');
+        if (overlay) overlay.remove();
+        const modal = document.querySelector('.modal');
+        if (modal) modal.remove();
+        const modals = document.querySelectorAll('.modal-overlay');
+        modals.forEach(m => m.remove());
+    }
+
+    // ============================================
     // EXPORTAR FUNÇÕES
     // ============================================
 
@@ -1439,6 +1612,8 @@ async function escolherPlano(plano, valor) {
     window.confirmarCancelamento = confirmarCancelamento;
     window.togglePeriodo = togglePeriodo;
     window.selecionarPlano = selecionarPlano;
+    window.simularPagamentoPIX = simularPagamentoPIX;
+    window.fecharModalPersonalizado = fecharModalPersonalizado;
 
     console.log('✅ planos.js carregado - Modo simulação:', modoSimulacao);
     console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));

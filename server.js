@@ -3031,7 +3031,7 @@ app.post('/api/profissionais', auth, verificarDono, verificarLimiteProfissionais
 
     const sql = isProduction
         ? `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo, telefone) 
-           VALUES ($1, $2, $3, $4, $5, 1, $6) RETURNING id`
+           VALUES ($1, $2, $3, $4, $5, true, $6) RETURNING id`
         : `INSERT INTO profissionais (nome, email, senha, comissao_percent, empresa_id, ativo, telefone) 
            VALUES (?, ?, ?, ?, ?, 1, ?)`;
 
