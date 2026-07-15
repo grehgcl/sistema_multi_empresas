@@ -6801,7 +6801,7 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, async (req, res) => 
             // Define o plano conforme o ID
             const planoId = plano || 'starter';
             const planos = {
-                // 'teste': { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 },  // ← COMENTE
+                // 'teste': { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 },  // ← JÁ ESTÁ COMENTADO! ✅
                 'starter': { nome: 'Starter', limite: 1 },
                 'pro': { nome: 'Pro', limite: 5 },
                 'business': { nome: 'Business', limite: 15 },
