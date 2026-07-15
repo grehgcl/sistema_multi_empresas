@@ -4691,16 +4691,20 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
     const { mes, ano } = req.query;
     const empresaId = req.usuario.empresa_id;
 
+    console.log('📊 Receitas - Parâmetros:', { mes, ano, empresaId });
+
     if (!mes || !ano) {
         return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
     }
 
-    const isProduction = process.env.RENDER === 'true';
+    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
+    console.log('📊 Receitas - Ambiente:', isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO');
 
     let sql;
     let params;
 
     if (isProduction) {
+        // ✅ POSTGRESQL - Usa EXTRACT
         sql = `
             SELECT 
                 a.id,
@@ -4726,6 +4730,7 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
         `;
         params = [empresaId, parseInt(mes), parseInt(ano)];
     } else {
+        // ✅ SQLITE - Usa strftime
         sql = `
             SELECT 
                 a.id,
@@ -4754,7 +4759,9 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
 
     db.all(sql, params, (err, rows) => {
         if (err) {
-            console.error('Erro ao buscar receitas:', err);
+            console.error('❌ Erro ao buscar receitas:', err);
+            console.error('❌ SQL:', sql);
+            console.error('❌ Params:', params);
             return res.json({ success: false, message: 'Erro ao buscar receitas' });
         }
 
@@ -4775,6 +4782,7 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
 });
 
 // GET /api/financeiro/comparativo - Comparativo mês atual vs mês anterior
+// GET /api/financeiro/comparativo - Comparativo mês atual vs mês anterior
 app.get('/api/financeiro/comparativo', auth, (req, res) => {
     const { mes_atual, ano_atual, mes_anterior, ano_anterior } = req.query;
     const empresaId = req.usuario.empresa_id;
@@ -4783,13 +4791,14 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
         return res.json({ success: false, message: 'Parâmetros incompletos' });
     }
 
-    const isProduction = process.env.RENDER === 'true';
+    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
 
     async function getDados(mes, ano) {
         return new Promise((resolve, reject) => {
             // Faturamento do mês
             let sqlFat, paramsFat;
             if (isProduction) {
+                // ✅ POSTGRESQL
                 sqlFat = `
                     SELECT COALESCE(SUM(valor), 0) as total
                     FROM agendamentos
@@ -4800,6 +4809,7 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
                 `;
                 paramsFat = [empresaId, parseInt(mes), parseInt(ano)];
             } else {
+                // ✅ SQLITE
                 sqlFat = `
                     SELECT COALESCE(SUM(valor), 0) as total
                     FROM agendamentos
@@ -4820,6 +4830,7 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
                 // Despesas do mês
                 let sqlDesp, paramsDesp;
                 if (isProduction) {
+                    // ✅ POSTGRESQL
                     sqlDesp = `
                         SELECT COALESCE(SUM(valor), 0) as total
                         FROM despesas
@@ -4829,6 +4840,7 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
                     `;
                     paramsDesp = [empresaId, parseInt(mes), parseInt(ano)];
                 } else {
+                    // ✅ SQLITE
                     sqlDesp = `
                         SELECT COALESCE(SUM(valor), 0) as total
                         FROM despesas
@@ -6789,7 +6801,7 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, async (req, res) => 
             // Define o plano conforme o ID
             const planoId = plano || 'starter';
             const planos = {
-                'teste': { nome: 'Teste R$ 1,00', limite: 1 },     // ← ADICIONE ESTA LINHA
+                // 'teste': { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 },  // ← COMENTE
                 'starter': { nome: 'Starter', limite: 1 },
                 'pro': { nome: 'Pro', limite: 5 },
                 'business': { nome: 'Business', limite: 15 },
