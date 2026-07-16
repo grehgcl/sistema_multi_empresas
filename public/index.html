@@ -656,14 +656,13 @@
         }
 
         // ========== MENU ==========
+        <!-- ========== MENU ========== -->
         function carregarMenu() {
             const sidebar = document.getElementById('sidebar');
             let botoes = [];
             if (usuario.role === 'superadmin') {
                 botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardSuperAdmin' },
-                    { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
-                    { id: 'financeiro', nome: 'Financeiro Global', icone: 'fa-globe', funcao: 'carregarFinanceiroGlobal' }
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardSuperAdmin' }
                 ];
             } else if (usuario.role === 'profissional') {
                 botoes = [

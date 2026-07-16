@@ -342,9 +342,84 @@ async function enviarPix(email, nome, planoNome, valor, qrCode, qrCodeBase64) {
         return { success: false };
     }
 }
+// ============================================
+// NOTIFICAÇÃO DE NOVO CADASTRO (PARA O DONO)
+// ============================================
+async function notificarNovoCadastro(donoEmail, nome, empresaNome, telefone, email) {
+    try {
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>📢 Novo cadastro no See&Agende!</title>
+</head>
+<body style="font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+        <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #10b981;">
+            <h1 style="color: #10b981; margin: 0;">📢 Novo Cadastro!</h1>
+            <p style="color: #666;">Um novo cliente se cadastrou no See&Agende</p>
+        </div>
+        
+        <div style="padding: 20px 0;">
+            <h2>👤 Dados do Cliente:</h2>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Nome:</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${nome}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Empresa:</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${empresaNome}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Telefone:</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${telefone || 'Não informado'}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Email:</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${email}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px; font-weight: bold;">Data:</td>
+                    <td style="padding: 8px;">${new Date().toLocaleString('pt-BR')}</td>
+                </tr>
+            </table>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+                <p style="margin: 0;"><strong>📅 Status:</strong> Trial de 45 dias ativado!</p>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${process.env.BASE_URL}/#admin" style="background: #667eea; color: white; padding: 12px 28px; border-radius: 10px; text-decoration: none; font-weight: 600;">🔍 Ver no Sistema</a>
+            </div>
+        </div>
+        
+        <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #999;">
+            <p style="margin: 0;">See&Agende - Sistema de Gestão</p>
+        </div>
+    </div>
+</body>
+</html>
+        `;
 
+        await transporter.sendMail({
+            from: `"See&Agende" <${process.env.EMAIL_USER}>`,
+            to: donoEmail,
+            subject: `📢 Novo cadastro: ${nome} - ${empresaNome}`,
+            html: html
+        });
+
+        console.log(`✅ Notificação de novo cadastro enviada para ${donoEmail}`);
+        return { success: true };
+    } catch (error) {
+        console.error('❌ Erro ao enviar notificação:', error.message);
+        return { success: false, error: error.message };
+    }
+}
 module.exports = {
     enviarBoasVindas,
     enviarBoleto,
-    enviarPix
+    enviarPix,
+    notificarNovoCadastro
 };

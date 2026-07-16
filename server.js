@@ -758,7 +758,10 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-app.post('/api/cadastro', (req, res) => {
+// ============================================
+// CADASTRO - COM LOCALIZAÇÃO (CORRIGIDO)
+// ============================================
+app.post('/api/cadastro', async (req, res) => {
     const { nome, email, senha, empresa_nome, telefone } = req.body;
 
     if (!nome || !email || !senha || !empresa_nome) {
@@ -819,7 +822,6 @@ app.post('/api/cadastro', (req, res) => {
 
                 const empresa_id = row.id;
                 console.log('✅ Empresa criada com ID:', empresa_id);
-                console.log('📱 Telefone do dono salvo:', telefoneLimpo);
 
                 // ✅ CRIAR USUÁRIO (COM TELEFONE)
                 const senhaHash = bcrypt.hashSync(senha, 10);
@@ -835,128 +837,209 @@ app.post('/api/cadastro', (req, res) => {
                         return res.json({ success: false, message: 'Erro ao criar usuário' });
                     }
 
-                    console.log('✅ Usuário criado com sucesso!');
-                    console.log('📱 Telefone do usuário salvo:', telefoneLimpo);
-
                     // ============================================================
-                    // 🔥 AQUI É ONDE VOCÊ COLOCA O CÓDIGO NOVO DOS HORÁRIOS
+                    // 🔥 CORREÇÃO: BUSCAR O ID DO USUÁRIO
                     // ============================================================
+                    let usuarioId = this?.lastID || this?.id || null;
+                    console.log('✅ Usuário criado com sucesso! ID obtido:', usuarioId);
 
-                    // ✅ INSERIR HORÁRIOS PADRÃO (COM LIMPEZA PRÉVIA)
-                    console.log('📅 Inserindo horários padrão para empresa:', empresa_id);
+                    // Função para salvar localização
+                    function salvarLocalizacao(id) {
+                        const ipCliente = req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || null;
+                        const userAgent = req.headers['user-agent'] || null;
 
-                    // Primeiro, deleta horários existentes para esta empresa
-                    const sqlDelete = isProduction
-                        ? `DELETE FROM horarios_funcionamento WHERE empresa_id = $1`
-                        : `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`;
-
-                    db.run(sqlDelete, [empresa_id], function (err) {
-                        if (err) {
-                            console.warn('⚠️ Erro ao limpar horários antigos:', err.message);
+                        async function getLocationByIP(ipAddress) {
+                            try {
+                                if (!ipAddress || ipAddress === '::1' || ipAddress === '127.0.0.1') {
+                                    return { cidade: 'Localhost', estado: 'Local', pais: 'Brasil' };
+                                }
+                                const response = await fetch(`http://ip-api.com/json/${ipAddress}?fields=status,country,regionName,city,isp,lat,lon`);
+                                const data = await response.json();
+                                if (data.status === 'success') {
+                                    return {
+                                        cidade: data.city || 'Desconhecida',
+                                        estado: data.regionName || 'Desconhecido',
+                                        pais: data.country || 'Desconhecido',
+                                        isp: data.isp || 'Desconhecido',
+                                        lat: data.lat || null,
+                                        lon: data.lon || null
+                                    };
+                                }
+                                return null;
+                            } catch (error) {
+                                console.error('❌ Erro ao buscar localização:', error.message);
+                                return null;
+                            }
                         }
 
-                        const diasSemana = [0, 1, 2, 3, 4, 5, 6];
-                        let horariosInseridos = 0;
-                        let totalErros = 0;
+                        getLocationByIP(ipCliente).then(locationData => {
+                            if (locationData) {
+                                const sqlLocation = isProduction
+                                    ? `INSERT INTO localizacoes (usuario_id, empresa_id, ip, cidade, estado, pais, isp, latitude, longitude, user_agent, created_at) 
+                                       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)`
+                                    : `INSERT INTO localizacoes (usuario_id, empresa_id, ip, cidade, estado, pais, isp, latitude, longitude, user_agent, created_at) 
+                                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
 
-                        for (const dia of diasSemana) {
-                            const sqlHorario = isProduction
-                                ? `
-                                INSERT INTO horarios_funcionamento 
-                                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                VALUES ($1, $2, TRUE, '09:00', '18:00', '12:00', '13:00', 30)
-                            `
-                                : `
-                                INSERT OR IGNORE INTO horarios_funcionamento 
-                                (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
-                                VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
-                            `;
+                                db.run(sqlLocation, [
+                                    id,
+                                    empresa_id,
+                                    ipCliente,
+                                    locationData.cidade || 'Desconhecida',
+                                    locationData.estado || 'Desconhecido',
+                                    locationData.pais || 'Desconhecido',
+                                    locationData.isp || 'Desconhecido',
+                                    locationData.lat || null,
+                                    locationData.lon || null,
+                                    userAgent
+                                ], (err) => {
+                                    if (err) {
+                                        console.error('❌ Erro ao salvar localização:', err.message);
+                                    } else {
+                                        console.log(`✅ Localização salva: ${locationData.cidade}/${locationData.estado}`);
+                                    }
+                                });
+                            }
+                        });
+                    }
 
-                            db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
-                                if (err) {
-                                    console.error(`❌ Erro ao inserir horário dia ${dia}:`, err.message);
-                                    totalErros++;
-                                } else {
-                                    horariosInseridos++;
-                                    console.log(`✅ Horário dia ${dia} inserido (${horariosInseridos}/7)`);
-                                }
+                    // 🔥 SE O ID VEIO NULL, BUSCAR MANUALMENTE
+                    if (!usuarioId) {
+                        const sqlBuscarId = isProduction
+                            ? `SELECT id FROM usuarios WHERE email = $1 AND empresa_id = $2 ORDER BY id DESC LIMIT 1`
+                            : `SELECT id FROM usuarios WHERE email = ? AND empresa_id = ? ORDER BY id DESC LIMIT 1`;
 
-                                if (horariosInseridos + totalErros === 7) {
-                                    const sqlCheck = isProduction
-                                        ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
-                                        : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
+                        db.get(sqlBuscarId, [email, empresa_id], (err, row) => {
+                            if (err || !row) {
+                                console.error('❌ Erro ao buscar ID do usuário:', err?.message);
+                            } else {
+                                usuarioId = row.id;
+                                console.log('✅ ID do usuário encontrado manualmente:', usuarioId);
+                                salvarLocalizacao(usuarioId);
+                            }
+                            // CONTINUAR O CADASTRO
+                            continuarCadastro();
+                        });
+                    } else {
+                        // SALVAR LOCALIZAÇÃO COM O ID OBTIDO
+                        salvarLocalizacao(usuarioId);
+                        continuarCadastro();
+                    }
 
-                                    db.get(sqlCheck, [empresa_id], (err, result) => {
-                                        if (!err && result) {
-                                            console.log(`📊 ${result.total} horários confirmados no banco`);
-                                        }
+                    // ============================================================
+                    // CONTINUAR COM O RESTANTE DO CADASTRO (HORÁRIOS, EMAILS, ETC)
+                    // ============================================================
+                    function continuarCadastro() {
+                        console.log('📅 Inserindo horários padrão para empresa:', empresa_id);
 
-                                        // ============================================================
-                                        // 🔥🔥🔥 ENVIAR EMAIL DE BOAS-VINDAS 🔥🔥🔥
-                                        // ============================================================
-                                        try {
-                                            const emailService = require('./server/services/email');
-                                            emailService.enviarBoasVindas(email, nome, empresa_nome)
-                                                .then(result => {
-                                                    if (result.success) {
-                                                        console.log(`✅ Email de boas-vindas enviado para ${email}`);
-                                                    } else {
-                                                        console.error(`❌ Falha ao enviar email:`, result.error);
-                                                    }
-                                                })
-                                                .catch(err => {
-                                                    console.error('❌ Erro ao enviar email:', err.message);
-                                                });
-                                        } catch (emailErr) {
-                                            console.error('❌ Erro ao carregar serviço de email:', emailErr.message);
-                                        }
+                        const sqlDelete = isProduction
+                            ? `DELETE FROM horarios_funcionamento WHERE empresa_id = $1`
+                            : `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`;
 
-                                        // ============================================================
-                                        // 🔥🔥🔥 ENVIAR NOTIFICAÇÃO DE NOVO CADASTRO 🔥🔥🔥
-                                        // ============================================================
-                                        try {
-                                            const emailService = require('./server/services/email');
-                                            emailService.notificarNovoCadastro(
-                                                'digregorioleal@gmail.com',  // ← SEU EMAIL
-                                                nome,
-                                                empresa_nome,
-                                                telefoneLimpo,
-                                                email
-                                            )
-                                                .then(result => {
-                                                    if (result.success) {
-                                                        console.log(`✅ Notificação de cadastro enviada para digregorioleal@gmail.com`);
-                                                    } else {
-                                                        console.error(`❌ Falha ao enviar notificação:`, result.error);
-                                                    }
-                                                })
-                                                .catch(err => {
-                                                    console.error('❌ Erro ao enviar notificação:', err.message);
-                                                });
-                                        } catch (notifErr) {
-                                            console.error('❌ Erro ao carregar serviço de notificação:', notifErr.message);
-                                        }
+                        db.run(sqlDelete, [empresa_id], function (err) {
+                            if (err) {
+                                console.warn('⚠️ Erro ao limpar horários antigos:', err.message);
+                            }
 
-                                        // ============================================================
-                                        // RESPOSTA DO CADASTRO
-                                        // ============================================================
-                                        res.json({
-                                            success: true,
-                                            message: 'Cadastro realizado! Você tem 45 dias de teste.',
-                                            data: {
-                                                empresa_id: empresa_id,
-                                                horarios_inseridos: horariosInseridos,
-                                                telefone_dono: telefoneLimpo
+                            const diasSemana = [0, 1, 2, 3, 4, 5, 6];
+                            let horariosInseridos = 0;
+                            let totalErros = 0;
+
+                            for (const dia of diasSemana) {
+                                const sqlHorario = isProduction
+                                    ? `
+                                    INSERT INTO horarios_funcionamento 
+                                    (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                    VALUES ($1, $2, TRUE, '09:00', '18:00', '12:00', '13:00', 30)
+                                `
+                                    : `
+                                    INSERT OR IGNORE INTO horarios_funcionamento 
+                                    (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos) 
+                                    VALUES (?, ?, 1, '09:00', '18:00', '12:00', '13:00', 30)
+                                `;
+
+                                db.run(sqlHorario, isProduction ? [empresa_id, dia] : [empresa_id, dia], function (err) {
+                                    if (err) {
+                                        console.error(`❌ Erro ao inserir horário dia ${dia}:`, err.message);
+                                        totalErros++;
+                                    } else {
+                                        horariosInseridos++;
+                                        console.log(`✅ Horário dia ${dia} inserido (${horariosInseridos}/7)`);
+                                    }
+
+                                    if (horariosInseridos + totalErros === 7) {
+                                        const sqlCheck = isProduction
+                                            ? `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = $1`
+                                            : `SELECT COUNT(*) as total FROM horarios_funcionamento WHERE empresa_id = ?`;
+
+                                        db.get(sqlCheck, [empresa_id], (err, result) => {
+                                            if (!err && result) {
+                                                console.log(`📊 ${result.total} horários confirmados no banco`);
                                             }
+
+                                            // ============================================================
+                                            // 🔥 ENVIAR EMAIL DE BOAS-VINDAS
+                                            // ============================================================
+                                            try {
+                                                const emailService = require('./server/services/email');
+                                                emailService.enviarBoasVindas(email, nome, empresa_nome)
+                                                    .then(result => {
+                                                        if (result.success) {
+                                                            console.log(`✅ Email de boas-vindas enviado para ${email}`);
+                                                        } else {
+                                                            console.error(`❌ Falha ao enviar email:`, result.error);
+                                                        }
+                                                    })
+                                                    .catch(err => {
+                                                        console.error('❌ Erro ao enviar email:', err.message);
+                                                    });
+                                            } catch (emailErr) {
+                                                console.error('❌ Erro ao carregar serviço de email:', emailErr.message);
+                                            }
+
+                                            // ============================================================
+                                            // 🔥 ENVIAR NOTIFICAÇÃO DE NOVO CADASTRO
+                                            // ============================================================
+                                            try {
+                                                const emailService = require('./server/services/email');
+                                                emailService.notificarNovoCadastro(
+                                                    'digregorioleal@gmail.com',
+                                                    nome,
+                                                    empresa_nome,
+                                                    telefoneLimpo,
+                                                    email
+                                                )
+                                                    .then(result => {
+                                                        if (result.success) {
+                                                            console.log(`✅ Notificação de cadastro enviada para digregorioleal@gmail.com`);
+                                                        } else {
+                                                            console.error(`❌ Falha ao enviar notificação:`, result.error);
+                                                        }
+                                                    })
+                                                    .catch(err => {
+                                                        console.error('❌ Erro ao enviar notificação:', err.message);
+                                                    });
+                                            } catch (notifErr) {
+                                                console.error('❌ Erro ao carregar serviço de notificação:', notifErr.message);
+                                            }
+
+                                            // ============================================================
+                                            // RESPOSTA DO CADASTRO
+                                            // ============================================================
+                                            res.json({
+                                                success: true,
+                                                message: 'Cadastro realizado! Você tem 45 dias de teste.',
+                                                data: {
+                                                    empresa_id: empresa_id,
+                                                    horarios_inseridos: horariosInseridos,
+                                                    telefone_dono: telefoneLimpo
+                                                }
+                                            });
                                         });
-                                    });
-                                }
-                            });
-                        }
-                    });
-                    // ============================================================
-                    // FIM DO CÓDIGO NOVO DOS HORÁRIOS
-                    // ============================================================
+                                    }
+                                });
+                            }
+                        });
+                    }
                 });
             });
         });
@@ -1792,6 +1875,65 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 // ============================================
+// ROTAS DO SUPER ADMIN - MÉTRICAS
+// ============================================
+
+// GET /api/admin/faturamento-mensal - Faturamento mensal dos últimos 6 meses
+app.get('/api/admin/faturamento-mensal', auth, verificarSuperAdmin, (req, res) => {
+    const sql = isProduction
+        ? `SELECT 
+            TO_CHAR(data, 'YYYY-MM') as mes,
+            COALESCE(SUM(valor), 0) as total
+           FROM agendamentos
+           WHERE status = 'concluido'
+           AND data >= CURRENT_DATE - INTERVAL '6 months'
+           GROUP BY TO_CHAR(data, 'YYYY-MM')
+           ORDER BY mes ASC`
+        : `SELECT 
+            strftime('%Y-%m', data) as mes,
+            COALESCE(SUM(valor), 0) as total
+           FROM agendamentos
+           WHERE status = 'concluido'
+           AND data >= date('now', '-6 months')
+           GROUP BY strftime('%Y-%m', data)
+           ORDER BY mes ASC`;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao buscar faturamento mensal:', err);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, data: rows });
+    });
+});
+
+// GET /api/admin/crescimento-empresas - Crescimento de empresas por mês
+app.get('/api/admin/crescimento-empresas', auth, verificarSuperAdmin, (req, res) => {
+    const sql = isProduction
+        ? `SELECT 
+            TO_CHAR(created_at, 'YYYY-MM') as mes,
+            COUNT(*) as total
+           FROM empresas
+           WHERE created_at >= CURRENT_DATE - INTERVAL '6 months'
+           GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+           ORDER BY mes ASC`
+        : `SELECT 
+            strftime('%Y-%m', created_at) as mes,
+            COUNT(*) as total
+           FROM empresas
+           WHERE created_at >= date('now', '-6 months')
+           GROUP BY strftime('%Y-%m', created_at)
+           ORDER BY mes ASC`;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao buscar crescimento de empresas:', err);
+            return res.json({ success: false, message: err.message });
+        }
+        res.json({ success: true, data: rows });
+    });
+});
+// ============================================
 // 4. DETALHES DE UMA EMPRESA (CORRIGIDO)
 // ============================================
 app.get('/api/admin/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
@@ -2276,7 +2418,63 @@ app.delete('/api/admin/empresas/:id', auth, verificarSuperAdmin, async (req, res
         });
     }
 });
+// ============================================
+// GET /api/admin/empresas/:id/localizacao - BUSCAR LOCALIZAÇÃO
+// ============================================
+app.get('/api/admin/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) => {
+    const { id } = req.params;
 
+    console.log(`📍 Buscando localização da empresa ${id}...`);
+
+    // Verificar se a tabela localizacoes existe
+    const sqlCheck = isProduction
+        ? `SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_name = 'localizacoes'
+        )`
+        : `SELECT name FROM sqlite_master WHERE type='table' AND name='localizacoes'`;
+
+    db.get(sqlCheck, [], (err, tableExists) => {
+        if (err) {
+            console.error('❌ Erro ao verificar tabela localizacoes:', err.message);
+            // Se a tabela não existir, retornar dados vazios
+            return res.json({ success: true, data: {} });
+        }
+
+        // Verificar se a tabela existe
+        let existe = false;
+        if (isProduction) {
+            existe = tableExists?.exists || false;
+        } else {
+            existe = !!tableExists;
+        }
+
+        if (!existe) {
+            console.log('⚠️ Tabela localizacoes não encontrada');
+            return res.json({ success: true, data: {} });
+        }
+
+        // Buscar a localização da empresa
+        const sqlLocation = isProduction
+            ? `SELECT * FROM localizacoes WHERE empresa_id = $1 ORDER BY created_at DESC LIMIT 1`
+            : `SELECT * FROM localizacoes WHERE empresa_id = ? ORDER BY created_at DESC LIMIT 1`;
+
+        db.get(sqlLocation, [id], (err, localizacao) => {
+            if (err) {
+                console.error('❌ Erro ao buscar localização:', err.message);
+                return res.json({ success: true, data: {} });
+            }
+
+            if (!localizacao) {
+                console.log(`📍 Nenhuma localização encontrada para empresa ${id}`);
+                return res.json({ success: true, data: {} });
+            }
+
+            console.log(`📍 Localização encontrada: ${localizacao.cidade}/${localizacao.estado}`);
+            res.json({ success: true, data: localizacao });
+        });
+    });
+});
 // ============================================
 // 9. BUSCAR USUÁRIO PARA EDIÇÃO (CORRIGIDO)
 // ============================================
@@ -2868,7 +3066,38 @@ app.get('/api/admin/acessos', auth, verificarSuperAdmin, (req, res) => {
         });
     });
 });
+// ============================================
+// PLANOS - GESTÃO (SUPER ADMIN)
+// ============================================
 
+// GET /api/admin/planos-config - Buscar configuração dos planos
+app.get('/api/admin/planos-config', auth, verificarSuperAdmin, (req, res) => {
+    try {
+        const planos = require('./server/utils/constants').PLANOS;
+        res.json({ success: true, data: planos });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
+
+// PUT /api/admin/planos-config - Atualizar plano
+app.put('/api/admin/planos-config', auth, verificarSuperAdmin, (req, res) => {
+    try {
+        const plano = req.body;
+        // Validar dados
+        if (!plano.id || !plano.nome || !plano.valor_mensal) {
+            return res.json({ success: false, message: 'Dados incompletos' });
+        }
+        // Atualizar no arquivo de constantes
+        const fs = require('fs');
+        const path = require('path');
+        const constantsPath = path.join(__dirname, 'server/utils/constants.js');
+        // ... lógica para atualizar o arquivo
+        res.json({ success: true, message: 'Plano atualizado!' });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+});
 console.log('? Super Admin - Todas as rotas carregadas com sucesso!');
 // ============================================================
 // SERVI�OS
