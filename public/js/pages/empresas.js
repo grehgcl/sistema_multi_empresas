@@ -492,7 +492,7 @@ function filtrarEmpresas() {
 }
 
 // ============================================
-// VER EMPRESA - VERSÃO COMPLETA E DETALHADA (RESTAURADA)
+// VER EMPRESA - VERSÃO COMPLETA E DETALHADA
 // ============================================
 async function verEmpresa(id) {
     console.log('👁️ Ver empresa ID:', id);
@@ -500,12 +500,13 @@ async function verEmpresa(id) {
     const token = localStorage.getItem('token');
 
     try {
-        const [empresaRes, usuariosRes, clientesRes, agendamentosRes, acessosRes] = await Promise.all([
+        const [empresaRes, usuariosRes, clientesRes, agendamentosRes, acessosRes, localizacaoRes] = await Promise.all([
             fetch(`/api/admin/empresas/${id}`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/usuarios`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/clientes`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/agendamentos`, { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch(`/api/admin/empresas/${id}/acessos`, { headers: { 'Authorization': 'Bearer ' + token } })
+            fetch(`/api/admin/empresas/${id}/acessos`, { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch(`/api/admin/empresas/${id}/localizacao`, { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
         const empresa = (await empresaRes.json()).data || {};
@@ -513,31 +514,60 @@ async function verEmpresa(id) {
         const clientes = (await clientesRes.json()).data || [];
         const agendamentos = (await agendamentosRes.json()).data || [];
         const acessos = (await acessosRes.json()).data || [];
+        const localizacao = (await localizacaoRes.json()).data || {};
 
         const donos = usuarios.filter(u => u.tipo === 'dono' || u.role === 'dono');
         const profissionais = usuarios.filter(u => u.tipo === 'profissional' || u.role === 'profissional');
 
+        // ============================================
+        // 🔥 CALCULAR STATUS E DIAS RESTANTES
+        // ============================================
         const isTrial = empresa.plano === 'trial' || empresa.plano === 'Trial';
         const isAtivo = empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === true;
 
         let diasRestantes = 0;
-        if (empresa.trial_expira) {
+        let isIlimitado = false;
+
+        if (isTrial && empresa.trial_expira) {
             const hoje = new Date();
             const expira = new Date(empresa.trial_expira);
             diasRestantes = Math.ceil((expira - hoje) / (1000 * 60 * 60 * 24));
+            if (diasRestantes < 0) diasRestantes = 0;
+        } else if (!isTrial && empresa.assinatura_valida_ate) {
+            const hoje = new Date();
+            const validaAte = new Date(empresa.assinatura_valida_ate);
+            diasRestantes = Math.ceil((validaAte - hoje) / (1000 * 60 * 60 * 24));
+            if (diasRestantes < 0) diasRestantes = 0;
+        } else {
+            isIlimitado = true;
+            diasRestantes = 999;
         }
 
+        // ============================================
+        // 🔥 DEFINIR STATUS COLOR E TEXT
+        // ============================================
         let statusColor = '#22c55e';
         let statusText = '✅ Ativo';
+
         if (isTrial) {
-            if (diasRestantes <= 0) { statusColor = '#ef4444'; statusText = '⛔ Expirado'; }
-            else if (diasRestantes <= 7) { statusColor = '#f59e0b'; statusText = `⚠️ ${diasRestantes} dias restantes`; }
-            else { statusColor = '#22c55e'; statusText = `✅ ${diasRestantes} dias restantes`; }
+            if (diasRestantes <= 0) {
+                statusColor = '#ef4444';
+                statusText = '⛔ Expirado';
+            } else if (diasRestantes <= 7) {
+                statusColor = '#f59e0b';
+                statusText = `⚠️ ${diasRestantes} dias restantes`;
+            } else {
+                statusColor = '#22c55e';
+                statusText = `✅ ${diasRestantes} dias restantes`;
+            }
         } else if (!isAtivo) {
             statusColor = '#ef4444';
             statusText = '⛔ Inativo';
         }
 
+        // ============================================
+        // 🔥 CALCULAR OUTRAS MÉTRICAS
+        // ============================================
         const totalAcessos = acessos.length;
         const acessosHoje = acessos.filter(a => {
             const hoje = new Date().toISOString().split('T')[0];
@@ -555,6 +585,9 @@ async function verEmpresa(id) {
             .filter(a => a.status === 'concluido')
             .reduce((sum, a) => sum + (parseFloat(a.valor) || 0), 0);
 
+        // ============================================
+        // 📝 GERAR HTML
+        // ============================================
         const html = `
             <div class="fade-in">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
@@ -581,6 +614,7 @@ async function verEmpresa(id) {
                     </div>
                 </div>
                 
+                <!-- CARDS DE MÉTRICAS -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;">
                     <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
                         <div style="font-size:11px;color:var(--text-muted);">Plano</div>
@@ -611,12 +645,55 @@ async function verEmpresa(id) {
                         <div style="font-size:10px;color:var(--text-muted);">${agendamentosConcluidos} concluídos</div>
                     </div>
                 </div>
-                
-                <!-- Seções de Detalhes (Donos, Profissionais, Clientes, Agendamentos, Acessos) -->
+
+                <!-- LOCALIZAÇÃO DO CADASTRO -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-crown" style="color:#f59e0b;"></i> Donos (${donos.length})</h4>
+                    <h4 style="margin:0 0 12px 0;font-size:14px;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-map-marker-alt" style="color:#22c55e;"></i> 
+                        Localização do Cadastro
+                        <span style="font-size:11px;color:var(--text-muted);font-weight:400;">
+                            ${localizacao.created_at ? `• ${formatarDataHora(localizacao.created_at)}` : ''}
+                        </span>
+                    </h4>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
+                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
+                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📡 IP</div>
+                            <div style="font-size:14px;font-weight:600;font-family:monospace;color:var(--text-primary);">
+                                ${localizacao.ip || 'N/A'}
+                            </div>
+                        </div>
+                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
+                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🌍 Cidade</div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">
+                                ${localizacao.cidade || 'N/A'}
+                            </div>
+                        </div>
+                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
+                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📍 Estado</div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">
+                                ${localizacao.estado || 'N/A'}
+                            </div>
+                        </div>
+                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
+                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🏢 ISP</div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">
+                                ${localizacao.isp || 'N/A'}
+                            </div>
+                        </div>
                     </div>
+                    ${localizacao.latitude && localizacao.longitude ? `
+                        <div style="margin-top:10px;text-align:center;">
+                            <a href="https://www.google.com/maps?q=${localizacao.latitude},${localizacao.longitude}" target="_blank" 
+                               style="color:#667eea;font-size:12px;text-decoration:none;background:rgba(102,126,234,0.08);padding:6px 16px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;">
+                                <i class="fas fa-map"></i> Ver no Google Maps
+                            </a>
+                        </div>
+                    ` : ''}
+                </div>
+
+                <!-- SEÇÃO DONOS -->
+                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
+                    <h4 style="margin:0 0 12px 0;font-size:14px;"><i class="fas fa-crown" style="color:#f59e0b;"></i> Donos (${donos.length})</h4>
                     ${donos.length > 0 ? `
                         <div style="overflow-x:auto;">
                             <table class="data-table" style="font-size:12px;width:100%">
@@ -635,10 +712,9 @@ async function verEmpresa(id) {
                     ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum dono cadastrado.</div>'}
                 </div>
 
+                <!-- SEÇÃO PROFISSIONAIS -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Profissionais (${profissionais.length})</h4>
-                    </div>
+                    <h4 style="margin:0 0 12px 0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Profissionais (${profissionais.length})</h4>
                     ${profissionais.length > 0 ? `
                         <div style="overflow-x:auto;">
                             <table class="data-table" style="font-size:12px;width:100%">
@@ -658,10 +734,9 @@ async function verEmpresa(id) {
                     ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum profissional cadastrado.</div>'}
                 </div>
 
+                <!-- SEÇÃO CLIENTES -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-address-book" style="color:#8b5cf6;"></i> Clientes (${clientes.length})</h4>
-                    </div>
+                    <h4 style="margin:0 0 12px 0;font-size:14px;"><i class="fas fa-address-book" style="color:#8b5cf6;"></i> Clientes (${clientes.length})</h4>
                     ${clientes.length > 0 ? `
                         <div style="overflow-x:auto;">
                             <table class="data-table" style="font-size:12px;width:100%">
@@ -681,6 +756,7 @@ async function verEmpresa(id) {
                     ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum cliente cadastrado.</div>'}
                 </div>
 
+                <!-- SEÇÃO AGENDAMENTOS -->
                 <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
                         <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Agendamentos (${agendamentos.length})</h4>
@@ -719,7 +795,6 @@ async function verEmpresa(id) {
         showToast('Erro ao carregar detalhes da empresa: ' + error.message, 'error');
     }
 }
-
 // ============================================
 // EDITAR EMPRESA (PARA MUDAR PLANO/NOME)
 // ============================================
@@ -1081,7 +1156,278 @@ function formatarDataHora(dataStr) {
         return dataStr;
     }
 }
+// ============================================
+// PLANOS - GESTÃO COMPLETA (SUPER ADMIN)
+// ============================================
 
+let planosConfig = [];
+
+async function carregarPlanosConfig() {
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch('/api/admin/planos-config', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            planosConfig = data.data;
+            renderizarGerenciadorPlanos();
+        }
+    } catch (error) {
+        showToast('Erro ao carregar planos', 'error');
+    }
+    hideLoading();
+}
+
+function renderizarGerenciadorPlanos() {
+    const html = `
+        <div style="padding:16px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+                <div>
+                    <button onclick="carregarDashboardSuperAdmin()" style="background:var(--bg-hover);border:none;padding:4px 14px;border-radius:6px;cursor:pointer;color:var(--text-secondary);font-size:12px;">
+                        <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                    <h2 style="margin:8px 0 0;font-size:24px;">💰 Gerenciador de Planos</h2>
+                    <p style="color:var(--text-muted);font-size:13px;">Gerencie valores, promoções e recursos dos planos</p>
+                </div>
+                <button onclick="criarNovoPlano()" style="background:#22c55e;border:none;padding:10px 20px;border-radius:8px;color:white;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-plus"></i> Novo Plano
+                </button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
+                ${planosConfig.map(plano => `
+                    <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;position:relative;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                            <div>
+                                <div style="font-size:18px;font-weight:700;color:#fff;">${plano.nome}</div>
+                                <div style="font-size:24px;font-weight:700;color:#667eea;margin:6px 0;">
+                                    R$ ${plano.valor_mensal.toFixed(2)}
+                                    <span style="font-size:12px;color:#888;font-weight:400;">/mês</span>
+                                </div>
+                                ${plano.valor_anual ? `
+                                    <div style="font-size:14px;color:#22c55e;">
+                                        R$ ${plano.valor_anual.toFixed(2)}/ano 
+                                        <span style="font-size:11px;color:#888;">(economia de ${Math.round((1 - plano.valor_anual / (plano.valor_mensal * 12)) * 100)}%)</span>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div style="display:flex;gap:4px;">
+                                <button onclick="editarPlano('${plano.id}')" style="padding:4px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:rgba(102,126,234,0.15);color:#667eea;">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button onclick="duplicarPlano('${plano.id}')" style="padding:4px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:rgba(34,197,94,0.15);color:#22c55e;">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button onclick="deletarPlano('${plano.id}')" style="padding:4px 10px;border:none;border-radius:6px;font-size:12px;cursor:pointer;background:rgba(239,68,68,0.15);color:#ef4444;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;">
+                            ${plano.popular ? `<span style="background:#f59e0b;padding:2px 10px;border-radius:12px;font-size:10px;color:white;">⭐ Popular</span>` : ''}
+                            <span style="background:#2d2d3f;padding:2px 10px;border-radius:12px;font-size:10px;color:#888;">
+                                👥 ${plano.profs === 'Ilimitado' ? '♾️' : plano.profs} profissionais
+                            </span>
+                            <span style="background:#2d2d3f;padding:2px 10px;border-radius:12px;font-size:10px;color:#888;">
+                                📅 ${plano.agendamentos || 'Ilimitados'}
+                            </span>
+                        </div>
+
+                        <div style="margin-top:12px;">
+                            <div style="font-size:12px;color:#888;margin-bottom:4px;">Recursos:</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                ${plano.recursos.map(r => `
+                                    <span style="background:rgba(34,197,94,0.08);padding:2px 10px;border-radius:12px;font-size:10px;color:#22c55e;">
+                                        ${r.replace('✅ ', '')}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top:12px;">
+                            <div style="font-size:12px;color:#888;margin-bottom:4px;">Limitações:</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                                ${plano.limitacoes.map(l => `
+                                    <span style="background:rgba(239,68,68,0.08);padding:2px 10px;border-radius:12px;font-size:10px;color:#ef4444;">
+                                        ${l.replace('❌ ', '')}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #2d2d3f;display:flex;gap:8px;font-size:11px;color:#888;">
+                            <span>💳 <span style="color:#fff;">${plano.id}</span></span>
+                            <span>•</span>
+                            <span>${plano.cor || '#667eea'}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('content').innerHTML = html;
+}
+async function editarPlano(planoId) {
+    const plano = planosConfig.find(p => p.id === planoId);
+    if (!plano) return;
+
+    const modalContent = `
+        <div style="padding:10px 0;">
+            <form id="formEditarPlano">
+                <input type="hidden" id="planoId" value="${plano.id}">
+                
+                <div class="form-group">
+                    <label>ID do Plano (identificador único)</label>
+                    <input type="text" id="planoIdInput" class="form-control" value="${plano.id}" placeholder="ex: starter">
+                    <small style="color:var(--text-muted);font-size:10px;">Use letras minúsculas sem espaços</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>Nome do Plano *</label>
+                    <input type="text" id="planoNome" class="form-control" value="${plano.nome}" placeholder="ex: Starter">
+                </div>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>Valor Mensal (R$) *</label>
+                        <input type="number" id="planoValorMensal" class="form-control" value="${plano.valor_mensal}" step="0.01">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Anual (R$)</label>
+                        <input type="number" id="planoValorAnual" class="form-control" value="${plano.valor_anual || ''}" step="0.01">
+                        <small style="color:var(--text-muted);font-size:10px;">Deixe em branco se não tiver</small>
+                    </div>
+                </div>
+                
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group">
+                        <label>👥 Profissionais</label>
+                        <input type="text" id="planoProfs" class="form-control" value="${plano.profs}" placeholder="5 ou Ilimitado">
+                    </div>
+                    <div class="form-group">
+                        <label>📅 Agendamentos/mês</label>
+                        <input type="text" id="planoAgendamentos" class="form-control" value="${plano.agendamentos || 'Ilimitados'}" placeholder="100 ou Ilimitados">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>🎨 Cor do Plano</label>
+                    <input type="color" id="planoCor" class="form-control" value="${plano.cor || '#667eea'}" style="height:40px;padding:2px;">
+                </div>
+                
+                <div class="form-group">
+                    <label>⭐ Popular</label>
+                    <select id="planoPopular" class="form-control">
+                        <option value="true" ${plano.popular ? 'selected' : ''}>Sim</option>
+                        <option value="false" ${!plano.popular ? 'selected' : ''}>Não</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>✅ Recursos (um por linha)</label>
+                    <textarea id="planoRecursos" class="form-control" rows="4" placeholder="Ex: ✅ Chatbot Inteligente">${plano.recursos.join('\n')}</textarea>
+                    <small style="color:var(--text-muted);font-size:10px;">Cada recurso em uma nova linha</small>
+                </div>
+                
+                <div class="form-group">
+                    <label>❌ Limitações (um por linha)</label>
+                    <textarea id="planoLimitacoes" class="form-control" rows="2" placeholder="Ex: ❌ Sem WhatsApp Business">${(plano.limitacoes || []).join('\n')}</textarea>
+                </div>
+                
+                <div style="display:flex;gap:8px;margin-top:12px;">
+                    <button type="submit" class="btn-3d" style="flex:1;"><i class="fas fa-save"></i> Salvar Plano</button>
+                    <button type="button" onclick="fecharModalEditarPlano()" class="btn-secondary">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    showModal('✏️ Editar Plano', modalContent, null);
+
+    setTimeout(() => {
+        const form = document.getElementById('formEditarPlano');
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                salvarPlanoConfig();
+            });
+        }
+    }, 200);
+}
+
+function fecharModalEditarPlano() {
+    const modal = document.querySelector('.modal');
+    if (modal) modal.remove();
+}
+
+async function salvarPlanoConfig() {
+    const id = document.getElementById('planoId').value;
+    const nome = document.getElementById('planoNome').value;
+    const valor_mensal = parseFloat(document.getElementById('planoValorMensal').value);
+    const valor_anual = parseFloat(document.getElementById('planoValorAnual').value) || null;
+    const profs = document.getElementById('planoProfs').value;
+    const agendamentos = document.getElementById('planoAgendamentos').value;
+    const cor = document.getElementById('planoCor').value;
+    const popular = document.getElementById('planoPopular').value === 'true';
+    const recursos = document.getElementById('planoRecursos').value.split('\n').filter(r => r.trim());
+    const limitacoes = document.getElementById('planoLimitacoes').value.split('\n').filter(l => l.trim());
+
+    if (!nome || !valor_mensal) {
+        showToast('Nome e valor mensal são obrigatórios', 'warning');
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch('/api/admin/planos-config', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                id,
+                nome,
+                valor_mensal,
+                valor_anual,
+                profs,
+                agendamentos,
+                cor,
+                popular,
+                recursos,
+                limitacoes
+            })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('✅ Plano atualizado com sucesso!', 'success');
+            fecharModalEditarPlano();
+            carregarPlanosConfig();
+        } else {
+            showToast(data.message || 'Erro ao salvar plano', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        showToast('Erro ao salvar plano', 'error');
+    }
+}
+// ============================================
+// FUNÇÃO AUXILIAR: VERIFICAR MOBILE
+// ============================================
+function isMobile() {
+    return window.innerWidth < 768;
+}
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
