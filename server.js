@@ -912,6 +912,32 @@ app.post('/api/cadastro', (req, res) => {
                                         }
 
                                         // ============================================================
+                                        // 🔥🔥🔥 ENVIAR NOTIFICAÇÃO DE NOVO CADASTRO 🔥🔥🔥
+                                        // ============================================================
+                                        try {
+                                            const emailService = require('./server/services/email');
+                                            emailService.notificarNovoCadastro(
+                                                'digregorioleal@gmail.com',  // ← SEU EMAIL
+                                                nome,
+                                                empresa_nome,
+                                                telefoneLimpo,
+                                                email
+                                            )
+                                                .then(result => {
+                                                    if (result.success) {
+                                                        console.log(`✅ Notificação de cadastro enviada para digregorioleal@gmail.com`);
+                                                    } else {
+                                                        console.error(`❌ Falha ao enviar notificação:`, result.error);
+                                                    }
+                                                })
+                                                .catch(err => {
+                                                    console.error('❌ Erro ao enviar notificação:', err.message);
+                                                });
+                                        } catch (notifErr) {
+                                            console.error('❌ Erro ao carregar serviço de notificação:', notifErr.message);
+                                        }
+
+                                        // ============================================================
                                         // RESPOSTA DO CADASTRO
                                         // ============================================================
                                         res.json({
