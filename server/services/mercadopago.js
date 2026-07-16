@@ -141,7 +141,7 @@ class MercadoPagoService {
         }
     }
 
-    // BOLETO REAL
+    // 🔹 BOLETO REAL - CORRIGIDO (com first_name e last_name)
     async criarBoleto(empresaId, planoId, planoNome, valor, cpf, nome, emailUsuario) {
         try {
             if (!this.token) {
@@ -149,48 +149,67 @@ class MercadoPagoService {
             }
 
             const emailPayer = emailUsuario || this.getEmailTeste();
+            const cpfLimpo = cpf.replace(/\D/g, '');
+
+            // 🔥 Separar nome em primeiro e último nome
+            const nomeCompleto = nome || 'Cliente';
+            const nomeParts = nomeCompleto.trim().split(' ');
+            const firstName = nomeParts[0] || 'Cliente';
+            const lastName = nomeParts.slice(1).join(' ') || 'Teste';
 
             const payload = {
                 transaction_amount: parseFloat(valor),
                 description: `Plano ${planoNome}`,
                 payment_method_id: 'bolbradesco',
                 payer: {
-                    name: nome || 'Cliente Teste',
                     email: emailPayer,
-                    identification: { type: 'CPF', number: cpf.replace(/\D/g, '') },
+                    first_name: firstName,   // ← OBRIGATÓRIO
+                    last_name: lastName,     // ← OBRIGATÓRIO
+                    identification: {
+                        type: 'CPF',
+                        number: cpfLimpo
+                    },
                     address: {
                         zip_code: '01310100',
                         street_name: 'Rua Teste',
-                        street_number: 123
+                        street_number: 123,
+                        neighborhood: 'Centro',
+                        city: 'São Paulo',
+                        federal_unit: 'SP'
                     }
                 },
                 external_reference: `emp_${empresaId}_${Date.now()}`,
                 date_of_expiration: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
             };
 
-            const idempotencyKey = this.gerarIdempotencyKey();
+            console.log('📤 Payload do boleto:', JSON.stringify(payload, null, 2));
 
-            const res = await axios.post(`${this.url}/v1/payments`, payload, {
+            const response = await axios.post(`${this.url}/v1/payments`, payload, {
                 headers: {
                     'Authorization': `Bearer ${this.token}`,
                     'Content-Type': 'application/json',
-                    'X-Idempotency-Key': idempotencyKey
+                    'X-Idempotency-Key': this.gerarIdempotencyKey()
                 }
             });
 
-            const p = res.data;
+            const p = response.data;
+            console.log('✅ Boleto criado! ID:', p.id);
+
             return {
                 success: true,
                 payment_id: p.id.toString(),
-                boleto_url: p.transaction_details?.external_resource_url || p.point_of_interaction?.transaction_data?.ticket_url,
+                boleto_url: p.transaction_details?.external_resource_url ||
+                    p.point_of_interaction?.transaction_data?.ticket_url,
                 status: p.status
             };
         } catch (e) {
             console.error('❌ Erro ao criar boleto:', e.response?.data || e.message);
-            return { success: false, message: e.response?.data?.message || 'Erro no boleto' };
+            return {
+                success: false,
+                message: e.response?.data?.message || 'Erro ao criar boleto'
+            };
         }
     }
-
     // CARTÃO REAL
     async criarCartao(empresaId, planoId, planoNome, valor, tokenCartao, emailUsuario) {
         try {

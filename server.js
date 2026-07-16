@@ -891,6 +891,29 @@ app.post('/api/cadastro', (req, res) => {
                                             console.log(`📊 ${result.total} horários confirmados no banco`);
                                         }
 
+                                        // ============================================================
+                                        // 🔥🔥🔥 ENVIAR EMAIL DE BOAS-VINDAS 🔥🔥🔥
+                                        // ============================================================
+                                        try {
+                                            const emailService = require('./server/services/email');
+                                            emailService.enviarBoasVindas(email, nome, empresa_nome)
+                                                .then(result => {
+                                                    if (result.success) {
+                                                        console.log(`✅ Email de boas-vindas enviado para ${email}`);
+                                                    } else {
+                                                        console.error(`❌ Falha ao enviar email:`, result.error);
+                                                    }
+                                                })
+                                                .catch(err => {
+                                                    console.error('❌ Erro ao enviar email:', err.message);
+                                                });
+                                        } catch (emailErr) {
+                                            console.error('❌ Erro ao carregar serviço de email:', emailErr.message);
+                                        }
+
+                                        // ============================================================
+                                        // RESPOSTA DO CADASTRO
+                                        // ============================================================
                                         res.json({
                                             success: true,
                                             message: 'Cadastro realizado! Você tem 45 dias de teste.',
@@ -6599,6 +6622,104 @@ app.post('/api/empresa/whatsapp/disconnect', auth, async (req, res) => {
 // 💳 MERCADO PAGO - PAGAMENTOS REAIS
 // ============================================================
 
+// 🔹 Boleto Real - COM NOME COMPLETO + EMAIL
+app.post('/api/create-boleto', auth, async (req, res) => {
+    const { plano_id, plano_nome, valor, cpf, periodo } = req.body;
+    const empresaId = req.usuario.empresa_id;
+    const emailUsuario = req.usuario.email;
+    const nomeUsuario = req.usuario.nome || 'Cliente Teste';
+
+    console.log('💳 Criando boleto:', { empresaId, plano_id, valor, cpf });
+
+    if (!cpf) {
+        return res.status(400).json({
+            success: false,
+            message: 'CPF é obrigatório para boleto'
+        });
+    }
+
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    if (cpfLimpo.length < 11) {
+        return res.status(400).json({
+            success: false,
+            message: 'CPF inválido. Digite 11 números.'
+        });
+    }
+
+    const resultado = await mercadopago.criarBoleto(
+        empresaId,
+        plano_id,
+        plano_nome,
+        valor,
+        cpfLimpo,
+        nomeUsuario,
+        emailUsuario
+    );
+
+    if (resultado.success) {
+        // 🔥 ENVIAR EMAIL DO BOLETO
+        try {
+            const emailService = require('./server/services/email');
+            await emailService.enviarBoleto(
+                emailUsuario,
+                nomeUsuario,
+                plano_nome,
+                valor,
+                resultado.boleto_url
+            );
+            console.log(`✅ Email do boleto enviado para ${emailUsuario}`);
+        } catch (emailErr) {
+            console.error('❌ Erro ao enviar email do boleto:', emailErr.message);
+        }
+
+        res.json({ success: true, ...resultado });
+    } else {
+        console.error('❌ Erro ao criar boleto:', resultado);
+        res.status(400).json(resultado);
+    }
+});
+
+// 🔹 PIX Real + EMAIL
+app.post('/api/create-pix', auth, async (req, res) => {
+    const { plano_id, plano_nome, valor, periodo } = req.body;
+    const empresaId = req.usuario.empresa_id;
+    const emailUsuario = req.usuario.email;
+    const nomeUsuario = req.usuario.nome || 'Cliente';
+
+    console.log('💳 Criando PIX:', { empresaId, plano_id, valor, email: emailUsuario });
+
+    const resultado = await mercadopago.criarPix(empresaId, plano_id, plano_nome, valor, periodo, emailUsuario);
+
+    if (resultado.success) {
+        const sql = isProduction
+            ? `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at) VALUES ($1,$2,$3,$4,'pix',$5,'pending',$6,$7,CURRENT_TIMESTAMP)`
+            : `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at) VALUES (?,?,?,?, 'pix',?,'pending',?,?,CURRENT_TIMESTAMP)`;
+
+        db.run(sql, [empresaId, plano_id, plano_nome, valor, resultado.payment_id, resultado.qr_code, resultado.qr_code_base64]);
+
+        // 🔥 ENVIAR EMAIL DO PIX
+        try {
+            const emailService = require('./server/services/email');
+            await emailService.enviarPix(
+                emailUsuario,
+                nomeUsuario,
+                plano_nome,
+                valor,
+                resultado.qr_code,
+                resultado.qr_code_base64
+            );
+            console.log(`✅ Email do PIX enviado para ${emailUsuario}`);
+        } catch (emailErr) {
+            console.error('❌ Erro ao enviar email do PIX:', emailErr.message);
+        }
+
+        res.json({ success: true, ...resultado });
+    } else {
+        console.error('❌ Erro ao criar PIX:', resultado);
+        res.status(400).json(resultado);
+    }
+});
+
 // 🔹 Criar preferência de pagamento (Checkout Pro)
 app.post('/api/create-payment', auth, async (req, res) => {
     const { plano_id, plano_nome, valor, metodo_pagamento, periodo } = req.body;
@@ -6614,7 +6735,6 @@ app.post('/api/create-payment', auth, async (req, res) => {
     }
 
     try {
-        // 🔥 CORREÇÃO: Usar email de teste válido do Mercado Pago
         const emailTeste = 'test_user_1689549456@testuser.com';
 
         const preference = {
@@ -6636,13 +6756,11 @@ app.post('/api/create-payment', auth, async (req, res) => {
                 failure: `${process.env.BASE_URL || 'http://localhost:3000'}/?payment=failure`,
                 pending: `${process.env.BASE_URL || 'http://localhost:3000'}/?payment=pending`
             }
-            // 🔥 REMOVIDO: auto_return: 'approved' (causava problema em localhost)
         };
 
         const resultado = await mercadopago.criarPreferencia(preference);
 
         if (resultado.success) {
-            // Salvar transação no banco
             const sql = isProduction
                 ? `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, external_reference, created_at) VALUES ($1,$2,$3,$4,$5,$6,'pending',$7,CURRENT_TIMESTAMP)`
                 : `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, external_reference, created_at) VALUES (?,?,?,?,?,?, 'pending',?,CURRENT_TIMESTAMP)`;
@@ -6657,10 +6775,15 @@ app.post('/api/create-payment', auth, async (req, res) => {
                 resultado.external_reference
             ]);
 
+            // 🔥 FORÇAR LINK DE PRODUÇÃO
+            const url = resultado.init_point || resultado.sandbox_init_point;
+
+            console.log('🔗 Link gerado:', url);
+            console.log('🔗 É sandbox?', url?.includes('sandbox') ? '✅ SIM' : '❌ NÃO');
+
             res.json({
                 success: true,
-                init_point: resultado.init_point,
-                sandbox_init_point: resultado.sandbox_init_point,
+                init_point: url,
                 preference_id: resultado.preference_id
             });
         } else {
@@ -6678,43 +6801,6 @@ app.post('/api/create-payment', auth, async (req, res) => {
         });
     }
 });
-
-// 🔹 PIX Real
-app.post('/api/create-pix', auth, async (req, res) => {
-    const { plano_id, plano_nome, valor, periodo } = req.body;
-    const empresaId = req.usuario.empresa_id;
-    const emailUsuario = req.usuario.email; // 🔥 PEGAR EMAIL DO USUÁRIO LOGADO
-
-    const resultado = await mercadopago.criarPix(empresaId, plano_id, plano_nome, valor, periodo, emailUsuario);
-
-    if (resultado.success) {
-        const sql = isProduction
-            ? `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at) VALUES ($1,$2,$3,$4,'pix',$5,'pending',$6,$7,CURRENT_TIMESTAMP)`
-            : `INSERT INTO transacoes_pagamento (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at) VALUES (?,?,?,?, 'pix',?,'pending',?,?,CURRENT_TIMESTAMP)`;
-
-        db.run(sql, [empresaId, plano_id, plano_nome, valor, resultado.payment_id, resultado.qr_code, resultado.qr_code_base64]);
-        res.json({ success: true, ...resultado });
-    } else {
-        res.status(400).json(resultado);
-    }
-});
-
-// 🔹 Boleto Real
-app.post('/api/create-boleto', auth, async (req, res) => {
-    const { plano_id, plano_nome, valor, cpf, periodo } = req.body;
-    const empresaId = req.usuario.empresa_id;
-    const emailUsuario = req.usuario.email; // 🔥 PEGAR EMAIL DO USUÁRIO LOGADO
-    const nomeUsuario = req.usuario.nome || 'Cliente';
-
-    const resultado = await mercadopago.criarBoleto(empresaId, plano_id, plano_nome, valor, cpf, nomeUsuario, emailUsuario);
-
-    if (resultado.success) {
-        res.json({ success: true, ...resultado });
-    } else {
-        res.status(400).json(resultado);
-    }
-});
-
 // 🔹 Consultar status do pagamento
 app.get('/api/check-payment/:paymentId', auth, async (req, res) => {
     const { paymentId } = req.params;
