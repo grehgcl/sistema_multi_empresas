@@ -16,7 +16,6 @@
     "@wppconnect-team/wppconnect": "^2.2.1",
     "axios": "^1.18.1",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^12.11.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
@@ -25,11 +24,11 @@
     "node-cron": "^3.0.3",
     "nodemailer": "^9.0.3",
     "pg": "^8.11.3",
-    "sqlite3": "^5.1.6",
     "stripe": "^22.2.1"
   },
   "devDependencies": {
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "sqlite3": "^5.1.6"
   },
   "engines": {
     "node": ">=18.0.0"
