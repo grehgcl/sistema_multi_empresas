@@ -1461,7 +1461,7 @@ async function carregarDashboardDono() {
     const faturamentoMes = agendamentos.filter(a =>
         a.status === 'concluido' && a.data >= primeiroDiaMes
     ).reduce((sum, a) => {
-        const valor = parseFloat(a.valor) || 0;
+        const valor = parseFloat(a.valor_total) || parseFloat(a.valor) || 0;
         return sum + valor;
     }, 0);
 
@@ -1481,7 +1481,7 @@ async function carregarDashboardDono() {
     let ticketMedio = 0;
     if (concluidos.length > 0) {
         const total = concluidos.reduce((sum, a) => {
-            const valor = parseFloat(a.valor) || 0;
+            const valor = parseFloat(a.valor_total) || parseFloat(a.valor) || 0;
             return sum + valor;
         }, 0);
         ticketMedio = total / concluidos.length;

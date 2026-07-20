@@ -678,7 +678,7 @@ function renderizarReceitas(receitas) {
     if (isMobile) {
         html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
         for (let item of lista) {
-            const valor = toNumber(item.valor);
+            const valor = toNumber(item.valor_total) || toNumber(item.valor) || 0;
             const comissao = toNumber(item.comissao);
             const temProfissional = item.profissional_id ? true : false;
             html += `
@@ -721,7 +721,7 @@ function renderizarReceitas(receitas) {
                                     <td>${formatarDataBr(item.data)}</td>
                                     <td><strong>${escapeHtml(item.cliente_nome || 'Cliente')}</strong></td>
                                     <td>${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
-                                    <td><span style="color:#22c55e;font-weight:700;">R$ ${toNumber(item.valor).toFixed(2)}</span></td>
+                                    <td><span style="color:#22c55e;font-weight:700;">R$ ${(toNumber(item.valor_total) || toNumber(item.valor) || 0).toFixed(2)}</span></td>
                                     <td class="${!temProf ? 'text-muted' : ''}">${temProf ? escapeHtml(item.profissional_nome || 'Profissional') : 'Sem profissional'}</td>
                                     <td>${temProf ? `R$ ${toNumber(item.comissao).toFixed(2)}` : 'R$ 0,00'}</td>
                                 </tr>
@@ -1253,7 +1253,7 @@ function renderizarComissoesTab(data, isDono) {
         html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
         for (let item of comissoes) {
             const temProfissional = item.profissional_id ? true : false;
-            const valor = toNumber(item.valor);
+            const valor = toNumber(item.valor_total) || toNumber(item.valor) || 0;
             const comissao = toNumber(item.comissao);
             const clienteNome = item.cliente_nome || 'Cliente';
             const servicoNome = item.servico_nome || item.servico || 'Serviço';
@@ -1300,7 +1300,7 @@ function renderizarComissoesTab(data, isDono) {
                                     <td>${formatarDataBr(item.data)}</td>
                                     <td><strong>${escapeHtml(item.cliente_nome || 'Cliente')}</strong></td>
                                     <td>${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
-                                    <td><span class="valor">R$ ${toNumber(item.valor).toFixed(2)}</span></td>
+                                    <td><span class="valor">R$ ${(toNumber(item.valor_total) || toNumber(item.valor) || 0).toFixed(2)}</span></td>
                                     <td class="${!temProf ? 'text-muted' : ''}">${temProf ? escapeHtml(item.profissional_nome || 'Profissional') : 'Sem profissional'}</td>
                                     <td>${temProf ? `<span style="color:var(--primary);font-weight:700;">R$ ${toNumber(item.comissao).toFixed(2)}</span>` : 'R$ 0,00'}</td>
                                 </tr>

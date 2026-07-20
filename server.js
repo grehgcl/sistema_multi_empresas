@@ -3963,7 +3963,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
             a.id,
             a.data,
             to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-            a.valor,
+            a.valor_total,
             a.servico,
             a.comissao,
             a.cliente_id,
@@ -3982,7 +3982,7 @@ app.get('/api/profissional/financeiro', auth, (req, res) => {
             a.id,
             a.data,
             date(a.data) as data_formatada,
-            a.valor,
+            a.valor_total,
             a.servico,
             a.comissao,
             a.cliente_id,
@@ -4672,7 +4672,7 @@ app.get('/api/financeiro', auth, (req, res) => {
 
         db.all(sql, [profissional_id], (err, comissoes) => {
             if (err) {
-                console.error('? Erro no financeiro profissional:', err.message);
+                console.error('❌ Erro no financeiro profissional:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -4699,10 +4699,12 @@ app.get('/api/financeiro', auth, (req, res) => {
     }
 
     if (role === 'dono') {
+        // 🔥 CORRIGIDO: Usar valor_total em vez de valor
         const sql = isProduction
             ? `SELECT 
                 a.id,
                 to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+                a.valor_total,
                 a.valor,
                 a.servico,
                 a.comissao,
@@ -4721,7 +4723,8 @@ app.get('/api/financeiro', auth, (req, res) => {
             : `SELECT 
                 a.id,
                 date(a.data) as data_formatada,
-                a.valor,
+                a.valor_total,
+                a.valor_total,
                 a.servico,
                 a.comissao,
                 a.profissional_id,
@@ -4739,7 +4742,7 @@ app.get('/api/financeiro', auth, (req, res) => {
 
         db.all(sql, [empresa_id], (err, comissoes) => {
             if (err) {
-                console.error('? Erro no financeiro dono:', err.message);
+                console.error('❌ Erro no financeiro dono:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -4753,7 +4756,8 @@ app.get('/api/financeiro', auth, (req, res) => {
                 item.data = dataFinal;
                 delete item.data_formatada;
 
-                const valor = parseFloat(item.valor) || 0;
+                // 🔥 CORRIGIDO: Usar valor_total primeiro, se não existir usa valor
+                const valor = parseFloat(item.valor_total) || parseFloat(item.valor) || 0;
                 faturamentoBruto += valor;
 
                 if (!item.profissional_id) {
@@ -4989,7 +4993,7 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
                 a.data,
                 a.cliente_id,
                 a.servico,
-                a.valor,
+                a.valor_total,
                 a.comissao,
                 a.profissional_id,
                 a.status,
@@ -5015,7 +5019,7 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
                 a.data,
                 a.cliente_id,
                 a.servico,
-                a.valor,
+                a.valor_total,
                 a.comissao,
                 a.profissional_id,
                 a.status,
@@ -5043,9 +5047,10 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
             return res.json({ success: false, message: 'Erro ao buscar receitas' });
         }
 
+        // 🔥 CORRIGIDO: Usar valor_total
         let total = 0;
         rows.forEach(row => {
-            total += parseFloat(row.valor) || 0;
+            total += parseFloat(row.valor_total) || parseFloat(row.valor) || 0;
         });
 
         res.json({
@@ -5059,7 +5064,6 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
     });
 });
 
-// GET /api/financeiro/comparativo - Comparativo mês atual vs mês anterior
 // GET /api/financeiro/comparativo - Comparativo mês atual vs mês anterior
 app.get('/api/financeiro/comparativo', auth, (req, res) => {
     const { mes_atual, ano_atual, mes_anterior, ano_anterior } = req.query;
@@ -5076,26 +5080,26 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
             // Faturamento do mês
             let sqlFat, paramsFat;
             if (isProduction) {
-                // ✅ POSTGRESQL
+                // ✅ POSTGRESQL - CORRIGIDO
                 sqlFat = `
-                    SELECT COALESCE(SUM(valor), 0) as total
-                    FROM agendamentos
-                    WHERE empresa_id = $1
-                        AND status = 'concluido'
-                        AND EXTRACT(MONTH FROM data) = $2
-                        AND EXTRACT(YEAR FROM data) = $3
-                `;
+                SELECT COALESCE(SUM(valor_total), 0) as total
+                FROM agendamentos
+                WHERE empresa_id = $1
+                    AND status = 'concluido'
+                    AND EXTRACT(MONTH FROM data) = $2
+                    AND EXTRACT(YEAR FROM data) = $3
+            `;
                 paramsFat = [empresaId, parseInt(mes), parseInt(ano)];
             } else {
-                // ✅ SQLITE
+                // ✅ SQLITE - CORRIGIDO
                 sqlFat = `
-                    SELECT COALESCE(SUM(valor), 0) as total
-                    FROM agendamentos
-                    WHERE empresa_id = ?
-                        AND status = 'concluido'
-                        AND strftime('%m', data) = ?
-                        AND strftime('%Y', data) = ?
-                `;
+                SELECT COALESCE(SUM(valor_total), 0) as total
+                FROM agendamentos
+                WHERE empresa_id = ?
+                    AND status = 'concluido'
+                    AND strftime('%m', data) = ?
+                    AND strftime('%Y', data) = ?
+            `;
                 paramsFat = [empresaId, mes.padStart(2, '0'), ano];
             }
 
@@ -5105,27 +5109,25 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
                     return;
                 }
 
-                // Despesas do mês
+                // Despesas do mês (mantém SUM(valor) porque despesas não têm valor_total)
                 let sqlDesp, paramsDesp;
                 if (isProduction) {
-                    // ✅ POSTGRESQL
                     sqlDesp = `
-                        SELECT COALESCE(SUM(valor), 0) as total
-                        FROM despesas
-                        WHERE empresa_id = $1
-                            AND EXTRACT(MONTH FROM data) = $2
-                            AND EXTRACT(YEAR FROM data) = $3
-                    `;
+                    SELECT COALESCE(SUM(valor), 0) as total
+                    FROM despesas
+                    WHERE empresa_id = $1
+                        AND EXTRACT(MONTH FROM data) = $2
+                        AND EXTRACT(YEAR FROM data) = $3
+                `;
                     paramsDesp = [empresaId, parseInt(mes), parseInt(ano)];
                 } else {
-                    // ✅ SQLITE
                     sqlDesp = `
-                        SELECT COALESCE(SUM(valor), 0) as total
-                        FROM despesas
-                        WHERE empresa_id = ?
-                            AND strftime('%m', data) = ?
-                            AND strftime('%Y', data) = ?
-                    `;
+                    SELECT COALESCE(SUM(valor), 0) as total
+                    FROM despesas
+                    WHERE empresa_id = ?
+                        AND strftime('%m', data) = ?
+                        AND strftime('%Y', data) = ?
+                `;
                     paramsDesp = [empresaId, mes.padStart(2, '0'), ano];
                 }
 
@@ -7206,7 +7208,93 @@ app.post('/api/confirm-simulated-payment/:paymentId', auth, async (req, res) => 
         });
     }
 });
+// ============================================
+// ROTA: ATUALIZAR SERVIÇOS EXTRAS
+// ============================================
+app.put('/api/agendamentos/:id/extras', auth, verificarDono, (req, res) => {
+    const { id } = req.params;
+    const { servicos_extras } = req.body;
+    const empresa_id = req.usuario.empresa_id;
 
+    console.log('📝 Atualizando extras:', { id, empresa_id, servicos_extras });
+
+    // Calcular valor total dos extras
+    let valorExtras = 0;
+    if (Array.isArray(servicos_extras)) {
+        for (let extra of servicos_extras) {
+            valorExtras += parseFloat(extra.valor) || 0;
+        }
+    }
+
+    // Buscar valor principal do agendamento
+    const sqlSelect = isProduction
+        ? `SELECT valor FROM agendamentos WHERE id = $1 AND empresa_id = $2`
+        : `SELECT valor FROM agendamentos WHERE id = ? AND empresa_id = ?`;
+
+    db.get(sqlSelect, [id, empresa_id], (err, row) => {
+        if (err) {
+            console.error('❌ Erro ao buscar agendamento:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao buscar agendamento: ' + err.message
+            });
+        }
+
+        if (!row) {
+            return res.status(404).json({
+                success: false,
+                message: 'Agendamento não encontrado'
+            });
+        }
+
+        const valorPrincipal = parseFloat(row.valor) || 0;
+        const valorTotal = valorPrincipal + valorExtras;
+
+        // Converter para JSON (funciona no SQLite e PostgreSQL)
+        const extrasValue = JSON.stringify(servicos_extras || []);
+
+        // Atualizar
+        const sqlUpdate = isProduction
+            ? `UPDATE agendamentos 
+               SET servicos_extras = $1::jsonb, 
+                   valor_extras = $2, 
+                   valor_total = $3 
+               WHERE id = $4 AND empresa_id = $5`
+            : `UPDATE agendamentos 
+               SET servicos_extras = ?, 
+                   valor_extras = ?, 
+                   valor_total = ? 
+               WHERE id = ? AND empresa_id = ?`;
+
+        const params = [extrasValue, valorExtras, valorTotal, id, empresa_id];
+
+        console.log('📝 SQL:', sqlUpdate);
+        console.log('📝 Params:', params);
+
+        db.run(sqlUpdate, params, function (err) {
+            if (err) {
+                console.error('❌ Erro ao atualizar extras:', err);
+                console.error('❌ SQL:', sqlUpdate);
+                console.error('❌ Params:', params);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro ao atualizar extras: ' + err.message
+                });
+            }
+
+            console.log('✅ Extras atualizados com sucesso!');
+            res.json({
+                success: true,
+                message: 'Extras atualizados!',
+                data: {
+                    servicos_extras: servicos_extras,
+                    valor_extras: valorExtras,
+                    valor_total: valorTotal
+                }
+            });
+        });
+    });
+});
 // ============================================================
 // INICIALIZA��O DO SERVIDOR
 // ============================================================

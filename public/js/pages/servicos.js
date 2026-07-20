@@ -415,15 +415,20 @@ function abrirModalServico(servico = null) {
             <div class="form-group">
                 <label>⏱️ Duração (minutos) *</label>
                 <select id="servicoDuracao" class="form-control">
-                    <option value="15" ${isEdit && servico.duracao === 15 ? 'selected' : ''}>15 minutos</option>
-                    <option value="30" ${isEdit && (servico.duracao === 30 || !servico) ? 'selected' : ''}>30 minutos</option>
-                    <option value="45" ${isEdit && servico.duracao === 45 ? 'selected' : ''}>45 minutos</option>
-                    <option value="50" ${isEdit && servico.duracao === 50 ? 'selected' : ''}>50 minutos</option>
-                    <option value="60" ${isEdit && servico.duracao === 60 ? 'selected' : ''}>1 hora (60 min)</option>
-                    <option value="90" ${isEdit && servico.duracao === 90 ? 'selected' : ''}>1h30 (90 min)</option>
-                    <option value="120" ${isEdit && servico.duracao === 120 ? 'selected' : ''}>2 horas (120 min)</option>
-                    <option value="180" ${isEdit && servico.duracao === 180 ? 'selected' : ''}>3 horas (180 min)</option>
-                </select>
+    <option value="15" ${isEdit && servico.duracao === 15 ? 'selected' : ''}>15 minutos</option>
+    <option value="30" ${isEdit && (servico.duracao === 30 || !servico) ? 'selected' : ''}>30 minutos</option>
+    <option value="45" ${isEdit && servico.duracao === 45 ? 'selected' : ''}>45 minutos</option>
+    <option value="50" ${isEdit && servico.duracao === 50 ? 'selected' : ''}>50 minutos</option>
+    <option value="60" ${isEdit && servico.duracao === 60 ? 'selected' : ''}>1 hora (60 min)</option>
+    <option value="90" ${isEdit && servico.duracao === 90 ? 'selected' : ''}>1h30 (90 min)</option>
+    <option value="120" ${isEdit && servico.duracao === 120 ? 'selected' : ''}>2 horas (120 min)</option>
+    <option value="180" ${isEdit && servico.duracao === 180 ? 'selected' : ''}>3 horas (180 min)</option>
+    <option value="240" ${isEdit && servico.duracao === 240 ? 'selected' : ''}>4 horas (240 min)</option>
+    <option value="300" ${isEdit && servico.duracao === 300 ? 'selected' : ''}>5 horas (300 min)</option>
+    <option value="360" ${isEdit && servico.duracao === 360 ? 'selected' : ''}>6 horas (360 min)</option>
+    <option value="420" ${isEdit && servico.duracao === 420 ? 'selected' : ''}>7 horas (420 min)</option>
+    <option value="480" ${isEdit && servico.duracao === 480 ? 'selected' : ''}>8 horas (480 min)</option>
+</select>
                 <small class="text-muted" style="display:block;margin-top:4px;color:var(--text-muted);">
                     <i class="fas fa-info-circle"></i> 
                     A agenda respeitará este tempo, bloqueando os horários necessários
@@ -471,7 +476,7 @@ async function salvarServico() {
         return;
     }
 
-    if (!duracao || parseInt(duracao) < 5) {
+    if (!duracao || parseInt(duracao) < 5 || parseInt(duracao) > 480) {
         showToast('Duração deve ser pelo menos 5 minutos', 'warning');
         return;
     }
