@@ -46,56 +46,55 @@ class EvolutionInstances {
 
     static async getQrCode(instanceName) {
         try {
-            // Tenta o endpoint /qrcode primeiro
             console.log(`🔍 Buscando QR Code para: ${instanceName}`);
 
-            let response;
-            try {
-                // Tentativa 1: /instance/{name}/qrcode
-                response = await api.get(`/instance/${instanceName}/qrcode`);
-            } catch (error1) {
-                console.log(`⚠️ Endpoint /qrcode falhou, tentando /connect...`);
-                try {
-                    // Tentativa 2: /instance/connect/{name}
-                    response = await api.get(`/instance/connect/${instanceName}`);
-                } catch (error2) {
-                    console.log(`⚠️ Endpoint /connect falhou, tentando /instance/{name}...`);
-                    // Tentativa 3: /instance/{name} (pode ter o QR no response)
-                    response = await api.get(`/instance/${instanceName}`);
-                }
+            // ✅ ENDPOINT CORRETO E ÚNICO PARA EVOLUTION API v2
+            const response = await api.get(`/instance/connect/${instanceName}`);
+
+            const qrData = response.data?.qrcode;
+            const qrCode = qrData?.base64 || qrData || response.data?.base64;
+            const pairingCode = response.data?.pairingCode;
+            const instanceState = response.data?.instance?.state || response.data?.state;
+
+            // 1. Se já estiver conectada, avisa o frontend para parar de pedir QR Code
+            if (instanceState === 'open' || instanceState === 'connected') {
+                return {
+                    success: true,
+                    alreadyConnected: true,
+                    message: 'WhatsApp já está conectado!'
+                };
             }
 
-            // Verifica se veio QR Code em diferentes formatos
-            const qrCode = response.data?.qrcode ||
-                response.data?.base64 ||
-                response.data?.qrCode ||
-                response.data?.qr_code;
-
-            if (qrCode) {
+            // 2. Se tiver QR Code, retorna para o frontend
+            if (qrCode || pairingCode) {
                 console.log(`✅ QR Code obtido com sucesso`);
                 return {
                     success: true,
                     qrCode: qrCode,
-                    pairingCode: response.data?.pairingCode || null,
-                    data: response.data
-                };
-            } else {
-                // Se a instância já está conectada
-                if (response.data?.state === 'connected' || response.data?.connected === true) {
-                    return {
-                        success: false,
-                        message: 'WhatsApp já está conectado!',
-                        alreadyConnected: true
-                    };
-                }
-                return {
-                    success: false,
-                    message: 'QR Code não disponível. Aguarde a instância iniciar.',
+                    pairingCode: pairingCode,
                     data: response.data
                 };
             }
+
+            // 3. Se não tiver QR Code ainda (instância iniciando)
+            return {
+                success: false,
+                message: 'QR Code não disponível. Aguarde a instância iniciar.',
+                data: response.data
+            };
+
         } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error.response?.data || error.message);
+
+            // 4. SE DER 404, significa que a instância JÁ ESTÁ CONECTADA e a API negou o QR
+            if (error.response?.status === 404) {
+                return {
+                    success: true, // Retorna true para o frontend saber que está tudo ok
+                    alreadyConnected: true,
+                    message: 'Instância já está conectada.'
+                };
+            }
+
             return {
                 success: false,
                 message: error.response?.data?.message || 'Erro ao buscar QR Code'
