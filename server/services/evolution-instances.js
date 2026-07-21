@@ -46,20 +46,52 @@ class EvolutionInstances {
 
     static async getQrCode(instanceName) {
         try {
-            const response = await api.get(`/instance/connect/${instanceName}`);
+            // Tenta o endpoint /qrcode primeiro
+            console.log(`🔍 Buscando QR Code para: ${instanceName}`);
 
-            // 🔥 Verificar se veio o QR Code
-            if (response.data && response.data.base64) {
+            let response;
+            try {
+                // Tentativa 1: /instance/{name}/qrcode
+                response = await api.get(`/instance/${instanceName}/qrcode`);
+            } catch (error1) {
+                console.log(`⚠️ Endpoint /qrcode falhou, tentando /connect...`);
+                try {
+                    // Tentativa 2: /instance/connect/{name}
+                    response = await api.get(`/instance/connect/${instanceName}`);
+                } catch (error2) {
+                    console.log(`⚠️ Endpoint /connect falhou, tentando /instance/{name}...`);
+                    // Tentativa 3: /instance/{name} (pode ter o QR no response)
+                    response = await api.get(`/instance/${instanceName}`);
+                }
+            }
+
+            // Verifica se veio QR Code em diferentes formatos
+            const qrCode = response.data?.qrcode ||
+                response.data?.base64 ||
+                response.data?.qrCode ||
+                response.data?.qr_code;
+
+            if (qrCode) {
+                console.log(`✅ QR Code obtido com sucesso`);
                 return {
                     success: true,
-                    qrCode: response.data.base64,
-                    pairingCode: response.data.pairingCode || null,
+                    qrCode: qrCode,
+                    pairingCode: response.data?.pairingCode || null,
                     data: response.data
                 };
             } else {
+                // Se a instância já está conectada
+                if (response.data?.state === 'connected' || response.data?.connected === true) {
+                    return {
+                        success: false,
+                        message: 'WhatsApp já está conectado!',
+                        alreadyConnected: true
+                    };
+                }
                 return {
                     success: false,
-                    message: 'QR Code não disponível. A instância pode já estar conectada.'
+                    message: 'QR Code não disponível. Aguarde a instância iniciar.',
+                    data: response.data
                 };
             }
         } catch (error) {
@@ -70,35 +102,97 @@ class EvolutionInstances {
             };
         }
     }
-
     static async getStatus(instanceName) {
         try {
+            console.log(`🔍 Verificando status da instância: ${instanceName}`);
+
+            // ✅ ENDPOINT CORRETO EVOLUTION V2 PARA STATUS
             const response = await api.get(`/instance/connectionState/${instanceName}`);
-            return { success: true, state: response.data?.instance?.state };
+
+            // A Evolution V2 retorna "open" para conectado e "close" para desconectado
+            const state = response.data?.instance?.state || response.data?.state || 'disconnected';
+            const isConnected = state === 'open' || state === 'connected' || state === 'CONNECTED';
+
+            console.log(`📊 Status real da Evolution: ${state} (Nosso sistema entende como Connected: ${isConnected})`);
+
+            return {
+                success: true,
+                state: state,
+                connected: isConnected,
+                data: response.data
+            };
         } catch (error) {
-            return { success: false, state: 'disconnected' };
+            if (error.response?.status === 404) {
+                console.log(`⚠️ Instância ${instanceName} não encontrada`);
+                return { success: false, state: 'not_found', connected: false };
+            }
+            console.error('❌ Erro ao verificar status:', error.response?.data || error.message);
+            return { success: false, state: 'disconnected', connected: false };
+        }
+    }
+
+    static async disconnect(instanceName) {
+        try {
+            // ✅ ENDPOINT CORRETO: /instance/{instanceName}/disconnect
+            console.log(`🔌 Desconectando instância: ${instanceName}`);
+            const response = await api.post(`/instance/${instanceName}/disconnect`);
+            console.log(`✅ Instância desconectada`);
+            return { success: true, data: response.data };
+        } catch (error) {
+            console.error('❌ Erro ao desconectar:', error.response?.data || error.message);
+            return { success: false, message: error.response?.data?.message || 'Erro ao desconectar' };
         }
     }
 
     static async logout(instanceName) {
-        try {
-            await api.delete(`/instance/logout/${instanceName}`);
-            return { success: true };
-        } catch (error) {
-            return { success: false };
-        }
+        return this.disconnect(instanceName);
     }
 
     static async enviarMensagem(instanceName, numero, mensagem) {
         try {
+            // ✅ CORREÇÃO PARA EVOLUTION API v2:
+            console.log(`📤 [ENVIANDO] Instância: ${instanceName} | Número: ${numero}`);
+
             const response = await api.post(`/message/sendText/${instanceName}`, {
                 number: numero,
-                text: mensagem
+                text: mensagem,
+                delay: 1
             });
+
+            console.log(`✅ [SUCESSO] Mensagem enviada via ${instanceName}`);
             return { success: true, data: response.data };
+
         } catch (error) {
-            console.error(`Erro ao enviar (${instanceName}):`, error.response?.data || error.message);
+            console.error(`❌ [ERRO] ${instanceName}:`, error.response?.data || error.message);
+
+            if (error.response?.status === 404) {
+                console.log(`⚠️ Instância ${instanceName} não encontrada ou endpoint incorreto`);
+                return {
+                    success: false,
+                    message: 'Instância não encontrada',
+                    fallback: true
+                };
+            }
+
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                console.log(`⏰ Timeout na instância ${instanceName}`);
+                return {
+                    success: false,
+                    message: 'Timeout - Instância não respondeu',
+                    timeout: true
+                };
+            }
+
             return { success: false, message: 'Falha ao enviar mensagem' };
+        }
+    }
+
+    static async isConnected(instanceName) {
+        try {
+            const status = await this.getStatus(instanceName);
+            return status.connected === true;
+        } catch (error) {
+            return false;
         }
     }
 }

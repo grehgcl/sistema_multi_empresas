@@ -1,0 +1,10 @@
+﻿{
+    "instanceName": "seeagende",
+    "integration": "WHATSAPP-BAILEYS",
+    "qrcode": true,
+    "rejectCall": true,
+    "groupsIgnore": true,
+    "alwaysOnline": true,
+    "readMessages": false,
+    "readStatus": false
+}

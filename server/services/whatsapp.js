@@ -139,10 +139,17 @@ async function enviarEvolution(empresaId, numero, mensagem) {
         // Busca instância (própria OU padrão)
         const instancia = await getInstanciaEmpresa(empresaId);
 
+        // ✅ CORREÇÃO PARA EVOLUTION API v2:
         const url = `${config.evolution.apiUrl}/message/sendText/${instancia.instanceName}`;
 
+        console.log('🔍 Número original recebido:', numero);
+
         const numeroLimpo = numero.replace(/\D/g, '');
+        console.log('🔍 Número limpo (sem caracteres):', numeroLimpo);
+
         const numeroFinal = numeroLimpo.length === 11 ? `55${numeroLimpo}` : numeroLimpo;
+        console.log('🔍 Número final (enviado):', numeroFinal);
+        console.log('🔍 Tamanho do número final:', numeroFinal.length);
 
         const payload = {
             number: numeroFinal,
@@ -150,12 +157,15 @@ async function enviarEvolution(empresaId, numero, mensagem) {
             delay: 1,
         };
 
+        console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
+        console.log(`📡 Tentando enviar via URL: ${url}`); // Log útil para debug
+
         const response = await axios.post(url, payload, {
             headers: {
                 'Content-Type': 'application/json',
                 'apikey': config.evolution.apiKey,
             },
-            timeout: 10000,
+            timeout: 30000,
         });
 
         console.log(`📱 WhatsApp: Mensagem enviada para ${numero} via ${instancia.isOwn ? '🆕 INSTÂNCIA PRÓPRIA' : '📌 INSTÂNCIA PADRÃO'} (${instancia.instanceName})`);
@@ -163,12 +173,11 @@ async function enviarEvolution(empresaId, numero, mensagem) {
     } catch (error) {
         console.error(`❌ Erro ao enviar WhatsApp (Evolution):`, error.message);
         if (error.response) {
-            console.error('📡 Resposta da API:', error.response.data);
+            console.error('📡 Resposta da API (Erro):', error.response.data);
         }
         return { success: false, error: error.message };
     }
 }
-
 // ============================================
 // ENVIAR MENSAGEM (MODO LOG - SIMULAÇÃO)
 // ============================================
