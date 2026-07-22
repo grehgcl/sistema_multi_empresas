@@ -1,4 +1,7 @@
-﻿// pages/agendamentos.js - Versão Completa com SERVIÇOS EXTRAS
+﻿// ============================================
+// PÁGINA AGENDAMENTOS - VERSÃO CORRIGIDA
+// ============================================
+
 let profissionaisList = [];
 let clientesList = [];
 let servicosList = [];
@@ -67,7 +70,7 @@ async function carregarAgendamentos() {
                 </div>
             </div>
 
-            <!-- Filtros Melhorados -->
+            <!-- Filtros -->
             <div class="filter-bar">
                 <div class="filter-group">
                     <label><i class="fas fa-calendar-alt"></i> Data Início</label>
@@ -104,7 +107,7 @@ async function carregarAgendamentos() {
                 </div>
             </div>
 
-            <!-- Estatísticas Rápidas -->
+            <!-- Estatísticas -->
             <div class="agendamento-stats" id="agendamentoStats">
                 <div class="stat-mini">
                     <span class="stat-mini-value" id="totalAgendamentos">0</span>
@@ -156,7 +159,7 @@ async function carregarAgendamentos() {
 }
 
 // ============================================
-// FUNÇÃO PARA RENDERIZAR LINHA DA TABELA (COM EXTRAS)
+// FUNÇÃO PARA RENDERIZAR LINHA DA TABELA
 // ============================================
 
 function renderizarLinhaAgendamento(item) {
@@ -172,7 +175,6 @@ function renderizarLinhaAgendamento(item) {
     const horaFormatada = item.hora || '-';
     const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
-    // Verificar se tem extras
     let extrasCount = 0;
     let extrasList = [];
     let valorExtras = 0;
@@ -215,7 +217,7 @@ function renderizarLinhaAgendamento(item) {
                     <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
                     ${extrasCount > 0 ? `
                         <span style="display:block;font-size:10px;color:#f59e0b;margin-top:2px;">
-                            <i class="fas fa-plus-circle"></i> ${extrasCount} extra(s): ${extrasList.map(e => e.nome).join(', ')}
+                            <i class="fas fa-plus-circle"></i> ${extrasCount} extra(s)
                         </span>
                     ` : ''}
                 </div>
@@ -251,7 +253,6 @@ function renderizarLinhaAgendamento(item) {
                             <i class="fas fa-check"></i>
                         </button>
                     ` : ''}
-                    <!-- 🔥 BOTÃO EXTRAS -->
                     <button class="btn-icon btn-extra" onclick="abrirModalExtra(${item.id})" title="Serviços Extras" style="
                         padding: 4px 10px;
                         border-radius: 6px;
@@ -277,7 +278,7 @@ function renderizarLinhaAgendamento(item) {
 }
 
 // ============================================
-// FUNÇÃO PARA ATUALIZAR ESTATÍSTICAS
+// ATUALIZAR ESTATÍSTICAS
 // ============================================
 
 function atualizarEstatisticasAgendamentos(agendamentos) {
@@ -320,7 +321,6 @@ async function carregarListaAgendamentosComFiltro() {
             agendamentos = [];
         }
 
-        // Aplicar filtros
         const dataInicio = document.getElementById('filtroDataInicio')?.value;
         const dataFim = document.getElementById('filtroDataFim')?.value;
         const statusFiltro = document.getElementById('filtroStatus')?.value || 'todos';
@@ -360,8 +360,8 @@ async function carregarListaAgendamentosComFiltro() {
                     <td colspan="7">
                         <div class="empty-state">
                             <i class="fas fa-calendar-plus"></i>
-                            <h4>${agendamentos.length === 0 ? 'Nenhum agendamento encontrado' : 'Nenhum resultado com os filtros selecionados'}</h4>
-                            <p>${agendamentos.length === 0 ? 'Comece criando seu primeiro agendamento!' : 'Tente ajustar os filtros'}</p>
+                            <h4>${agendamentos.length === 0 ? 'Nenhum agendamento' : 'Nenhum resultado'}</h4>
+                            <p>${agendamentos.length === 0 ? 'Crie seu primeiro agendamento!' : 'Ajuste os filtros'}</p>
                             ${agendamentos.length === 0 ? `
                                 <button class="btn btn-primary btn-sm" onclick="abrirModalAgendamentoDono()">
                                     <i class="fas fa-plus"></i> Novo Agendamento
@@ -375,7 +375,7 @@ async function carregarListaAgendamentosComFiltro() {
         }
 
         if (isMobile) {
-            // Versão Mobile - Cards com Extras
+            // Versão Mobile - Cards
             const tableContainer = tbody.closest('.table-responsive');
             const cardContainer = document.createElement('div');
             cardContainer.className = 'agendamentos-mobile-container';
@@ -399,7 +399,6 @@ async function carregarListaAgendamentosComFiltro() {
                 const statusInfo = statusMap[item.status] || statusMap['pendente'];
                 const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
-                // Extras
                 let extrasCount = 0;
                 let extrasList = [];
                 let valorExtras = 0;
@@ -431,8 +430,8 @@ async function carregarListaAgendamentosComFiltro() {
                 `;
 
                 card.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; gap: 8px;">
-                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
                             <span style="width:38px;height:38px;border-radius:50%;background:var(--gradient);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;">${item.cliente_nome ? item.cliente_nome.charAt(0).toUpperCase() : '?'}</span>
                             <div style="min-width:0;flex:1;">
                                 <span style="display:block;font-weight:600;color:var(--text-primary);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.cliente_nome || 'N/A')}</span>
@@ -465,7 +464,7 @@ async function carregarListaAgendamentosComFiltro() {
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap; border-top: 1px solid var(--border-color); padding-top: 10px;">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border-color);padding-top:10px;">
                         ${podeEditar ? `
                             <button onclick="editarAgendamento(${item.id})" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(102,126,234,0.25);background:var(--bg-hover);color:var(--primary);font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:4px;flex:1;justify-content:center;">
                                 <i class="fas fa-pen" style="font-size:11px;"></i> Editar
@@ -567,41 +566,148 @@ function limparFiltrosAgendamentos() {
 }
 
 // ============================================
-// ============================================
-// NOVO CLIENTE VIA MODAL
+// NOVO CLIENTE VIA MODAL - CORRIGIDO (z-index)
 // ============================================
 
 function abrirModalNovoCliente() {
+    // Fecha o modal de agendamento temporariamente para não atrapalhar
+    // Mas mantém ele aberto por baixo
+
     const modalHtml = `
-        <div id="modalNovoCliente" class="modal" style="display: flex;">
-            <div class="modal-content" style="max-width: 400px; width: 90%;">
-                <h3>➕ Novo Cliente</h3>
-                <form id="formNovoCliente" onsubmit="salvarNovoCliente(event)">
-                    <div class="form-group">
-                        <label>Nome *</label>
-                        <input type="text" id="novoClienteNome" class="form-control" required>
+        <div id="modalNovoCliente" class="modal" style="
+            display: flex; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.7); 
+            z-index: 99999; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 16px;
+        ">
+            <div class="modal-content" style="
+                max-width: 420px; 
+                width: 100%; 
+                margin: auto; 
+                padding: 24px; 
+                background: var(--bg-card); 
+                border-radius: 16px; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5); 
+                max-height: 90vh; 
+                overflow-y: auto;
+                position: relative;
+                z-index: 99999;
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="margin: 0; font-size: 18px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                        <i class="fas fa-user-plus" style="color: #22c55e;"></i>
+                        ➕ Novo Cliente
+                    </h3>
+                    <button onclick="fecharModalNovoCliente()" style="
+                        background: none; 
+                        border: none; 
+                        font-size: 28px; 
+                        cursor: pointer; 
+                        color: var(--text-muted);
+                        line-height: 1;
+                        padding: 0 8px;
+                    ">&times;</button>
+                </div>
+                
+                <form id="formNovoCliente" onsubmit="salvarNovoCliente(event)" style="display:flex;flex-direction:column;gap:12px;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                            Nome <span style="color:#ef4444;">*</span>
+                        </label>
+                        <input type="text" id="novoClienteNome" class="form-control" required style="
+                            width:100%; 
+                            padding:10px 12px; 
+                            border-radius:8px; 
+                            border:1px solid var(--border-color); 
+                            background:var(--bg-input); 
+                            color:var(--text-primary); 
+                            font-size:14px;
+                        ">
                     </div>
-                    <div class="form-group">
-                        <label>Telefone</label>
-                        <input type="text" id="novoClienteTelefone" class="form-control" placeholder="(00) 00000-0000">
+                    
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                            📱 Telefone
+                        </label>
+                        <input type="text" id="novoClienteTelefone" class="form-control" placeholder="(00) 00000-0000" style="
+                            width:100%; 
+                            padding:10px 12px; 
+                            border-radius:8px; 
+                            border:1px solid var(--border-color); 
+                            background:var(--bg-input); 
+                            color:var(--text-primary); 
+                            font-size:14px;
+                        ">
                     </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" id="novoClienteEmail" class="form-control" placeholder="cliente@email.com">
+                    
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                            📧 Email
+                        </label>
+                        <input type="email" id="novoClienteEmail" class="form-control" placeholder="cliente@email.com" style="
+                            width:100%; 
+                            padding:10px 12px; 
+                            border-radius:8px; 
+                            border:1px solid var(--border-color); 
+                            background:var(--bg-input); 
+                            color:var(--text-primary); 
+                            font-size:14px;
+                        ">
                     </div>
-                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="fecharModalNovoCliente()">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Salvar Cliente</button>
+                    
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                        <button type="button" onclick="fecharModalNovoCliente()" style="
+                            padding: 8px 20px; 
+                            border-radius: 8px; 
+                            border: 1px solid var(--border-color); 
+                            background: transparent; 
+                            color: var(--text-secondary); 
+                            font-size: 13px; 
+                            cursor: pointer;
+                            font-weight: 500;
+                        ">
+                            Cancelar
+                        </button>
+                        <button type="submit" style="
+                            padding: 8px 24px; 
+                            border-radius: 8px; 
+                            border: none; 
+                            background: linear-gradient(135deg, #22c55e, #16a34a); 
+                            color: white; 
+                            font-size: 13px; 
+                            font-weight: 600; 
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
+                        ">
+                            <i class="fas fa-save"></i> Salvar Cliente
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     `;
 
+    // Remove modal antigo se existir
     const existingModal = document.getElementById("modalNovoCliente");
     if (existingModal) existingModal.remove();
 
+    // Adiciona o novo modal
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // Foca no campo nome
+    setTimeout(() => {
+        const nomeInput = document.getElementById('novoClienteNome');
+        if (nomeInput) nomeInput.focus();
+    }, 100);
 }
 
 function fecharModalNovoCliente() {
@@ -660,14 +766,13 @@ async function salvarNovoCliente(event) {
 }
 
 // ============================================
-// ============================================
 // CARREGAR HORÁRIOS DISPONÍVEIS
 // ============================================
 
 async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null) {
     try {
-        const data = document.getElementById("dataAgendamentoDono").value;
-        const profissional_id = document.getElementById("profissionalIdDono").value;
+        const data = document.getElementById("dataAgendamentoDono")?.value;
+        const profissional_id = document.getElementById("profissionalIdDono")?.value;
         const servicoSelect = document.getElementById("servicoIdDono");
         const servicoId = servicoSelect ? servicoSelect.value : null;
         const horaSelect = document.getElementById("horaAgendamentoDono");
@@ -675,10 +780,7 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
         const horarioAtual = horaSelect ? horaSelect.value : null;
         const horarioFinal = horarioParaRestaurar || (manterHorario ? horarioAtual : null);
 
-        if (!data) {
-            horaSelect.innerHTML = '<option value="">Selecione uma data primeiro</option>';
-            return;
-        }
+        if (!data || !horaSelect) return;
 
         let duracao = 30;
         if (servicoId && servicoId !== '') {
@@ -690,23 +792,22 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
 
         const infoDuracao = document.getElementById('infoDuracaoHorario');
         if (infoDuracao) {
-            infoDuracao.textContent = `⏱️ Duração do serviço: ${duracao}min - Horários disponíveis consideram este tempo`;
+            infoDuracao.textContent = `⏱️ ${duracao}min`;
         }
 
         const hoje = new Date();
         const hojeStr = hoje.toISOString().split('T')[0];
 
         if (data < hojeStr) {
-            horaSelect.innerHTML = '<option value="">⚠️ Esta data já passou</option>';
-            showToast('⚠️ Não é possível agendar em datas passadas', 'warning');
+            horaSelect.innerHTML = '<option value="">⚠️ Data passou</option>';
             return;
         }
 
-        horaSelect.innerHTML = '<option value="">Carregando...</option>';
+        horaSelect.innerHTML = '<option value="">⏳</option>';
 
         const token = localStorage.getItem("token");
         if (!token) {
-            horaSelect.innerHTML = '<option value="">Erro: Token não encontrado</option>';
+            horaSelect.innerHTML = '<option value="">❌</option>';
             return;
         }
 
@@ -731,7 +832,7 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
             });
 
             if (!response.ok) {
-                horaSelect.innerHTML = `<option value="">Erro HTTP: ${response.status}</option>`;
+                horaSelect.innerHTML = `<option value="">⚠️ ${response.status}</option>`;
                 return;
             }
 
@@ -739,11 +840,8 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
 
             if (result.success) {
                 let horarios = [];
-                if (Array.isArray(result.horarios)) {
-                    horarios = result.horarios;
-                } else if (Array.isArray(result.data)) {
-                    horarios = result.data;
-                }
+                if (Array.isArray(result.horarios)) horarios = result.horarios;
+                else if (Array.isArray(result.data)) horarios = result.data;
 
                 const agora = new Date();
                 const hojeStr = agora.toISOString().split('T')[0];
@@ -759,12 +857,12 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
                 }
 
                 if (horariosFiltrados.length > 0) {
-                    let options = '<option value="">Selecione um horário</option>';
+                    let options = '<option value="">Selecione</option>';
                     for (let horaItem of horariosFiltrados) {
                         const horaNum = parseInt(horaItem.split(':')[0]);
                         const isAlmoco = horaNum >= 12 && horaNum < 13;
                         const emoji = isAlmoco ? ' 🍽️' : '';
-                        options += `<option value="${horaItem}">${horaItem}${emoji} (${duracao}min)</option>`;
+                        options += `<option value="${horaItem}">${horaItem}${emoji}</option>`;
                     }
                     horaSelect.innerHTML = options;
 
@@ -777,50 +875,44 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
                                 break;
                             }
                         }
-                        if (!encontrado) {
-                            const horariosDisponiveis = Array.from(horaSelect.options).map(o => o.value).filter(v => v !== '');
-                            if (horariosDisponiveis.length > 0) {
-                                const horarioProximo = horariosDisponiveis.find(h => h >= horarioFinal) || horariosDisponiveis[0];
-                                horaSelect.value = horarioProximo;
-                            }
+                        if (!encontrado && horaSelect.options.length > 1) {
+                            const proximo = Array.from(horaSelect.options)
+                                .map(o => o.value)
+                                .filter(v => v !== '')
+                                .find(h => h >= horarioFinal) || horaSelect.options[1]?.value;
+                            if (proximo) horaSelect.value = proximo;
                         }
-                    } else {
-                        if (horariosFiltrados.length > 0 && !horaSelect.value) {
-                            horaSelect.value = horariosFiltrados[0];
-                        }
+                    } else if (horaSelect.options.length > 1 && !horaSelect.value) {
+                        horaSelect.value = horaSelect.options[1].value;
                     }
                 } else {
-                    if (data === hojeStr) {
-                        horaSelect.innerHTML = '<option value="">⏰ Todos os horários de hoje já passaram</option>';
-                    } else {
-                        horaSelect.innerHTML = `<option value="">Nenhum horário disponível para serviço de ${duracao}min</option>`;
-                    }
+                    horaSelect.innerHTML = `<option value="">${data === hojeStr ? '⏰ Passou' : '📭 Indisponível'}</option>`;
                 }
             } else {
-                horaSelect.innerHTML = `<option value="">Erro: ${result.message || 'Erro ao carregar horários'}</option>`;
+                horaSelect.innerHTML = `<option value="">⚠️ ${result.message || 'Erro'}</option>`;
             }
         } catch (tokenError) {
-            console.error('❌ Erro ao decodificar token:', tokenError);
-            horaSelect.innerHTML = '<option value="">Erro: Token inválido</option>';
+            console.error('❌ Erro:', tokenError);
+            horaSelect.innerHTML = '<option value="">❌ Token</option>';
         }
     } catch (error) {
-        console.error('❌ Erro geral:', error);
+        console.error('❌ Erro:', error);
         const horaSelect = document.getElementById("horaAgendamentoDono");
         if (horaSelect) {
-            horaSelect.innerHTML = `<option value="">Erro: ${error.message || 'Erro desconhecido'}</option>`;
+            horaSelect.innerHTML = `<option value="">⚠️</option>`;
         }
-        showToast('Erro ao carregar horários: ' + error.message, 'error');
     }
 }
 
 // ============================================
-// ABRIR MODAL NOVO AGENDAMENTO
+// ABRIR MODAL NOVO AGENDAMENTO - VERSÃO MOBILE OTIMIZADA
 // ============================================
 
 async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     const clientes = Array.isArray(clientesList) ? clientesList : [];
     const servicos = Array.isArray(servicosList) ? servicosList : [];
     const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
+    const isMobile = window.innerWidth < 768;
 
     let clientesOptions = '<option value="">Selecione...</option>';
     if (clientes.length > 0) {
@@ -829,10 +921,12 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
         }
     }
 
-    let servicosOptions = '<option value="">Selecione um serviço</option>';
+    let servicosOptions = '<option value="">Selecione</option>';
     if (servicos.length > 0) {
         for (let s of servicos) {
-            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)} (${s.duracao || 30}min)</option>`;
+            if ((s.ativo == 1 || s.ativo == true)) {
+                servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`;
+            }
         }
     }
 
@@ -840,66 +934,228 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     if (profissionais.length > 0) {
         for (let p of profissionais) {
             if ((p.ativo == 1 || p.ativo == true)) {
-                profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)} (${p.comissao_percent}%)</option>`;
+                profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`;
             }
         }
     }
 
     const modalHtml = `
-        <div id="modalAgendamentoDono" class="modal" style="display: flex;">
-            <div class="modal-content" style="max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
-                <h3>➕ Novo Agendamento</h3>
+        <div id="modalAgendamentoDono" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: ${isMobile ? '8px' : '20px'};">
+            <div class="modal-content" style="
+                max-width: ${isMobile ? '100%' : '500px'}; 
+                width: ${isMobile ? '100%' : '90%'}; 
+                max-height: ${isMobile ? '98vh' : '90vh'}; 
+                overflow-y: auto; 
+                background: var(--bg-card); 
+                border-radius: ${isMobile ? '12px' : '16px'}; 
+                padding: ${isMobile ? '16px' : '24px'}; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                margin: ${isMobile ? '0' : 'auto'};
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${isMobile ? '12px' : '16px'};">
+                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-calendar-plus" style="font-size: ${isMobile ? '14px' : '18px'};"></i> 
+                        ${isMobile ? 'Novo' : 'Novo Agendamento'}
+                    </h3>
+                    <button onclick="fecharModalAgendamentoDono()" style="
+                        background: transparent; 
+                        border: none; 
+                        font-size: ${isMobile ? '20px' : '24px'}; 
+                        cursor: pointer; 
+                        color: var(--text-muted);
+                        padding: ${isMobile ? '4px' : '8px'};
+                        line-height: 1;
+                    ">✕</button>
+                </div>
 
-                <div class="form-group">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                        <label>Cliente *</label>
-                        <button type="button" class="btn btn-sm btn-success" onclick="abrirModalNovoCliente()" style="padding: 4px 12px; font-size: 12px;">
-                            + Novo Cliente
+                <!-- Cliente -->
+                <div style="margin-bottom: ${isMobile ? '10px' : '14px'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary);">
+                            👤 Cliente <span style="color: #ef4444;">*</span>
+                        </label>
+                        <button type="button" onclick="abrirModalNovoCliente()" style="
+                            padding: ${isMobile ? '3px 10px' : '4px 14px'}; 
+                            font-size: ${isMobile ? '10px' : '11px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: none; 
+                            background: linear-gradient(135deg, #22c55e, #16a34a); 
+                            color: white; 
+                            font-weight: 600; 
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: ${isMobile ? '3px' : '4px'};
+                        ">
+                            <i class="fas fa-plus" style="font-size: ${isMobile ? '8px' : '10px'};"></i> ${isMobile ? 'Novo' : 'Novo Cliente'}
                         </button>
                     </div>
-                    <select id="clienteIdDono" class="form-control" required>
+                    <select id="clienteIdDono" class="form-control" required style="
+                        width: 100%; 
+                        padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: 1px solid var(--border-color); 
+                        background: var(--bg-input); 
+                        color: var(--text-primary); 
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        -webkit-appearance: none;
+                        appearance: none;
+                    ">
                         ${clientesOptions}
                     </select>
-                    <small class="text-muted">Não encontrou o cliente? Clique em "+ Novo Cliente"</small>
                 </div>
 
-                <div class="form-group">
-                    <label>Data *</label>
-                    <input type="date" id="dataAgendamentoDono" class="form-control" onchange="carregarHorariosDisponiveisDono()">
+                <!-- Data + Horário -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '10px' : '14px'};">
+                    <div>
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                            📅 Data <span style="color: #ef4444;">*</span>
+                        </label>
+                        <input type="date" id="dataAgendamentoDono" class="form-control" onchange="carregarHorariosDisponiveisDono()" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
+                    </div>
+                    <div>
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                            ⏰ Horário <span style="color: #ef4444;">*</span>
+                        </label>
+                        <select id="horaAgendamentoDono" class="form-control" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '13px' : '14px'};
+                            -webkit-appearance: none;
+                            appearance: none;
+                        ">
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Horário *</label>
-                    <select id="horaAgendamentoDono" class="form-control">
-                        <option value="">Selecione uma data primeiro</option>
-                    </select>
-                    <small class="text-muted" id="infoDuracaoHorario">Horários disponíveis considerando a duração do serviço</small>
+                <!-- Serviço + Valor -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '10px' : '14px'};">
+                    <div>
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                            ✂️ Serviço
+                        </label>
+                        <select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '13px' : '14px'};
+                            -webkit-appearance: none;
+                            appearance: none;
+                        ">
+                            ${servicosOptions}
+                        </select>
+                        <input type="text" id="servicoDescricaoDono" class="form-control" style="
+                            width: 100%; 
+                            margin-top: 4px; 
+                            padding: ${isMobile ? '6px 8px' : '8px 10px'}; 
+                            border-radius: ${isMobile ? '4px' : '6px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '11px' : '12px'};
+                        " placeholder="${isMobile ? 'Manual...' : 'Ou digite manualmente'}">
+                    </div>
+                    <div>
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                            💰 Valor
+                        </label>
+                        <input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '14px' : '14px'};
+                            font-weight: 600;
+                        ">
+                    </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Serviço</label>
-                    <select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()">
-                        ${servicosOptions}
-                    </select>
-                    <input type="text" id="servicoDescricaoDono" class="form-control" style="margin-top: 10px;" placeholder="Ou digite o serviço manualmente" onchange="carregarHorariosDisponiveisDono()">
-                </div>
-
-                <div class="form-group">
-                    <label>Valor (R$)</label>
-                    <input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00">
-                </div>
-
-                <div class="form-group">
-                    <label>Profissional</label>
-                    <select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono()">
+                <!-- Profissional -->
+                <div style="margin-bottom: ${isMobile ? '12px' : '16px'};">
+                    <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
+                        👨‍💼 Profissional
+                    </label>
+                    <select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono()" style="
+                        width: 100%; 
+                        padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: 1px solid var(--border-color); 
+                        background: var(--bg-input); 
+                        color: var(--text-primary); 
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        -webkit-appearance: none;
+                        appearance: none;
+                    ">
                         ${profissionaisOptions}
                     </select>
-                    <small class="text-muted">Se não escolher, o sistema buscará um profissional disponível</small>
                 </div>
 
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" class="btn btn-secondary" onclick="fecharModalAgendamentoDono()">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="salvarAgendamentoDono()">Salvar</button>
+                <!-- Duração -->
+                <div style="
+                    background: rgba(102,126,234,0.06); 
+                    border-radius: ${isMobile ? '4px' : '8px'}; 
+                    padding: ${isMobile ? '4px 8px' : '8px 12px'}; 
+                    margin-bottom: ${isMobile ? '10px' : '14px'}; 
+                    border: 1px solid rgba(102,126,234,0.1);
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    font-size: ${isMobile ? '9px' : '12px'};
+                    color: var(--text-muted);
+                ">
+                    <i class="fas fa-clock" style="font-size: ${isMobile ? '10px' : '14px'};"></i>
+                    <span id="infoDuracaoHorario">⏱️ 30min</span>
+                </div>
+
+                <!-- Botões -->
+                <div style="display: flex; gap: ${isMobile ? '6px' : '10px'}; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: ${isMobile ? '12px' : '16px'};">
+                    <button type="button" onclick="fecharModalAgendamentoDono()" style="
+                        padding: ${isMobile ? '6px 14px' : '10px 24px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: 1px solid var(--border-color); 
+                        background: transparent; 
+                        color: var(--text-secondary); 
+                        font-size: ${isMobile ? '12px' : '14px'}; 
+                        cursor: pointer;
+                        font-weight: 500;
+                    ">
+                        ${isMobile ? '✕' : 'Cancelar'}
+                    </button>
+                    <button type="button" onclick="salvarAgendamentoDono()" style="
+                        padding: ${isMobile ? '6px 16px' : '10px 28px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: none; 
+                        background: linear-gradient(135deg, #667eea, #764ba2); 
+                        color: white; 
+                        font-size: ${isMobile ? '12px' : '14px'}; 
+                        font-weight: 600; 
+                        cursor: pointer;
+                        box-shadow: 0 2px 12px rgba(102,126,234,0.3);
+                        display: flex;
+                        align-items: center;
+                        gap: 4px;
+                    ">
+                        <i class="fas fa-save" style="font-size: ${isMobile ? '10px' : '12px'};"></i> 
+                        ${isMobile ? 'Salvar' : 'Salvar Agendamento'}
+                    </button>
                 </div>
             </div>
         </div>
@@ -909,6 +1165,15 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     if (existingModal) existingModal.remove();
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const dataInput = document.getElementById('dataAgendamentoDono');
+    if (dataInput) {
+        const hoje = new Date();
+        const amanha = new Date(hoje);
+        amanha.setDate(amanha.getDate() + 1);
+        dataInput.value = amanha.toISOString().split('T')[0];
+        setTimeout(() => carregarHorariosDisponiveisDono(), 100);
+    }
 }
 
 function fecharModalAgendamentoDono() {
@@ -985,7 +1250,7 @@ async function salvarAgendamentoDono() {
         const result = await res.json();
 
         if (result.success) {
-            showToast("✅ Agendamento criado com sucesso!", "success");
+            showToast("✅ Agendamento criado!", "success");
             fecharModalAgendamentoDono();
 
             if (typeof window.atualizarAgendaAposAgendamento === 'function') {
@@ -999,7 +1264,7 @@ async function salvarAgendamentoDono() {
             showToast("❌ Erro: " + result.message, "error");
         }
     } catch (error) {
-        console.error("❌ Erro ao criar agendamento:", error);
+        console.error("❌ Erro:", error);
         showToast("❌ Erro ao criar agendamento", "error");
     }
 
@@ -1041,8 +1306,8 @@ async function concluirAgendamento(id) {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
-        console.error("Erro ao concluir agendamento:", error);
-        showToast("Erro ao concluir agendamento", "error");
+        console.error("Erro:", error);
+        showToast("Erro ao concluir", "error");
     }
 
     hideLoading();
@@ -1076,8 +1341,8 @@ async function excluirAgendamento(id) {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
-        console.error("Erro ao excluir agendamento:", error);
-        showToast("Erro ao excluir agendamento", "error");
+        console.error("Erro:", error);
+        showToast("Erro ao excluir", "error");
     }
 
     hideLoading();
@@ -1102,7 +1367,7 @@ async function editarAgendamento(id) {
         }
 
         if (agendamento.status === "concluido") {
-            showToast("Agendamentos concluídos não podem ser editados", "warning");
+            showToast("Concluídos não podem ser editados", "warning");
             return;
         }
 
@@ -1116,17 +1381,17 @@ async function editarAgendamento(id) {
             clientesOptions += `<option value="${c.id}" ${selected}>${c.nome}</option>`;
         }
 
-        let servicosOptions = '<option value="">Selecione um serviço</option>';
+        let servicosOptions = '<option value="">Selecione</option>';
         for (let s of servicos) {
             const selected = s.id === agendamento.servico_id ? "selected" : "";
-            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${s.nome} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)} (${s.duracao}min)</option>`;
+            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${s.nome} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`;
         }
 
         let profissionaisOptions = '<option value="">Não atribuir</option>';
         for (let p of profissionais) {
             if ((p.ativo == 1 || p.ativo == true)) {
                 const selected = p.id === agendamento.profissional_id ? "selected" : "";
-                profissionaisOptions += `<option value="${p.id}" ${selected}>${p.nome} (${p.comissao_percent}%)</option>`;
+                profissionaisOptions += `<option value="${p.id}" ${selected}>${p.nome}</option>`;
             }
         }
 
@@ -1157,7 +1422,7 @@ async function editarAgendamento(id) {
                         <select id="editServicoIdDono" class="form-control" onchange="atualizarValorPorServicoEditDono()">
                             ${servicosOptions}
                         </select>
-                        <input type="text" id="editServicoDescricaoDono" class="form-control" style="margin-top: 10px;" value="${agendamento.servico || ''}" placeholder="Ou digite o serviço manualmente">
+                        <input type="text" id="editServicoDescricaoDono" class="form-control" style="margin-top: 10px;" value="${agendamento.servico || ''}" placeholder="Ou digite manualmente">
                     </div>
 
                     <div class="form-group">
@@ -1248,7 +1513,7 @@ async function salvarEdicaoAgendamentoDono(id) {
         const result = await res.json();
 
         if (result.success) {
-            showToast("Agendamento atualizado com sucesso!", "success");
+            showToast("Agendamento atualizado!", "success");
             fecharModalEditarAgendamentoDono();
             carregarAgendamentos();
 
@@ -1259,325 +1524,17 @@ async function salvarEdicaoAgendamentoDono(id) {
             showToast("Erro: " + result.message, "error");
         }
     } catch (error) {
-        console.error("Erro ao atualizar agendamento:", error);
-        showToast("Erro ao atualizar agendamento", "error");
+        console.error("Erro:", error);
+        showToast("Erro ao atualizar", "error");
     }
 
     hideLoading();
 }
-
-// ============================================
 // ============================================
 // 🔥 SERVIÇOS EXTRAS - FUNÇÕES
 // ============================================
 
 // Abrir modal para adicionar serviço extra
-async function abrirModalExtra(agendamentoId) {
-    const token = localStorage.getItem("token");
-
-    // Buscar o agendamento atual
-    const res = await fetch("/api/agendamentos", {
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const result = await res.json();
-
-    if (!result.success) {
-        showToast("Erro ao carregar agendamento", "error");
-        return;
-    }
-
-    const agendamento = result.data.find(a => a.id === agendamentoId);
-    if (!agendamento) {
-        showToast("Agendamento não encontrado", "error");
-        return;
-    }
-
-    // Buscar serviços disponíveis
-    const servicosRes = await fetch("/api/servicos", {
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const servicosResult = await servicosRes.json();
-    const servicos = servicosResult.success ? servicosResult.data : [];
-
-    // Buscar extras já adicionados
-    let extrasList = [];
-    let valorExtras = 0;
-    if (agendamento.servicos_extras) {
-        try {
-            extrasList = typeof agendamento.servicos_extras === 'string' ?
-                JSON.parse(agendamento.servicos_extras) : agendamento.servicos_extras;
-            for (let extra of extrasList) {
-                valorExtras += parseFloat(extra.valor) || 0;
-            }
-        } catch (e) {
-            extrasList = [];
-        }
-    }
-
-    let servicosOptions = '';
-    for (let s of servicos) {
-        if ((s.ativo == 1 || s.ativo == true)) {
-            const jaAdicionado = extrasList.some(e => e.servico_id === s.id);
-            if (!jaAdicionado) {
-                servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">
-                    ${s.nome} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)} (${s.duracao || 30}min)
-                </option>`;
-            }
-        }
-    }
-
-    // HTML dos extras já adicionados
-    let extrasHtml = '';
-    let totalExtras = 0;
-    for (let extra of extrasList) {
-        totalExtras += parseFloat(extra.valor) || 0;
-        extrasHtml += `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-hover);border-radius:8px;margin-bottom:4px;">
-                <div>
-                    <span style="font-weight:500;">${escapeHtml(extra.nome)}</span>
-                    <span style="font-size:12px;color:var(--text-muted);"> +${extra.duracao || 0}min</span>
-                </div>
-                <div style="display:flex;align-items:center;gap:10px;">
-                    <span style="font-weight:600;color:#22c55e;">R$ ${(parseFloat(extra.valor) || 0).toFixed(2)}</span>
-                    <button onclick="removerExtra(${agendamentoId}, ${extra.servico_id})" style="padding:2px 10px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#ef4444;font-size:14px;cursor:pointer;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    const valorPrincipal = parseFloat(agendamento.valor) || 0;
-    const valorTotal = valorPrincipal + totalExtras;
-
-    const modalHtml = `
-        <div id="modalExtras" class="modal" style="display: flex;">
-            <div class="modal-content" style="max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto;">
-                <h3>➕ Serviços Extras</h3>
-                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">
-                    Adicione serviços realizados durante este atendimento.
-                </p>
-                
-                <div style="background:var(--bg-hover);border-radius:10px;padding:12px;margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;padding:4px 0;">
-                        <span style="color:var(--text-muted);">Serviço principal:</span>
-                        <span style="font-weight:500;">${escapeHtml(agendamento.servico_nome || agendamento.servico || 'N/A')}</span>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border-color);">
-                        <span style="color:var(--text-muted);">Valor principal:</span>
-                        <span style="font-weight:600;color:#22c55e;">R$ ${valorPrincipal.toFixed(2)}</span>
-                    </div>
-                    ${totalExtras > 0 ? `
-                        <div style="display:flex;justify-content:space-between;padding:4px 0;border-top:1px solid var(--border-color);">
-                            <span style="color:var(--text-muted);">Extras:</span>
-                            <span style="font-weight:600;color:#22c55e;">R$ ${totalExtras.toFixed(2)}</span>
-                        </div>
-                    ` : ''}
-                    <div style="display:flex;justify-content:space-between;padding:8px 0 0 0;border-top:2px solid var(--primary);margin-top:4px;">
-                        <span style="font-weight:600;">Total:</span>
-                        <span style="font-weight:700;color:var(--primary);font-size:18px;">R$ ${valorTotal.toFixed(2)}</span>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom:16px;">
-                    <label>Adicionar serviço extra:</label>
-                    <div style="display:flex;gap:8px;margin-top:6px;">
-                        <select id="extraServicoSelect" class="form-control" style="flex:1;">
-                            ${servicosOptions || '<option value="">Nenhum serviço disponível</option>'}
-                        </select>
-                        <button onclick="adicionarExtra(${agendamentoId})" class="btn btn-primary" style="white-space:nowrap;">
-                            <i class="fas fa-plus"></i> Adicionar
-                        </button>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom:16px;">
-                    <label>Serviços adicionados:</label>
-                    <div style="margin-top:6px;">
-                        ${extrasHtml || '<p style="color:var(--text-muted);font-size:13px;">Nenhum serviço extra adicionado.</p>'}
-                    </div>
-                </div>
-                
-                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                    <button class="btn btn-secondary" onclick="fecharModalExtras()">Fechar</button>
-                    <button class="btn btn-success" onclick="salvarExtras(${agendamentoId})">
-                        <i class="fas fa-save"></i> Salvar Extras
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    const existingModal = document.getElementById("modalExtras");
-    if (existingModal) existingModal.remove();
-
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-}
-
-// Adicionar serviço extra
-async function adicionarExtra(agendamentoId) {
-    const select = document.getElementById("extraServicoSelect");
-    if (!select || !select.value) {
-        showToast("Selecione um serviço", "warning");
-        return;
-    }
-
-    const selectedOption = select.options[select.selectedIndex];
-    const servicoId = parseInt(select.value);
-    const nome = selectedOption.getAttribute("data-nome");
-    const valor = parseFloat(selectedOption.getAttribute("data-valor")) || 0;
-    const duracao = parseInt(selectedOption.getAttribute("data-duracao")) || 30;
-
-    const token = localStorage.getItem("token");
-    const res = await fetch("/api/agendamentos", {
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const result = await res.json();
-    const agendamento = result.data.find(a => a.id === agendamentoId);
-
-    if (!agendamento) return;
-
-    let extrasList = [];
-    if (agendamento.servicos_extras) {
-        try {
-            extrasList = typeof agendamento.servicos_extras === 'string' ?
-                JSON.parse(agendamento.servicos_extras) : agendamento.servicos_extras;
-        } catch (e) {
-            extrasList = [];
-        }
-    }
-
-    if (extrasList.some(e => e.servico_id === servicoId)) {
-        showToast("Este serviço já foi adicionado como extra", "warning");
-        return;
-    }
-
-    extrasList.push({
-        servico_id: servicoId,
-        nome: nome,
-        valor: valor,
-        duracao: duracao,
-        adicionado_em: new Date().toISOString()
-    });
-
-    const updateRes = await fetch(`/api/agendamentos/${agendamentoId}/extras`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ servicos_extras: extrasList })
-    });
-
-    const updateResult = await updateRes.json();
-    if (updateResult.success) {
-        showToast("Serviço extra adicionado!", "success");
-        fecharModalExtras();
-        abrirModalExtra(agendamentoId);
-    } else {
-        showToast("Erro ao adicionar extra: " + (updateResult.message || ''), "error");
-    }
-}
-
-// Remover serviço extra
-async function removerExtra(agendamentoId, servicoId) {
-    if (!confirm("Remover este serviço extra?")) return;
-
-    const token = localStorage.getItem("token");
-    const res = await fetch("/api/agendamentos", {
-        headers: { "Authorization": "Bearer " + token }
-    });
-    const result = await res.json();
-    const agendamento = result.data.find(a => a.id === agendamentoId);
-
-    if (!agendamento) return;
-
-    let extrasList = [];
-    if (agendamento.servicos_extras) {
-        try {
-            extrasList = typeof agendamento.servicos_extras === 'string' ?
-                JSON.parse(agendamento.servicos_extras) : agendamento.servicos_extras;
-        } catch (e) {
-            extrasList = [];
-        }
-    }
-
-    const novosExtras = extrasList.filter(e => e.servico_id !== servicoId);
-
-    const updateRes = await fetch(`/api/agendamentos/${agendamentoId}/extras`, {
-        method: "PUT",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        body: JSON.stringify({ servicos_extras: novosExtras })
-    });
-
-    const updateResult = await updateRes.json();
-    if (updateResult.success) {
-        showToast("Serviço extra removido!", "success");
-        fecharModalExtras();
-        abrirModalExtra(agendamentoId);
-    } else {
-        showToast("Erro ao remover extra", "error");
-    }
-}
-
-// Salvar extras e fechar
-async function salvarExtras(agendamentoId) {
-    fecharModalExtras();
-    showToast("✅ Extras salvos com sucesso!", "success");
-    carregarAgendamentos();
-
-    if (typeof carregarFinanceiro === 'function') {
-        const btnFinanceiro = document.getElementById("btnFinanceiro");
-        if (btnFinanceiro && btnFinanceiro.classList.contains("active")) {
-            carregarFinanceiro();
-        }
-    }
-}
-
-function fecharModalExtras() {
-    const modal = document.getElementById("modalExtras");
-    if (modal) modal.remove();
-}
-
-// ============================================
-// EXPORTAR FUNÇÕES GLOBAIS
-// ============================================
-
-window.carregarAgendamentos = carregarAgendamentos;
-window.carregarListaAgendamentosComFiltro = carregarListaAgendamentosComFiltro;
-window.abrirModalAgendamentoDono = abrirModalAgendamentoDono;
-window.fecharModalAgendamentoDono = fecharModalAgendamentoDono;
-window.salvarAgendamentoDono = salvarAgendamentoDono;
-window.concluirAgendamento = concluirAgendamento;
-window.excluirAgendamento = excluirAgendamento;
-window.atualizarValorPorServicoDono = atualizarValorPorServicoDono;
-window.aplicarFiltrosAgendamentos = aplicarFiltrosAgendamentos;
-window.limparFiltrosAgendamentos = limparFiltrosAgendamentos;
-window.editarAgendamento = editarAgendamento;
-window.fecharModalEditarAgendamentoDono = fecharModalEditarAgendamentoDono;
-window.salvarEdicaoAgendamentoDono = salvarEdicaoAgendamentoDono;
-window.atualizarValorPorServicoEditDono = atualizarValorPorServicoEditDono;
-window.carregarHorariosDisponiveisDono = carregarHorariosDisponiveisDono;
-window.abrirModalNovoCliente = abrirModalNovoCliente;
-window.fecharModalNovoCliente = fecharModalNovoCliente;
-window.salvarNovoCliente = salvarNovoCliente;
-
-// 🔥 Exportar funções de Extras
-window.abrirModalExtra = abrirModalExtra;
-window.adicionarExtra = adicionarExtra;
-window.removerExtra = removerExtra;
-window.salvarExtras = salvarExtras;
-window.fecharModalExtras = fecharModalExtras;
-
-console.log('✅ agendamentos.js carregado com SERVIÇOS EXTRAS!');
-
-// ============================================
-// 🔥 SERVIÇOS EXTRAS - FUNÇÃO PRINCIPAL
-// ============================================
-
 function abrirModalExtra(agendamentoId) {
     console.log('📝 Abrindo modal de extras para agendamento:', agendamentoId);
 
@@ -1586,9 +1543,9 @@ function abrirModalExtra(agendamentoId) {
         return;
     }
 
-    // Buscar os dados do agendamento
     const token = localStorage.getItem('token');
 
+    // Buscar o agendamento atual
     fetch('/api/agendamentos', {
         headers: { 'Authorization': 'Bearer ' + token }
     })
@@ -1620,25 +1577,23 @@ function abrirModalExtra(agendamentoId) {
 
                     // Extrair serviços extras já adicionados
                     let extrasList = [];
+                    let valorExtras = 0;
                     if (agendamento.servicos_extras) {
                         try {
                             extrasList = typeof agendamento.servicos_extras === 'string' ?
                                 JSON.parse(agendamento.servicos_extras) : agendamento.servicos_extras;
+                            for (let extra of extrasList) {
+                                valorExtras += parseFloat(extra.valor) || 0;
+                            }
                         } catch (e) {
                             extrasList = [];
                         }
                     }
 
-                    // Calcular valor dos extras
-                    let valorExtras = 0;
-                    for (let extra of extrasList) {
-                        valorExtras += parseFloat(extra.valor) || 0;
-                    }
-
                     const valorPrincipal = parseFloat(agendamento.valor) || 0;
                     const valorTotal = valorPrincipal + valorExtras;
 
-                    // Montar HTML do modal
+                    // Montar opções de serviços
                     let servicosOptions = '<option value="">Selecione um serviço</option>';
                     for (let s of servicos) {
                         if ((s.ativo == 1 || s.ativo == true)) {
@@ -1670,15 +1625,40 @@ function abrirModalExtra(agendamentoId) {
                 `;
                     }
 
-                    // Criar o modal
+                    const isMobile = window.innerWidth < 768;
+
                     const modalHtml = `
-                <div id="modalExtras" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center;">
-                    <div class="modal-content" style="max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                        <h3 style="margin-top: 0;">➕ Serviços Extras</h3>
-                        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">
+                <div id="modalExtras" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+                    <div class="modal-content" style="
+                        max-width: 500px; 
+                        width: 100%; 
+                        max-height: 90vh; 
+                        overflow-y: auto; 
+                        background: var(--bg-card); 
+                        border-radius: 16px; 
+                        padding: ${isMobile ? '16px' : '24px'}; 
+                        box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                    ">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-plus-circle" style="color: #f59e0b;"></i>
+                                Serviços Extras
+                            </h3>
+                            <button onclick="fecharModalExtras()" style="
+                                background: none; 
+                                border: none; 
+                                font-size: 28px; 
+                                cursor: pointer; 
+                                color: var(--text-muted);
+                                line-height: 1;
+                            ">&times;</button>
+                        </div>
+
+                        <p style="color: var(--text-muted); font-size: ${isMobile ? '13px' : '14px'}; margin-bottom: 16px;">
                             Adicione serviços realizados durante este atendimento.
                         </p>
-                        
+
+                        <!-- Resumo -->
                         <div style="background:var(--bg-hover);border-radius:10px;padding:12px;margin-bottom:16px;">
                             <div style="display:flex;justify-content:space-between;padding:4px 0;">
                                 <span style="color:var(--text-muted);">Serviço principal:</span>
@@ -1699,31 +1679,82 @@ function abrirModalExtra(agendamentoId) {
                                 <span style="font-weight:700;color:var(--primary);font-size:18px;">R$ ${valorTotal.toFixed(2)}</span>
                             </div>
                         </div>
-                        
+
+                        <!-- Adicionar Extra -->
                         <div style="margin-bottom:16px;">
-                            <label>Adicionar serviço extra:</label>
-                            <div style="display:flex;gap:8px;margin-top:6px;">
-                                <select id="extraServicoSelect" class="form-control" style="flex:1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                                Adicionar serviço extra:
+                            </label>
+                            <div style="display:flex;gap:8px;">
+                                <select id="extraServicoSelect" class="form-control" style="
+                                    flex:1; 
+                                    padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                                    border-radius: 8px; 
+                                    border: 1px solid var(--border-color); 
+                                    background: var(--bg-input); 
+                                    color: var(--text-primary); 
+                                    font-size: ${isMobile ? '13px' : '14px'};
+                                ">
                                     ${servicosOptions}
                                 </select>
-                                <button onclick="adicionarExtraNoModal(${agendamentoId})" class="btn btn-primary" style="white-space:nowrap; padding: 8px 16px; border-radius: 8px; background: var(--primary); color: white; border: none; cursor: pointer;">
+                                <button onclick="adicionarExtraNoModal(${agendamentoId})" style="
+                                    padding: ${isMobile ? '8px 14px' : '10px 20px'}; 
+                                    border-radius: 8px; 
+                                    border: none; 
+                                    background: linear-gradient(135deg, #667eea, #764ba2); 
+                                    color: white; 
+                                    font-size: ${isMobile ? '12px' : '14px'}; 
+                                    font-weight: 600; 
+                                    cursor: pointer;
+                                    white-space: nowrap;
+                                ">
                                     <i class="fas fa-plus"></i> Adicionar
                                 </button>
                             </div>
                         </div>
-                        
+
+                        <!-- Lista de Extras -->
                         <div style="margin-bottom:16px;">
-                            <label>Serviços adicionados:</label>
-                            <div style="margin-top:6px;">
-                                ${extrasHtml || '<p style="color:var(--text-muted);font-size:13px;">Nenhum serviço extra adicionado.</p>'}
+                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
+                                Serviços adicionados:
+                            </label>
+                            <div style="
+                                background: var(--bg-hover); 
+                                border-radius: 8px; 
+                                padding: 8px; 
+                                min-height: 40px;
+                                border: 1px solid var(--border-color);
+                            ">
+                                ${extrasHtml || '<p style="color:var(--text-muted);font-size:13px;text-align:center;margin:8px 0;">Nenhum serviço extra adicionado.</p>'}
                             </div>
                         </div>
-                        
-                        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
-                            <button onclick="fecharModalExtras()" class="btn btn-secondary" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); cursor: pointer;">
+
+                        <!-- Botões -->
+                        <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;">
+                            <button onclick="fecharModalExtras()" style="
+                                padding: ${isMobile ? '6px 16px' : '10px 24px'}; 
+                                border-radius: 8px; 
+                                border: 1px solid var(--border-color); 
+                                background: transparent; 
+                                color: var(--text-secondary); 
+                                font-size: ${isMobile ? '12px' : '14px'}; 
+                                cursor: pointer;
+                            ">
                                 Fechar
                             </button>
-                            <button onclick="salvarExtrasModal(${agendamentoId})" class="btn btn-success" style="padding: 8px 20px; border-radius: 8px; background: #22c55e; color: white; border: none; cursor: pointer;">
+                            <button onclick="salvarExtrasModal(${agendamentoId})" style="
+                                padding: ${isMobile ? '6px 16px' : '10px 24px'}; 
+                                border-radius: 8px; 
+                                border: none; 
+                                background: linear-gradient(135deg, #22c55e, #16a34a); 
+                                color: white; 
+                                font-size: ${isMobile ? '12px' : '14px'}; 
+                                font-weight: 600; 
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                gap: 6px;
+                            ">
                                 <i class="fas fa-save"></i> Salvar Extras
                             </button>
                         </div>
@@ -1731,7 +1762,6 @@ function abrirModalExtra(agendamentoId) {
                 </div>
             `;
 
-                    // Remover modal antigo e adicionar novo
                     const existingModal = document.getElementById('modalExtras');
                     if (existingModal) existingModal.remove();
 
@@ -1739,19 +1769,19 @@ function abrirModalExtra(agendamentoId) {
 
                 })
                 .catch(err => {
-                    console.error('Erro:', err);
+                    console.error('❌ Erro:', err);
                     showToast('Erro ao carregar serviços', 'error');
                 });
 
         })
         .catch(err => {
-            console.error('Erro:', err);
+            console.error('❌ Erro:', err);
             showToast('Erro ao carregar agendamento', 'error');
         });
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES DO MODAL
+// FUNÇÕES AUXILIARES DOS EXTRAS
 // ============================================
 
 function fecharModalExtras() {
@@ -1772,10 +1802,8 @@ function adicionarExtraNoModal(agendamentoId) {
     const valor = parseFloat(selectedOption.getAttribute('data-valor')) || 0;
     const duracao = parseInt(selectedOption.getAttribute('data-duracao')) || 30;
 
-    // Adicionar via API
     const token = localStorage.getItem('token');
 
-    // Buscar agendamento atual
     fetch('/api/agendamentos', {
         headers: { 'Authorization': 'Bearer ' + token }
     })
@@ -1797,13 +1825,11 @@ function adicionarExtraNoModal(agendamentoId) {
                 }
             }
 
-            // Verificar se já foi adicionado
             if (extrasList.some(e => e.servico_id === servicoId)) {
                 showToast('Este serviço já foi adicionado como extra', 'warning');
                 return;
             }
 
-            // Adicionar
             extrasList.push({
                 servico_id: servicoId,
                 nome: nome,
@@ -1812,36 +1838,29 @@ function adicionarExtraNoModal(agendamentoId) {
                 adicionado_em: new Date().toISOString()
             });
 
-            // Salvar no servidor
-            fetch(`/api/agendamentos/${agendamentoId}/extras`, {
+            return fetch(`/api/agendamentos/${agendamentoId}/extras`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
                 body: JSON.stringify({ servicos_extras: extrasList })
-            })
-                .then(res => res.json())
-                .then(result => {
-                    if (result.success) {
-                        showToast('Serviço extra adicionado!', 'success');
-                        // Recarregar o modal
-                        fecharModalExtras();
-                        abrirModalExtra(agendamentoId);
-                        // Recarregar lista
-                        carregarAgendamentos();
-                    } else {
-                        showToast('Erro ao adicionar extra: ' + (result.message || ''), 'error');
-                    }
-                })
-                .catch(err => {
-                    console.error('Erro:', err);
-                    showToast('Erro ao salvar extra', 'error');
-                });
+            });
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showToast('Serviço extra adicionado!', 'success');
+                fecharModalExtras();
+                abrirModalExtra(agendamentoId);
+                carregarAgendamentos();
+            } else {
+                showToast('Erro ao adicionar extra: ' + (result.message || ''), 'error');
+            }
         })
         .catch(err => {
-            console.error('Erro:', err);
-            showToast('Erro ao carregar agendamento', 'error');
+            console.error('❌ Erro:', err);
+            showToast('Erro ao adicionar extra', 'error');
         });
 }
 
@@ -1873,33 +1892,29 @@ function removerExtraDoModal(agendamentoId, servicoId) {
 
             const novosExtras = extrasList.filter(e => e.servico_id !== servicoId);
 
-            fetch(`/api/agendamentos/${agendamentoId}/extras`, {
+            return fetch(`/api/agendamentos/${agendamentoId}/extras`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
                 body: JSON.stringify({ servicos_extras: novosExtras })
-            })
-                .then(res => res.json())
-                .then(result => {
-                    if (result.success) {
-                        showToast('Serviço extra removido!', 'success');
-                        fecharModalExtras();
-                        abrirModalExtra(agendamentoId);
-                        carregarAgendamentos();
-                    } else {
-                        showToast('Erro ao remover extra', 'error');
-                    }
-                })
-                .catch(err => {
-                    console.error('Erro:', err);
-                    showToast('Erro ao remover extra', 'error');
-                });
+            });
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.success) {
+                showToast('Serviço extra removido!', 'success');
+                fecharModalExtras();
+                abrirModalExtra(agendamentoId);
+                carregarAgendamentos();
+            } else {
+                showToast('Erro ao remover extra', 'error');
+            }
         })
         .catch(err => {
-            console.error('Erro:', err);
-            showToast('Erro ao carregar agendamento', 'error');
+            console.error('❌ Erro:', err);
+            showToast('Erro ao remover extra', 'error');
         });
 }
 
@@ -1915,15 +1930,32 @@ function salvarExtrasModal(agendamentoId) {
         }
     }
 }
-
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 
+window.carregarAgendamentos = carregarAgendamentos;
+window.carregarListaAgendamentosComFiltro = carregarListaAgendamentosComFiltro;
+window.abrirModalAgendamentoDono = abrirModalAgendamentoDono;
+window.fecharModalAgendamentoDono = fecharModalAgendamentoDono;
+window.salvarAgendamentoDono = salvarAgendamentoDono;
+window.concluirAgendamento = concluirAgendamento;
+window.excluirAgendamento = excluirAgendamento;
+window.atualizarValorPorServicoDono = atualizarValorPorServicoDono;
+window.aplicarFiltrosAgendamentos = aplicarFiltrosAgendamentos;
+window.limparFiltrosAgendamentos = limparFiltrosAgendamentos;
+window.editarAgendamento = editarAgendamento;
+window.fecharModalEditarAgendamentoDono = fecharModalEditarAgendamentoDono;
+window.salvarEdicaoAgendamentoDono = salvarEdicaoAgendamentoDono;
+window.atualizarValorPorServicoEditDono = atualizarValorPorServicoEditDono;
+window.carregarHorariosDisponiveisDono = carregarHorariosDisponiveisDono;
+window.abrirModalNovoCliente = abrirModalNovoCliente;
+window.fecharModalNovoCliente = fecharModalNovoCliente;
+window.salvarNovoCliente = salvarNovoCliente;
 window.abrirModalExtra = abrirModalExtra;
 window.fecharModalExtras = fecharModalExtras;
 window.adicionarExtraNoModal = adicionarExtraNoModal;
 window.removerExtraDoModal = removerExtraDoModal;
 window.salvarExtrasModal = salvarExtrasModal;
 
-console.log('✅ Serviços Extras carregados!');
+console.log('✅ agendamentos.js carregado com sucesso!');

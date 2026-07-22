@@ -1093,51 +1093,90 @@ app.get('/api/empresa/plano', auth, (req, res) => {
         });
     });
 });
+// ============================================
+// ROTA: DADOS DA EMPRESA (CORRIGIDA)
+// ============================================
 
-// ============================================================
-// ?? ROTA: DADOS DA EMPRESA (COM TELEFONE_DONO E ENDERECO)
-// ============================================================
-app.get('/api/empresa/dados', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
+app.get('/api/empresa/dados', auth, async (req, res) => {
+    try {
+        // 🔥 CORRIGIDO: usar req.usuario (não req.user)
+        const empresaId = req.usuario.empresa_id;
 
-    if (!empresaId) {
-        return res.json({ success: false, message: 'Empresa n�o identificada' });
-    }
+        console.log(`📊 Buscando dados da empresa ${empresaId}`);
+        console.log(`👤 Usuário: ${req.usuario.email}`);
 
-    // ?? ADICIONADO: telefone_dono e endereco
-    const sql = isProduction
-        ? `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
-           assinatura_valida_ate, ultima_cobranca, created_at, 
-           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral,
-           COALESCE(telefone_dono, '') as telefone_dono,
-           COALESCE(endereco, '') as endereco
-           FROM empresas WHERE id = $1`
-        : `SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, 
-           assinatura_valida_ate, ultima_cobranca, created_at, 
-           COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral,
-           COALESCE(telefone_dono, '') as telefone_dono,
-           COALESCE(endereco, '') as endereco
-           FROM empresas WHERE id = ?`;
-
-    db.get(sql, [empresaId], (err, empresa) => {
-        if (err) {
-            console.error('? Erro ao buscar empresa:', err.message);
-            return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
-        }
-        if (!empresa) {
-            return res.json({ success: false, message: 'Empresa n�o encontrada' });
+        if (!empresaId) {
+            console.error('❌ empresa_id não encontrado no token!');
+            return res.status(400).json({
+                success: false,
+                message: 'Empresa não identificada no token'
+            });
         }
 
-        console.log('?? Dados da empresa retornados:', {
-            id: empresa.id,
-            nome: empresa.nome,
-            telefone_dono: empresa.telefone_dono,
-            endereco: empresa.endereco
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+        const sql = isProduction
+            ? `SELECT 
+                id, nome, plano, limite_profissionais, 
+                trial_expira, assinatura_ativa, assinatura_valida_ate,
+                agendamentos_mes, mes_referencia, 
+                dias_bloqueio_geral, telefone_dono, endereco,
+                whatsapp_instance, 
+                whatsapp_connected, 
+                whatsapp_number, 
+                whatsapp_connected_at, 
+                whatsapp_proprio_habilitado,
+                created_at
+               FROM empresas WHERE id = $1`
+            : `SELECT 
+                id, nome, plano, limite_profissionais, 
+                trial_expira, assinatura_ativa, assinatura_valida_ate,
+                agendamentos_mes, mes_referencia, 
+                dias_bloqueio_geral, telefone_dono, endereco,
+                whatsapp_instance, 
+                whatsapp_connected, 
+                whatsapp_number, 
+                whatsapp_connected_at, 
+                whatsapp_proprio_habilitado,
+                created_at
+               FROM empresas WHERE id = ?`;
+
+        db.get(sql, [empresaId], (err, empresa) => {
+            if (err) {
+                console.error('❌ Erro ao buscar empresa:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            if (!empresa) {
+                console.error('❌ Empresa não encontrada:', empresaId);
+                return res.status(404).json({
+                    success: false,
+                    message: 'Empresa não encontrada'
+                });
+            }
+
+            console.log(`✅ Empresa encontrada: ${empresa.nome}`);
+            console.log(`📱 WhatsApp conectado: ${empresa.whatsapp_connected}`);
+            console.log(`📱 Instância: ${empresa.whatsapp_instance}`);
+            console.log(`📱 WhatsApp próprio habilitado: ${empresa.whatsapp_proprio_habilitado}`);
+
+            res.json({
+                success: true,
+                data: empresa
+            });
         });
-        res.json({ success: true, data: empresa });
-    });
-});
 
+    } catch (error) {
+        console.error('❌ Erro ao buscar dados da empresa:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro ao buscar dados da empresa'
+        });
+    }
+});
 // ============================================================
 // ?? ROTA: ATUALIZAR ENDERECO DA EMPRESA
 // ============================================================
@@ -5878,7 +5917,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
                                VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`;
             const params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
-            
+
             // Tenta usar db.query, se não existir, usa db.get (alguns wrappers usam get para tudo)
             if (typeof db.query === 'function') {
                 const result = await db.query(sqlInsert, params);
@@ -5898,7 +5937,7 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
                                VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
             const params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
-            
+
             await new Promise((resolve, reject) => {
                 db.run(sqlInsert, params, function (err) {
                     if (err) reject(err);
@@ -7138,6 +7177,115 @@ app.put('/api/agendamentos/:id/extras', auth, verificarDono, (req, res) => {
                 }
             });
         });
+    });
+});
+
+// ============================================
+// ROTA: BUSCAR CONTATOS DO WHATSAPP
+// ============================================
+
+app.post('/api/whatsapp/contatos', auth, async (req, res) => {
+    try {
+        const { instanceName } = req.body;
+
+        if (!instanceName) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nome da instância é obrigatório'
+            });
+        }
+
+        console.log(`📱 Buscando contatos da instância: ${instanceName}`);
+
+        const EvolutionInstances = require('./server/services/evolution-instances');
+
+        // Buscar contatos usando o novo método
+        const contatos = await EvolutionInstances.getContatos(instanceName);
+
+        console.log(`✅ ${contatos.length} contatos encontrados`);
+
+        res.json({
+            success: true,
+            contatos: contatos,
+            total: contatos.length
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar contatos:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro ao buscar contatos do WhatsApp'
+        });
+    }
+});
+// ============================================
+// WEBHOOK DO WHATSAPP - RECEBER MENSAGENS
+// ============================================
+
+app.post('/api/whatsapp/webhook', async (req, res) => {
+    try {
+        console.log('📩 Webhook recebido!');
+        console.log('📦 Body:', JSON.stringify(req.body, null, 2));
+
+        const { instance, data } = req.body;
+
+        // Verificar se é uma mensagem
+        if (data?.message?.conversation || data?.message?.text) {
+            const numero = data.sender?.id || data.sender?.number || '';
+            const nome = data.sender?.pushname || data.sender?.name || 'Cliente WhatsApp';
+            const mensagem = data.message?.conversation || data.message?.text || '';
+
+            // Limpar número
+            const numeroLimpo = numero.replace(/@.*$/, '').replace(/\D/g, '');
+
+            console.log(`📱 Mensagem de ${nome} (${numeroLimpo}): ${mensagem.substring(0, 50)}`);
+
+            // Buscar empresa pela instância
+            const empresa = await db.get(
+                'SELECT id FROM empresas WHERE whatsapp_instance = ?',
+                [instance]
+            );
+
+            if (!empresa) {
+                console.log(`⚠️ Empresa não encontrada para instância: ${instance}`);
+                return res.sendStatus(200);
+            }
+
+            // Verificar se cliente já existe
+            const clienteExistente = await db.get(
+                'SELECT id FROM clientes WHERE empresa_id = ? AND telefone LIKE ?',
+                [empresa.id, `%${numeroLimpo}%`]
+            );
+
+            if (!clienteExistente) {
+                // Cadastrar cliente automaticamente
+                const nomeCliente = nome || 'Cliente WhatsApp';
+                await db.run(
+                    `INSERT INTO clientes (nome, telefone, empresa_id, created_at) 
+                     VALUES (?, ?, ?, datetime('now'))`,
+                    [nomeCliente, numeroLimpo, empresa.id]
+                );
+
+                console.log(`✅ Novo cliente cadastrado automaticamente: ${nomeCliente} (${numeroLimpo})`);
+            } else {
+                console.log(`✅ Cliente já existe: ${nome} (${numeroLimpo})`);
+            }
+        }
+
+        res.sendStatus(200);
+
+    } catch (error) {
+        console.error('❌ Erro no webhook:', error);
+        res.sendStatus(200); // Sempre retornar 200 para não bloquear
+    }
+});
+
+// Rota GET para testar se o webhook está acessível
+app.get('/api/whatsapp/webhook', (req, res) => {
+    res.json({
+        status: 'ok',
+        message: 'Webhook está funcionando!',
+        timestamp: new Date().toISOString()
     });
 });
 // ============================================================

@@ -1,4 +1,9 @@
 // ============================================
+// CLIENTES.JS - VERSÃO ORIGINAL
+// ULTIMA ATUALIZACAO: 22/07/2026
+// ============================================
+
+// ============================================
 // FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
 // ============================================
 
@@ -29,8 +34,9 @@ function formatMoney(valor) {
 }
 
 // ============================================
-// CARREGAR CLIENTES - VERSÃO CORRIGIDA MOBILE
+// CARREGAR CLIENTES - VERSÃO ORIGINAL
 // ============================================
+
 async function carregarClientes() {
     console.log("🟢 carregarClientes chamada");
     ativarBotao('clientes');
@@ -105,7 +111,7 @@ async function carregarClientes() {
             `;
         } else if (isMobile) {
             // ============================================
-            // VERSÃO MOBILE - CARDS (COM ESTILO INLINE)
+            // VERSÃO MOBILE - CARDS
             // ============================================
             console.log("📱 Renderizando MOBILE - Cards");
 
