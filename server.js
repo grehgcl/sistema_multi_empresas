@@ -5865,49 +5865,88 @@ app.post('/api/chatbot/agendar', async (req, res) => {
     try {
         const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
 
-        // 1. Definir o SQL baseado no ambiente
+        // Verifica se é produção (VPS) ou local
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-        const sqlInsert = isProduction
-            ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`
-            : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
+        // Define o SQL baseado no banco
+        let sqlInsert;
+        let params;
 
-        const params = isProduction
-            ? [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId]
-            : [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
-
-        // 2. Inserir no banco
         if (isProduction) {
-            const result = await db.query(sqlInsert, params);
-            const novoAgendamentoId = result.rows[0].id;
-            console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
-            await processarWhatsApp(novoAgendamentoId, empresaId, req.body);
-            res.json({ success: true, message: 'Agendamento confirmado!' });
+            // PostgreSQL
+            sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                         VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`;
+            params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
         } else {
-            // ✅ O SEGREDO DO SQLITE: Usar function() para acessar this.lastID
-            db.run(sqlInsert, params, async function (err) {
-                if (err) {
-                    console.error('❌ Erro ao criar agendamento:', err);
-                    return res.status(500).json({ success: false, message: 'Erro ao criar agendamento' });
-                }
+            // SQLite
+            sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                         VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
+            params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
+        }
 
-                const novoAgendamentoId = this.lastID;
-                console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
+        let novoAgendamentoId;
 
-                // 3. Buscar os dados da empresa ANTES de chamar o WhatsApp
-                const empresa = await new Promise((resolve, reject) => {
-                    db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
+        if (isProduction) {
+            // No PostgreSQL, usamos db.query se estiver usando 'pg', ou adaptamos se estiver usando um wrapper
+            // Assumindo que 'db' é o Pool do pg ou um wrapper que tenha .query
+            const result = await db.query(sqlInsert, params);
+            novoAgendamentoId = result.rows[0].id;
+        } else {
+            // No SQLite, usamos db.run com function() para pegar lastID
+            await new Promise((resolve, reject) => {
+                db.run(sqlInsert, params, function (err) {
+                    if (err) reject(err);
+                    else {
+                        novoAgendamentoId = this.lastID;
+                        resolve();
+                    }
                 });
-
-                // 4. Chamar o serviço de WhatsApp PASSANDO a empresa corretamente
-                await processarWhatsApp(novoAgendamentoId, empresaId, req.body, empresa);
-
-                res.json({ success: true, message: 'Agendamento confirmado!' });
             });
         }
+
+        console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
+
+        // Busca dados da empresa para o WhatsApp
+        let empresa;
+        if (isProduction) {
+            const resEmp = await db.query('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = $1', [empresaId]);
+            empresa = resEmp.rows[0];
+        } else {
+            empresa = await new Promise((resolve, reject) => {
+                db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+        }
+
+        // Chama a função de envio do WhatsApp
+        const { enviarConfirmacao } = require('./server/services/whatsapp');
+
+        // Busca dados do cliente
+        let cliente;
+        if (isProduction) {
+            const resCli = await db.query('SELECT nome, telefone FROM clientes WHERE id = $1', [clienteId]);
+            cliente = resCli.rows[0];
+        } else {
+            cliente = await new Promise((resolve, reject) => {
+                db.get('SELECT nome, telefone FROM clientes WHERE id = ?', [clienteId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+        }
+
+        await enviarConfirmacao({
+            cliente: cliente,
+            servico: { nome: servicoNome, valor: valor },
+            data: data,
+            hora: hora,
+            profissional: profissionalId ? { nome: 'Profissional' } : null,
+            empresa: empresa
+        });
+
+        res.json({ success: true, message: 'Agendamento confirmado!' });
 
     } catch (error) {
         console.error('❌ Erro no agendamento do chatbot:', error);
