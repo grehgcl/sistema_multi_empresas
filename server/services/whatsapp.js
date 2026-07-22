@@ -212,9 +212,8 @@ async function send(empresaId, numero, mensagem) {
     }
 }
 
-// ============================================
-// GERAR MENSAGEM DE CONFIRMAÇÃO
-// ============================================
+// Dentro da função gerarMensagemConfirmacao() em server/services/whatsapp.js
+
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa) {
     let valor = 0;
     if (servico && servico.valor !== undefined && servico.valor !== null) {
@@ -225,10 +224,13 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
     const telefoneDono = empresa?.telefone_dono || '';
     const telefoneDonoFormatado = formatarTelefone(telefoneDono);
     const endereco = empresa?.endereco || '';
-    const nomeEmpresa = empresa?.nome || 'See&Agende';
+
+    // ✅ AQUI USAMOS O NOME DA EMPRESA PARA O AGRADECIMENTO FINAL
+    const nomeEmpresa = empresa?.nome || 'nossa empresa';
     const nomeCliente = cliente?.nome || 'Cliente';
 
-    let mensagem = `🌟 *${nomeEmpresa} - Sua Agenda Inteligente*\n\n` +
+    // ✅ CABEÇALHO FIXO COMO "See&Agende"
+    let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
         `Olá *${nomeCliente}*! Seu agendamento foi confirmado com sucesso! ✅\n\n` +
         `📋 *DETALHES DO AGENDAMENTO:*\n` +
         `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
@@ -248,10 +250,11 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
         mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
     }
 
+    // ✅ AGRADECIMENTO PERSONALIZADO COM O NOME DA EMPRESA
     mensagem += `💡 *Dicas:*\n` +
         `• Chegue com 10 minutos de antecedência\n` +
         `• Em caso de imprevisto, entre em contato\n\n` +
-        `🙏 Agradecemos pela preferência!\n` +
+        `🙏 Agradecemos por ter escolhido a *${nomeEmpresa}*!\n` +
         `_Esta é uma mensagem automática do See&Agende._`;
 
     return mensagem;
@@ -355,6 +358,9 @@ async function enviarConclusao(dados) {
     const telefoneDono = empresa?.telefone_dono || '';
     const telefoneDonoFormatado = formatarTelefone(telefoneDono);
 
+    // ✅ NOME DA EMPRESA PARA PERSONALIZAÇÃO
+    const nomeEmpresa = empresa?.nome || 'nossa empresa';
+
     const valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
 
@@ -362,7 +368,9 @@ async function enviarConclusao(dados) {
     const empresaId = empresa?.id || '';
     const chatbotLink = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
 
-    let mensagem = `✅ *Atendimento Concluído!*\n\n` +
+    // ✅ CABEÇALHO FIXO COMO "See&Agende"
+    let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
+        `✅ *Atendimento Concluído!*\n\n` +
         `Olá *${nomeCliente}*! Seu atendimento foi concluído com sucesso. 😊\n\n` +
         `📋 *Resumo do Atendimento:*\n` +
         `✂️ Serviço: *${servicoNome}*\n` +
@@ -376,7 +384,8 @@ async function enviarConclusao(dados) {
     mensagem += `🌟 *Já pensou em agendar seu próximo atendimento?*\n` +
         `Agende pelo nosso chatbot! 🤖\n\n` +
         `🔗 *Link do Chatbot:* ${chatbotLink}\n\n` +
-        `🙏 Agradecemos pela preferência!\n` +
+        // ✅ AGRADECIMENTO PERSONALIZADO COM O NOME DA EMPRESA
+        `🙏 Agradecemos por ter escolhido a *${nomeEmpresa}*!\n` +
         `_Esta é uma mensagem automática do See&Agende._`;
 
     return await send(empresa?.id, cliente.telefone, mensagem);

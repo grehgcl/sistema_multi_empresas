@@ -5861,354 +5861,128 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     });
 });
 
-// ============================================
-// CHATBOT - AGENDAR (COM BLOQUEIO GERAL)
-// ============================================
 app.post('/api/chatbot/agendar', async (req, res) => {
     try {
-        const { clienteId, servicoId, profissionalId, data, hora, empresaId } = req.body;
+        const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
 
-        console.log('?? CHATBOT - Agendamento:', { clienteId, servicoId, profissionalId, data, hora, empresaId });
+        // 1. Definir o SQL baseado no ambiente
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-        if (!clienteId || !servicoId || !data || !hora || !empresaId) {
-            return res.json({ success: false, message: 'Dados incompletos' });
-        }
-
-        // ============================================
-        // ?????? VALIDA��O: DATA/HORA N�O PODE SER NO PASSADO (CHATBOT) ??????
-        // ============================================
-        const agora = new Date();
-        const [ano, mes, dia] = data.split('-').map(Number);
-        const [horaStr, minutoStr] = hora.split(':').map(Number);
-        const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0, 0);
-
-        console.log('?? Chatbot - Data/Hora agendamento:', dataHoraAgendamento);
-        console.log('?? Chatbot - Agora:', agora);
-
-        // VALIDA��O PRINCIPAL: Data/hora j� passou?
-        if (dataHoraAgendamento < agora) {
-            console.log('? Chatbot - Tentativa de agendar em data/hora passada');
-            return res.json({
-                success: false,
-                message: '? N�o � poss�vel agendar em datas ou hor�rios que j� passaram. Selecione uma data/hora futura.'
-            });
-        }
-
-        // VALIDA��O EXTRA: Se for hoje, verificar se o hor�rio j� passou
-        const hojeStr = agora.toISOString().split('T')[0];
-        if (data === hojeStr) {
-            const horaAtual = agora.getHours();
-            const minutoAtual = agora.getMinutes();
-            const horaAgendamento = parseInt(horaStr);
-            const minutoAgendamento = parseInt(minutoStr);
-
-            if (horaAgendamento < horaAtual || (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
-                console.log('? Chatbot - Tentativa de agendar em hor�rio que j� passou hoje');
-                return res.json({
-                    success: false,
-                    message: `? N�o � poss�vel agendar no hor�rio ${hora} pois j� passou. Escolha um hor�rio futuro.`
-                });
-            }
-        }
-
-        const clienteIdNum = parseInt(clienteId);
-        const servicoIdNum = parseInt(servicoId);
-        const empresaIdNum = parseInt(empresaId);
-        const profissionalIdNum = profissionalId ? parseInt(profissionalId) : null;
-
-        // 1. VERIFICAR LIMITE DE AGENDAMENTOS/M�S
-        const empresa = await new Promise((resolve) => {
-            const sql = isProduction
-                ? `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = $1`
-                : `SELECT plano, agendamentos_mes, mes_referencia FROM empresas WHERE id = ?`;
-            db.get(sql, [empresaIdNum], (err, row) => resolve(row));
-        });
-
-        if (!empresa) {
-            return res.json({ success: false, message: 'Empresa n�o encontrada' });
-        }
-
-        const planoLower = (empresa.plano || '').toLowerCase();
-        const temLimite = (planoLower === 'starter' || planoLower === 'trial');
-
-        if (temLimite) {
-            const LIMITE_MAXIMO = 100;
-            const mesAtual = new Date().toISOString().slice(0, 7);
-
-            if (empresa.mes_referencia !== mesAtual) {
-                const sqlUpdate = isProduction
-                    ? `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = $1 WHERE id = $2`
-                    : `UPDATE empresas SET agendamentos_mes = 0, mes_referencia = ? WHERE id = ?`;
-                db.run(sqlUpdate, [mesAtual, empresaIdNum]);
-                empresa.agendamentos_mes = 0;
-            }
-
-            const total = empresa.agendamentos_mes || 0;
-            if (total >= LIMITE_MAXIMO) {
-                return res.json({
-                    success: false,
-                    message: `Limite de ${LIMITE_MAXIMO} agendamentos/m�s atingido.`,
-                    limit_reached: true
-                });
-            }
-        }
-
-        // ============================================
-        // ?? CHATBOT: VALIDA��O - CLIENTE J� TEM AGENDAMENTO NESTE DIA?
-        // ============================================
-        const sqlAgendamentoHojeChat = isProduction
-            ? `SELECT id FROM agendamentos 
-               WHERE cliente_id = $1 
-               AND data = $2 
-               AND empresa_id = $3 
-               AND status != 'cancelado'
-               LIMIT 1`
-            : `SELECT id FROM agendamentos 
-               WHERE cliente_id = ? 
-               AND data = ? 
-               AND empresa_id = ? 
-               AND status != 'cancelado'
-               LIMIT 1`;
-
-        const agendamentoHojeChat = await new Promise((resolve) => {
-            db.get(sqlAgendamentoHojeChat, [clienteIdNum, data, empresaIdNum], (err, row) => {
-                if (err) {
-                    console.error('? Erro ao verificar agendamento no mesmo dia (chatbot):', err);
-                    resolve(null);
-                } else {
-                    resolve(row);
-                }
-            });
-        });
-
-        if (agendamentoHojeChat) {
-            console.log(`? Chatbot: Cliente ${clienteIdNum} j� tem agendamento no dia ${data}`);
-            return res.json({
-                success: false,
-                message: `Voc� j� possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente s� pode fazer UM agendamento por dia.`
-            });
-        }
-
-        // ============================================
-        // ?? CHATBOT: VALIDA��O - DIAS_BLOQUEIO_GERAL
-        // ============================================
-        const sqlDiasBloqueioEmpresaChat = isProduction
-            ? `SELECT COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral FROM empresas WHERE id = $1`
-            : `SELECT COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral FROM empresas WHERE id = ?`;
-
-        const empresaInfoChat = await new Promise((resolve) => {
-            db.get(sqlDiasBloqueioEmpresaChat, [empresaIdNum], (err, row) => {
-                if (err) {
-                    console.error('? Erro ao buscar dias_bloqueio_geral (chatbot):', err);
-                    resolve({ dias_bloqueio_geral: 0 });
-                } else {
-                    resolve(row || { dias_bloqueio_geral: 0 });
-                }
-            });
-        });
-
-        const diasBloqueioGeralChat = empresaInfoChat?.dias_bloqueio_geral || 0;
-        console.log(`?? Chatbot - Dias de bloqueio geral: ${diasBloqueioGeralChat}`);
-
-        // ============================================
-        // ?? CHATBOT: VALIDAR - BUSCAR �LTIMO AGENDAMENTO
-        // ============================================
-        if (diasBloqueioGeralChat > 0) {
-            console.log(`?? Chatbot - Bloqueio geral ATIVO (${diasBloqueioGeralChat} dias) - Validando...`);
-
-            const sqlUltimoAgendamentoChat = isProduction
-                ? `SELECT data FROM agendamentos 
-           WHERE cliente_id = $1 
-           AND empresa_id = $2 
-           AND status != 'cancelado'
-           ORDER BY data DESC
-           LIMIT 1`
-                : `SELECT data FROM agendamentos 
-           WHERE cliente_id = ? 
-           AND empresa_id = ? 
-           AND status != 'cancelado'
-           ORDER BY data DESC
-           LIMIT 1`;
-
-            const ultimoAgendamentoChat = await new Promise((resolve) => {
-                db.get(sqlUltimoAgendamentoChat, [clienteIdNum, empresaIdNum], (err, row) => {
-                    if (err) {
-                        console.error('? Erro ao buscar �ltimo agendamento no chatbot:', err);
-                        resolve(null);
-                    } else {
-                        console.log(`?? Chatbot - �ltimo agendamento encontrado (raw):`, row);
-                        resolve(row);
-                    }
-                });
-            });
-
-            if (ultimoAgendamentoChat && ultimoAgendamentoChat.data) {
-                try {
-                    // ?? CORRIGIDO: Converter corretamente a data
-                    let dataUltimo;
-
-                    if (typeof ultimoAgendamentoChat.data === 'string') {
-                        dataUltimo = new Date(ultimoAgendamentoChat.data + 'T00:00:00');
-                    } else if (ultimoAgendamentoChat.data instanceof Date) {
-                        dataUltimo = new Date(ultimoAgendamentoChat.data);
-                        dataUltimo.setHours(0, 0, 0, 0);
-                    } else {
-                        dataUltimo = new Date(ultimoAgendamentoChat.data);
-                        dataUltimo.setHours(0, 0, 0, 0);
-                    }
-
-                    console.log(`?? Chatbot - Data do �ltimo agendamento convertida:`, dataUltimo);
-
-                    if (isNaN(dataUltimo.getTime())) {
-                        console.log(`?? Chatbot - Data inv�lida no �ltimo agendamento: ${ultimoAgendamentoChat.data}`);
-                    } else {
-                        const dataMinima = new Date(dataUltimo);
-                        dataMinima.setDate(dataMinima.getDate() + diasBloqueioGeralChat);
-                        dataMinima.setHours(0, 0, 0, 0);
-
-                        const dataMinimaStr = dataMinima.toISOString().split('T')[0];
-
-                        let dataAgendamento;
-                        if (typeof data === 'string') {
-                            dataAgendamento = new Date(data + 'T00:00:00');
-                        } else if (data instanceof Date) {
-                            dataAgendamento = new Date(data);
-                            dataAgendamento.setHours(0, 0, 0, 0);
-                        } else {
-                            dataAgendamento = new Date(data);
-                            dataAgendamento.setHours(0, 0, 0, 0);
-                        }
-
-                        console.log(`?? Chatbot - �ltimo agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
-                        console.log(`?? Chatbot - Data m�nima permitida (${diasBloqueioGeralChat} dias): ${dataMinimaStr}`);
-                        console.log(`?? Chatbot - Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
-
-                        if (dataAgendamento < dataMinima) {
-                            console.log(`? Chatbot - BLOQUEIO GERAL ATIVADO! Cliente ${clienteIdNum} n�o pode agendar antes de ${dataMinimaStr}`);
-                            return res.json({
-                                success: false,
-                                message: `Voc� s� pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeralChat} dias ap�s o �ltimo agendamento).`
-                            });
-                        } else {
-                            console.log(`? Chatbot - Cliente ${clienteIdNum} pode agendar em ${data} - Dentro do prazo permitido`);
-                        }
-                    }
-                } catch (error) {
-                    console.error('? Chatbot - Erro ao processar data do �ltimo agendamento:', error);
-                }
-            } else {
-                console.log(`? Chatbot - Cliente ${clienteIdNum} n�o tem agendamentos anteriores`);
-            }
-        }
-
-        // ============================================
-        // 4. VERIFICAR HOR�RIO
-        // ============================================
-        const sqlCheck = isProduction
-            ? `SELECT id FROM agendamentos WHERE empresa_id = $1 AND data = $2 AND hora = $3 AND status != 'cancelado'`
-            : `SELECT id FROM agendamentos WHERE empresa_id = ? AND data = ? AND hora = ? AND status != 'cancelado'`;
-
-        const ocupado = await new Promise((resolve) => {
-            db.get(sqlCheck, [empresaIdNum, data, hora], (err, row) => resolve(row));
-        });
-
-        if (ocupado) {
-            return res.json({ success: false, message: 'Hor�rio indispon�vel' });
-        }
-
-        // ============================================
-        // 5. VERIFICAR CLIENTE BLOQUEADO
-        // ============================================
-        const sqlCliente = isProduction
-            ? `SELECT bloqueado_chatbot FROM clientes WHERE id = $1`
-            : `SELECT bloqueado_chatbot FROM clientes WHERE id = ?`;
-
-        const cliente = await new Promise((resolve) => {
-            db.get(sqlCliente, [clienteIdNum], (err, row) => resolve(row));
-        });
-
-        if (cliente?.bloqueado_chatbot === 1) {
-            return res.json({ success: false, message: 'Cliente bloqueado' });
-        }
-
-        // ============================================
-        // 6. BUSCAR SERVI�O
-        // ============================================
-        const sqlServico = isProduction
-            ? `SELECT nome, valor FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = true`
-            : `SELECT nome, valor FROM servicos WHERE id = ? AND empresa_id = ? AND ativo = 1`;
-
-        const servico = await new Promise((resolve) => {
-            db.get(sqlServico, [servicoIdNum, empresaIdNum], (err, row) => resolve(row));
-        });
-
-        if (!servico) {
-            return res.json({ success: false, message: 'Servi�o n�o encontrado' });
-        }
-
-        // ============================================
-        // 7. CRIAR AGENDAMENTO
-        // ============================================
         const sqlInsert = isProduction
-            ? `INSERT INTO agendamentos (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
-               VALUES ($1, $2, $3, $4, $5, $6, $7, 'agendado', $8) RETURNING id`
-            : `INSERT INTO agendamentos (cliente_id, servico_id, servico, valor, profissional_id, data, hora, status, empresa_id)
-               VALUES (?, ?, ?, ?, ?, ?, ?, 'agendado', ?)`;
+            ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`
+            : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
 
-        const result = await new Promise((resolve, reject) => {
-            const params = [clienteIdNum, servicoIdNum, servico.nome, servico.valor, profissionalIdNum, data, hora, empresaIdNum];
-            db.get(sqlInsert, params, function (err, row) {
-                if (err) reject(err);
-                else resolve({ lastID: row?.id || this?.lastID });
+        const params = isProduction
+            ? [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId]
+            : [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
+
+        // 2. Inserir no banco
+        if (isProduction) {
+            const result = await db.query(sqlInsert, params);
+            const novoAgendamentoId = result.rows[0].id;
+            console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
+            await processarWhatsApp(novoAgendamentoId, empresaId, req.body);
+            res.json({ success: true, message: 'Agendamento confirmado!' });
+        } else {
+            // ✅ O SEGREDO DO SQLITE: Usar function() para acessar this.lastID
+            db.run(sqlInsert, params, async function (err) {
+                if (err) {
+                    console.error('❌ Erro ao criar agendamento:', err);
+                    return res.status(500).json({ success: false, message: 'Erro ao criar agendamento' });
+                }
+
+                const novoAgendamentoId = this.lastID;
+                console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
+
+                // 3. Buscar os dados da empresa ANTES de chamar o WhatsApp
+                const empresa = await new Promise((resolve, reject) => {
+                    db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+
+                // 4. Chamar o serviço de WhatsApp PASSANDO a empresa corretamente
+                await processarWhatsApp(novoAgendamentoId, empresaId, req.body, empresa);
+
+                res.json({ success: true, message: 'Agendamento confirmado!' });
             });
-        });
-
-        // ============================================
-        // 8. INCREMENTAR CONTADOR
-        // ============================================
-        const mesAtual = new Date().toISOString().slice(0, 7);
-        const sqlInc = isProduction
-            ? `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = $1 WHERE id = $2`
-            : `UPDATE empresas SET agendamentos_mes = COALESCE(agendamentos_mes, 0) + 1, mes_referencia = ? WHERE id = ?`;
-        db.run(sqlInc, [mesAtual, empresaIdNum]);
-
-        // ============================================
-        // 9. BUSCAR PROFISSIONAL
-        // ============================================
-        const sqlProf = isProduction
-            ? `SELECT nome FROM profissionais WHERE id = $1`
-            : `SELECT nome FROM profissionais WHERE id = ?`;
-
-        const profissional = await new Promise((resolve) => {
-            db.get(sqlProf, [profissionalIdNum], (err, row) => resolve(row));
-        });
-
-        console.log('? CHATBOT - Agendamento criado! ID:', result.lastID);
-
-        try {
-            const sqlCliente = isProduction ? `SELECT nome, telefone FROM clientes WHERE id = $1` : `SELECT nome, telefone FROM clientes WHERE id = ?`;
-            const clienteData = await new Promise((resolve) => { db.get(sqlCliente, [clienteIdNum], (err, row) => resolve(row)); });
-            const sqlEmpresa = isProduction ? `SELECT nome, endereco FROM empresas WHERE id = $1` : `SELECT nome, endereco FROM empresas WHERE id = ?`;
-            const empresaData = await new Promise((resolve) => { db.get(sqlEmpresa, [empresaIdNum], (err, row) => resolve(row)); });
-            const sqlProfFull = isProduction ? `SELECT nome, telefone FROM profissionais WHERE id = $1` : `SELECT nome, telefone FROM profissionais WHERE id = ?`;
-            const profissionalFull = await new Promise((resolve) => { db.get(sqlProfFull, [profissionalIdNum], (err, row) => resolve(row)); });
-            const dadosNotificacao = { cliente: { nome: clienteData?.nome || 'Cliente', telefone: clienteData?.telefone || null }, servico: { nome: servico.nome, valor: servico.valor }, profissional: profissionalFull ? { nome: profissionalFull.nome, telefone: profissionalFull.telefone || null } : null, data: data, hora: hora, empresa: { nome: empresaData?.nome || 'Estabelecimento', endereco: empresaData?.endereco || '' } };
-            if (dadosNotificacao.cliente.telefone) { await whatsappService.enviarConfirmacao(dadosNotificacao); console.log('? CHATBOT WPP confirma��o enviada'); }
-            if (profissionalFull?.telefone) { await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao); console.log('? CHATBOT WPP profissional notificado'); }
-        } catch (wpErr) { console.error('? CHATBOT WhatsApp erro:', wpErr.message); }
-        res.json({
-            success: true,
-            agendamentoId: result.lastID,
-            profissionalNome: profissional?.nome || 'Profissional',
-            servicoNome: servico.nome,
-            valor: servico.valor
-        });
+        }
 
     } catch (error) {
-        console.error('? CHATBOT - Erro:', error);
-        res.json({ success: false, message: 'Erro interno. Tente novamente.' });
+        console.error('❌ Erro no agendamento do chatbot:', error);
+        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
 });
+
+// Função auxiliar para organizar o envio do WhatsApp
+async function processarWhatsApp(agendamentoId, empresaId, body, empresaDados = null) {
+    console.log('🔍 [DEBUG] processarWhatsApp iniciado. body.clienteId:', body.clienteId);
+
+    // 1. Buscar dados da empresa (com Promise para compatibilidade)
+    let empresa = empresaDados;
+    if (!empresa) {
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+        const sqlEmpresa = isProduction
+            ? 'SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = $1'
+            : 'SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?';
+
+        empresa = await new Promise((resolve, reject) => {
+            db.get(sqlEmpresa, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+        console.log('🔍 [DEBUG] Empresa buscada:', empresa);
+    }
+
+    // 2. Buscar dados do cliente (CORRIGIDO COM PROMISE)
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const sqlCliente = isProduction
+        ? 'SELECT id, nome, telefone FROM clientes WHERE id = $1'
+        : 'SELECT id, nome, telefone FROM clientes WHERE id = ?';
+
+    const cliente = await new Promise((resolve, reject) => {
+        db.get(sqlCliente, [body.clienteId], (err, row) => {
+            if (err) {
+                console.error('❌ Erro ao buscar cliente no banco:', err);
+                reject(err);
+            } else {
+                resolve(row); // Agora isso vai retornar o cliente de verdade!
+            }
+        });
+    });
+
+    console.log('🔍 [DEBUG] Cliente retornado do banco:', cliente);
+
+    // 3. Fallback de segurança: Tenta pegar do banco, se não tiver, tenta do body
+    const telefoneFinal = cliente?.telefone || body.telefone;
+    console.log('🔍 [DEBUG] Telefone final que será usado:', telefoneFinal);
+
+    // 4. Validação final
+    if (!telefoneFinal) {
+        console.error('❌ [WHATSAPP] Abortando envio: Cliente realmente não possui telefone cadastrado.');
+        return; // Interrompe sem quebrar o sistema
+    }
+
+    // 5. Chamar o serviço de WhatsApp
+    // Ajuste o caminho './server/services/whatsapp' se o seu arquivo estiver em outro lugar
+    const { enviarConfirmacao } = require('./server/services/whatsapp');
+
+    await enviarConfirmacao({
+        cliente: {
+            ...cliente,
+            telefone: telefoneFinal // Garante que o telefone esteja no objeto
+        },
+        servico: { nome: body.servicoNome, valor: body.valor },
+        data: body.data,
+        hora: body.hora,
+        profissional: body.profissionalId ? { nome: 'Profissional' } : null,
+        empresa: empresa // <--- A MÁGICA: empresa_id agora estará correto
+    });
+
+    console.log('✅ [DEBUG] Chamada para enviarConfirmacao realizada com sucesso!');
+}
 
 // ============================================================
 // SIMULA��O DE PAGAMENTO

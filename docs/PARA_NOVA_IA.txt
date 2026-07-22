@@ -1,25 +1,22 @@
 ﻿=========================================
-  GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 10/07/2026
+GUIA PARA IA - SEE&AGENDE
+ULTIMA ATUALIZACAO: 22/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
 =========================================
-
 Modo Local (SQLite - Desenvolvimento)
 -----------------------------------------
 npm start
-
 - WhatsApp em modo LOG
 - Banco SQLite local
 - Acesse: http://localhost:3000
 
-Modo com PostgreSQL (Teste com dados reais)
+Modo com PostgreSQL (Teste com dados reais / Produção)
 -----------------------------------------
 node -r dotenv/config server.js dotenv_config_path=.env.local
-
 - WhatsApp Evolution REAL
-- Banco PostgreSQL do Render
+- Banco PostgreSQL (Render ou VPS)
 - Acesse: http://localhost:3000
 
 USUARIOS:
@@ -28,326 +25,86 @@ Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
 
 =========================================
-✅ IMPLEMENTADO (10/07/2026)
+✅ IMPLEMENTADO (22/07/2026) - CORREÇÕES CRÍTICAS
 =========================================
-
-1. WHATSAPP EVOLUTION - SISTEMA MULTI-INSTÂNCIA 📱
+1. ENDPOINTS EVOLUTION API v2 CORRIGIDOS 📱
 -----------------------------------------
-- Provedor: Evolution API (http://163.176.218.131:8080)
-- Instância Padrão: seeagende
-- Instância Própria: Cada empresa Business/Enterprise
-- Confirmação de Agendamento: Enviada automaticamente
-- Lembrete 24h: Job automático às 09:00
-- Cancelamento: Notifica o cliente
-- Conclusão: Agradecimento automático
-- Telefone do Dono: Aparece em todas as mensagens
-- Endereço: Aparece nas mensagens
-- Formatação: (XX) XXXXX-XXXX
+- Envio de mensagem: `/message/sendText/{instanceName}` (antes era /instance/{name}/send)
+- Obter QR Code: `/instance/connect/{instanceName}` (trata estado 'open' e erro 404 gracefully)
+- Verificar status: `/instance/connectionState/{instanceName}` (verifica state === 'open')
 
-2. NOVOS CAMPOS NO BANCO
+2. NOVAS COLUNAS NO BANCO (Tabela: agendamentos) 💾
 -----------------------------------------
-whatsapp_instance VARCHAR(100)
-whatsapp_connected BOOLEAN DEFAULT FALSE
-whatsapp_number VARCHAR(20)
-whatsapp_connected_at TIMESTAMP
-whatsapp_proprio_habilitado BOOLEAN DEFAULT FALSE
+- valor_total (NUMERIC DEFAULT 0)
+- servicos_extras (JSONB DEFAULT '[]'::jsonb)
+- valor_extras (NUMERIC DEFAULT 0)
 
-3. SUPER ADMIN - DASHBOARD COMPLETO 🏢
+3. SCRIPT DE ATUALIZAÇÃO BLINDADO (`atualizar.sh`) 🛡️
 -----------------------------------------
-- Cards com métricas (empresas, donos, clientes, agendamentos, faturamento)
-- Lista completa de todas as empresas
-- Status do trial (dias restantes, expirado, ativo)
-- Gerenciar usuários (nome, email, telefone, role, senha, comissão)
-- Filtrar empresas por nome em tempo real
-- NOVO: Coluna 💬 WhatsApp com controle de habilitação
+- Salva .env em /tmp antes do git.
+- Usa `git reset --hard origin/main` e `git clean -fd` para zerar conflitos.
+- Restaura o .env do /tmp.
+- Roda `npm install --omit=dev` e migração sem erro de SSL.
+- Reinicia PM2 com --update-env.
 
-4. SUPER ADMIN - CONTROLE WHATSAPP
+4. LÓGICA DE FALLBACK CONFIRMADA ✅
 -----------------------------------------
-- Habilitar/desabilitar WhatsApp próprio de qualquer empresa
-- Ver status de todas as empresas
-- 3 estados: 🔴 OFF, 🟡 PEND, 🟢 ON, 🔒 [plano]
-
-5. DONO - WHATSAPP EXCLUSIVO 👨‍💼
------------------------------------------
-3 cenários:
-- Plano não permite → Tela de upgrade
-- Plano permite mas Super Admin não habilitou → "Aguarde o administrador"
-- Tudo OK → Pode criar instância e conectar WhatsApp
-
-Funcionalidades:
-- Criar instância na Evolution API
-- Escanear QR Code com WhatsApp pessoal
-- Ver status de conexão
-- Desconectar WhatsApp
-
-6. SISTEMA DE ACESSOS 📊
------------------------------------------
-- Registro automático de acessos no login
-- Captura de IP e User-Agent
-- Estatísticas por empresa (total, hoje, último acesso)
-
-7. CORREÇÃO DE BOOLEANOS 🎯
------------------------------------------
-- PostgreSQL: true/false, SQLite: 1/0
-- Função isAberto() para compatibilidade
-
-8. CORREÇÃO DE .toFixed() 🎯
------------------------------------------
-- PostgreSQL retorna strings
-- parseFloat() antes de toFixed()
-
-9. PRESERVAÇÃO DE HORÁRIO NA AGENDA 🎯
------------------------------------------
-- Horário é mantido ao selecionar serviço
-- Próximo horário disponível se o selecionado não estiver disponível
+- Se a instância própria da empresa existir no banco mas NÃO estiver conectada, o sistema usa automaticamente a instância padrão (`seeagende`) para garantir que a mensagem do cliente seja enviada.
 
 =========================================
-🔧 CORREÇÕES NO BACKEND
+✅ IMPLEMENTADO (13/07/2026) - FINANCEIRO COMPLETO
 =========================================
-
-Middleware verificarAcessoAgendamentos
------------------------------------------
-const isAtiva = empresa.assinatura_ativa === true || 
-                empresa.assinatura_ativa === 1 || 
-                empresa.assinatura_ativa === 'true';
-
-Rota de Despesas - Placeholders
------------------------------------------
-let counter = 2;
-sql += ` AND EXTRACT(MONTH FROM d.data) = $${counter}::int`;
-
-Rota de Agendamentos - Valores
------------------------------------------
-valor: parseFloat(a.valor) || 0,
-comissao: parseFloat(a.comissao) || 0
-
-=========================================
-🗄️ ESTRUTURA DOS ARQUIVOS
-=========================================
-
-server/
-├── config/
-│   ├── database.js
-│   └── whatsapp.js
-├── middlewares/
-│   └── auth.js           # CORRIGIDO
-├── services/
-│   ├── whatsapp.js
-│   └── evolution-instances.js  # NOVO
-├── jobs/
-│   ├── lembretes.js
-│   └── reset-contador.js
-└── utils/
-    ├── constants.js
-    └── helpers.js
-
-public/
-├── index.html
-├── chatbot.html
-├── css/
-│   ├── style.css
-│   └── chatbot.css
-└── js/
-    ├── ui.js
-    └── pages/
-        ├── dashboard.js          # CORRIGIDO
-        ├── agendamentos.js       # CORRIGIDO
-        ├── configuracoes.js      # CORRIGIDO
-        ├── financeiro.js         # CORRIGIDO
-        ├── empresas.js           # COMPLETO
-        └── whatsapp-config.js    # NOVO
-
-scripts/
-├── migrate.js
-├── seed.js
-├── corrigir-booleanos.js
-├── corrigir-tofixed.js
-├── corrigir-placeholders.js
-├── migrate-whatsapp.js           # NOVO
-├── migrate-whatsapp-pg.js        # NOVO
-└── migrate-whatsapp-habilitado.js # NOVO
-
-=========================================
-📋 PLANOS COMPLETOS
-=========================================
-
-Plano       Valor               Profissionais   Agendamentos/Mês   WhatsApp Próprio
-Trial       Grátis (45 dias)    1               100                ❌
-Starter     R$ 29,90/mês        1               100                ❌
-Pro         R$ 59,90/mês        5               Ilimitado          ❌
-Business    R$ 119,90/mês       15              Ilimitado          ✅
-Enterprise  R$ 249,90/mês       Ilimitado       Ilimitado          ✅
-
-=========================================
-🔧 COMANDOS ÚTEIS
-=========================================
-
-# SQLite (Desenvolvimento)
-npm start
-
-# PostgreSQL (Teste)
-node -r dotenv/config server.js dotenv_config_path=.env.local
-
-# Verificar sintaxe
-node -c server.js
-
-# Scripts de correção
-node scripts/corrigir-booleanos.js
-node scripts/corrigir-tofixed.js
-node scripts/corrigir-placeholders.js
-
-# Migrações WhatsApp
-node scripts/migrate-whatsapp.js
-node scripts/migrate-whatsapp-pg.js
-node scripts/migrate-whatsapp-habilitado.js
-
-# Ver commits recentes
-git log -5 --oneline
-
-# Ver status do Git
-git status
-
-# Ver mudanças não commitadas
-git diff
-
-# Adicionar e commitar mudanças
-git add .
-git commit -m "✨ FEAT: WhatsApp Multi-Instância e melhorias"
-git push origin main
-
-=========================================
-🎯 O QUE FOI CORRIGIDO
-=========================================
-
-Problema                           Solução                              Status
-Booleanos no PostgreSQL            Função isAberto()                    ✅
-.toFixed() no PostgreSQL           parseFloat()                         ✅
-Placeholders PostgreSQL            Counter para $1, $2...              ✅
-Assinatura ativa                   Suporte true/false e 1/0            ✅
-Horário na agenda                  Preservação ao selecionar serviço    ✅
-Profissionais status               isAberto() no frontend              ✅
-Horários status                    isAberto() no frontend              ✅
-WhatsApp próprio                   Sistema Multi-Instância             ✅
-Super Admin WhatsApp               Controle por empresa                 ✅
-Dono WhatsApp                      Tela de configuração                 ✅
-
-=========================================
-✅ STATUS ATUAL
-=========================================
-
-Tudo funcionando em AMBOS os bancos!
-
-✅ SQLite (desenvolvimento local)
-✅ PostgreSQL (Render e teste local)
-✅ WhatsApp Multi-Instância
-✅ Super Admin com controle WhatsApp
-✅ Dono com WhatsApp exclusivo
-
-=========================================
-ULTIMA ATUALIZACAO: 10/07/2026
-=========================================
-
-=========================================
-  GUIA PARA IA - SEE&AGENDE
-  ULTIMA ATUALIZACAO: 13/07/2026
-=========================================
-
-🚀 COMO EXECUTAR O PROJETO
-=========================================
-
-Modo Local (SQLite - Desenvolvimento)
------------------------------------------
-npm start
-
-- WhatsApp em modo LOG
-- Banco SQLite local
-- Acesse: http://localhost:3000
-
-Modo com PostgreSQL (Teste com dados reais)
------------------------------------------
-node -r dotenv/config server.js dotenv_config_path=.env.local
-
-- WhatsApp Evolution REAL
-- Banco PostgreSQL do Render
-- Acesse: http://localhost:3000
-
-USUARIOS:
------------------------------------------
-Super Admin: super@admin.com / super123
-Dono: admin@teste.com / 123456
-
-=========================================
-✅ IMPLEMENTADO (13/07/2026)
-=========================================
-
-1. FINANCEIRO COMPLETO COM TABS 💰
------------------------------------------
+1. FINANCEIRO COM ABAS
 - Abas: Resumo, Receitas, Despesas, Comissões
-- Comparativo mês atual vs mês anterior
-- Variação percentual com ícones (📈📉➡️)
+- Comparativo mês atual vs mês anterior com variação percentual
 - Cards coloridos para Faturamento, Despesas e Lucro
-- Receitas filtradas por mês
-- Despesas com CRUD completo
-- Comissões por profissional com design melhorado no mobile
+- Receitas filtradas por mês, Despesas com CRUD completo
 
 2. NOVAS ROTAS
 -----------------------------------------
 GET /api/financeiro/receitas?mes=07&ano=2026
 GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_anterior=2026
 
-3. WHATSAPP MULTI-INSTÂNCIA
------------------------------------------
-- WhatsApp próprio por empresa (Business/Enterprise)
-- Controle pelo Super Admin
-- Fallback inteligente para instância padrão
-
-4. SUPER ADMIN
------------------------------------------
-- Dashboard completo com métricas
-- Gestão de empresas e usuários
-- Controle de WhatsApp próprio
+=========================================
+✅ IMPLEMENTADO (10/07/2026) - WHATSAPP MULTI-INSTÂNCIA
+=========================================
+- Provedor: Evolution API
+- Instância Padrão: seeagende
+- Instância Própria: Cada empresa Business/Enterprise
+- Confirmação, Lembrete 24h, Cancelamento e Conclusão automáticos
+- Telefone do Dono e Endereço aparecem nas mensagens
 
 =========================================
-🗄️ ESTRUTURA DOS ARQUIVOS
+🔧 CORREÇÕES NO BACKEND (Histórico)
 =========================================
+- Booleanos no PostgreSQL: Função isAberto() para compatibilidade true/false e 1/0.
+- .toFixed() no PostgreSQL: Uso de parseFloat() antes da formatação.
+- Placeholders PostgreSQL: Uso de counter para $1, $2...
+- Preservação de Horário: Horário é mantido ao selecionar serviço na agenda.
 
+=========================================
+🗄️ ESTRUTURA DOS ARQUIVOS (Principais)
+=========================================
 server/
-├── config/
-│   ├── database.js
-│   └── whatsapp.js
-├── middlewares/
-│   └── auth.js
-├── services/
-│   ├── whatsapp.js
-│   ├── evolution-instances.js
-│   └── mercadopago.js
-├── jobs/
-│   ├── lembretes.js
-│   └── reset-contador.js
-└── utils/
-    ├── constants.js
-    └── helpers.js
+├── config/database.js, whatsapp.js
+├── middlewares/auth.js
+├── services/whatsapp.js, evolution-instances.js, mercadopago.js
+├── jobs/lembretes.js, reset-contador.js
+└── utils/constants.js, helpers.js
 
-public/
-├── index.html
-├── chatbot.html
-├── css/
-│   ├── style.css
-│   └── chatbot.css
-└── js/
-    ├── ui.js
-    └── pages/
-        ├── dashboard.js
-        ├── financeiro.js          # COMPLETO COM TABS ⭐
-        ├── configuracoes.js
-        ├── empresas.js
-        ├── planos.js
-        └── whatsapp-config.js
+public/js/pages/
+├── dashboard.js, financeiro.js, agendamentos.js
+├── empresas.js, whatsapp-config.js, planos.js
+└── configuracoes.js, clientes.js, servicos.js
+
+scripts/
+├── migrate-vps.js (Script principal de migração segura)
+├── migrate-whatsapp.js, migrate-whatsapp-pg.js
+└── corrigir-booleanos.js, corrigir-tofixed.js
 
 =========================================
 📋 PLANOS COMPLETOS
 =========================================
-
 Plano       Valor               Profissionais   Agendamentos/Mês   WhatsApp Próprio
 Trial       Grátis (45 dias)    1               100                ❌
 Starter     R$ 29,90/mês        1               100                ❌
@@ -358,37 +115,26 @@ Enterprise  R$ 249,90/mês       Ilimitado       Ilimitado          ✅
 =========================================
 🔧 COMANDOS ÚTEIS
 =========================================
+# Atualizar VPS com segurança
+./atualizar.sh
 
-# SQLite (Desenvolvimento)
-npm start
+# Migração manual do banco (VPS)
+node scripts/migrate-vps.js
 
-# PostgreSQL (Teste)
-node -r dotenv/config server.js dotenv_config_path=.env.local
+# Reiniciar servidor com novas variáveis de ambiente
+pm2 restart seeagende --update-env
 
-# Verificar sintaxe
-node -c server.js
-
-# Migrações WhatsApp
-node scripts/migrate-whatsapp.js
-node scripts/migrate-whatsapp-pg.js
-
-# Commitar
-git add server.js public/js/pages/financeiro.js
-git commit -m "✨ FEAT: Financeiro com abas e comparativo mensal"
-git push origin main
+# Ver logs em tempo real
+pm2 logs seeagende --lines 30
 
 =========================================
 ✅ STATUS ATUAL
 =========================================
-
 Tudo funcionando em AMBOS os bancos!
-
 ✅ SQLite (desenvolvimento local)
-✅ PostgreSQL (Render e teste local)
-✅ WhatsApp Multi-Instância
+✅ PostgreSQL (Render e teste local/VPS)
+✅ WhatsApp Multi-Instância (Endpoints v2 corrigidos)
+✅ Colunas de agendamentos com extras adicionadas
+✅ Script de atualização blindado contra conflitos de Git
 ✅ Super Admin com controle WhatsApp
-✅ Financeiro com abas e comparativo mensal
-
-=========================================
-ULTIMA ATUALIZACAO: 13/07/2026
-=========================================
+✅ Dono com WhatsApp exclusivo e fallback inteligente

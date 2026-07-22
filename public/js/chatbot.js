@@ -52,14 +52,19 @@ async function carregarDadosEmpresa() {
 
         if (data.success) {
             dadosEmpresa = data.data || data.empresa;
-            document.getElementById('empresaNome').textContent = dadosEmpresa.nome || 'Barbearia Pro';
+            document.getElementById('empresaNome').textContent = dadosEmpresa.nome || 'See&Agende';
 
             await carregarServicos();
             await carregarProfissionais();
 
-            const nomeEmpresa = dadosEmpresa.nome || 'nossa barbearia';
+            // ✅ USA O NOME DA EMPRESA DINAMICAMENTE (NADA DE "barbearia")
+            const nomeEmpresa = dadosEmpresa.nome || 'nossa empresa';
+
+            // ✅ MENSAGEM ÚNICA (sem duplicação do "Olá") e PERSONALIZADA
             adicionarMensagemComBotoes(
-                `Olá! 👋 Seja bem-vindo à <strong>${nomeEmpresa}</strong>!<br><br>Posso ajudar você a agendar um horário de forma rápida e fácil.<br><br><strong>Você já é cliente da barbearia?</strong>`,
+                `Olá! 👋 Seja bem-vindo à <strong>${nomeEmpresa}</strong>!<br><br>` +
+                `Posso ajudar você a agendar um horário de forma rápida e fácil.<br><br>` +
+                `<strong>Você já é cliente da ${nomeEmpresa}?</strong>`,
                 [
                     { label: '✅ Sim, já sou cliente', valor: 'sim', primary: true },
                     { label: '➕ Não, sou novo cliente', valor: 'não', primary: false }
@@ -67,7 +72,8 @@ async function carregarDadosEmpresa() {
             );
             estado = 'aguardando_cliente';
         } else {
-            adicionarMensagem('❌ Não foi possível carregar a barbearia. Link inválido.', 'bot');
+            // ✅ MENSAGEM DE ERRO TAMBÉM PERSONALIZADA
+            adicionarMensagem('❌ Não foi possível carregar a empresa. Link inválido.', 'bot');
         }
     } catch (error) {
         console.error('Erro ao carregar empresa:', error);
