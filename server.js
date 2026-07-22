@@ -5865,10 +5865,9 @@ app.post('/api/chatbot/agendar', async (req, res) => {
     try {
         const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
 
-        // Verifica se é produção (VPS) ou local
+        // Verifica se é produção (VPS/PostgreSQL) ou local (SQLite)
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-        // Define o SQL baseado no banco
         let sqlInsert;
         let params;
 
@@ -5889,6 +5888,8 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         if (isProduction) {
             // No PostgreSQL, usamos db.query se estiver usando 'pg', ou adaptamos se estiver usando um wrapper
             // Assumindo que 'db' é o Pool do pg ou um wrapper que tenha .query
+            // Se der erro aqui, significa que o 'db' não é o pool do pg direto.
+            // Vamos tentar usar uma Promise para garantir compatibilidade se necessário
             const result = await db.query(sqlInsert, params);
             novoAgendamentoId = result.rows[0].id;
         } else {
