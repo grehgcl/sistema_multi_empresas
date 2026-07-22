@@ -5868,32 +5868,37 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         // Verifica se é produção (VPS/PostgreSQL) ou local (SQLite)
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-        let sqlInsert;
-        let params;
-
-        if (isProduction) {
-            // PostgreSQL
-            sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                         VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`;
-            params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
-        } else {
-            // SQLite
-            sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                         VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
-            params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
-        }
-
         let novoAgendamentoId;
 
+        // ============================================
+        // 1. INSERIR AGENDAMENTO
+        // ============================================
         if (isProduction) {
-            // No PostgreSQL, usamos db.query se estiver usando 'pg', ou adaptamos se estiver usando um wrapper
-            // Assumindo que 'db' é o Pool do pg ou um wrapper que tenha .query
-            // Se der erro aqui, significa que o 'db' não é o pool do pg direto.
-            // Vamos tentar usar uma Promise para garantir compatibilidade se necessário
-            const result = await db.query(sqlInsert, params);
-            novoAgendamentoId = result.rows[0].id;
+            // PostgreSQL
+            const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                               VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`;
+            const params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
+            
+            // Tenta usar db.query, se não existir, usa db.get (alguns wrappers usam get para tudo)
+            if (typeof db.query === 'function') {
+                const result = await db.query(sqlInsert, params);
+                novoAgendamentoId = result.rows[0].id;
+            } else {
+                // Fallback para wrappers que não expõem .query diretamente
+                const result = await new Promise((resolve, reject) => {
+                    db.get(sqlInsert.replace(/\$[0-9]+/g, '?'), params, (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+                novoAgendamentoId = result?.id;
+            }
         } else {
-            // No SQLite, usamos db.run com function() para pegar lastID
+            // SQLite
+            const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                               VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
+            const params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
+            
             await new Promise((resolve, reject) => {
                 db.run(sqlInsert, params, function (err) {
                     if (err) reject(err);
@@ -5907,11 +5912,23 @@ app.post('/api/chatbot/agendar', async (req, res) => {
 
         console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
 
-        // Busca dados da empresa para o WhatsApp
+        // ============================================
+        // 2. BUSCAR DADOS DA EMPRESA
+        // ============================================
         let empresa;
         if (isProduction) {
-            const resEmp = await db.query('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = $1', [empresaId]);
-            empresa = resEmp.rows[0];
+            const sqlEmp = 'SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = $1';
+            if (typeof db.query === 'function') {
+                const resEmp = await db.query(sqlEmp, [empresaId]);
+                empresa = resEmp.rows[0];
+            } else {
+                empresa = await new Promise((resolve, reject) => {
+                    db.get(sqlEmp.replace('$1', '?'), [empresaId], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+            }
         } else {
             empresa = await new Promise((resolve, reject) => {
                 db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
@@ -5921,14 +5938,23 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             });
         }
 
-        // Chama a função de envio do WhatsApp
-        const { enviarConfirmacao } = require('./server/services/whatsapp');
-
-        // Busca dados do cliente
+        // ============================================
+        // 3. BUSCAR DADOS DO CLIENTE
+        // ============================================
         let cliente;
         if (isProduction) {
-            const resCli = await db.query('SELECT nome, telefone FROM clientes WHERE id = $1', [clienteId]);
-            cliente = resCli.rows[0];
+            const sqlCli = 'SELECT nome, telefone FROM clientes WHERE id = $1';
+            if (typeof db.query === 'function') {
+                const resCli = await db.query(sqlCli, [clienteId]);
+                cliente = resCli.rows[0];
+            } else {
+                cliente = await new Promise((resolve, reject) => {
+                    db.get(sqlCli.replace('$1', '?'), [clienteId], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+            }
         } else {
             cliente = await new Promise((resolve, reject) => {
                 db.get('SELECT nome, telefone FROM clientes WHERE id = ?', [clienteId], (err, row) => {
@@ -5937,6 +5963,11 @@ app.post('/api/chatbot/agendar', async (req, res) => {
                 });
             });
         }
+
+        // ============================================
+        // 4. ENVIAR WHATSAPP
+        // ============================================
+        const { enviarConfirmacao } = require('./server/services/whatsapp');
 
         await enviarConfirmacao({
             cliente: cliente,
