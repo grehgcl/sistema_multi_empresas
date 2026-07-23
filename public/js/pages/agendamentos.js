@@ -905,7 +905,7 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
 }
 
 // ============================================
-// ABRIR MODAL NOVO AGENDAMENTO - VERSÃO MOBILE OTIMIZADA
+// ABRIR MODAL NOVO AGENDAMENTO - COM BUSCA DE CLIENTES
 // ============================================
 
 async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
@@ -914,12 +914,8 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
     const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
     const isMobile = window.innerWidth < 768;
 
-    let clientesOptions = '<option value="">Selecione...</option>';
-    if (clientes.length > 0) {
-        for (let c of clientes) {
-            clientesOptions += `<option value="${c.id}">${escapeHtml(c.nome)}</option>`;
-        }
-    }
+    // Ordenar clientes por nome
+    const clientesOrdenados = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome));
 
     let servicosOptions = '<option value="">Selecione</option>';
     if (servicos.length > 0) {
@@ -937,6 +933,12 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
                 profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`;
             }
         }
+    }
+
+    // Gerar lista de clientes para o datalist
+    let clientesDatalist = '';
+    for (let c of clientesOrdenados) {
+        clientesDatalist += `<option value="${escapeHtml(c.nome)}" data-id="${c.id}" data-telefone="${escapeHtml(c.telefone || '')}"></option>`;
     }
 
     const modalHtml = `
@@ -968,7 +970,7 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
                     ">✕</button>
                 </div>
 
-                <!-- Cliente -->
+                <!-- 🔍 CLIENTE COM BUSCA -->
                 <div style="margin-bottom: ${isMobile ? '10px' : '14px'};">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                         <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary);">
@@ -990,19 +992,79 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
                             <i class="fas fa-plus" style="font-size: ${isMobile ? '8px' : '10px'};"></i> ${isMobile ? 'Novo' : 'Novo Cliente'}
                         </button>
                     </div>
-                    <select id="clienteIdDono" class="form-control" required style="
-                        width: 100%; 
-                        padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
-                        border-radius: ${isMobile ? '6px' : '8px'}; 
-                        border: 1px solid var(--border-color); 
-                        background: var(--bg-input); 
-                        color: var(--text-primary); 
-                        font-size: ${isMobile ? '13px' : '14px'};
-                        -webkit-appearance: none;
-                        appearance: none;
+                    
+                    <!-- 🔍 CAMPO DE BUSCA COM AUTOCOMPLETE -->
+                    <div style="position: relative;">
+                        <div style="display: flex; align-items: center; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: ${isMobile ? '6px' : '8px'}; padding: 0 10px;">
+                            <i class="fas fa-search" style="color: var(--text-muted); font-size: ${isMobile ? '12px' : '14px'};"></i>
+                            <input type="text" 
+                                   id="buscaClienteDono" 
+                                   class="form-control" 
+                                   placeholder="${isMobile ? 'Digite o nome...' : 'Digite o nome do cliente...'}" 
+                                   style="
+                                       border: none; 
+                                       background: transparent; 
+                                       padding: ${isMobile ? '8px 8px' : '10px 8px'}; 
+                                       font-size: ${isMobile ? '13px' : '14px'}; 
+                                       width: 100%;
+                                       outline: none;
+                                       color: var(--text-primary);
+                                   "
+                                   autocomplete="off"
+                                   oninput="filtrarClientesDono(this.value)"
+                                   onfocus="this.select()"
+                            >
+                        </div>
+                        
+                        <!-- LISTA DE SUGESTÕES -->
+                        <div id="listaSugestoesClientes" style="
+                            position: absolute;
+                            top: 100%;
+                            left: 0;
+                            right: 0;
+                            background: var(--bg-card);
+                            border: 1px solid var(--border-color);
+                            border-radius: ${isMobile ? '6px' : '8px'};
+                            max-height: 200px;
+                            overflow-y: auto;
+                            z-index: 9999;
+                            display: none;
+                            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                            margin-top: 2px;
+                        ">
+                            <!-- Preenchido via JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <!-- CLIENTE SELECIONADO (HIDDEN) -->
+                    <input type="hidden" id="clienteIdDono" value="">
+                    <input type="hidden" id="clienteTelefoneDono" value="">
+                    
+                    <!-- NOME DO CLIENTE SELECIONADO -->
+                    <div id="clienteSelecionadoInfo" style="
+                        display: none;
+                        margin-top: 6px;
+                        padding: ${isMobile ? '6px 10px' : '8px 12px'};
+                        background: rgba(34,197,94,0.08);
+                        border: 1px solid rgba(34,197,94,0.2);
+                        border-radius: ${isMobile ? '6px' : '8px'};
+                        font-size: ${isMobile ? '12px' : '13px'};
+                        color: var(--text-secondary);
                     ">
-                        ${clientesOptions}
-                    </select>
+                        <i class="fas fa-check-circle" style="color: #22c55e;"></i>
+                        Cliente selecionado: <strong id="clienteSelecionadoNome">-</strong>
+                        <span id="clienteSelecionadoTelefone" style="color: var(--text-muted); font-size: 11px;"></span>
+                        <button onclick="limparClienteSelecionado()" style="
+                            background: none;
+                            border: none;
+                            color: #ef4444;
+                            cursor: pointer;
+                            font-size: 12px;
+                            margin-left: 8px;
+                        ">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Data + Horário -->
@@ -1166,6 +1228,7 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+    // Configurar data padrão
     const dataInput = document.getElementById('dataAgendamentoDono');
     if (dataInput) {
         const hoje = new Date();
@@ -1174,6 +1237,219 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
         dataInput.value = amanha.toISOString().split('T')[0];
         setTimeout(() => carregarHorariosDisponiveisDono(), 100);
     }
+
+    // Adicionar event listener para Enter na busca
+    const buscaInput = document.getElementById('buscaClienteDono');
+    if (buscaInput) {
+        buscaInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const sugestoes = document.getElementById('listaSugestoesClientes');
+                const primeiroItem = sugestoes?.querySelector('.sugestao-item');
+                if (primeiroItem) {
+                    primeiroItem.click();
+                }
+            }
+        });
+    }
+}
+
+// ============================================
+// FUNÇÕES DE BUSCA DE CLIENTES
+// ============================================
+
+function filtrarClientesDono(texto) {
+    const lista = document.getElementById('listaSugestoesClientes');
+    const clientes = Array.isArray(clientesList) ? clientesList : [];
+    const busca = texto.toLowerCase().trim();
+
+    if (!busca || busca.length < 1) {
+        lista.style.display = 'none';
+        return;
+    }
+
+    // Filtrar clientes que correspondem à busca
+    const resultados = clientes.filter(c => {
+        const nomeMatch = c.nome.toLowerCase().includes(busca);
+        const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
+        const emailMatch = c.email && c.email.toLowerCase().includes(busca);
+        return nomeMatch || telefoneMatch || emailMatch;
+    });
+
+    if (resultados.length === 0) {
+        lista.innerHTML = `
+            <div style="padding: 10px; color: var(--text-muted); text-align: center; font-size: 13px;">
+                <i class="fas fa-search"></i> Nenhum cliente encontrado<br>
+                <button onclick="abrirModalNovoCliente()" style="
+                    margin-top: 6px;
+                    padding: 4px 14px;
+                    border: none;
+                    border-radius: 6px;
+                    background: linear-gradient(135deg, #22c55e, #16a34a);
+                    color: white;
+                    font-size: 12px;
+                    cursor: pointer;
+                ">
+                    <i class="fas fa-plus"></i> Criar novo cliente
+                </button>
+            </div>
+        `;
+        lista.style.display = 'block';
+        return;
+    }
+
+    // Limitar a 10 resultados para não sobrecarregar
+    const exibir = resultados.slice(0, 10);
+
+    let html = '';
+    for (let c of exibir) {
+        const telefone = c.telefone || '';
+        const telefoneFormatado = telefone ? `📱 ${telefone}` : '';
+        html += `
+            <div class="sugestao-item" style="
+                padding: 8px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid var(--border-color);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: background 0.15s;
+            "
+            onmouseover="this.style.background='var(--bg-hover)'"
+            onmouseout="this.style.background='transparent'"
+            onclick="selecionarClienteDono(${c.id}, '${escapeHtml(c.nome)}', '${escapeHtml(telefone)}')">
+                <div>
+                    <span style="font-weight: 500; color: var(--text-primary);">${escapeHtml(c.nome)}</span>
+                    ${telefone ? `<span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">${escapeHtml(telefone)}</span>` : ''}
+                </div>
+                <span style="font-size: 11px; color: var(--text-muted);">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            </div>
+        `;
+    }
+
+    if (resultados.length > 10) {
+        html += `
+            <div style="padding: 6px 12px; color: var(--text-muted); font-size: 11px; text-align: center; border-top: 1px solid var(--border-color);">
+                + ${resultados.length - 10} outros resultados
+            </div>
+        `;
+    }
+
+    lista.innerHTML = html;
+    lista.style.display = 'block';
+}
+
+function selecionarClienteDono(id, nome, telefone) {
+    // Ocultar lista de sugestões
+    document.getElementById('listaSugestoesClientes').style.display = 'none';
+
+    // Preencher hidden fields
+    document.getElementById('clienteIdDono').value = id;
+    document.getElementById('clienteTelefoneDono').value = telefone || '';
+
+    // Preencher campo de busca com o nome selecionado
+    document.getElementById('buscaClienteDono').value = nome;
+
+    // Mostrar informação do cliente selecionado
+    const infoDiv = document.getElementById('clienteSelecionadoInfo');
+    document.getElementById('clienteSelecionadoNome').textContent = nome;
+    document.getElementById('clienteSelecionadoTelefone').textContent = telefone ? ` (${telefone})` : '';
+    infoDiv.style.display = 'block';
+
+    // Atualizar horários (se data já estiver selecionada)
+    const dataInput = document.getElementById('dataAgendamentoDono');
+    if (dataInput && dataInput.value) {
+        carregarHorariosDisponiveisDono();
+    }
+}
+
+function limparClienteSelecionado() {
+    document.getElementById('clienteIdDono').value = '';
+    document.getElementById('clienteTelefoneDono').value = '';
+    document.getElementById('buscaClienteDono').value = '';
+    document.getElementById('clienteSelecionadoInfo').style.display = 'none';
+    document.getElementById('listaSugestoesClientes').style.display = 'none';
+}
+
+// ============================================
+// SALVAR AGENDAMENTO (ATUALIZADO)
+// ============================================
+
+async function salvarAgendamentoDono() {
+    // 🔥 USAR O ID DO CLIENTE DO HIDDEN FIELD
+    const cliente_id = document.getElementById("clienteIdDono").value;
+    const data = document.getElementById("dataAgendamentoDono").value;
+    const hora = document.getElementById("horaAgendamentoDono").value;
+    const servico_id = document.getElementById("servicoIdDono").value;
+    const servico_descricao = document.getElementById("servicoDescricaoDono").value;
+    const valor = document.getElementById("valorAgendamentoDono").value;
+    const profissional_id = document.getElementById("profissionalIdDono").value;
+
+    if (!cliente_id || !data) {
+        showToast("Selecione um cliente e uma data", "warning");
+        // Se não tiver cliente, focar na busca
+        if (!cliente_id) {
+            document.getElementById('buscaClienteDono').focus();
+        }
+        return;
+    }
+
+    if (!hora || hora === '') {
+        showToast("Selecione um horário", "warning");
+        return;
+    }
+
+    showLoading();
+
+    const token = localStorage.getItem("token");
+    const body = {
+        cliente_id: parseInt(cliente_id),
+        data: data,
+        hora: hora,
+        valor: parseFloat(valor) || 0,
+        profissional_id: profissional_id ? parseInt(profissional_id) : null
+    };
+
+    if (servico_id && servico_id !== '') {
+        body.servico_id = parseInt(servico_id);
+    } else if (servico_descricao && servico_descricao.trim() !== '') {
+        body.servico = servico_descricao.trim();
+    }
+
+    try {
+        const res = await fetch("/api/agendamentos", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(body)
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+            showToast("✅ Agendamento criado!", "success");
+            fecharModalAgendamentoDono();
+
+            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                window.atualizarAgendaAposAgendamento();
+            }
+
+            if (typeof carregarAgendamentos === 'function') {
+                carregarAgendamentos();
+            }
+        } else {
+            showToast("❌ Erro: " + result.message, "error");
+        }
+    } catch (error) {
+        console.error("❌ Erro:", error);
+        showToast("❌ Erro ao criar agendamento", "error");
+    }
+
+    hideLoading();
 }
 
 function fecharModalAgendamentoDono() {

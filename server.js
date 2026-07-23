@@ -7288,6 +7288,121 @@ app.get('/api/whatsapp/webhook', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
+// ============================================
+// ROTA: ENVIAR MENSAGEM WHATSAPP
+// ============================================
+
+app.post('/api/whatsapp/enviar', auth, async (req, res) => {
+    try {
+        const { numero, mensagem } = req.body;
+        const empresaId = req.usuario.empresa_id;
+
+        console.log(`📱 Enviando mensagem para ${numero} (empresa ${empresaId})`);
+
+        if (!numero || !mensagem) {
+            return res.status(400).json({
+                success: false,
+                message: 'Número e mensagem são obrigatórios'
+            });
+        }
+
+        // Limpar número
+        const numeroLimpo = numero.replace(/\D/g, '');
+        if (!numeroLimpo) {
+            return res.status(400).json({
+                success: false,
+                message: 'Número inválido'
+            });
+        }
+
+        // Verificar se o WhatsApp está ativo
+        if (process.env.WHATSAPP_ENABLED !== 'true') {
+            console.log(`📱 [MODO LOG] Mensagem para ${numeroLimpo}: ${mensagem}`);
+            return res.json({
+                success: true,
+                message: 'Mensagem registrada (modo log)',
+                modo_log: true
+            });
+        }
+
+        // Buscar dados da empresa para saber qual instância usar
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? `SELECT id, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado 
+                   FROM empresas WHERE id = $1`
+                : `SELECT id, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado 
+                   FROM empresas WHERE id = ?`;
+
+            db.get(sql, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        // 🔥 LÓGICA DE FALLBACK - usar instância própria se conectada, senão usar padrão
+        let instanceName = 'seeagende'; // instância padrão
+
+        const proprioHabilitado = empresa.whatsapp_proprio_habilitado === true ||
+            empresa.whatsapp_proprio_habilitado === 1 ||
+            empresa.whatsapp_proprio_habilitado === 't';
+
+        if (proprioHabilitado && empresa.whatsapp_instance) {
+            const conectado = empresa.whatsapp_connected === true ||
+                empresa.whatsapp_connected === 1 ||
+                empresa.whatsapp_connected === 't';
+
+            if (conectado) {
+                instanceName = empresa.whatsapp_instance;
+                console.log(`📱 Usando instância própria: ${instanceName}`);
+            } else {
+                console.log(`⚠️ Instância própria ${empresa.whatsapp_instance} não está conectada, usando padrão seeagende`);
+                instanceName = 'seeagende';
+            }
+        } else {
+            console.log(`📱 Usando instância padrão: ${instanceName}`);
+        }
+
+        // Enviar via Evolution API
+        try {
+            const EvolutionInstances = require('./server/services/evolution-instances');
+            const resultado = await EvolutionInstances.enviarMensagem(instanceName, numeroLimpo, mensagem);
+
+            if (resultado.success) {
+                console.log(`✅ Mensagem enviada para ${numeroLimpo} via ${instanceName}`);
+                res.json({
+                    success: true,
+                    message: 'Mensagem enviada com sucesso!'
+                });
+            } else {
+                console.error(`❌ Erro ao enviar: ${resultado.message}`);
+                res.status(500).json({
+                    success: false,
+                    message: resultado.message || 'Erro ao enviar mensagem'
+                });
+            }
+        } catch (error) {
+            console.error('❌ Erro ao enviar via Evolution:', error);
+            res.status(500).json({
+                success: false,
+                message: error.message || 'Erro ao enviar mensagem'
+            });
+        }
+
+    } catch (error) {
+        console.error('❌ Erro ao enviar mensagem:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro interno ao enviar mensagem'
+        });
+    }
+});
 // ============================================================
 // INICIALIZA��O DO SERVIDOR
 // ============================================================
