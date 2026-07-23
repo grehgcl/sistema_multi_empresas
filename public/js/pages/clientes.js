@@ -1,6 +1,7 @@
 // ============================================
 // CLIENTES.JS - VERSÃO CRM COMPLETA
 // ULTIMA ATUALIZACAO: 23/07/2026
+// CORREÇÃO: IMPORTAÇÃO MOBILE
 // ============================================
 
 // ============================================
@@ -27,6 +28,19 @@ function toNumber(valor) {
 
 function formatMoney(valor) {
     return toNumber(valor).toFixed(2).replace('.', ',');
+}
+
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function formatarDataBr(data) {
+    if (!data) return '';
+    const d = new Date(data + 'T00:00:00');
+    return d.toLocaleDateString('pt-BR');
 }
 
 // ============================================
@@ -199,7 +213,7 @@ async function carregarClientes() {
                         </button>
                         
                         <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 8px 16px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: ${isMobile ? '12px' : '14px'}; box-shadow: 0 4px 16px rgba(34,197,94,0.25);">
-                            <i class="fas fa-file-csv"></i> ${isMobile ? 'CSV' : 'Importar CSV'}
+                            <i class="fas fa-file-csv"></i> ${isMobile ? 'Importar' : 'Importar Contatos'}
                         </button>
                         <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 8px 16px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: ${isMobile ? '12px' : '14px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
                             <i class="fas fa-plus"></i> ${isMobile ? 'Novo' : 'Novo Cliente'}
@@ -1028,42 +1042,139 @@ async function desbloquearChatbot(id) {
 }
 
 // ============================================
-// IMPORTAÇÃO UNIVERSAL (CSV, VCF, IPHONE)
+// 📱 IMPORTAÇÃO UNIVERSAL - CORRIGIDO PARA MOBILE
 // ============================================
 
 function abrirModalImportarCSV() {
+    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
+
     const modalHtml = `
-        <div id="modalImportarCSV" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center;">
-            <div class="modal-content" style="max-width: 500px; width: 90%; background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+        <div id="modalImportarCSV" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+            <div class="modal-content" style="
+                max-width: 500px; 
+                width: 100%; 
+                background: var(--bg-card); 
+                border-radius: 16px; 
+                padding: ${isMobile ? '16px' : '24px'}; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+                max-height: 90vh;
+                overflow-y: auto;
+            ">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0;">📂 Importar Contatos</h3>
-                    <button onclick="fecharModalImportarCSV()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted);">&times;</button>
+                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                        <i class="fas fa-address-book" style="color: #22c55e;"></i>
+                        Importar Contatos
+                    </h3>
+                    <button onclick="fecharModalImportarCSV()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 8px;">&times;</button>
                 </div>
                 
-                <div style="border: 2px dashed var(--border-color); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 20px; background: var(--bg-hover);" 
-                     ondragover="event.preventDefault(); this.style.borderColor='var(--primary)'" 
-                     ondragleave="this.style.borderColor='var(--border-color)'" 
-                     ondrop="handleDrop(event)">
+                <!-- Área de upload melhorada para mobile -->
+                <div id="dropArea" style="
+                    border: 2px dashed var(--border-color); 
+                    border-radius: 12px; 
+                    padding: ${isMobile ? '20px' : '30px'}; 
+                    text-align: center; 
+                    margin-bottom: 16px; 
+                    background: var(--bg-hover);
+                    transition: all 0.3s ease;
+                    cursor: pointer;
+                " onclick="document.getElementById('csvFileInputMobile').click()">
                     
-                    <i class="fas fa-address-book" style="font-size: 40px; color: var(--primary); margin-bottom: 10px;"></i>
-                    <p style="margin: 10px 0; color: var(--text-secondary); font-weight: 600;">Arraste seus contatos aqui</p>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Suporta: .CSV, .VCF (iPhone/Android)</p>
+                    <i class="fas fa-cloud-upload-alt" style="font-size: ${isMobile ? '32px' : '48px'}; color: var(--primary); margin-bottom: 8px;"></i>
                     
-                    <input type="file" id="csvFileInput" accept=".csv,.vcf,.txt" style="display: none;" onchange="handleFileSelect(this)">
-                    <button onclick="document.getElementById('csvFileInput').click()" class="btn btn-primary" style="margin-top: 10px;">Selecionar Arquivo</button>
+                    <p style="margin: 8px 0; color: var(--text-secondary); font-weight: 600; font-size: ${isMobile ? '14px' : '16px'};">
+                        📂 Toque para selecionar
+                    </p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
+                        Suporta: <strong>.CSV</strong> ou <strong>.VCF</strong> (iPhone/Android)
+                    </p>
+                    
+                    <!-- 🔥 INPUT MOBILE MELHORADO -->
+                    <input 
+                        type="file" 
+                        id="csvFileInputMobile" 
+                        accept=".csv,.vcf,.txt,text/csv,text/vcard,text/x-vcard" 
+                        style="display: none;" 
+                        onchange="handleFileSelectMobile(this)"
+                    >
+                    
+                    <button type="button" onclick="event.stopPropagation(); document.getElementById('csvFileInputMobile').click();" class="btn btn-success" style="
+                        padding: 10px 24px; 
+                        border-radius: 10px; 
+                        border: none; 
+                        background: linear-gradient(135deg, #22c55e, #16a34a); 
+                        color: white; 
+                        font-weight: 600; 
+                        font-size: 14px;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        box-shadow: 0 4px 16px rgba(34,197,94,0.25);
+                        width: ${isMobile ? '100%' : 'auto'};
+                        justify-content: center;
+                    ">
+                        <i class="fas fa-file-import"></i> Escolher Arquivo
+                    </button>
                 </div>
 
-                <div style="background: rgba(102,126,234,0.1); padding: 12px; border-radius: 8px; font-size: 12px; color: var(--text-secondary); margin-bottom: 20px;">
-                    <strong>Dica:</strong> No iPhone, vá em Ajustes > Contatos > Exportar Contatos para gerar o arquivo .vcf compatível.
+                <!-- Dica Mobile -->
+                <div style="
+                    background: rgba(102,126,234,0.08); 
+                    padding: 12px; 
+                    border-radius: 8px; 
+                    font-size: 12px; 
+                    color: var(--text-secondary); 
+                    margin-bottom: 16px;
+                    border-left: 3px solid var(--primary);
+                ">
+                    <strong>📱 No iPhone:</strong> 
+                    Ajustes > Contatos > Exportar Contatos 
+                    <span style="display:block;margin-top:4px;font-size:11px;color:var(--text-muted);">
+                        Ou acesse <strong>contatos.icloud.com</strong> para exportar
+                    </span>
                 </div>
 
-                <div style="display: flex; justify-content: flex-end; gap: 10px;">
-                    <button onclick="fecharModalImportarCSV()" class="btn btn-secondary">Cancelar</button>
+                <div style="display: flex; justify-content: flex-end;">
+                    <button onclick="fecharModalImportarCSV()" style="
+                        padding: 8px 24px; 
+                        border-radius: 8px; 
+                        border: 1px solid var(--border-color); 
+                        background: transparent; 
+                        color: var(--text-secondary); 
+                        font-size: 13px; 
+                        cursor: pointer;
+                        font-weight: 500;
+                    ">
+                        Cancelar
+                    </button>
+                </div>
+
+                <!-- Status de processamento -->
+                <div id="statusImportacao" style="display:none; margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg-hover);">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="spinner-border spinner-border-sm" role="status" style="color:var(--primary);"></div>
+                        <span style="font-size:13px;color:var(--text-secondary);" id="statusImportacaoTexto">Processando arquivo...</span>
+                    </div>
                 </div>
             </div>
         </div>
     `;
+
+    const existingModal = document.getElementById('modalImportarCSV');
+    if (existingModal) existingModal.remove();
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // 🔥 CORRIGIR: Fechar modal ao clicar fora (mobile-friendly)
+    const modal = document.getElementById('modalImportarCSV');
+    if (modal) {
+        modal.addEventListener('click', function (e) {
+            if (e.target === this) {
+                fecharModalImportarCSV();
+            }
+        });
+    }
 }
 
 function fecharModalImportarCSV() {
@@ -1071,108 +1182,219 @@ function fecharModalImportarCSV() {
     if (modal) modal.remove();
 }
 
-function handleFileSelect(input) {
+// 🔥 NOVA FUNÇÃO PARA MOBILE - MANIPULA ARQUIVO CORRETAMENTE
+function handleFileSelectMobile(input) {
+    console.log('📁 Arquivo selecionado (mobile):', input.files);
+
     if (input.files && input.files[0]) {
-        processarArquivoContatos(input.files[0]);
+        const file = input.files[0];
+        console.log('📄 Nome:', file.name);
+        console.log('📄 Tamanho:', file.size, 'bytes');
+        console.log('📄 Tipo:', file.type);
+
+        processarArquivoContatosMobile(file);
+    } else {
+        console.warn('⚠️ Nenhum arquivo selecionado');
+        showToast('⚠️ Nenhum arquivo selecionado', 'warning');
     }
 }
 
-function handleDrop(event) {
-    event.preventDefault();
-    const files = event.dataTransfer.files;
-    if (files.length > 0) {
-        processarArquivoContatos(files[0]);
-    }
-}
+// 🔥 FUNÇÃO DE PROCESSAMENTO MOBILE
+async function processarArquivoContatosMobile(file) {
+    console.log('🔄 Processando arquivo:', file.name);
 
-async function processarArquivoContatos(file) {
-    const fileName = file.name.toLowerCase();
-    const reader = new FileReader();
+    const statusDiv = document.getElementById('statusImportacao');
+    const statusTexto = document.getElementById('statusImportacaoTexto');
+
+    if (statusDiv) {
+        statusDiv.style.display = 'block';
+        statusTexto.textContent = '📖 Lendo arquivo...';
+    }
 
     showLoading();
 
-    reader.onload = async function (e) {
-        const content = e.target.result;
+    try {
+        // 🔥 LER COMO TEXTO COM ENCODING CORRETO
+        const content = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (e) => reject(e.target.error);
+            // Tenta UTF-8 primeiro, depois fallback para Latin-1
+            reader.readAsText(file, 'UTF-8');
+        });
+
+        console.log('✅ Arquivo lido com sucesso!');
+        console.log('📄 Primeiros 200 caracteres:', content.substring(0, 200));
+
+        if (statusTexto) {
+            statusTexto.textContent = '🔍 Analisando contatos...';
+        }
+
         let clientesParaImportar = [];
 
-        try {
-            if (fileName.endsWith('.vcf')) {
-                // Processamento de VCF (iPhone/Android)
-                clientesParaImportar = parseVCF(content);
-            } else {
-                // Processamento de CSV
-                clientesParaImportar = parseCSV(content);
-            }
+        const fileName = file.name.toLowerCase();
 
-            hideLoading();
-
-            if (clientesParaImportar.length === 0) {
-                showToast('Nenhum contato válido encontrado no arquivo.', 'warning');
-                return;
-            }
-
-            if (!confirm(`Encontrados ${clientesParaImportar.length} contatos. Deseja importar para o CRM?`)) return;
-
-            await salvarLoteClientes(clientesParaImportar);
-
-        } catch (error) {
-            hideLoading();
-            console.error(error);
-            showToast('Erro ao ler o arquivo. Verifique o formato.', 'error');
+        // DETECTA FORMATO
+        if (fileName.endsWith('.vcf') || content.trim().toUpperCase().startsWith('BEGIN:VCARD')) {
+            clientesParaImportar = parseVCFMobile(content);
+        } else {
+            clientesParaImportar = parseCSVMobile(content);
         }
-    };
 
-    reader.readAsText(file);
+        console.log(`📊 Encontrados ${clientesParaImportar.length} contatos`);
+
+        hideLoading();
+
+        if (statusDiv) {
+            statusDiv.style.display = 'none';
+        }
+
+        if (clientesParaImportar.length === 0) {
+            showToast('⚠️ Nenhum contato válido encontrado no arquivo.', 'warning');
+            return;
+        }
+
+        // Mostra preview dos primeiros contatos
+        const preview = clientesParaImportar.slice(0, 5).map(c => `${c.nome} (${c.telefone || 'sem telefone'})`).join('\n');
+
+        if (!confirm(`📊 Encontrados ${clientesParaImportar.length} contatos.\n\nPrimeiros:\n${preview}\n\nDeseja importar para o CRM?`)) {
+            return;
+        }
+
+        if (statusTexto) {
+            statusTexto.textContent = '💾 Salvando contatos...';
+        }
+
+        await salvarLoteClientesMobile(clientesParaImportar);
+
+    } catch (error) {
+        console.error('❌ Erro ao processar arquivo:', error);
+        hideLoading();
+
+        if (statusDiv) {
+            statusDiv.style.display = 'none';
+        }
+
+        showToast('❌ Erro ao ler o arquivo. Verifique o formato.', 'error');
+    }
 }
 
-// --- PARSER DE VCF (IPHONE/ANDROID) ---
-function parseVCF(content) {
+// 🔥 PARSER VCF MELHORADO PARA MOBILE
+function parseVCFMobile(content) {
+    console.log('🔍 Parseando VCF...');
+
     const lines = content.split(/\r\n|\n|\r/);
     const contacts = [];
     let currentContact = {};
+    let inVCard = false;
 
     for (let line of lines) {
         line = line.trim();
 
         if (line.startsWith('BEGIN:VCARD')) {
+            inVCard = true;
             currentContact = { nome: '', telefone: '', email: '' };
-        } else if (line.startsWith('END:VCARD')) {
+            continue;
+        }
+
+        if (line.startsWith('END:VCARD')) {
+            inVCard = false;
+            // Só adiciona se tiver nome OU telefone
             if (currentContact.nome || currentContact.telefone) {
-                contacts.push(currentContact);
+                // Se tiver telefone mas não nome, usa "Contato"
+                if (!currentContact.nome && currentContact.telefone) {
+                    currentContact.nome = 'Contato';
+                }
+                contacts.push({ ...currentContact });
             }
-        } else if (line.startsWith('FN:')) {
-            // Full Name
-            currentContact.nome = line.substring(3).replace(/;/g, ' ').trim();
-        } else if (line.startsWith('N:')) {
-            // Structured Name (Sobrenome;Nome...) - fallback se FN não existir
+            continue;
+        }
+
+        if (!inVCard) continue;
+
+        // Nome completo
+        if (line.startsWith('FN:')) {
+            let nome = line.substring(3).trim();
+            // Remove caracteres estranhos
+            nome = nome.replace(/[^\w\sÀ-ú]/g, ' ').trim();
+            if (nome) currentContact.nome = nome;
+        }
+
+        // Nome estruturado (fallback)
+        if (line.startsWith('N;') || line.startsWith('N:')) {
             if (!currentContact.nome) {
-                const parts = line.substring(2).split(';');
-                currentContact.nome = (parts[1] + ' ' + parts[0]).trim();
+                const parts = line.split(':')[1]?.split(';') || [];
+                // Formato: Sobrenome;Nome;Meio;Prefix;Sufixo
+                let nome = parts[1] || '';
+                let sobrenome = parts[0] || '';
+                if (nome || sobrenome) {
+                    currentContact.nome = (nome + ' ' + sobrenome).trim();
+                }
             }
-        } else if (line.startsWith('TEL')) {
-            // Telefone
+        }
+
+        // Telefone
+        if (line.startsWith('TEL') || line.startsWith('TEL;')) {
             if (!currentContact.telefone) {
-                const tel = line.split(':').pop().trim();
-                currentContact.telefone = tel.replace(/[^\d+]/g, ''); // Mantém apenas números e +
+                // Pega tudo depois do último ':'
+                const telPart = line.split(':');
+                if (telPart.length > 1) {
+                    let tel = telPart.slice(1).join(':').trim();
+                    // Remove caracteres não numéricos (exceto +)
+                    tel = tel.replace(/[^\d+]/g, '');
+                    // Remove '+' se tiver, deixa só números
+                    tel = tel.replace(/\+/g, '');
+                    // Se tiver código de país 55, mantém
+                    if (tel.startsWith('55') && tel.length > 10) {
+                        tel = tel.substring(2);
+                    }
+                    currentContact.telefone = tel;
+                }
             }
-        } else if (line.startsWith('EMAIL')) {
-            // Email
+        }
+
+        // Email
+        if (line.startsWith('EMAIL') || line.startsWith('EMAIL;')) {
             if (!currentContact.email) {
-                currentContact.email = line.split(':').pop().trim();
+                const emailPart = line.split(':');
+                if (emailPart.length > 1) {
+                    currentContact.email = emailPart.slice(1).join(':').trim();
+                }
             }
         }
     }
-    return contacts;
+
+    // Filtra contatos duplicados (mesmo telefone)
+    const seen = new Set();
+    const uniqueContacts = contacts.filter(c => {
+        const key = c.telefone || c.email || c.nome;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+
+    console.log(`✅ Parseados ${uniqueContacts.length} contatos VCF`);
+    return uniqueContacts;
 }
 
-// --- PARSER DE CSV ---
-function parseCSV(content) {
+// 🔥 PARSER CSV MELHORADO
+function parseCSVMobile(content) {
+    console.log('🔍 Parseando CSV...');
+
     const lines = content.split('\n');
     const contacts = [];
 
-    // Tenta detectar cabeçalho
+    // Tenta detectar separador e cabeçalho
+    let separator = ',';
+    if (content.includes(';')) separator = ';';
+    if (content.includes('\t')) separator = '\t';
+
+    // Detecta se tem cabeçalho
     let startIndex = 0;
-    if (lines[0].toLowerCase().includes('nome') || lines[0].toLowerCase().includes('name')) {
+    const firstLine = lines[0]?.toLowerCase() || '';
+    if (firstLine.includes('nome') || firstLine.includes('name') ||
+        firstLine.includes('telefone') || firstLine.includes('phone') ||
+        firstLine.includes('email') || firstLine.includes('e-mail')) {
         startIndex = 1;
     }
 
@@ -1180,50 +1402,96 @@ function parseCSV(content) {
         const line = lines[i].trim();
         if (!line) continue;
 
-        // Divide por vírgula ou ponto-e-vírgula
-        const cols = line.split(/[,;]/).map(c => c.replace(/^"|"$/g, '').trim()); // Remove aspas extras
+        // Divide por separador detectado
+        const cols = line.split(separator).map(c => c.replace(/^"|"$/g, '').trim());
 
-        if (cols.length >= 1 && cols[0]) {
-            contacts.push({
-                nome: cols[0],
-                telefone: cols[1] ? cols[1].replace(/[^\d+]/g, '') : '',
-                email: cols[2] || ''
-            });
+        if (cols.length >= 1) {
+            // Detecta colunas
+            let nome = cols[0] || '';
+            let telefone = (cols.length > 1) ? cols[1] : '';
+            let email = (cols.length > 2) ? cols[2] : '';
+
+            // Se tem só uma coluna, tenta extrair nome e telefone
+            if (cols.length === 1 && cols[0].includes(' - ')) {
+                const parts = cols[0].split(' - ');
+                nome = parts[0].trim();
+                telefone = parts[1]?.trim() || '';
+            }
+
+            // Limpa telefone
+            telefone = telefone.replace(/[^\d+]/g, '').replace(/\+/g, '');
+
+            if (nome || telefone) {
+                if (!nome) nome = 'Contato';
+                contacts.push({
+                    nome: nome,
+                    telefone: telefone || '',
+                    email: email || ''
+                });
+            }
         }
     }
+
+    console.log(`✅ Parseados ${contacts.length} contatos CSV`);
     return contacts;
 }
 
-// --- SALVAMENTO EM LOTE ---
-async function salvarLoteClientes(lista) {
+// 🔥 SALVAMENTO EM LOTE - MOBILE
+async function salvarLoteClientesMobile(lista) {
     showLoading();
     const token = localStorage.getItem('token');
     let successCount = 0;
     let errorCount = 0;
+    let total = lista.length;
 
-    // Processa em lotes menores para não travar o servidor
-    for (const cliente of lista) {
-        // Validação mínima: precisa ter nome ou telefone
-        if (!cliente.nome && !cliente.telefone) continue;
+    // Processa em lotes menores (5 por vez) para não travar o servidor
+    const batchSize = 5;
+    const batches = [];
+    for (let i = 0; i < lista.length; i += batchSize) {
+        batches.push(lista.slice(i, i + batchSize));
+    }
 
-        try {
-            const res = await fetch('/api/clientes', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    nome: cliente.nome || 'Sem Nome',
-                    telefone: cliente.telefone,
-                    email: cliente.email
-                })
-            });
+    const statusTexto = document.getElementById('statusImportacaoTexto');
+    let processed = 0;
 
-            // Se quiser ser rigoroso, verifique o status. Aqui assumimos sucesso se não der erro de rede
-            successCount++;
-        } catch (err) {
-            errorCount++;
+    for (let batch of batches) {
+        // Processa cada lote em paralelo
+        const promises = batch.map(async (cliente) => {
+            // Validação mínima
+            if (!cliente.nome && !cliente.telefone) return;
+
+            try {
+                const res = await fetch('/api/clientes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        nome: cliente.nome || 'Contato',
+                        telefone: cliente.telefone || '',
+                        email: cliente.email || ''
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (err) {
+                errorCount++;
+                console.error('❌ Erro ao salvar:', err);
+            }
+        });
+
+        await Promise.all(promises);
+        processed += batch.length;
+
+        // Atualiza status
+        if (statusTexto) {
+            statusTexto.textContent = `💾 Salvando... ${processed}/${total} (${successCount} OK, ${errorCount} erros)`;
         }
     }
 
@@ -1231,10 +1499,11 @@ async function salvarLoteClientes(lista) {
     fecharModalImportarCSV();
 
     if (successCount > 0) {
-        showToast(`Sucesso! ${successCount} contatos importados.`, 'success');
-        carregarClientes();
+        showToast(`✅ ${successCount} contatos importados! ${errorCount > 0 ? `⚠️ ${errorCount} erros` : ''}`, errorCount > 0 ? 'warning' : 'success');
+        // Recarrega a lista
+        await carregarClientes();
     } else {
-        showToast('Falha na importação. Verifique sua conexão.', 'error');
+        showToast('❌ Falha na importação. Verifique sua conexão.', 'error');
     }
 }
 
@@ -1245,7 +1514,7 @@ async function salvarLoteClientes(lista) {
 let promocaoEmAndamento = false;
 
 function abrirModalPromocao() {
-    const isMobile = window.innerWidth < 768;
+    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
 
     // Contar clientes com WhatsApp
     const clientesComWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '');
@@ -1257,7 +1526,7 @@ function abrirModalPromocao() {
 
     // Gerar lista de clientes com checkbox
     let listaClientesHTML = '';
-    const exibirClientes = clientesComWhatsApp.slice(0, 50); // Mostrar até 50 para não sobrecarregar
+    const exibirClientes = clientesComWhatsApp.slice(0, 50);
 
     for (let c of exibirClientes) {
         const classificacaoIcon = c.classificacao === 'vip' ? '⭐' :
@@ -1457,6 +1726,8 @@ Venha aproveitar nossa promoção imperdível!
                             gap: 8px;
                             box-shadow: 0 4px 16px rgba(37,211,102,0.3);
                             transition: all 0.3s ease;
+                            width: ${isMobile ? '100%' : 'auto'};
+                            justify-content: center;
                         ">
                             <i class="fab fa-whatsapp"></i> Enviar Promoção
                         </button>
@@ -1519,7 +1790,6 @@ function filtrarClientesPromocao() {
     const container = document.getElementById('listaClientesPromocao');
     const checkboxes = container.querySelectorAll('div');
 
-    // Mostrar/esconder com base no filtro
     for (let item of checkboxes) {
         const label = item.querySelector('label');
         if (!label) continue;
@@ -1538,7 +1808,6 @@ function filtrarClientesPromocao() {
         item.style.display = mostrar ? 'flex' : 'none';
     }
 
-    // Atualizar contador
     setTimeout(atualizarContadorSelecionados, 100);
 }
 
@@ -1560,7 +1829,6 @@ async function enviarPromocao() {
         return;
     }
 
-    // Pegar clientes selecionados
     const checkboxes = document.querySelectorAll('#listaClientesPromocao input[type="checkbox"]:checked');
     const idsSelecionados = Array.from(checkboxes).map(cb => parseInt(cb.value));
 
@@ -1569,7 +1837,6 @@ async function enviarPromocao() {
         return;
     }
 
-    // Filtrar clientes selecionados
     const clientesAlvo = clientesCompletos.filter(c =>
         idsSelecionados.includes(c.id) && c.telefone && c.telefone.trim() !== ''
     );
@@ -1579,18 +1846,15 @@ async function enviarPromocao() {
         return;
     }
 
-    // Confirmar
     if (!confirm(`Enviar promoção para ${clientesAlvo.length} cliente(s)?`)) {
         return;
     }
 
-    // Desabilitar botão
     promocaoEmAndamento = true;
     const btn = document.getElementById('btnEnviarPromocao');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
-    // Mostrar progresso
     const progressoDiv = document.getElementById('progressoPromocao');
     progressoDiv.style.display = 'block';
 
@@ -1608,7 +1872,6 @@ async function enviarPromocao() {
         const cliente = clientesAlvo[i];
         const telefone = cliente.telefone.replace(/\D/g, '');
 
-        // Atualizar progresso
         const progresso = Math.round(((i + 1) / total) * 100);
         progressoTexto.textContent = `Enviando ${i + 1}/${total}...`;
         progressoBarra.style.width = progresso + '%';
@@ -1642,13 +1905,11 @@ async function enviarPromocao() {
             console.error('❌ Erro ao enviar para', cliente.nome, error);
         }
 
-        // 🔥 DELAY PARA EVITAR BLOQUEIO
         if (i < clientesAlvo.length - 1) {
             await new Promise(resolve => setTimeout(resolve, delay * 1000));
         }
     }
 
-    // Finalizar
     progressoStatus.textContent = `✅ Concluído! ${enviados} enviados, ${erros} erros.`;
     btn.disabled = false;
     btn.innerHTML = '<i class="fab fa-whatsapp"></i> Enviar Promoção';
@@ -1656,13 +1917,13 @@ async function enviarPromocao() {
 
     showToast(`✅ ${enviados} mensagens enviadas! ${erros > 0 ? `⚠️ ${erros} erros` : ''}`, erros > 0 ? 'warning' : 'success');
 
-    // Fechar após 5 segundos
     setTimeout(() => {
         fecharModalPromocao();
     }, 5000);
 }
+
 // ============================================
-// EXPORTAR FUNÇÕES GLOBAIS (CORRIGIDO)
+// EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 
 window.carregarClientes = carregarClientes;
@@ -1681,23 +1942,23 @@ window.desbloquearChatbot = desbloquearChatbot;
 window.verHistoricoCliente = verHistoricoCliente;
 window.fecharModalHistorico = fecharModalHistorico;
 
-// Funções de Importação Universal (CSV/VCF/iPhone)
+// Funções de Importação Universal (CSV/VCF/iPhone) - CORRIGIDAS MOBILE
 window.abrirModalImportarCSV = abrirModalImportarCSV;
 window.fecharModalImportarCSV = fecharModalImportarCSV;
-window.processarArquivoContatos = processarArquivoContatos; // Nome atualizado
-window.handleFileSelect = handleFileSelect;
-window.handleDrop = handleDrop;
-
-// Funções Auxiliares de Parse (caso precise chamar externamente)
-window.parseVCF = parseVCF;
-window.parseCSV = parseCSV;
+window.handleFileSelectMobile = handleFileSelectMobile;
+window.processarArquivoContatosMobile = processarArquivoContatosMobile;
+window.parseVCFMobile = parseVCFMobile;
+window.parseCSVMobile = parseCSVMobile;
 
 // Funções de Promoção
 window.abrirModalPromocao = abrirModalPromocao;
 window.fecharModalPromocao = fecharModalPromocao;
 window.enviarPromocao = enviarPromocao;
+window.selecionarTodosClientes = selecionarTodosClientes;
+window.atualizarContadorSelecionados = atualizarContadorSelecionados;
+window.filtrarClientesPromocao = filtrarClientesPromocao;
 
-console.log('✅ clientes.js carregado com sucesso (CRM COMPLETO + IMPORTAÇÃO UNIVERSAL)!');
+console.log('✅ clientes.js carregado com sucesso (CRM COMPLETO + IMPORTAÇÃO UNIVERSAL + MOBILE FIX)!');
 
 // ============================================
 // ATUALIZAR AO REDIMENSIONAR A TELA
