@@ -1,7 +1,7 @@
 // ============================================
-// CLIENTES.JS - VERSÃO CRM COMPLETA
-// ULTIMA ATUALIZACAO: 23/07/2026
-// CORREÇÃO: IMPORTAÇÃO MOBILE
+// CLIENTES.JS - VERSÃO CRM COMPLETA + MOBILE BLINDADO
+// ULTIMA ATUALIZACAO: 24/07/2026
+// CORREÇÃO: LIMPEZA DE NOMES + GRUPOS + MOBILE ESTÁVEL
 // ============================================
 
 // ============================================
@@ -44,37 +44,336 @@ function formatarDataBr(data) {
 }
 
 // ============================================
+// FUNÇÕES DE LIMPEZA
+// ============================================
+
+function limparNome(nome) {
+    if (!nome) return 'Contato';
+
+    let limpo = String(nome)
+        .replace(/[^\w\sÀ-ú]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/[0-9]/g, '')
+        .trim();
+
+    if (!limpo || limpo.length < 2) {
+        return 'Contato';
+    }
+
+    return limpo.split(' ').map(palavra =>
+        palavra.charAt(0).toUpperCase() + palavra.slice(1).toLowerCase()
+    ).join(' ');
+}
+
+function limparTelefone(telefone) {
+    if (!telefone) return '';
+    return String(telefone).replace(/\D/g, '');
+}
+
+// ============================================
 // VARIÁVEIS GLOBAIS
 // ============================================
 
 let clientesCompletos = [];
 let filtroClientes = 'todos';
+let filtroGrupo = 'todos';
 let termoBuscaClientes = '';
+let promocaoEmAndamento = false;
+let carregandoClientes = false;
+let gruposClientes = [];
+let clienteEditandoGrupos = null;
+let gruposSelecionadosTemp = [];
 
 // ============================================
-// CARREGAR CLIENTES
+// CARREGAR GRUPOS DO CLIENTE
+// ============================================
+
+async function carregarGruposCliente(clienteId) {
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`/api/clientes/${clienteId}/grupos`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        return data.data || [];
+    } catch (error) {
+        console.error('❌ Erro ao carregar grupos:', error);
+        return [];
+    }
+}
+
+// ============================================
+// ABRIR MODAL DE GERENCIAR GRUPOS
+// ============================================
+
+async function abrirModalGrupos(clienteId) {
+    clienteEditandoGrupos = clienteId;
+    const cliente = clientesCompletos.find(c => c.id === clienteId);
+    if (!cliente) {
+        showToast('Cliente não encontrado', 'error');
+        return;
+    }
+
+    const grupos = await carregarGruposCliente(clienteId);
+    const gruposDisponiveis = ['VIP', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais'];
+
+    const isMobile = window.innerWidth < 768;
+
+    let html = `
+        <div id="modalGrupos" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+            <div class="modal-content" style="max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: ${isMobile ? '16px' : '24px'}; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                        <i class="fas fa-tags" style="color: #8b5cf6;"></i>
+                        Grupos de ${escapeHtml(cliente.nome)}
+                    </h3>
+                    <button onclick="fecharModalGrupos()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <p style="font-size: 13px; color: var(--text-muted);">Selecione os grupos que este cliente pertence</p>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                    ${gruposDisponiveis.map(g => {
+        const isSelected = grupos.includes(g);
+        return `
+                            <button onclick="toggleGrupoCliente('${g}')" 
+                                    style="padding: 6px 14px; border-radius: 20px; border: 2px solid ${isSelected ? '#8b5cf6' : 'var(--border-color)'}; 
+                                           background: ${isSelected ? 'rgba(139,92,246,0.15)' : 'var(--bg-hover)'}; 
+                                           color: ${isSelected ? '#8b5cf6' : 'var(--text-secondary)'}; 
+                                           font-size: 12px; font-weight: ${isSelected ? '700' : '500'}; cursor: pointer; transition: all 0.2s;
+                                           display: inline-flex; align-items: center; gap: 4px;"
+                                    id="grupo_btn_${g.replace(/\s/g, '_')}">
+                                ${isSelected ? '✅' : '☐'} ${g}
+                            </button>
+                        `;
+    }).join('')}
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <input type="text" id="novoGrupoInput" placeholder="Criar novo grupo..." 
+                           style="flex:1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); 
+                                  background: var(--bg-input); color: var(--text-primary); font-size: 13px;">
+                    <button onclick="criarNovoGrupo()" style="padding: 8px 16px; border-radius: 8px; border: none; 
+                            background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+
+                <!-- GRUPOS ATUAIS COM BOTÃO DE EXCLUIR -->
+                ${grupos.length > 0 ? `
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
+                        <i class="fas fa-list"></i> Grupos atuais
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        ${grupos.map(g => `
+                            <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(139,92,246,0.1); padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2);">
+                                🏷️ ${g}
+                                <button onclick="excluirGrupoCliente('${g}')" 
+                                        style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 2px;"
+                                        title="Remover grupo">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
+                        Clique no ✕ para remover um grupo deste cliente
+                    </div>
+                </div>
+                ` : `
+                <div style="margin-bottom: 16px; padding: 10px; background: var(--bg-hover); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 12px; border: 1px dashed var(--border-color);">
+                    <i class="fas fa-info-circle"></i> Este cliente não pertence a nenhum grupo
+                </div>
+                `}
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <button onclick="fecharModalGrupos()" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer;">Cancelar</button>
+                    <button onclick="salvarGruposCliente()" style="padding: 8px 24px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-save"></i> Salvar Grupos
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existing = document.getElementById('modalGrupos');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    gruposSelecionadosTemp = [...grupos];
+}
+
+function fecharModalGrupos() {
+    const modal = document.getElementById('modalGrupos');
+    if (modal) modal.remove();
+    clienteEditandoGrupos = null;
+    gruposSelecionadosTemp = [];
+}
+
+function excluirGrupoCliente(grupo) {
+    if (!confirm(`Remover o grupo "${grupo}" deste cliente?`)) return;
+
+    // Remove do array temporário
+    gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
+
+    // Atualiza visualmente
+    const clienteId = clienteEditandoGrupos;
+    fecharModalGrupos();
+    setTimeout(() => abrirModalGrupos(clienteId), 100);
+}
+
+async function toggleGrupoCliente(grupo) {
+    const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
+    if (!btn) return;
+
+    const isSelected = btn.textContent.includes('✅');
+
+    if (isSelected) {
+        btn.textContent = `☐ ${grupo}`;
+        btn.style.background = 'var(--bg-hover)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.borderColor = 'var(--border-color)';
+        btn.style.fontWeight = '500';
+        gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
+    } else {
+        btn.textContent = `✅ ${grupo}`;
+        btn.style.background = 'rgba(139,92,246,0.15)';
+        btn.style.color = '#8b5cf6';
+        btn.style.borderColor = '#8b5cf6';
+        btn.style.fontWeight = '700';
+        if (!gruposSelecionadosTemp.includes(grupo)) {
+            gruposSelecionadosTemp.push(grupo);
+        }
+    }
+}
+
+function criarNovoGrupo() {
+    const input = document.getElementById('novoGrupoInput');
+    const nome = input.value.trim();
+    if (!nome) {
+        showToast('Digite um nome para o grupo', 'warning');
+        return;
+    }
+
+    if (!gruposSelecionadosTemp.includes(nome)) {
+        gruposSelecionadosTemp.push(nome);
+    }
+
+    const clienteId = clienteEditandoGrupos;
+    fecharModalGrupos();
+    setTimeout(() => {
+        abrirModalGrupos(clienteId);
+        setTimeout(() => {
+            gruposSelecionadosTemp.forEach(g => {
+                const btn = document.getElementById(`grupo_btn_${g.replace(/\s/g, '_')}`);
+                if (btn) {
+                    btn.textContent = `✅ ${g}`;
+                    btn.style.background = 'rgba(139,92,246,0.15)';
+                    btn.style.color = '#8b5cf6';
+                    btn.style.borderColor = '#8b5cf6';
+                    btn.style.fontWeight = '700';
+                }
+            });
+        }, 100);
+    }, 100);
+
+    input.value = '';
+    showToast(`Grupo "${nome}" criado!`, 'success');
+}
+
+async function salvarGruposCliente() {
+    if (!clienteEditandoGrupos) return;
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch(`/api/clientes/${clienteEditandoGrupos}/grupos`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ grupos: gruposSelecionadosTemp })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('Grupos atualizados com sucesso!', 'success');
+            fecharModalGrupos();
+            await carregarClientes();
+        } else {
+            showToast(data.message || 'Erro ao salvar grupos', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao salvar grupos:', error);
+        hideLoading();
+        showToast('Erro ao salvar grupos', 'error');
+    }
+}
+
+function setFiltroGrupo(grupo) {
+    filtroGrupo = grupo;
+    if (filtroClientes !== 'todos') {
+        filtroClientes = 'todos';
+    }
+    if (window._filtroTimeout) {
+        clearTimeout(window._filtroTimeout);
+    }
+    window._filtroTimeout = setTimeout(() => {
+        carregarClientes();
+    }, 100);
+}
+
+// ============================================
+// CARREGAR CLIENTES (COM GRUPOS)
 // ============================================
 
 async function carregarClientes() {
+    if (carregandoClientes) {
+        console.log("⏳ Já está carregando clientes, aguarde...");
+        return;
+    }
+
     console.log("🟢 carregarClientes chamada (CRM)");
+    carregandoClientes = true;
     ativarBotao('clientes');
     showLoading();
 
     const token = localStorage.getItem('token');
 
     try {
-        const resClientes = await fetch('/api/clientes', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const dataClientes = await resClientes.json();
+        if (!token) {
+            console.error("❌ Token não encontrado!");
+            showToast('Sessão expirada. Faça login novamente.', 'error');
+            carregandoClientes = false;
+            hideLoading();
+            return;
+        }
 
-        const resAgendamentos = await fetch('/api/agendamentos', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
+        // Busca clientes, agendamentos e grupos em paralelo
+        const [resClientes, resAgendamentos, resGrupos] = await Promise.all([
+            fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/clientes/grupos', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
+
+        if (!resClientes.ok || !resAgendamentos.ok) {
+            throw new Error('Erro ao buscar dados do servidor');
+        }
+
+        const dataClientes = await resClientes.json();
         const dataAgendamentos = await resAgendamentos.json();
+        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: {} };
 
         const clientes = dataClientes.data || [];
         const agendamentos = dataAgendamentos.data || [];
+        const gruposMap = dataGrupos.data || {};
 
         clientesCompletos = clientes.map(cliente => {
             const ags = agendamentos.filter(a => a.cliente_id === cliente.id);
@@ -133,6 +432,9 @@ async function carregarClientes() {
                 icone = '🌱';
             }
 
+            // Pega os grupos do cliente
+            const grupos = gruposMap[cliente.id] || [];
+
             return {
                 ...cliente,
                 total_agendamentos: totalAgendamentos,
@@ -144,29 +446,23 @@ async function carregarClientes() {
                 dias_sem_visita: diasDesdeUltima,
                 servicos_frequentes: servicosOrdenados,
                 classificacao: classificacao,
-                icone: icone
+                icone: icone,
+                grupos: grupos
             };
         });
 
         clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
 
-        const isMobile = window.innerWidth < 768 || window.screen.width < 768;
+        const isMobile = window.innerWidth < 768;
 
-        const totalClientes = clientesCompletos.length;
-        const vipCount = clientesCompletos.filter(c => c.classificacao === 'vip').length;
-        const sumidosCount = clientesCompletos.filter(c => c.classificacao === 'sumido').length;
-        const frequentesCount = clientesCompletos.filter(c => c.classificacao === 'frequente').length;
-        const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
-        const totalGasto = clientesCompletos.reduce((acc, c) => acc + c.valor_total, 0);
-
-        // 🔍 APLICAR BUSCA
         let clientesFiltrados = clientesCompletos;
 
         if (termoBuscaClientes) {
+            const busca = termoBuscaClientes.toLowerCase().trim();
             clientesFiltrados = clientesFiltrados.filter(c => {
-                const nomeMatch = c.nome.toLowerCase().includes(termoBuscaClientes);
-                const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(termoBuscaClientes);
-                const emailMatch = c.email && c.email.toLowerCase().includes(termoBuscaClientes);
+                const nomeMatch = c.nome.toLowerCase().includes(busca);
+                const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
+                const emailMatch = c.email && c.email.toLowerCase().includes(busca);
                 return nomeMatch || telefoneMatch || emailMatch;
             });
         }
@@ -181,104 +477,203 @@ async function carregarClientes() {
             clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
         }
 
-        // ============================================
-        // HTML
-        // ============================================
-        let html = `
-            <div class="fade-in">
-                <div class="dashboard-header">
-                    <div>
-                        <h2 class="page-title">👥 Clientes</h2>
-                        <p class="page-subtitle">
-                            <i class="fas fa-users"></i> 
-                            Gerencie seus clientes e acompanhe métricas importantes
-                        </p>
-                    </div>
-                    <div class="dashboard-actions" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 120px; max-width: ${isMobile ? '100%' : '250px'};">
-                            <i class="fas fa-search" style="color: var(--text-muted); padding-left: 8px; font-size: 13px;"></i>
-                            <input type="text" id="buscaClientesInput" 
-                                   placeholder="🔍 Buscar cliente..." 
-                                   style="border: none; background: transparent; padding: 6px 8px; font-size: 13px; width: 100%; outline: none; color: var(--text-primary);"
-                                   oninput="buscarClientes()"
-                                   autocomplete="off"
-                            >
-                            <button onclick="limparBuscaClientes()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" id="btnLimparBusca">
-                                <i class="fas fa-times-circle"></i>
-                            </button>
-                        </div>
-                        
-                        <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; padding: 8px 16px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: ${isMobile ? '12px' : '14px'}; box-shadow: 0 4px 16px rgba(37,211,102,0.25); transition: all 0.3s ease;">
-                            <i class="fas fa-bullhorn"></i> ${isMobile ? 'Promoção' : 'Disparar Promoção'}
-                        </button>
-                        
-                        <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 8px 16px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: ${isMobile ? '12px' : '14px'}; box-shadow: 0 4px 16px rgba(34,197,94,0.25);">
-                            <i class="fas fa-file-csv"></i> ${isMobile ? 'Importar' : 'Importar Contatos'}
-                        </button>
-                        <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 8px 16px; border-radius: 10px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: ${isMobile ? '12px' : '14px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
-                            <i class="fas fa-plus"></i> ${isMobile ? 'Novo' : 'Novo Cliente'}
-                        </button>
-                    </div>
-                </div>
+        // 🔥 FILTRO POR GRUPO
+        if (filtroGrupo !== 'todos') {
+            clientesFiltrados = clientesFiltrados.filter(c =>
+                c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
+            );
+        }
 
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
-                    <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: 12px; padding: 4px 14px;">📊 Todos (${totalClientes})</button>
-                    <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: 12px; padding: 4px 14px;">⭐ VIP (${vipCount})</button>
-                    <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="font-size: 12px; padding: 4px 14px;">🔥 Frequentes (${frequentesCount})</button>
-                    <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="font-size: 12px; padding: 4px 14px;">😴 Sumidos (${sumidosCount})</button>
-                    <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: 12px; padding: 4px 14px;">🌱 Novos (${clientesCompletos.filter(c => c.classificacao === 'novo').length})</button>
-                </div>
+        const totalClientes = clientesCompletos.length;
+        const vipCount = clientesCompletos.filter(c => c.classificacao === 'vip').length;
+        const sumidosCount = clientesCompletos.filter(c => c.classificacao === 'sumido').length;
+        const frequentesCount = clientesCompletos.filter(c => c.classificacao === 'frequente').length;
+        const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
+        const totalGasto = clientesCompletos.reduce((acc, c) => acc + c.valor_total, 0);
+        const novosCount = clientesCompletos.filter(c => c.classificacao === 'novo').length;
 
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 13px; color: var(--text-muted); border-bottom: 1px solid var(--border-color); margin-bottom: 12px;">
-                    <span id="contadorBuscaClientes">
-                        ${termoBuscaClientes ? `🔍 "${termoBuscaClientes}" → ` : ''}
-                        <strong>${clientesFiltrados.length}</strong> de <strong>${clientesCompletos.length}</strong> clientes
+        // ==========================================
+        // RENDERIZAÇÃO HTML
+        // ==========================================
+        let html = `<div class="fade-in" style="padding-bottom: 80px;">`;
+
+        html += `
+            <div class="dashboard-header">
+                <div>
+                    <h2 class="page-title" style="font-size: ${isMobile ? '18px' : '24px'};">👥 Clientes</h2>
+                    ${!isMobile ? `<p class="page-subtitle"><i class="fas fa-users"></i> Gerencie seus clientes e acompanhe métricas importantes</p>` : ''}
+                </div>
+                <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                    <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: ${isMobile ? '100%' : '250px'};">
+                        <i class="fas fa-search" style="color: var(--text-muted); padding-left: 8px; font-size: 12px;"></i>
+                        <input type="text" id="buscaClientesInput" 
+                               placeholder="🔍 Buscar..." 
+                               style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
+                               oninput="buscarClientes()"
+                               autocomplete="off"
+                               value="${escapeHtml(termoBuscaClientes)}"
+                        >
+                        <button onclick="limparBuscaClientes()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" id="btnLimparBusca">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+                    
+                    <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'};">
+                        <i class="fas fa-bullhorn"></i> ${isMobile ? '' : 'Promoção'}
+                    </button>
+                    
+                    ${!isMobile ? `
+                    <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 6px 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                        <i class="fas fa-file-csv"></i> Importar
+                    </button>
+                    ` : ''}
+                    
+                    <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                        <i class="fas fa-plus"></i> ${isMobile ? '' : 'Novo'}
+                    </button>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+                <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">📊 Todos (${totalClientes})</button>
+                <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">⭐ VIP (${vipCount})</button>
+                <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🔥 Frequentes (${frequentesCount})</button>
+                <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">😴 Sumidos (${sumidosCount})</button>
+                <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🌱 Novos (${novosCount})</button>
+                
+                <button onclick="apagarTodosClientes()" class="btn btn-danger" style="margin-left: auto; white-space: nowrap; font-size: ${isMobile ? '9px' : '11px'}; padding: 3px 10px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-trash-alt"></i> ${isMobile ? '' : 'Apagar Todos'}
+                </button>
+            </div>`;
+
+        // ==========================================
+        // FILTROS POR GRUPO
+        // ==========================================
+        const gruposDisponiveis = new Set();
+        clientesCompletos.forEach(c => {
+            if (c.grupos && Array.isArray(c.grupos)) {
+                c.grupos.forEach(g => gruposDisponiveis.add(g));
+            }
+        });
+        const gruposArray = Array.from(gruposDisponiveis);
+
+        if (gruposArray.length > 0) {
+            html += `
+                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color);">
+                    <span style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-right: 4px;">
+                        <i class="fas fa-tags" style="color: #8b5cf6;"></i> Grupos:
+                    </span>
+                    ${gruposArray.map(g => `
+                        <button onclick="setFiltroGrupo('${g}')" 
+                                class="btn ${filtroGrupo === g ? 'btn-primary' : 'btn-outline'}" 
+                                style="font-size: 10px; padding: 3px 10px; border-color: #8b5cf6; color: ${filtroGrupo === g ? '#fff' : '#8b5cf6'};">
+                            🏷️ ${g}
+                        </button>
+                    `).join('')}
+                    ${filtroGrupo !== 'todos' ? `
+                        <button onclick="setFiltroGrupo('todos')" class="btn btn-outline" style="font-size: 10px; padding: 3px 10px; border-color: #ef4444; color: #ef4444;">
+                            <i class="fas fa-times"></i> Limpar
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // STATS MINI - DESKTOP
+        if (!isMobile) {
+            html += `
+            <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px;">
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid var(--border-color);">
+                    <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${clientesFiltrados.length}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">📊 Total</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Clientes cadastrados</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #f59e0b; box-shadow: 0 2px 8px rgba(245,158,11,0.15);">
+                    <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${vipCount}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #f59e0b; margin-top: 2px;">⭐ VIP</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">+10 atendimentos / +R$500</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #22c55e; box-shadow: 0 2px 8px rgba(34,197,94,0.15);">
+                    <div style="font-size: 24px; font-weight: 700; color: #22c55e;">${frequentesCount}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #22c55e; margin-top: 2px;">🔥 Frequentes</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">+5 atendimentos</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #ef4444; box-shadow: 0 2px 8px rgba(239,68,68,0.15);">
+                    <div style="font-size: 24px; font-weight: 700; color: #ef4444;">${sumidosCount}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #ef4444; margin-top: 2px;">😴 Sumidos</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">+60 dias sem visitar</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #667eea; box-shadow: 0 2px 8px rgba(102,126,234,0.15);">
+                    <div style="font-size: 24px; font-weight: 700; color: #667eea;">${novosCount}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #667eea; margin-top: 2px;">🌱 Novos</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">1º atendimento</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #25D366; box-shadow: 0 2px 8px rgba(37,211,102,0.15);">
+                    <div style="font-size: 24px; font-weight: 700; color: #25D366;">${comWhatsApp}</div>
+                    <div style="font-size: 13px; font-weight: 600; color: #25D366; margin-top: 2px;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Com telefone cadastrado</div>
+                </div>
+            </div>`;
+        } else {
+            // STATS MINI - MOBILE
+            html += `
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 1px solid var(--border-color);">
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);">${clientesFiltrados.length}</div>
+                    <div style="font-size: 9px; font-weight: 600; color: var(--text-secondary);">Total</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid #f59e0b;">
+                    <div style="font-size: 18px; font-weight: 700; color: #f59e0b;">${vipCount}</div>
+                    <div style="font-size: 9px; font-weight: 600; color: #f59e0b;">⭐ VIP</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid #22c55e;">
+                    <div style="font-size: 18px; font-weight: 700; color: #22c55e;">${frequentesCount}</div>
+                    <div style="font-size: 9px; font-weight: 600; color: #22c55e;">🔥 Frequentes</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid #ef4444;">
+                    <div style="font-size: 18px; font-weight: 700; color: #ef4444;">${sumidosCount}</div>
+                    <div style="font-size: 9px; font-weight: 600; color: #ef4444;">😴 Sumidos</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid #667eea;">
+                    <div style="font-size: 18px; font-weight: 700; color: #667eea;">${novosCount}</div>
+                    <div style="font-size: 9px; font-weight: 600; color: #667eea;">🌱 Novos</div>
+                </div>
+                <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 2px solid #25D366;">
+                    <div style="font-size: 18px; font-weight: 700; color: #25D366;">${comWhatsApp}</div>
+                    <div style="font-size: 9px; font-weight: 600; color: #25D366;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
+                </div>
+            </div>`;
+        }
+
+        html += `
+            <div class="card" style="padding: ${isMobile ? '10px' : '16px'};">
+        `;
+
+        if (clientesFiltrados.length > 0 || termoBuscaClientes) {
+            html += `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: ${isMobile ? '10px' : '12px'}; color: var(--text-muted); border-bottom: 1px solid var(--border-color); margin-bottom: 10px;">
+                    <span>
+                        ${termoBuscaClientes ? `🔍 "${escapeHtml(termoBuscaClientes)}" → ` : ''}
+                        ${filtroGrupo !== 'todos' ? `🏷️ "${filtroGrupo}" → ` : ''}
+                        <strong>${clientesFiltrados.length}</strong> de ${clientesCompletos.length}
                     </span>
                 </div>
-
-                <div class="cliente-stats" id="clienteStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 16px;">
-                    <div class="stat-mini" style="background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.04)); border-radius: 10px; padding: 10px;">
-                        <span class="stat-mini-value" id="totalClientes">${clientesFiltrados.length}</span>
-                        <span class="stat-mini-label">📊 Total</span>
-                    </div>
-                    <div class="stat-mini" style="background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(217,119,6,0.04)); border-radius: 10px; padding: 10px;">
-                        <span class="stat-mini-value">${vipCount}</span>
-                        <span class="stat-mini-label">⭐ VIP</span>
-                    </div>
-                    <div class="stat-mini" style="background: linear-gradient(135deg, rgba(34,197,94,0.08), rgba(16,185,129,0.04)); border-radius: 10px; padding: 10px;">
-                        <span class="stat-mini-value">${frequentesCount}</span>
-                        <span class="stat-mini-label">🔥 Frequentes</span>
-                    </div>
-                    <div class="stat-mini" style="background: linear-gradient(135deg, rgba(239,68,68,0.08), rgba(220,38,38,0.04)); border-radius: 10px; padding: 10px;">
-                        <span class="stat-mini-value">${sumidosCount}</span>
-                        <span class="stat-mini-label">😴 Sumidos</span>
-                    </div>
-                    <div class="stat-mini" style="background: linear-gradient(135deg, rgba(37,211,102,0.08), rgba(18,140,126,0.04)); border-radius: 10px; padding: 10px;">
-                        <span class="stat-mini-value">${comWhatsApp}</span>
-                        <span class="stat-mini-label"><i class="fab fa-whatsapp"></i> WhatsApp</span>
-                    </div>
-                    <div class="stat-mini" style="background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(124,58,237,0.04)); border-radius: 10px; padding: 10px;">
-                        <span class="stat-mini-value">R$ ${formatMoney(totalGasto)}</span>
-                        <span class="stat-mini-label">💰 Total Gasto</span>
-                    </div>
-                </div>
-
-                <div class="card">
-        `;
+            `;
+        }
 
         if (clientesFiltrados.length === 0) {
             html += `
-                <div class="empty-state">
-                    <i class="fas fa-user-plus"></i>
-                    <h4>${termoBuscaClientes ? 'Nenhum cliente encontrado com esta busca' : 'Nenhum cliente encontrado com este filtro'}</h4>
-                    <p>${termoBuscaClientes ? 'Tente buscar por outro nome, telefone ou email' : 'Tente ajustar os filtros ou adicionar novos clientes'}</p>
-                    <button class="btn btn-primary btn-sm" onclick="${termoBuscaClientes ? 'limparBuscaClientes()' : 'setFiltroClientes(\'todos\')'}">
+                <div class="empty-state" style="padding: 20px; text-align: center;">
+                    <i class="fas fa-user-plus" style="font-size: 32px; color: var(--text-muted);"></i>
+                    <h4 style="font-size: 14px; margin: 8px 0;">${termoBuscaClientes ? 'Nenhum cliente encontrado' : 'Nenhum cliente'}</h4>
+                    <button class="btn btn-primary btn-sm" onclick="${termoBuscaClientes ? 'limparBuscaClientes()' : 'setFiltroClientes(\'todos\')'}" style="font-size: 11px; padding: 4px 12px;">
                         <i class="fas fa-undo"></i> ${termoBuscaClientes ? 'Limpar Busca' : 'Mostrar Todos'}
                     </button>
                 </div>
             `;
         } else if (isMobile) {
-            html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
+            // RENDERIZAÇÃO MOBILE (CARDS) - COM ESCAPE HTML E GRUPOS
+            html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
             for (let c of clientesFiltrados) {
                 const isBloqueado = c.bloqueado_chatbot === 1;
                 const telefone = c.telefone || '';
@@ -292,282 +687,51 @@ async function carregarClientes() {
                     regular: { bg: 'rgba(107,114,128,0.1)', border: '#6b7280', text: '#6b7280' }
                 };
                 const cor = cores[c.classificacao] || cores.regular;
+
+                // Tags de grupos
+                const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
+                    `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:8px;color:#8b5cf6;margin:1px;">${g}</span>`
+                ).join(' ') : '';
+
                 html += `
-                    <div style="background: var(--bg-card); border-radius: 16px; padding: 16px; border: 1px solid ${cor.border}; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                            <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-                                <div style="width:40px;height:40px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">${inicial}</div>
+                    <div style="background: var(--bg-card); border-radius: 12px; padding: 12px; border: 1px solid ${cor.border};">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
+                                <div style="width:32px;height:32px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;">${inicial}</div>
                                 <div style="flex:1;min-width:0;">
-                                    <div style="font-size:15px;font-weight:600;color:var(--text-primary);">
-                                        ${escapeHtml(c.nome)}
-                                        <span style="font-size:14px;">${c.icone}</span>
+                                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);">
+                                        ${escapeHtml(String(c.nome || 'Cliente'))}
+                                        <span style="font-size:11px;">${c.icone || ''}</span>
                                     </div>
-                                    <div style="font-size:11px;color:var(--text-muted);">
-                                        ${c.telefone ? `📱 ${escapeHtml(c.telefone)}` : 'Sem telefone'}
+                                    <div style="font-size:10px;color:var(--text-muted);">
+                                        ${c.telefone ? `📱 ${escapeHtml(String(c.telefone))}` : 'Sem telefone'}
                                     </div>
+                                    <div style="font-size:8px;margin-top:2px;">${gruposLabels}</div>
                                 </div>
                             </div>
-                            <span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};border:1px solid ${cor.border};white-space:nowrap;">
-                                ${c.icone} ${c.classificacao}
+                            <span style="padding:1px 8px;border-radius:10px;font-size:9px;font-weight:600;background:${cor.bg};color:${cor.text};border:1px solid ${cor.border};white-space:nowrap;">
+                                ${c.classificacao}
                             </span>
                         </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:var(--bg-hover);border-radius:8px;padding:8px;margin:8px 0;">
-                            <div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:var(--text-primary);">${c.total_concluidos}</div><div style="font-size:8px;color:var(--text-muted);">Atend.</div></div>
-                            <div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</div><div style="font-size:8px;color:var(--text-muted);">Ticket</div></div>
-                            <div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size:8px;color:var(--text-muted);">Última</div></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:var(--bg-hover);border-radius:6px;padding:6px;margin:6px 0;">
+                            <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:var(--text-primary);">${c.total_concluidos}</div><div style="font-size:8px;color:var(--text-muted);">Atend.</div></div>
+                            <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</div><div style="font-size:8px;color:var(--text-muted);">Ticket</div></div>
+                            <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size:8px;color:var(--text-muted);">Última</div></div>
                         </div>
-                        <div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border-color);">
-                            ${whatsappLink !== '#' ? `<a href="${whatsappLink}" target="_blank" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(37,211,102,0.3);background:var(--bg-hover);color:#25D366;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;text-decoration:none;"><i class="fab fa-whatsapp"></i></a>` : ''}
-                            <button onclick="editarCliente(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(102,126,234,0.3);background:var(--bg-hover);color:var(--primary);font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-pen"></i></button>
-                            <button onclick="verHistoricoCliente(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(139,92,246,0.3);background:var(--bg-hover);color:#8b5cf6;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-history"></i></button>
-                            ${isBloqueado ? `<button onclick="desbloquearChatbot(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:var(--bg-hover);color:#22c55e;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-unlock"></i></button>` : `<button onclick="bloquearChatbot(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-lock"></i></button>`}
-                            <button onclick="excluirCliente(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-trash"></i></button>
+                        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding-top:6px;border-top:1px solid var(--border-color);">
+                            ${whatsappLink !== '#' ? `<a href="${whatsappLink}" target="_blank" style="text-align:center;padding:4px;border-radius:6px;background:rgba(37,211,102,0.1);color:#25D366;font-size:12px;text-decoration:none;"><i class="fab fa-whatsapp"></i></a>` : '<div></div>'}
+                            <button onclick="editarCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(102,126,234,0.1);color:#667eea;border:none;font-size:12px;"><i class="fas fa-pen"></i></button>
+                            <button onclick="verHistoricoCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(139,92,246,0.1);color:#8b5cf6;border:none;font-size:12px;"><i class="fas fa-history"></i></button>
+                            <button onclick="abrirModalGrupos(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(139,92,246,0.1);color:#8b5cf6;border:none;font-size:12px;" title="Grupos"><i class="fas fa-tags"></i></button>
+                            ${isBloqueado ? `<button onclick="desbloquearChatbot(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(34,197,94,0.1);color:#22c55e;border:none;font-size:12px;"><i class="fas fa-unlock"></i></button>` : `<button onclick="bloquearChatbot(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;font-size:12px;"><i class="fas fa-lock"></i></button>`}
+                            <button onclick="excluirCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;font-size:12px;"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                 `;
             }
             html += `</div>`;
         } else {
-            html += `
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr><th>#</th><th>Cliente</th><th>Telefone</th><th>Classificação</th><th>Atend.</th><th>Ticket Médio</th><th>Serviços Frequentes</th><th>Última Visita</th><th>Ações</th></tr>
-                        </thead>
-                        <tbody id="listaClientesTbody">
-            `;
-            for (let c of clientesFiltrados) {
-                const isBloqueado = c.bloqueado_chatbot === 1;
-                const telefone = c.telefone || '';
-                const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
-                const cores = {
-                    vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
-                    frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-                    sumido: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
-                    novo: { bg: 'rgba(102,126,234,0.15)', text: '#667eea' },
-                    regular: { bg: 'rgba(107,114,128,0.1)', text: '#6b7280' }
-                };
-                const cor = cores[c.classificacao] || cores.regular;
-                html += `
-                    <tr>
-                        <td style="text-align:center;">${c.id}</td>
-                        <td><strong>${escapeHtml(c.nome)}</strong> <span style="font-size:14px;">${c.icone}</span></td>
-                        <td>${telefone ? `<div style="display:flex;align-items:center;gap:4px;">${escapeHtml(telefone)}<a href="${whatsappLink}" target="_blank" style="color:#25D366;text-decoration:none;"><i class="fab fa-whatsapp"></i></a></div>` : '-'}</td>
-                        <td><span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${cor.bg};color:${cor.text};">${c.icone} ${c.classificacao}</span></td>
-                        <td style="text-align:center;">${c.total_concluidos}</td>
-                        <td style="text-align:center;font-weight:600;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</td>
-                        <td>${c.servicos_frequentes.slice(0, 2).map(s => `<span style="background:rgba(102,126,234,0.08);padding:1px 6px;border-radius:8px;font-size:10px;color:var(--text-secondary);display:inline-block;margin:1px;">${escapeHtml(s.nome)} (${s.count})</span>`).join('')}</td>
-                        <td style="text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</td>
-                        <td>
-                            <div style="display:flex;gap:2px;flex-wrap:wrap;">
-                                <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;"><i class="fas fa-pen"></i></button>
-                                <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;color:#8b5cf6;"><i class="fas fa-history"></i></button>
-                                ${isBloqueado ? `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;"><i class="fas fa-unlock"></i></button>` : `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;"><i class="fas fa-lock"></i></button>`}
-                                <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            }
-            html += `</tbody></table></div>`;
-        }
-
-        html += `</div></div>`;
-        document.getElementById('content').innerHTML = html;
-        console.log("✅ Clientes renderizados com sucesso (CRM)!");
-
-    } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
-        document.getElementById('content').innerHTML = `
-            <div class="card">
-                <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h4>Erro ao carregar clientes</h4>
-                    <p>${error.message}</p>
-                    <button class="btn btn-primary btn-sm" onclick="carregarClientes()">
-                        <i class="fas fa-sync"></i> Tentar Novamente
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    hideLoading();
-}
-
-// ============================================
-// 🔍 BUSCA DE CLIENTES - VERSÃO DEFINITIVA
-// ============================================
-
-function buscarClientes() {
-    const input = document.getElementById('buscaClientesInput');
-    if (!input) {
-        console.error('❌ Input de busca não encontrado!');
-        return;
-    }
-
-    const termo = input.value.toLowerCase().trim();
-    termoBuscaClientes = termo;
-    window.termoBuscaClientes = termo;
-
-    console.log('🔍 Buscando por:', termo);
-
-    const btnLimpar = document.getElementById('btnLimparBusca');
-    if (btnLimpar) {
-        btnLimpar.style.display = termo ? 'block' : 'none';
-    }
-
-    // 🔥 NÃO CHAMAR carregarClientes() - APENAS FILTRAR
-    if (clientesCompletos.length > 0) {
-        aplicarFiltroClientes();
-    }
-}
-
-function limparBuscaClientes() {
-    const input = document.getElementById('buscaClientesInput');
-    if (input) {
-        input.value = '';
-        termoBuscaClientes = '';
-        window.termoBuscaClientes = '';
-
-        const btnLimpar = document.getElementById('btnLimparBusca');
-        if (btnLimpar) {
-            btnLimpar.style.display = 'none';
-        }
-
-        console.log('🧹 Busca limpa');
-        if (clientesCompletos.length > 0) {
-            aplicarFiltroClientes();
-        }
-    }
-}
-
-// ============================================
-// 🔥 APLICAR FILTRO SEM RECARREGAR
-// ============================================
-
-function aplicarFiltroClientes() {
-    const clientes = clientesCompletos;
-    if (clientes.length === 0) return;
-
-    let clientesFiltrados = clientes;
-    if (termoBuscaClientes) {
-        clientesFiltrados = clientes.filter(c => {
-            const nomeMatch = c.nome.toLowerCase().includes(termoBuscaClientes);
-            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(termoBuscaClientes);
-            const emailMatch = c.email && c.email.toLowerCase().includes(termoBuscaClientes);
-            return nomeMatch || telefoneMatch || emailMatch;
-        });
-    }
-
-    if (filtroClientes === 'vip') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
-    } else if (filtroClientes === 'sumidos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
-    } else if (filtroClientes === 'frequentes') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
-    } else if (filtroClientes === 'novos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
-    }
-
-    console.log(`🔍 Resultado: ${clientesFiltrados.length} de ${clientes.length} clientes`);
-
-    // Atualizar contador
-    const contador = document.getElementById('contadorBuscaClientes');
-    if (contador) {
-        contador.innerHTML = `
-            ${termoBuscaClientes ? `🔍 "${termoBuscaClientes}" → ` : ''}
-            <strong>${clientesFiltrados.length}</strong> de <strong>${clientes.length}</strong> clientes
-        `;
-    }
-
-    // Atualizar total
-    const totalEl = document.getElementById('totalClientes');
-    if (totalEl) {
-        totalEl.textContent = clientesFiltrados.length;
-    }
-
-    // Atualizar lista
-    const tbody = document.getElementById('listaClientesTbody');
-    if (!tbody) return;
-
-    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
-
-    if (clientesFiltrados.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9">
-                    <div class="empty-state">
-                        <i class="fas fa-search"></i>
-                        <h4>Nenhum cliente encontrado</h4>
-                        <p>Tente buscar por outro nome, telefone ou email</p>
-                        <button class="btn btn-primary btn-sm" onclick="limparBuscaClientes()">
-                            <i class="fas fa-undo"></i> Limpar Busca
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    let html = '';
-    if (isMobile) {
-        for (let c of clientesFiltrados) {
-            const isBloqueado = c.bloqueado_chatbot === 1;
-            const telefone = c.telefone || '';
-            const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
-            const inicial = c.nome ? c.nome.charAt(0).toUpperCase() : '?';
-            const cores = {
-                vip: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#f59e0b' },
-                frequente: { bg: 'rgba(34,197,94,0.15)', border: '#22c55e', text: '#22c55e' },
-                sumido: { bg: 'rgba(239,68,68,0.15)', border: '#ef4444', text: '#ef4444' },
-                novo: { bg: 'rgba(102,126,234,0.15)', border: '#667eea', text: '#667eea' },
-                regular: { bg: 'rgba(107,114,128,0.1)', border: '#6b7280', text: '#6b7280' }
-            };
-            const cor = cores[c.classificacao] || cores.regular;
-            html += `
-                <tr>
-                    <td colspan="9">
-                        <div style="background: var(--bg-card); border-radius: 16px; padding: 16px; border: 1px solid ${cor.border}; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 10px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
-                                <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
-                                    <div style="width:40px;height:40px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">${inicial}</div>
-                                    <div style="flex:1;min-width:0;">
-                                        <div style="font-size:15px;font-weight:600;color:var(--text-primary);">
-                                            ${escapeHtml(c.nome)}
-                                            <span style="font-size:14px;">${c.icone}</span>
-                                        </div>
-                                        <div style="font-size:11px;color:var(--text-muted);">
-                                            ${c.telefone ? `📱 ${escapeHtml(c.telefone)}` : 'Sem telefone'}
-                                        </div>
-                                    </div>
-                                </div>
-                                <span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};border:1px solid ${cor.border};white-space:nowrap;">${c.icone} ${c.classificacao}</span>
-                            </div>
-                            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:var(--bg-hover);border-radius:8px;padding:8px;margin:8px 0;">
-                                <div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:var(--text-primary);">${c.total_concluidos}</div><div style="font-size:8px;color:var(--text-muted);">Atend.</div></div>
-                                <div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</div><div style="font-size:8px;color:var(--text-muted);">Ticket</div></div>
-                                <div style="text-align:center;"><div style="font-size:16px;font-weight:700;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size:8px;color:var(--text-muted);">Última</div></div>
-                            </div>
-                            <div style="display:flex;gap:4px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--border-color);">
-                                ${whatsappLink !== '#' ? `<a href="${whatsappLink}" target="_blank" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(37,211,102,0.3);background:var(--bg-hover);color:#25D366;font-size:11px;cursor:pointer;display:inline-flex;align-items:center;gap:4px;flex:1;justify-content:center;text-decoration:none;"><i class="fab fa-whatsapp"></i></a>` : ''}
-                                <button onclick="editarCliente(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(102,126,234,0.3);background:var(--bg-hover);color:var(--primary);font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-pen"></i></button>
-                                <button onclick="verHistoricoCliente(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(139,92,246,0.3);background:var(--bg-hover);color:#8b5cf6;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-history"></i></button>
-                                ${isBloqueado ? `<button onclick="desbloquearChatbot(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(34,197,94,0.3);background:var(--bg-hover);color:#22c55e;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-unlock"></i></button>` : `<button onclick="bloquearChatbot(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-lock"></i></button>`}
-                                <button onclick="excluirCliente(${c.id})" style="padding:4px 12px;border-radius:8px;border:1px solid rgba(239,68,68,0.3);background:var(--bg-hover);color:#ef4444;font-size:11px;cursor:pointer;flex:1;"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                    </td>
-                </tr>
-            `;
-        }
-        tbody.innerHTML = html;
-    } else {
-        for (let c of clientesFiltrados) {
-            const isBloqueado = c.bloqueado_chatbot === 1;
-            const telefone = c.telefone || '';
-            const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
+            // RENDERIZAÇÃO DESKTOP (TABELA) - COM GRUPOS
             const cores = {
                 vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
                 frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
@@ -575,39 +739,270 @@ function aplicarFiltroClientes() {
                 novo: { bg: 'rgba(102,126,234,0.15)', text: '#667eea' },
                 regular: { bg: 'rgba(107,114,128,0.1)', text: '#6b7280' }
             };
-            const cor = cores[c.classificacao] || cores.regular;
+
             html += `
-                <tr>
-                    <td style="text-align:center;">${c.id}</td>
-                    <td><strong>${escapeHtml(c.nome)}</strong> <span style="font-size:14px;">${c.icone}</span></td>
-                    <td>${telefone ? `<div style="display:flex;align-items:center;gap:4px;">${escapeHtml(telefone)}<a href="${whatsappLink}" target="_blank" style="color:#25D366;text-decoration:none;"><i class="fab fa-whatsapp"></i></a></div>` : '-'}</td>
-                    <td><span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${cor.bg};color:${cor.text};">${c.icone} ${c.classificacao}</span></td>
-                    <td style="text-align:center;">${c.total_concluidos}</td>
-                    <td style="text-align:center;font-weight:600;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</td>
-                    <td>${c.servicos_frequentes.slice(0, 2).map(s => `<span style="background:rgba(102,126,234,0.08);padding:1px 6px;border-radius:8px;font-size:10px;color:var(--text-secondary);display:inline-block;margin:1px;">${escapeHtml(s.nome)} (${s.count})</span>`).join('')}</td>
-                    <td style="text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</td>
-                    <td>
-                        <div style="display:flex;gap:2px;flex-wrap:wrap;">
-                            <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;"><i class="fas fa-pen"></i></button>
-                            <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;color:#8b5cf6;"><i class="fas fa-history"></i></button>
-                            ${isBloqueado ? `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;"><i class="fas fa-unlock"></i></button>` : `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;"><i class="fas fa-lock"></i></button>`}
-                            <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </td>
-                </tr>
-            `;
+            <div class="table-responsive" style="overflow-x: auto;">
+                <table class="data-table" style="width: 100%; min-width: 800px; font-size: 13px;">
+                    <thead>
+                        <tr>
+                            <th style="padding: 6px 8px;">#</th>
+                            <th style="padding: 6px 8px;">Cliente</th>
+                            <th style="padding: 6px 8px;">Telefone</th>
+                            <th style="padding: 6px 8px;">Class.</th>
+                            <th style="padding: 6px 8px;">Grupos</th>
+                            <th style="padding: 6px 8px; text-align:center;">Atend.</th>
+                            <th style="padding: 6px 8px; text-align:center;">Ticket</th>
+                            <th style="padding: 6px 8px; text-align:center;">Última</th>
+                            <th style="padding: 6px 8px; text-align:center;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+            for (let c of clientesFiltrados) {
+                const isBloqueado = c.bloqueado_chatbot === 1;
+                const telefone = c.telefone || '';
+                const cor = cores[c.classificacao] || cores.regular;
+
+                const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
+                    `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:9px;color:#8b5cf6;margin:1px;display:inline-block;">${g}</span>`
+                ).join(' ') : '';
+
+                html += `
+                    <tr>
+                        <td style="padding: 6px 8px; text-align:center;">${c.id}</td>
+                        <td style="padding: 6px 8px;">
+                            <strong>${escapeHtml(String(c.nome || 'Cliente'))}</strong> 
+                            <span style="font-size:14px;">${c.icone || ''}</span>
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            ${telefone ? escapeHtml(String(telefone)) : '-'}
+                            ${telefone ? `<a href="https://wa.me/55${telefone.replace(/\D/g, '')}" target="_blank" style="color:#25D366;text-decoration:none;margin-left:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            <span style="padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};">
+                                ${c.icone || ''} ${c.classificacao}
+                            </span>
+                        </td>
+                        <td style="padding: 6px 8px; font-size:10px;">
+                            ${gruposLabels || '-'}
+                        </td>
+                        <td style="padding: 6px 8px; text-align:center;">${c.total_concluidos}</td>
+                        <td style="padding: 6px 8px; text-align:center;font-weight:600;color:#22c55e;">
+                            R$ ${formatMoney(c.ticket_medio)}
+                        </td>
+                        <td style="padding: 6px 8px; text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">
+                            ${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}
+                        </td>
+                        <td style="padding: 6px 8px;">
+                            <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+                                <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
+                                    <i class="fas fa-history"></i>
+                                </button>
+                                <button class="btn-icon" onclick="abrirModalGrupos(${c.id})" title="Grupos" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
+                                    <i class="fas fa-tags"></i>
+                                </button>
+                                ${isBloqueado ?
+                        `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;border:none;background:rgba(34,197,94,0.1);border-radius:4px;cursor:pointer;color:#22c55e;">
+                                    <i class="fas fa-unlock"></i>
+                                </button>` :
+                        `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
+                                    <i class="fas fa-lock"></i>
+                                </button>`
+                    }
+                                <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>`;
+            }
+            html += `</tbody></table></div>`;
         }
-        tbody.innerHTML = html;
+
+        html += `</div></div>`;
+
+        document.getElementById('content').innerHTML = html;
+        window.scrollTo(0, 0);
+
+        console.log(`✅ Clientes renderizados: ${clientesFiltrados.length} de ${clientesCompletos.length}`);
+
+    } catch (error) {
+        console.error("❌ Erro ao carregar clientes:", error);
+        document.getElementById('content').innerHTML = `
+            <div class="card" style="padding: 20px;">
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 32px; color: #ef4444;"></i>
+                    <h4 style="font-size: 14px; margin: 8px 0;">Erro ao carregar clientes</h4>
+                    <p style="font-size: 12px; color: var(--text-muted);">${error.message}</p>
+                    <button class="btn btn-primary btn-sm" onclick="carregarClientes()" style="font-size: 11px; padding: 4px 12px; margin-top: 8px;">
+                        <i class="fas fa-sync"></i> Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        `;
     }
+
+    carregandoClientes = false;
+    hideLoading();
 }
 
 // ============================================
-// FILTROS DE CLIENTES
+// BUSCA E FILTROS
 // ============================================
+
+function buscarClientes() {
+    const input = document.getElementById('buscaClientesInput');
+    if (!input) return;
+
+    const termo = input.value.toLowerCase().trim();
+    termoBuscaClientes = termo;
+
+    const btnLimpar = document.getElementById('btnLimparBusca');
+    if (btnLimpar) {
+        btnLimpar.style.display = termo ? 'block' : 'none';
+    }
+
+    if (window._buscaTimeout) {
+        clearTimeout(window._buscaTimeout);
+    }
+    window._buscaTimeout = setTimeout(() => {
+        carregarClientes();
+    }, 300);
+}
+
+function limparBuscaClientes() {
+    const input = document.getElementById('buscaClientesInput');
+    if (input) input.value = '';
+
+    termoBuscaClientes = '';
+
+    const btnLimpar = document.getElementById('btnLimparBusca');
+    if (btnLimpar) {
+        btnLimpar.style.display = 'none';
+    }
+
+    if (window._buscaTimeout) {
+        clearTimeout(window._buscaTimeout);
+    }
+    carregarClientes();
+}
 
 function setFiltroClientes(filtro) {
     filtroClientes = filtro;
-    carregarClientes();
+    if (filtroGrupo !== 'todos') {
+        filtroGrupo = 'todos';
+    }
+    if (window._filtroTimeout) {
+        clearTimeout(window._filtroTimeout);
+    }
+    window._filtroTimeout = setTimeout(() => {
+        carregarClientes();
+    }, 100);
+}
+
+function setFiltroGrupo(grupo) {
+    filtroGrupo = grupo;
+    if (filtroClientes !== 'todos') {
+        filtroClientes = 'todos';
+    }
+    if (window._filtroTimeout) {
+        clearTimeout(window._filtroTimeout);
+    }
+    window._filtroTimeout = setTimeout(() => {
+        carregarClientes();
+    }, 100);
+}
+
+// ============================================
+// REDIMENSIONAMENTO
+// ============================================
+let resizeTimeoutClientes;
+let ultimoResizeClientes = 0;
+
+window.addEventListener('resize', function () {
+    const agora = Date.now();
+    if (agora - ultimoResizeClientes < 500) {
+        return;
+    }
+    ultimoResizeClientes = agora;
+
+    clearTimeout(resizeTimeoutClientes);
+    resizeTimeoutClientes = setTimeout(function () {
+        const content = document.getElementById('content');
+        if (content && content.innerHTML.includes('👥 Clientes') && !carregandoClientes) {
+            carregarClientes();
+        }
+    }, 300);
+});
+
+// ============================================
+// APAGAR TODOS OS CLIENTES
+// ============================================
+
+async function apagarTodosClientes() {
+    if (!confirm('🛑 ATENÇÃO: Você tem certeza que deseja apagar TODOS os clientes?\n\nEsta ação apagará também todos os agendamentos vinculados e não poderá ser desfeita!')) {
+        return;
+    }
+
+    if (!confirm('🛑 ÚLTIMA CONFIRMAÇÃO: Tem certeza absoluta?')) {
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const resClientes = await fetch('/api/clientes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const dataClientes = await resClientes.json();
+        const clientes = dataClientes.data || [];
+
+        if (clientes.length === 0) {
+            showToast('✅ Nenhum cliente para apagar', 'info');
+            hideLoading();
+            return;
+        }
+
+        let excluidos = 0;
+        let erros = 0;
+
+        for (let cliente of clientes) {
+            try {
+                const resDelete = await fetch(`/api/clientes/${cliente.id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await resDelete.json();
+                if (data.success) {
+                    excluidos++;
+                } else {
+                    erros++;
+                }
+            } catch (e) {
+                erros++;
+            }
+        }
+
+        hideLoading();
+
+        if (excluidos > 0) {
+            showToast(`✅ ${excluidos} clientes removidos! ${erros > 0 ? `⚠️ ${erros} erros` : ''}`, erros > 0 ? 'warning' : 'success');
+            clientesCompletos = [];
+            filtroClientes = 'todos';
+            filtroGrupo = 'todos';
+            termoBuscaClientes = '';
+            await carregarClientes();
+        } else {
+            showToast('❌ Falha ao excluir clientes', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao apagar todos:', error);
+        hideLoading();
+        showToast('Erro ao conectar com o servidor', 'error');
+    }
 }
 
 // ============================================
@@ -689,8 +1084,6 @@ function fecharModalHistorico() {
 // ============================================
 
 function abrirModalCliente() {
-    console.log("🟡 abrirModalCliente chamada");
-
     const existingModal = document.getElementById('modalCliente');
     if (existingModal) existingModal.remove();
 
@@ -732,20 +1125,17 @@ function fecharModalCliente() {
 }
 
 async function salvarCliente() {
-    console.log("💾 Salvando cliente...");
-
     try {
         const nomeInput = document.getElementById('clienteNome');
         const telefoneInput = document.getElementById('clienteTelefone');
         const emailInput = document.getElementById('clienteEmail');
 
         if (!nomeInput) {
-            console.error('❌ Campo nome não encontrado!');
             showToast('Erro: Campo nome não encontrado', 'error');
             return;
         }
 
-        const nome = nomeInput ? nomeInput.value.trim() : '';
+        const nome = nomeInput.value.trim();
         const telefone = telefoneInput ? telefoneInput.value.trim() : '';
         const email = emailInput ? emailInput.value.trim() : '';
 
@@ -754,22 +1144,8 @@ async function salvarCliente() {
             return;
         }
 
-        const dados = {
-            nome: nome,
-            telefone: telefone || '',
-            email: email || ''
-        };
-
-        console.log('📦 Dados a enviar:', dados);
-
         showLoading();
         const token = localStorage.getItem('token');
-
-        if (!token) {
-            showToast('Sessão expirada. Faça login novamente.', 'error');
-            hideLoading();
-            return;
-        }
 
         const res = await fetch('/api/clientes', {
             method: 'POST',
@@ -777,11 +1153,10 @@ async function salvarCliente() {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify(dados)
+            body: JSON.stringify({ nome, telefone, email })
         });
 
         const data = await res.json();
-
         hideLoading();
 
         if (data.success) {
@@ -792,30 +1167,20 @@ async function salvarCliente() {
             showToast(data.message || 'Erro ao cadastrar cliente', 'error');
         }
     } catch (error) {
-        console.error("❌ Erro no fetch:", error);
+        console.error("❌ Erro:", error);
         hideLoading();
         showToast('Erro ao cadastrar cliente', 'error');
     }
 }
 
 async function editarCliente(id) {
-    console.log("✏️ Editando cliente:", id);
-
     try {
         const token = localStorage.getItem('token');
-
-        if (!token) {
-            showToast('Sessão expirada', 'error');
-            return;
-        }
-
         const res = await fetch('/api/clientes', {
             headers: { 'Authorization': 'Bearer ' + token }
         });
-
         const data = await res.json();
-        const clientes = data.data || [];
-        const cliente = clientes.find(c => c.id === id);
+        const cliente = data.data.find(c => c.id === id);
 
         if (!cliente) {
             showToast('Cliente não encontrado', 'error');
@@ -866,13 +1231,8 @@ async function editarCliente(id) {
 
         document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-        setTimeout(() => {
-            const nomeInput = document.getElementById('editClienteNome');
-            if (nomeInput) nomeInput.focus();
-        }, 100);
-
     } catch (error) {
-        console.error('❌ Erro ao carregar cliente para edição:', error);
+        console.error('❌ Erro ao carregar cliente:', error);
         showToast('Erro ao carregar dados do cliente', 'error');
     }
 }
@@ -883,20 +1243,17 @@ function fecharModalEditarCliente() {
 }
 
 async function atualizarCliente(id) {
-    console.log('📝 Atualizando cliente:', id);
-
     try {
         const nomeInput = document.getElementById('editClienteNome');
         const telefoneInput = document.getElementById('editClienteTelefone');
         const emailInput = document.getElementById('editClienteEmail');
 
         if (!nomeInput) {
-            console.error('❌ Campo nome não encontrado!');
             showToast('Erro: Campo nome não encontrado', 'error');
             return;
         }
 
-        const nome = nomeInput ? nomeInput.value.trim() : '';
+        const nome = nomeInput.value.trim();
         const telefone = telefoneInput ? telefoneInput.value.trim() : '';
         const email = emailInput ? emailInput.value.trim() : '';
 
@@ -905,22 +1262,8 @@ async function atualizarCliente(id) {
             return;
         }
 
-        const dados = {
-            nome: nome,
-            telefone: telefone || '',
-            email: email || ''
-        };
-
-        console.log('📦 Atualizando:', dados);
-
         showLoading();
         const token = localStorage.getItem('token');
-
-        if (!token) {
-            showToast('Sessão expirada', 'error');
-            hideLoading();
-            return;
-        }
 
         const res = await fetch(`/api/clientes/${id}`, {
             method: 'PUT',
@@ -928,11 +1271,10 @@ async function atualizarCliente(id) {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify(dados)
+            body: JSON.stringify({ nome, telefone, email })
         });
 
         const data = await res.json();
-
         hideLoading();
 
         if (data.success) {
@@ -943,7 +1285,7 @@ async function atualizarCliente(id) {
             showToast(data.message || 'Erro ao atualizar cliente', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao atualizar cliente:', error);
+        console.error('❌ Erro:', error);
         hideLoading();
         showToast('Erro ao atualizar cliente', 'error');
     }
@@ -971,14 +1313,14 @@ async function excluirCliente(id) {
             showToast(data.message || 'Erro ao excluir cliente', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao excluir:', error);
+        console.error('❌ Erro:', error);
         hideLoading();
         showToast('Erro ao excluir cliente', 'error');
     }
 }
 
 async function bloquearChatbot(id) {
-    if (!confirm('Bloquear este cliente de usar o chatbot? Ele não poderá fazer agendamentos online.')) return;
+    if (!confirm('Bloquear este cliente de usar o chatbot?')) return;
 
     showLoading();
     const token = localStorage.getItem('token');
@@ -1003,7 +1345,7 @@ async function bloquearChatbot(id) {
             showToast(data.message || 'Erro ao bloquear', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao bloquear:', error);
+        console.error('❌ Erro:', error);
         hideLoading();
         showToast('Erro ao bloquear cliente', 'error');
     }
@@ -1035,127 +1377,53 @@ async function desbloquearChatbot(id) {
             showToast(data.message || 'Erro ao desbloquear', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao desbloquear:', error);
+        console.error('❌ Erro:', error);
         hideLoading();
         showToast('Erro ao desbloquear cliente', 'error');
     }
 }
 
 // ============================================
-// 📱 IMPORTAÇÃO UNIVERSAL - CORRIGIDO PARA MOBILE
+// IMPORTAÇÃO - APENAS DESKTOP (COM LIMPEZA)
 // ============================================
 
 function abrirModalImportarCSV() {
-    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
+    if (window.innerWidth < 768) {
+        showToast('📱 Importação disponível apenas no desktop', 'warning');
+        return;
+    }
 
     const modalHtml = `
         <div id="modalImportarCSV" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
-            <div class="modal-content" style="
-                max-width: 500px; 
-                width: 100%; 
-                background: var(--bg-card); 
-                border-radius: 16px; 
-                padding: ${isMobile ? '16px' : '24px'}; 
-                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                max-height: 90vh;
-                overflow-y: auto;
-            ">
+            <div class="modal-content" style="max-width: 500px; width: 100%; background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                    <h3 style="margin: 0; font-size: 20px; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
                         <i class="fas fa-address-book" style="color: #22c55e;"></i>
                         Importar Contatos
                     </h3>
-                    <button onclick="fecharModalImportarCSV()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 8px;">&times;</button>
+                    <button onclick="fecharModalImportarCSV()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
                 </div>
                 
-                <!-- Área de upload melhorada para mobile -->
-                <div id="dropArea" style="
-                    border: 2px dashed var(--border-color); 
-                    border-radius: 12px; 
-                    padding: ${isMobile ? '20px' : '30px'}; 
-                    text-align: center; 
-                    margin-bottom: 16px; 
-                    background: var(--bg-hover);
-                    transition: all 0.3s ease;
-                    cursor: pointer;
-                " onclick="document.getElementById('csvFileInputMobile').click()">
-                    
-                    <i class="fas fa-cloud-upload-alt" style="font-size: ${isMobile ? '32px' : '48px'}; color: var(--primary); margin-bottom: 8px;"></i>
-                    
-                    <p style="margin: 8px 0; color: var(--text-secondary); font-weight: 600; font-size: ${isMobile ? '14px' : '16px'};">
-                        📂 Toque para selecionar
-                    </p>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">
-                        Suporta: <strong>.CSV</strong> ou <strong>.VCF</strong> (iPhone/Android)
-                    </p>
-                    
-                    <!-- 🔥 INPUT MOBILE MELHORADO -->
-                    <input 
-                        type="file" 
-                        id="csvFileInputMobile" 
-                        accept=".csv,.vcf,.txt,text/csv,text/vcard,text/x-vcard" 
-                        style="display: none;" 
-                        onchange="handleFileSelectMobile(this)"
-                    >
-                    
-                    <button type="button" onclick="event.stopPropagation(); document.getElementById('csvFileInputMobile').click();" class="btn btn-success" style="
-                        padding: 10px 24px; 
-                        border-radius: 10px; 
-                        border: none; 
-                        background: linear-gradient(135deg, #22c55e, #16a34a); 
-                        color: white; 
-                        font-weight: 600; 
-                        font-size: 14px;
-                        cursor: pointer;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 8px;
-                        box-shadow: 0 4px 16px rgba(34,197,94,0.25);
-                        width: ${isMobile ? '100%' : 'auto'};
-                        justify-content: center;
-                    ">
+                <div onclick="document.getElementById('csvFileInputDesktop').click()" style="border: 2px dashed var(--border-color); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 16px; background: var(--bg-hover); cursor: pointer;">
+                    <i class="fas fa-cloud-upload-alt" style="font-size: 48px; color: var(--primary); margin-bottom: 8px;"></i>
+                    <p style="margin: 8px 0; color: var(--text-secondary); font-weight: 600; font-size: 16px;">📂 Clique para selecionar</p>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Suporta: <strong>.CSV</strong> ou <strong>.VCF</strong></p>
+                    <input type="file" id="csvFileInputDesktop" accept=".csv,.vcf,.txt" style="display: none;" onchange="handleFileSelectDesktop(this)">
+                    <button type="button" class="btn btn-success" style="padding: 10px 24px; border-radius: 10px; border: none; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; font-weight: 600; font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
                         <i class="fas fa-file-import"></i> Escolher Arquivo
                     </button>
                 </div>
 
-                <!-- Dica Mobile -->
-                <div style="
-                    background: rgba(102,126,234,0.08); 
-                    padding: 12px; 
-                    border-radius: 8px; 
-                    font-size: 12px; 
-                    color: var(--text-secondary); 
-                    margin-bottom: 16px;
-                    border-left: 3px solid var(--primary);
-                ">
-                    <strong>📱 No iPhone:</strong> 
-                    Ajustes > Contatos > Exportar Contatos 
-                    <span style="display:block;margin-top:4px;font-size:11px;color:var(--text-muted);">
-                        Ou acesse <strong>contatos.icloud.com</strong> para exportar
-                    </span>
+                <div style="background: rgba(102,126,234,0.08); padding: 12px; border-radius: 8px; font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; border-left: 3px solid var(--primary);">
+                    <strong>📱 iPhone:</strong> Ajustes > Contatos > Exportar Contatos
                 </div>
 
                 <div style="display: flex; justify-content: flex-end;">
-                    <button onclick="fecharModalImportarCSV()" style="
-                        padding: 8px 24px; 
-                        border-radius: 8px; 
-                        border: 1px solid var(--border-color); 
-                        background: transparent; 
-                        color: var(--text-secondary); 
-                        font-size: 13px; 
-                        cursor: pointer;
-                        font-weight: 500;
-                    ">
-                        Cancelar
-                    </button>
+                    <button onclick="fecharModalImportarCSV()" style="padding: 8px 24px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer;">Cancelar</button>
                 </div>
 
-                <!-- Status de processamento -->
                 <div id="statusImportacao" style="display:none; margin-top: 12px; padding: 12px; border-radius: 8px; background: var(--bg-hover);">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <div class="spinner-border spinner-border-sm" role="status" style="color:var(--primary);"></div>
-                        <span style="font-size:13px;color:var(--text-secondary);" id="statusImportacaoTexto">Processando arquivo...</span>
-                    </div>
+                    <span style="font-size:13px;color:var(--text-secondary);" id="statusImportacaoTexto">Processando...</span>
                 </div>
             </div>
         </div>
@@ -1165,16 +1433,6 @@ function abrirModalImportarCSV() {
     if (existingModal) existingModal.remove();
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-    // 🔥 CORRIGIR: Fechar modal ao clicar fora (mobile-friendly)
-    const modal = document.getElementById('modalImportarCSV');
-    if (modal) {
-        modal.addEventListener('click', function (e) {
-            if (e.target === this) {
-                fecharModalImportarCSV();
-            }
-        });
-    }
 }
 
 function fecharModalImportarCSV() {
@@ -1182,27 +1440,13 @@ function fecharModalImportarCSV() {
     if (modal) modal.remove();
 }
 
-// 🔥 NOVA FUNÇÃO PARA MOBILE - MANIPULA ARQUIVO CORRETAMENTE
-function handleFileSelectMobile(input) {
-    console.log('📁 Arquivo selecionado (mobile):', input.files);
-
+function handleFileSelectDesktop(input) {
     if (input.files && input.files[0]) {
-        const file = input.files[0];
-        console.log('📄 Nome:', file.name);
-        console.log('📄 Tamanho:', file.size, 'bytes');
-        console.log('📄 Tipo:', file.type);
-
-        processarArquivoContatosMobile(file);
-    } else {
-        console.warn('⚠️ Nenhum arquivo selecionado');
-        showToast('⚠️ Nenhum arquivo selecionado', 'warning');
+        processarArquivoContatosDesktop(input.files[0]);
     }
 }
 
-// 🔥 FUNÇÃO DE PROCESSAMENTO MOBILE
-async function processarArquivoContatosMobile(file) {
-    console.log('🔄 Processando arquivo:', file.name);
-
+async function processarArquivoContatosDesktop(file) {
     const statusDiv = document.getElementById('statusImportacao');
     const statusTexto = document.getElementById('statusImportacaoTexto');
 
@@ -1214,34 +1458,32 @@ async function processarArquivoContatosMobile(file) {
     showLoading();
 
     try {
-        // 🔥 LER COMO TEXTO COM ENCODING CORRETO
         const content = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
             reader.onerror = (e) => reject(e.target.error);
-            // Tenta UTF-8 primeiro, depois fallback para Latin-1
             reader.readAsText(file, 'UTF-8');
         });
-
-        console.log('✅ Arquivo lido com sucesso!');
-        console.log('📄 Primeiros 200 caracteres:', content.substring(0, 200));
 
         if (statusTexto) {
             statusTexto.textContent = '🔍 Analisando contatos...';
         }
 
         let clientesParaImportar = [];
-
         const fileName = file.name.toLowerCase();
 
-        // DETECTA FORMATO
         if (fileName.endsWith('.vcf') || content.trim().toUpperCase().startsWith('BEGIN:VCARD')) {
             clientesParaImportar = parseVCFMobile(content);
         } else {
             clientesParaImportar = parseCSVMobile(content);
         }
 
-        console.log(`📊 Encontrados ${clientesParaImportar.length} contatos`);
+        // 🔥 FILTRA APENAS CONTATOS COM NOME E TELEFONE VÁLIDOS
+        clientesParaImportar = clientesParaImportar.filter(c => {
+            const temNome = c.nome && c.nome.trim().length > 0 && c.nome !== 'Contato';
+            const temTelefone = c.telefone && c.telefone.trim().length >= 10;
+            return temNome && temTelefone;
+        });
 
         hideLoading();
 
@@ -1250,36 +1492,29 @@ async function processarArquivoContatosMobile(file) {
         }
 
         if (clientesParaImportar.length === 0) {
-            showToast('⚠️ Nenhum contato válido encontrado no arquivo.', 'warning');
+            showToast('⚠️ Nenhum contato válido encontrado. (Nome e telefone são obrigatórios, mínimo 10 dígitos)', 'warning');
             return;
         }
 
-        // Mostra preview dos primeiros contatos
-        const preview = clientesParaImportar.slice(0, 5).map(c => `${c.nome} (${c.telefone || 'sem telefone'})`).join('\n');
+        // Mostra preview com nomes limpos
+        const preview = clientesParaImportar.slice(0, 5).map(c =>
+            `${c.nome} (${c.telefone})`
+        ).join('\n');
 
-        if (!confirm(`📊 Encontrados ${clientesParaImportar.length} contatos.\n\nPrimeiros:\n${preview}\n\nDeseja importar para o CRM?`)) {
+        if (!confirm(`📊 Encontrados ${clientesParaImportar.length} contatos válidos.\n\nPrimeiros:\n${preview}\n\nDeseja importar?`)) {
             return;
         }
 
-        if (statusTexto) {
-            statusTexto.textContent = '💾 Salvando contatos...';
-        }
-
-        await salvarLoteClientesMobile(clientesParaImportar);
+        await salvarLoteClientesDesktop(clientesParaImportar);
 
     } catch (error) {
-        console.error('❌ Erro ao processar arquivo:', error);
+        console.error('❌ Erro:', error);
         hideLoading();
-
-        if (statusDiv) {
-            statusDiv.style.display = 'none';
-        }
-
-        showToast('❌ Erro ao ler o arquivo. Verifique o formato.', 'error');
+        if (statusDiv) statusDiv.style.display = 'none';
+        showToast('❌ Erro ao ler o arquivo.', 'error');
     }
 }
 
-// 🔥 PARSER VCF MELHORADO PARA MOBILE
 function parseVCFMobile(content) {
     console.log('🔍 Parseando VCF...');
 
@@ -1287,6 +1522,7 @@ function parseVCFMobile(content) {
     const contacts = [];
     let currentContact = {};
     let inVCard = false;
+    let nomeTemp = '';
 
     for (let line of lines) {
         line = line.trim();
@@ -1294,17 +1530,17 @@ function parseVCFMobile(content) {
         if (line.startsWith('BEGIN:VCARD')) {
             inVCard = true;
             currentContact = { nome: '', telefone: '', email: '' };
+            nomeTemp = '';
             continue;
         }
 
         if (line.startsWith('END:VCARD')) {
             inVCard = false;
-            // Só adiciona se tiver nome OU telefone
             if (currentContact.nome || currentContact.telefone) {
-                // Se tiver telefone mas não nome, usa "Contato"
                 if (!currentContact.nome && currentContact.telefone) {
                     currentContact.nome = 'Contato';
                 }
+                currentContact.nome = limparNome(currentContact.nome);
                 contacts.push({ ...currentContact });
             }
             continue;
@@ -1312,89 +1548,86 @@ function parseVCFMobile(content) {
 
         if (!inVCard) continue;
 
-        // Nome completo
         if (line.startsWith('FN:')) {
             let nome = line.substring(3).trim();
-            // Remove caracteres estranhos
             nome = nome.replace(/[^\w\sÀ-ú]/g, ' ').trim();
-            if (nome) currentContact.nome = nome;
+            if (nome) {
+                currentContact.nome = nome;
+                nomeTemp = nome;
+            }
         }
 
-        // Nome estruturado (fallback)
         if (line.startsWith('N;') || line.startsWith('N:')) {
-            if (!currentContact.nome) {
+            if (!currentContact.nome || currentContact.nome === 'Contato') {
                 const parts = line.split(':')[1]?.split(';') || [];
-                // Formato: Sobrenome;Nome;Meio;Prefix;Sufixo
-                let nome = parts[1] || '';
                 let sobrenome = parts[0] || '';
-                if (nome || sobrenome) {
-                    currentContact.nome = (nome + ' ' + sobrenome).trim();
+                let nome = parts[1] || '';
+                let nomeCompleto = (nome + ' ' + sobrenome).trim();
+                if (nomeCompleto) {
+                    currentContact.nome = limparNome(nomeCompleto);
+                    nomeTemp = currentContact.nome;
                 }
             }
         }
 
-        // Telefone
         if (line.startsWith('TEL') || line.startsWith('TEL;')) {
             if (!currentContact.telefone) {
-                // Pega tudo depois do último ':'
                 const telPart = line.split(':');
                 if (telPart.length > 1) {
                     let tel = telPart.slice(1).join(':').trim();
-                    // Remove caracteres não numéricos (exceto +)
                     tel = tel.replace(/[^\d+]/g, '');
-                    // Remove '+' se tiver, deixa só números
                     tel = tel.replace(/\+/g, '');
-                    // Se tiver código de país 55, mantém
                     if (tel.startsWith('55') && tel.length > 10) {
                         tel = tel.substring(2);
                     }
-                    currentContact.telefone = tel;
+                    if (tel && tel.length >= 10) {
+                        currentContact.telefone = tel;
+                    }
                 }
             }
         }
 
-        // Email
         if (line.startsWith('EMAIL') || line.startsWith('EMAIL;')) {
             if (!currentContact.email) {
                 const emailPart = line.split(':');
                 if (emailPart.length > 1) {
-                    currentContact.email = emailPart.slice(1).join(':').trim();
+                    currentContact.email = emailPart.slice(1).join(':').trim().toLowerCase();
                 }
             }
         }
     }
 
-    // Filtra contatos duplicados (mesmo telefone)
     const seen = new Set();
     const uniqueContacts = contacts.filter(c => {
-        const key = c.telefone || c.email || c.nome;
+        const telefoneLimpo = limparTelefone(c.telefone || '');
+        const key = telefoneLimpo || c.email || c.nome;
         if (seen.has(key)) return false;
         seen.add(key);
+        if (!c.nome || c.nome === 'Contato' || !c.telefone) return false;
+        if (telefoneLimpo.length < 10) return false;
         return true;
     });
 
-    console.log(`✅ Parseados ${uniqueContacts.length} contatos VCF`);
+    console.log(`✅ Parseados ${uniqueContacts.length} contatos VCF válidos`);
     return uniqueContacts;
 }
 
-// 🔥 PARSER CSV MELHORADO
 function parseCSVMobile(content) {
     console.log('🔍 Parseando CSV...');
 
     const lines = content.split('\n');
     const contacts = [];
 
-    // Tenta detectar separador e cabeçalho
     let separator = ',';
     if (content.includes(';')) separator = ';';
     if (content.includes('\t')) separator = '\t';
 
-    // Detecta se tem cabeçalho
     let startIndex = 0;
     const firstLine = lines[0]?.toLowerCase() || '';
     if (firstLine.includes('nome') || firstLine.includes('name') ||
         firstLine.includes('telefone') || firstLine.includes('phone') ||
-        firstLine.includes('email') || firstLine.includes('e-mail')) {
+        firstLine.includes('email') || firstLine.includes('e-mail') ||
+        firstLine.includes('contato')) {
         startIndex = 1;
     }
 
@@ -1402,50 +1635,48 @@ function parseCSVMobile(content) {
         const line = lines[i].trim();
         if (!line) continue;
 
-        // Divide por separador detectado
         const cols = line.split(separator).map(c => c.replace(/^"|"$/g, '').trim());
 
         if (cols.length >= 1) {
-            // Detecta colunas
             let nome = cols[0] || '';
             let telefone = (cols.length > 1) ? cols[1] : '';
             let email = (cols.length > 2) ? cols[2] : '';
 
-            // Se tem só uma coluna, tenta extrair nome e telefone
             if (cols.length === 1 && cols[0].includes(' - ')) {
                 const parts = cols[0].split(' - ');
                 nome = parts[0].trim();
                 telefone = parts[1]?.trim() || '';
+            } else if (cols.length === 1 && cols[0].includes(',')) {
+                const parts = cols[0].split(',');
+                nome = parts[0].trim();
+                telefone = parts[1]?.trim() || '';
             }
 
-            // Limpa telefone
-            telefone = telefone.replace(/[^\d+]/g, '').replace(/\+/g, '');
+            telefone = limparTelefone(telefone);
+            nome = limparNome(nome);
 
-            if (nome || telefone) {
-                if (!nome) nome = 'Contato';
+            if (nome && nome !== 'Contato' && telefone && telefone.length >= 10) {
                 contacts.push({
                     nome: nome,
-                    telefone: telefone || '',
+                    telefone: telefone,
                     email: email || ''
                 });
             }
         }
     }
 
-    console.log(`✅ Parseados ${contacts.length} contatos CSV`);
+    console.log(`✅ Parseados ${contacts.length} contatos CSV válidos`);
     return contacts;
 }
 
-// 🔥 SALVAMENTO EM LOTE - MOBILE
-async function salvarLoteClientesMobile(lista) {
+async function salvarLoteClientesDesktop(lista) {
     showLoading();
     const token = localStorage.getItem('token');
     let successCount = 0;
     let errorCount = 0;
     let total = lista.length;
 
-    // Processa em lotes menores (5 por vez) para não travar o servidor
-    const batchSize = 5;
+    const batchSize = 3;
     const batches = [];
     for (let i = 0; i < lista.length; i += batchSize) {
         batches.push(lista.slice(i, i + batchSize));
@@ -1455,10 +1686,14 @@ async function salvarLoteClientesMobile(lista) {
     let processed = 0;
 
     for (let batch of batches) {
-        // Processa cada lote em paralelo
         const promises = batch.map(async (cliente) => {
-            // Validação mínima
-            if (!cliente.nome && !cliente.telefone) return;
+            const nomeLimpo = limparNome(cliente.nome || '');
+            const telefoneLimpo = limparTelefone(cliente.telefone || '');
+
+            if (!nomeLimpo || nomeLimpo === 'Contato' || !telefoneLimpo || telefoneLimpo.length < 10) {
+                errorCount++;
+                return;
+            }
 
             try {
                 const res = await fetch('/api/clientes', {
@@ -1468,8 +1703,8 @@ async function salvarLoteClientesMobile(lista) {
                         'Authorization': 'Bearer ' + token
                     },
                     body: JSON.stringify({
-                        nome: cliente.nome || 'Contato',
-                        telefone: cliente.telefone || '',
+                        nome: nomeLimpo,
+                        telefone: telefoneLimpo,
                         email: cliente.email || ''
                     })
                 });
@@ -1479,6 +1714,7 @@ async function salvarLoteClientesMobile(lista) {
                     successCount++;
                 } else {
                     errorCount++;
+                    console.warn('⚠️ Erro ao salvar:', cliente.nome, data.message);
                 }
             } catch (err) {
                 errorCount++;
@@ -1489,7 +1725,6 @@ async function salvarLoteClientesMobile(lista) {
         await Promise.all(promises);
         processed += batch.length;
 
-        // Atualiza status
         if (statusTexto) {
             statusTexto.textContent = `💾 Salvando... ${processed}/${total} (${successCount} OK, ${errorCount} erros)`;
         }
@@ -1500,23 +1735,19 @@ async function salvarLoteClientesMobile(lista) {
 
     if (successCount > 0) {
         showToast(`✅ ${successCount} contatos importados! ${errorCount > 0 ? `⚠️ ${errorCount} erros` : ''}`, errorCount > 0 ? 'warning' : 'success');
-        // Recarrega a lista
         await carregarClientes();
     } else {
-        showToast('❌ Falha na importação. Verifique sua conexão.', 'error');
+        showToast('❌ Falha na importação. Verifique os dados.', 'error');
     }
 }
 
 // ============================================
-// 📱 ENVIO DE PROMOÇÕES VIA WHATSAPP (COM SELEÇÃO DE CLIENTES)
+// PROMOÇÕES COM GRUPOS E BUSCA
 // ============================================
 
-let promocaoEmAndamento = false;
-
 function abrirModalPromocao() {
-    const isMobile = window.innerWidth < 768 || window.screen.width < 768;
+    const isMobile = window.innerWidth < 768;
 
-    // Contar clientes com WhatsApp
     const clientesComWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '');
 
     if (clientesComWhatsApp.length === 0) {
@@ -1524,7 +1755,15 @@ function abrirModalPromocao() {
         return;
     }
 
-    // Gerar lista de clientes com checkbox
+    // Busca todos os grupos disponíveis
+    const gruposExistentes = new Set();
+    clientesCompletos.forEach(c => {
+        if (c.grupos && Array.isArray(c.grupos)) {
+            c.grupos.forEach(g => gruposExistentes.add(g));
+        }
+    });
+    const gruposAtivos = Array.from(gruposExistentes);
+
     let listaClientesHTML = '';
     const exibirClientes = clientesComWhatsApp.slice(0, 50);
 
@@ -1532,16 +1771,23 @@ function abrirModalPromocao() {
         const classificacaoIcon = c.classificacao === 'vip' ? '⭐' :
             c.classificacao === 'frequente' ? '🔥' :
                 c.classificacao === 'sumido' ? '😴' : '👤';
+        const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
+            `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:8px;color:#8b5cf6;">${g}</span>`
+        ).join(' ') : '';
+
         listaClientesHTML += `
-            <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-color);">
+            <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border-color);" class="cliente-item" data-nome="${c.nome.toLowerCase()}" data-telefone="${c.telefone || ''}">
                 <input type="checkbox" id="cliente_${c.id}" value="${c.id}" checked style="width:16px;height:16px;cursor:pointer;">
-                <label for="cliente_${c.id}" style="flex:1;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;">
+                <label for="cliente_${c.id}" style="flex:1;cursor:pointer;font-size:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
                     <span>
-                        ${classificacaoIcon} ${escapeHtml(c.nome)}
-                        <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">${c.telefone}</span>
+                        ${classificacaoIcon} ${escapeHtml(String(c.nome || 'Cliente'))}
+                        <span style="font-size:10px;color:var(--text-muted);margin-left:4px;">${c.telefone}</span>
                     </span>
-                    <span style="font-size:10px;color:var(--text-muted);background:var(--bg-hover);padding:0 8px;border-radius:8px;">
-                        ${c.total_concluidos} atend.
+                    <span style="display:flex;gap:2px;flex-wrap:wrap;">
+                        ${gruposLabels}
+                        <span style="font-size:9px;color:var(--text-muted);background:var(--bg-hover);padding:0 6px;border-radius:6px;">
+                            ${c.total_concluidos} atend.
+                        </span>
                     </span>
                 </label>
             </div>
@@ -1553,141 +1799,67 @@ function abrirModalPromocao() {
 
     const modalHtml = `
         <div id="modalPromocao" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
-            <div class="modal-content" style="
-                max-width: 600px; 
-                width: 100%; 
-                max-height: 90vh; 
-                overflow-y: auto; 
-                background: var(--bg-card); 
-                border-radius: 16px; 
-                padding: ${isMobile ? '16px' : '24px'}; 
-                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-            ">
+            <div class="modal-content" style="max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: ${isMobile ? '16px' : '24px'}; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
                         <i class="fas fa-bullhorn" style="color: #25D366;"></i>
                         Disparar Promoção
                     </h3>
-                    <button onclick="fecharModalPromocao()" style="
-                        background: none; 
-                        border: none; 
-                        font-size: 28px; 
-                        cursor: pointer; 
-                        color: var(--text-muted);
-                        line-height: 1;
-                        padding: 0 8px;
-                    ">&times;</button>
+                    <button onclick="fecharModalPromocao()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
                 </div>
 
                 <div style="background: rgba(37,211,102,0.08); border-radius: 10px; padding: 12px; margin-bottom: 16px; border: 1px solid rgba(37,211,102,0.15);">
                     <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
-                        <span style="color: var(--text-muted); font-size: 13px;">
-                            📱 <strong>${totalClientes}</strong> clientes com WhatsApp
-                        </span>
-                        <span style="color: var(--text-muted); font-size: 13px;">
-                            ⏱️ Aprox. <strong>${Math.ceil(totalClientes * 3 / 60)}</strong> minuto(s)
-                        </span>
+                        <span style="color: var(--text-muted); font-size: 13px;">📱 <strong>${totalClientes}</strong> clientes com WhatsApp</span>
+                        <span style="color: var(--text-muted); font-size: 13px;">⏱️ Aprox. <strong>${Math.ceil(totalClientes * 3 / 60)}</strong> minuto(s)</span>
                     </div>
                 </div>
 
                 <form id="formPromocao" onsubmit="event.preventDefault(); enviarPromocao();" style="display:flex;flex-direction:column;gap:12px;">
                     <div class="form-group" style="margin:0;">
-                        <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
-                            📝 Mensagem da Promoção
-                        </label>
-                        <textarea id="mensagemPromocao" class="form-control" rows="4" required style="
-                            width:100%; 
-                            padding:10px 12px; 
-                            border-radius:8px; 
-                            border:1px solid var(--border-color); 
-                            background:var(--bg-input); 
-                            color:var(--text-primary); 
-                            font-size:14px;
-                            resize: vertical;
-                            min-height: 100px;
-                        " placeholder="Digite a mensagem da promoção...">🎉 OFERTA ESPECIAL! 🎉
+                        <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">📝 Mensagem</label>
+                        <textarea id="mensagemPromocao" class="form-control" rows="4" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px; resize:vertical; min-height:100px;" placeholder="Digite a mensagem...">🎉 OFERTA ESPECIAL! 🎉
 
 Venha aproveitar nossa promoção imperdível!
 
-📍 Agende já pelo nosso WhatsApp!
-📱 (11) 99999-9999
-
-⚠️ Vagas limitadas!</textarea>
+📍 Agende já!</textarea>
                     </div>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                         <div class="form-group" style="margin:0;">
-                            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
-                                ⏱️ Delay entre mensagens (segundos)
-                            </label>
-                            <input type="number" id="delayPromocao" class="form-control" value="3" min="2" max="10" style="
-                                width:100%; 
-                                padding:8px 10px; 
-                                border-radius:8px; 
-                                border:1px solid var(--border-color); 
-                                background:var(--bg-input); 
-                                color:var(--text-primary); 
-                                font-size:14px;
-                            ">
-                            <small style="color:var(--text-muted);font-size:10px;">Recomendado: 3-5 segundos</small>
+                            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">⏱️ Delay (segundos)</label>
+                            <input type="number" id="delayPromocao" class="form-control" value="3" min="2" max="10" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
+                            <small style="color:var(--text-muted);font-size:10px;">Recomendado: 3-5s</small>
                         </div>
                         <div class="form-group" style="margin:0;">
-                            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">
-                                👥 Filtro rápido
-                            </label>
-                            <select id="filtroPromocao" class="form-control" onchange="filtrarClientesPromocao()" style="
-                                width:100%; 
-                                padding:8px 10px; 
-                                border-radius:8px; 
-                                border:1px solid var(--border-color); 
-                                background:var(--bg-input); 
-                                color:var(--text-primary); 
-                                font-size:14px;
-                            ">
+                            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">👥 Filtrar por Grupo</label>
+                            <select id="filtroGrupoPromocao" class="form-control" onchange="filtrarClientesPromocao()" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
                                 <option value="todos">📊 Todos</option>
-                                <option value="vip">⭐ VIP</option>
-                                <option value="frequentes">🔥 Frequentes</option>
-                                <option value="sumidos">😴 Sumidos</option>
+                                ${gruposAtivos.map(g => `<option value="${g}">🏷️ ${g}</option>`).join('')}
+                                ${gruposAtivos.length === 0 ? '<option value="" disabled>Nenhum grupo criado</option>' : ''}
                             </select>
                         </div>
                     </div>
 
-                    <!-- 🔥 LISTA DE CLIENTES COM CHECKBOX -->
-                    <div style="
-                        border: 1px solid var(--border-color);
-                        border-radius: 8px;
-                        padding: 8px;
-                        max-height: 200px;
-                        overflow-y: auto;
-                        background: var(--bg-hover);
-                    ">
+                    <!-- 🔍 LUPA DE BUSCA -->
+                    <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 8px;">
+                        <i class="fas fa-search" style="color: var(--text-muted); font-size: 14px;"></i>
+                        <input type="text" id="buscaClientePromocao" 
+                               placeholder="🔍 Buscar cliente por nome ou telefone..." 
+                               style="border: none; background: transparent; padding: 6px 8px; font-size: 13px; width: 100%; outline: none; color: var(--text-primary);"
+                               oninput="filtrarClientesPromocao()"
+                               autocomplete="off">
+                        <button onclick="document.getElementById('buscaClientePromocao').value = ''; filtrarClientesPromocao();" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px;">
+                            <i class="fas fa-times-circle"></i>
+                        </button>
+                    </div>
+
+                    <div style="border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; max-height: 200px; overflow-y: auto; background: var(--bg-hover);">
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--border-color);">
-                            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">
-                                👥 Selecionar clientes
-                            </span>
+                            <span style="font-size:12px;font-weight:600;color:var(--text-secondary);">👥 Selecionar</span>
                             <div style="display:flex;gap:8px;">
-                                <button type="button" onclick="selecionarTodosClientes(true)" style="
-                                    font-size:11px;
-                                    padding:2px 10px;
-                                    border-radius:4px;
-                                    border:1px solid var(--border-color);
-                                    background:var(--bg-input);
-                                    color:var(--text-secondary);
-                                    cursor:pointer;
-                                ">
-                                    Todos
-                                </button>
-                                <button type="button" onclick="selecionarTodosClientes(false)" style="
-                                    font-size:11px;
-                                    padding:2px 10px;
-                                    border-radius:4px;
-                                    border:1px solid var(--border-color);
-                                    background:var(--bg-input);
-                                    color:var(--text-secondary);
-                                    cursor:pointer;
-                                ">
-                                    Nenhum
-                                </button>
+                                <button type="button" onclick="selecionarTodosClientes(true)" style="font-size:11px;padding:2px 10px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-secondary);cursor:pointer;">Todos</button>
+                                <button type="button" onclick="selecionarTodosClientes(false)" style="font-size:11px;padding:2px 10px;border-radius:4px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-secondary);cursor:pointer;">Nenhum</button>
                             </div>
                         </div>
                         <div id="listaClientesPromocao">
@@ -1700,41 +1872,13 @@ Venha aproveitar nossa promoção imperdível!
                     </div>
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                        <button type="button" onclick="fecharModalPromocao()" style="
-                            padding: 8px 20px; 
-                            border-radius: 8px; 
-                            border: 1px solid var(--border-color); 
-                            background: transparent; 
-                            color: var(--text-secondary); 
-                            font-size: 13px; 
-                            cursor: pointer;
-                            font-weight: 500;
-                        ">
-                            Cancelar
-                        </button>
-                        <button type="submit" id="btnEnviarPromocao" style="
-                            padding: 10px 28px; 
-                            border-radius: 8px; 
-                            border: none; 
-                            background: linear-gradient(135deg, #25D366, #128C7E); 
-                            color: white; 
-                            font-size: 14px; 
-                            font-weight: 600; 
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            gap: 8px;
-                            box-shadow: 0 4px 16px rgba(37,211,102,0.3);
-                            transition: all 0.3s ease;
-                            width: ${isMobile ? '100%' : 'auto'};
-                            justify-content: center;
-                        ">
-                            <i class="fab fa-whatsapp"></i> Enviar Promoção
+                        <button type="button" onclick="fecharModalPromocao()" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer;">Cancelar</button>
+                        <button type="submit" id="btnEnviarPromocao" style="padding: 10px 28px; border-radius: 8px; border: none; background: linear-gradient(135deg, #25D366, #128C7E); color: white; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 16px rgba(37,211,102,0.3); width: ${isMobile ? '100%' : 'auto'}; justify-content: center;">
+                            <i class="fab fa-whatsapp"></i> Enviar
                         </button>
                     </div>
                 </form>
 
-                <!-- Progresso -->
                 <div id="progressoPromocao" style="display: none; margin-top: 16px;">
                     <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
                         <span id="progressoTexto">Enviando 0/0...</span>
@@ -1754,13 +1898,84 @@ Venha aproveitar nossa promoção imperdível!
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Atualizar contador inicial
+    gruposSelecionadosTemp = [];
     atualizarContadorSelecionados();
 }
 
-// ============================================
-// FUNÇÕES AUXILIARES DA PROMOÇÃO
-// ============================================
+function filtrarClientesPromocao() {
+    const filtroGrupo = document.getElementById('filtroGrupoPromocao')?.value || 'todos';
+    const termoBusca = document.getElementById('buscaClientePromocao')?.value?.toLowerCase().trim() || '';
+
+    const container = document.getElementById('listaClientesPromocao');
+    const items = container.querySelectorAll('.cliente-item');
+
+    let visiveis = 0;
+
+    for (let item of items) {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        const label = item.querySelector('label');
+        if (!checkbox || !label) continue;
+
+        const nome = item.dataset.nome || '';
+        const telefone = item.dataset.telefone || '';
+        const texto = label.textContent.toLowerCase();
+
+        let mostrar = true;
+
+        if (filtroGrupo !== 'todos') {
+            const grupoMatch = texto.includes(filtroGrupo.toLowerCase());
+            if (!grupoMatch) {
+                mostrar = false;
+            }
+        }
+
+        if (mostrar && termoBusca) {
+            const nomeMatch = nome.includes(termoBusca);
+            const telefoneMatch = telefone.includes(termoBusca);
+            if (!nomeMatch && !telefoneMatch) {
+                mostrar = false;
+            }
+        }
+
+        item.style.display = mostrar ? 'flex' : 'none';
+        if (mostrar) visiveis++;
+    }
+
+    setTimeout(atualizarContadorSelecionados, 100);
+}
+
+function selecionarTodosClientes(selecionar) {
+    const container = document.getElementById('listaClientesPromocao');
+    const items = container.querySelectorAll('.cliente-item');
+
+    for (let item of items) {
+        if (item.style.display !== 'none') {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox) {
+                checkbox.checked = selecionar;
+            }
+        }
+    }
+    atualizarContadorSelecionados();
+}
+
+function atualizarContadorSelecionados() {
+    const container = document.getElementById('listaClientesPromocao');
+    const items = container.querySelectorAll('.cliente-item');
+
+    let selecionados = 0;
+    for (let item of items) {
+        if (item.style.display !== 'none') {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox && checkbox.checked) {
+                selecionados++;
+            }
+        }
+    }
+
+    const contador = document.getElementById('contadorSelecionados');
+    if (contador) contador.textContent = selecionados;
+}
 
 function fecharModalPromocao() {
     const modal = document.getElementById('modalPromocao');
@@ -1768,56 +1983,13 @@ function fecharModalPromocao() {
     promocaoEmAndamento = false;
 }
 
-function selecionarTodosClientes(selecionar) {
-    const checkboxes = document.querySelectorAll('#listaClientesPromocao input[type="checkbox"]');
-    checkboxes.forEach(cb => {
-        cb.checked = selecionar;
-    });
-    atualizarContadorSelecionados();
-}
-
-function atualizarContadorSelecionados() {
-    const checkboxes = document.querySelectorAll('#listaClientesPromocao input[type="checkbox"]');
-    const selecionados = Array.from(checkboxes).filter(cb => cb.checked).length;
-    const contador = document.getElementById('contadorSelecionados');
-    if (contador) {
-        contador.textContent = selecionados;
-    }
-}
-
-function filtrarClientesPromocao() {
-    const filtro = document.getElementById('filtroPromocao').value;
-    const container = document.getElementById('listaClientesPromocao');
-    const checkboxes = container.querySelectorAll('div');
-
-    for (let item of checkboxes) {
-        const label = item.querySelector('label');
-        if (!label) continue;
-
-        const texto = label.textContent.toLowerCase();
-        let mostrar = true;
-
-        if (filtro === 'vip' && !texto.includes('⭐')) {
-            mostrar = false;
-        } else if (filtro === 'frequentes' && !texto.includes('🔥')) {
-            mostrar = false;
-        } else if (filtro === 'sumidos' && !texto.includes('😴')) {
-            mostrar = false;
-        }
-
-        item.style.display = mostrar ? 'flex' : 'none';
-    }
-
-    setTimeout(atualizarContadorSelecionados, 100);
-}
-
 // ============================================
-// ENVIAR PROMOÇÃO (COM SELEÇÃO)
+// ENVIAR PROMOÇÃO - CORRIGIDO (RESPEITA FILTRO DE GRUPO)
 // ============================================
 
 async function enviarPromocao() {
     if (promocaoEmAndamento) {
-        showToast('⏳ Já está enviando... aguarde', 'warning');
+        showToast('⏳ Aguarde...', 'warning');
         return;
     }
 
@@ -1829,11 +2001,23 @@ async function enviarPromocao() {
         return;
     }
 
-    const checkboxes = document.querySelectorAll('#listaClientesPromocao input[type="checkbox"]:checked');
-    const idsSelecionados = Array.from(checkboxes).map(cb => parseInt(cb.value));
+    // 🔥 PEGA APENAS OS CHECKBOX VISÍVEIS (QUE PASSARAM NO FILTRO)
+    const container = document.getElementById('listaClientesPromocao');
+    const items = container.querySelectorAll('.cliente-item');
+
+    const idsSelecionados = [];
+    for (let item of items) {
+        // Verifica se o item está visível (não está com display: none)
+        if (item.style.display !== 'none') {
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (checkbox && checkbox.checked) {
+                idsSelecionados.push(parseInt(checkbox.value));
+            }
+        }
+    }
 
     if (idsSelecionados.length === 0) {
-        showToast('⚠️ Selecione pelo menos um cliente', 'warning');
+        showToast('⚠️ Selecione pelo menos um cliente visível', 'warning');
         return;
     }
 
@@ -1842,13 +2026,11 @@ async function enviarPromocao() {
     );
 
     if (clientesAlvo.length === 0) {
-        showToast('⚠️ Nenhum cliente válido selecionado', 'warning');
+        showToast('⚠️ Nenhum cliente válido', 'warning');
         return;
     }
 
-    if (!confirm(`Enviar promoção para ${clientesAlvo.length} cliente(s)?`)) {
-        return;
-    }
+    if (!confirm(`📱 Enviar promoção para ${clientesAlvo.length} cliente(s)?`)) return;
 
     promocaoEmAndamento = true;
     const btn = document.getElementById('btnEnviarPromocao');
@@ -1864,8 +2046,7 @@ async function enviarPromocao() {
     const progressoStatus = document.getElementById('progressoStatus');
 
     const token = localStorage.getItem('token');
-    let enviados = 0;
-    let erros = 0;
+    let enviados = 0, erros = 0;
     const total = clientesAlvo.length;
 
     for (let i = 0; i < clientesAlvo.length; i++) {
@@ -1876,7 +2057,7 @@ async function enviarPromocao() {
         progressoTexto.textContent = `Enviando ${i + 1}/${total}...`;
         progressoBarra.style.width = progresso + '%';
         progressoPorcentagem.textContent = progresso + '%';
-        progressoStatus.textContent = `📱 ${cliente.nome} (${telefone})`;
+        progressoStatus.textContent = `📱 ${cliente.nome}`;
 
         try {
             const response = await fetch('/api/whatsapp/enviar', {
@@ -1885,24 +2066,14 @@ async function enviarPromocao() {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
-                body: JSON.stringify({
-                    numero: telefone,
-                    mensagem: mensagem
-                })
+                body: JSON.stringify({ numero: telefone, mensagem })
             });
 
             const result = await response.json();
-
-            if (result.success) {
-                enviados++;
-            } else {
-                erros++;
-                console.warn('⚠️ Erro ao enviar para', cliente.nome, result.message);
-            }
-
+            if (result.success) enviados++;
+            else erros++;
         } catch (error) {
             erros++;
-            console.error('❌ Erro ao enviar para', cliente.nome, error);
         }
 
         if (i < clientesAlvo.length - 1) {
@@ -1910,18 +2081,15 @@ async function enviarPromocao() {
         }
     }
 
-    progressoStatus.textContent = `✅ Concluído! ${enviados} enviados, ${erros} erros.`;
+    progressoStatus.textContent = `✅ ${enviados} enviados, ${erros} erros.`;
     btn.disabled = false;
-    btn.innerHTML = '<i class="fab fa-whatsapp"></i> Enviar Promoção';
+    btn.innerHTML = '<i class="fab fa-whatsapp"></i> Enviar';
     promocaoEmAndamento = false;
 
     showToast(`✅ ${enviados} mensagens enviadas! ${erros > 0 ? `⚠️ ${erros} erros` : ''}`, erros > 0 ? 'warning' : 'success');
 
-    setTimeout(() => {
-        fecharModalPromocao();
-    }, 5000);
+    setTimeout(fecharModalPromocao, 3000);
 }
-
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -1930,6 +2098,8 @@ window.carregarClientes = carregarClientes;
 window.buscarClientes = buscarClientes;
 window.limparBuscaClientes = limparBuscaClientes;
 window.setFiltroClientes = setFiltroClientes;
+window.setFiltroGrupo = setFiltroGrupo;
+window.apagarTodosClientes = apagarTodosClientes;
 window.abrirModalCliente = abrirModalCliente;
 window.fecharModalCliente = fecharModalCliente;
 window.salvarCliente = salvarCliente;
@@ -1941,34 +2111,25 @@ window.bloquearChatbot = bloquearChatbot;
 window.desbloquearChatbot = desbloquearChatbot;
 window.verHistoricoCliente = verHistoricoCliente;
 window.fecharModalHistorico = fecharModalHistorico;
-
-// Funções de Importação Universal (CSV/VCF/iPhone) - CORRIGIDAS MOBILE
 window.abrirModalImportarCSV = abrirModalImportarCSV;
 window.fecharModalImportarCSV = fecharModalImportarCSV;
-window.handleFileSelectMobile = handleFileSelectMobile;
-window.processarArquivoContatosMobile = processarArquivoContatosMobile;
+window.handleFileSelectDesktop = handleFileSelectDesktop;
+window.processarArquivoContatosDesktop = processarArquivoContatosDesktop;
 window.parseVCFMobile = parseVCFMobile;
 window.parseCSVMobile = parseCSVMobile;
-
-// Funções de Promoção
+window.salvarLoteClientesDesktop = salvarLoteClientesDesktop;
 window.abrirModalPromocao = abrirModalPromocao;
 window.fecharModalPromocao = fecharModalPromocao;
 window.enviarPromocao = enviarPromocao;
 window.selecionarTodosClientes = selecionarTodosClientes;
 window.atualizarContadorSelecionados = atualizarContadorSelecionados;
 window.filtrarClientesPromocao = filtrarClientesPromocao;
+// FUNÇÕES DE GRUPOS
+window.abrirModalGrupos = abrirModalGrupos;
+window.fecharModalGrupos = fecharModalGrupos;
+window.toggleGrupoCliente = toggleGrupoCliente;
+window.criarNovoGrupo = criarNovoGrupo;
+window.salvarGruposCliente = salvarGruposCliente;
+window.excluirGrupoCliente = excluirGrupoCliente;
 
-console.log('✅ clientes.js carregado com sucesso (CRM COMPLETO + IMPORTAÇÃO UNIVERSAL + MOBILE FIX)!');
-
-// ============================================
-// ATUALIZAR AO REDIMENSIONAR A TELA
-// ============================================
-let resizeTimeoutClientes;
-window.addEventListener('resize', function () {
-    clearTimeout(resizeTimeoutClientes);
-    resizeTimeoutClientes = setTimeout(function () {
-        if (document.getElementById('content') && document.getElementById('content').innerHTML.includes('👥 Clientes')) {
-            carregarClientes();
-        }
-    }, 300);
-});
+console.log('✅ clientes.js carregado (CRM COMPLETO + MOBILE + GRUPOS + LIMPEZA DE NOMES)');

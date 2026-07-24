@@ -4678,7 +4678,167 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
         });
     });
 });
+// ============================================================
+// ROTAS DE GRUPOS/TAGS PARA CLIENTES
+// ============================================================
 
+// Buscar todos os grupos de todos os clientes da empresa
+app.get('/api/clientes/grupos', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+        // Busca todos os clientes da empresa
+        const sql = isProduction
+            ? 'SELECT id, grupos FROM clientes WHERE empresa_id = $1'
+            : 'SELECT id, grupos FROM clientes WHERE empresa_id = ?';
+
+        const clientes = await new Promise((resolve, reject) => {
+            db.all(sql, [empresaId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        // Monta um objeto com os grupos de cada cliente
+        const gruposMap = {};
+        for (let cliente of clientes) {
+            if (cliente.grupos) {
+                try {
+                    gruposMap[cliente.id] = JSON.parse(cliente.grupos);
+                } catch (e) {
+                    gruposMap[cliente.id] = [];
+                }
+            } else {
+                gruposMap[cliente.id] = [];
+            }
+        }
+
+        res.json({ success: true, data: gruposMap });
+    } catch (error) {
+        console.error('❌ Erro ao buscar grupos:', error);
+        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+});
+
+// Buscar grupos de um cliente específico
+app.get('/api/clientes/:id/grupos', auth, async (req, res) => {
+    try {
+        const clienteId = req.params.id;
+        const empresaId = req.usuario.empresa_id;
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+        const sql = isProduction
+            ? 'SELECT id, grupos FROM clientes WHERE id = $1 AND empresa_id = $2'
+            : 'SELECT id, grupos FROM clientes WHERE id = ? AND empresa_id = ?';
+
+        const cliente = await new Promise((resolve, reject) => {
+            db.get(sql, [clienteId, empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!cliente) {
+            return res.status(404).json({ success: false, message: 'Cliente não encontrado' });
+        }
+
+        let grupos = [];
+        if (cliente.grupos) {
+            try {
+                grupos = JSON.parse(cliente.grupos);
+            } catch (e) {
+                grupos = [];
+            }
+        }
+
+        res.json({ success: true, data: grupos });
+    } catch (error) {
+        console.error('❌ Erro ao buscar grupos do cliente:', error);
+        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+});
+
+// Salvar grupos de um cliente
+app.put('/api/clientes/:id/grupos', auth, async (req, res) => {
+    try {
+        const clienteId = req.params.id;
+        const empresaId = req.usuario.empresa_id;
+        const { grupos } = req.body;
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+        if (!grupos || !Array.isArray(grupos)) {
+            return res.status(400).json({ success: false, message: 'Grupos deve ser um array' });
+        }
+
+        // Verifica se o cliente pertence à empresa
+        const sqlCheck = isProduction
+            ? 'SELECT id FROM clientes WHERE id = $1 AND empresa_id = $2'
+            : 'SELECT id FROM clientes WHERE id = ? AND empresa_id = ?';
+
+        const cliente = await new Promise((resolve, reject) => {
+            db.get(sqlCheck, [clienteId, empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!cliente) {
+            return res.status(404).json({ success: false, message: 'Cliente não encontrado' });
+        }
+
+        // Salva os grupos como JSON
+        const sqlUpdate = isProduction
+            ? 'UPDATE clientes SET grupos = $1 WHERE id = $2'
+            : 'UPDATE clientes SET grupos = ? WHERE id = ?';
+
+        await new Promise((resolve, reject) => {
+            db.run(sqlUpdate, [JSON.stringify(grupos), clienteId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.json({ success: true, message: 'Grupos atualizados com sucesso!' });
+    } catch (error) {
+        console.error('❌ Erro ao salvar grupos:', error);
+        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+});
+
+// Buscar todos os grupos disponíveis (para o filtro na promoção)
+app.get('/api/clientes/grupos/todos', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+        const sql = isProduction
+            ? 'SELECT grupos FROM clientes WHERE empresa_id = $1 AND grupos IS NOT NULL AND grupos != "[]"'
+            : 'SELECT grupos FROM clientes WHERE empresa_id = ? AND grupos IS NOT NULL AND grupos != "[]"';
+
+        const clientes = await new Promise((resolve, reject) => {
+            db.all(sql, [empresaId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        const gruposSet = new Set();
+        for (let cliente of clientes) {
+            if (cliente.grupos) {
+                try {
+                    const grupos = JSON.parse(cliente.grupos);
+                    grupos.forEach(g => gruposSet.add(g));
+                } catch (e) { }
+            }
+        }
+
+        res.json({ success: true, data: Array.from(gruposSet) });
+    } catch (error) {
+        console.error('❌ Erro ao buscar grupos disponíveis:', error);
+        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+    }
+});
 // ============================================
 // ROTA: /api/financeiro
 // ============================================
@@ -7403,6 +7563,7 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
         });
     }
 });
+
 // ============================================================
 // INICIALIZA��O DO SERVIDOR
 // ============================================================
