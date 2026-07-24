@@ -4704,9 +4704,18 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
         const gruposMap = {};
         for (let cliente of clientes) {
             if (cliente.grupos) {
-                try {
-                    gruposMap[cliente.id] = JSON.parse(cliente.grupos);
-                } catch (e) {
+                // 🔥 CORREÇÃO: PostgreSQL retorna JSONB como objeto, SQLite como string
+                if (Array.isArray(cliente.grupos)) {
+                    // Já é um array (PostgreSQL JSONB)
+                    gruposMap[cliente.id] = cliente.grupos;
+                } else if (typeof cliente.grupos === 'string') {
+                    // É uma string (SQLite)
+                    try {
+                        gruposMap[cliente.id] = JSON.parse(cliente.grupos);
+                    } catch (e) {
+                        gruposMap[cliente.id] = [];
+                    }
+                } else {
                     gruposMap[cliente.id] = [];
                 }
             } else {
@@ -4745,10 +4754,15 @@ app.get('/api/clientes/:id/grupos', auth, async (req, res) => {
 
         let grupos = [];
         if (cliente.grupos) {
-            try {
-                grupos = JSON.parse(cliente.grupos);
-            } catch (e) {
-                grupos = [];
+            // 🔥 CORREÇÃO: PostgreSQL retorna JSONB como objeto, SQLite como string
+            if (Array.isArray(cliente.grupos)) {
+                grupos = cliente.grupos;
+            } else if (typeof cliente.grupos === 'string') {
+                try {
+                    grupos = JSON.parse(cliente.grupos);
+                } catch (e) {
+                    grupos = [];
+                }
             }
         }
 
