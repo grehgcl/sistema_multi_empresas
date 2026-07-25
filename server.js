@@ -4682,69 +4682,6 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 // ROTAS DE GRUPOS/TAGS PARA CLIENTES
 // ============================================================
 
-// Buscar todos os grupos de todos os clientes da empresa
-app.get('/api/clientes/grupos', auth, async (req, res) => {
-    console.log('🔍 ROTA /api/clientes/grupos CHAMADA!');
-    try {
-        const empresaId = req.usuario.empresa_id;
-        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
-        // Busca todos os clientes da empresa com seus grupos
-        const sql = isProduction
-            ? 'SELECT id, grupos FROM clientes WHERE empresa_id = $1'
-            : 'SELECT id, grupos FROM clientes WHERE empresa_id = ?';
-
-        console.log('📌 SQL:', sql);
-        console.log('📌 empresaId:', empresaId);
-
-        // Usar db.all com Promise
-        const clientes = await new Promise((resolve, reject) => {
-            db.all(sql, [empresaId], (err, rows) => {
-                if (err) {
-                    console.error('❌ Erro no db.all:', err);
-                    reject(err);
-                } else {
-                    console.log('📌 Clientes encontrados:', rows?.length);
-                    resolve(rows || []);
-                }
-            });
-        });
-
-        // Monta um objeto com os grupos de cada cliente
-        const gruposMap = {};
-        for (let cliente of clientes) {
-            // 🔥 CORREÇÃO: Verifica se o cliente tem grupos
-            if (cliente.grupos) {
-                console.log(`📌 Cliente ${cliente.id} tem grupos:`, cliente.grupos);
-                // Se já é um array (PostgreSQL)
-                if (Array.isArray(cliente.grupos)) {
-                    gruposMap[cliente.id] = cliente.grupos;
-                }
-                // Se é uma string (SQLite)
-                else if (typeof cliente.grupos === 'string') {
-                    try {
-                        const parsed = JSON.parse(cliente.grupos);
-                        gruposMap[cliente.id] = Array.isArray(parsed) ? parsed : [];
-                    } catch (e) {
-                        gruposMap[cliente.id] = [];
-                    }
-                }
-                // Outros casos
-                else {
-                    gruposMap[cliente.id] = [];
-                }
-            } else {
-                gruposMap[cliente.id] = [];
-            }
-        }
-
-        console.log('📊 Grupos retornados para', Object.keys(gruposMap).length, 'clientes');
-        res.json({ success: true, data: gruposMap });
-    } catch (error) {
-        console.error('❌ Erro ao buscar grupos:', error);
-        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
-    }
-});
 // ROTA DE DEBUG PARA VERIFICAR GRUPOS
 app.get('/api/debug/grupos/:id', auth, async (req, res) => {
     try {
