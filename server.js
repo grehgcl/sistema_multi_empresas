@@ -7488,15 +7488,16 @@ app.get('/api/whatsapp/webhook', (req, res) => {
     });
 });
 // ============================================
-// ROTA: ENVIAR MENSAGEM WHATSAPP
+// ROTA: ENVIAR MENSAGEM WHATSAPP (COM CONTROLE DE DUPLICATAS)
 // ============================================
+
+// 🔥 CACHE DE ENVIOS NO BACKEND (evita duplicatas)
+const enviosCache = new Map();
 
 app.post('/api/whatsapp/enviar', auth, async (req, res) => {
     try {
         const { numero, mensagem } = req.body;
         const empresaId = req.usuario.empresa_id;
-
-        console.log(`📱 Enviando mensagem para ${numero} (empresa ${empresaId})`);
 
         if (!numero || !mensagem) {
             return res.status(400).json({
@@ -7514,9 +7515,24 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
+        // 🔥 VERIFICA DUPLICATA NO BACKEND (últimos 10 segundos)
+        const chaveCache = `${numeroLimpo}_${mensagem.substring(0, 30)}`;
+        const ultimoEnvio = enviosCache.get(chaveCache);
+        if (ultimoEnvio && (Date.now() - ultimoEnvio < 10000)) {
+            console.log(`⏭️ Backend: Duplicada evitada para ${numeroLimpo}`);
+            return res.json({
+                success: true,
+                message: 'Mensagem ignorada (duplicada)',
+                duplicada: true
+            });
+        }
+
+        console.log(`📱 Enviando mensagem para ${numeroLimpo} (empresa ${empresaId})`);
+
         // Verificar se o WhatsApp está ativo
         if (process.env.WHATSAPP_ENABLED !== 'true') {
             console.log(`📱 [MODO LOG] Mensagem para ${numeroLimpo}: ${mensagem}`);
+            enviosCache.set(chaveCache, Date.now());
             return res.json({
                 success: true,
                 message: 'Mensagem registrada (modo log)',
@@ -7524,7 +7540,7 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
-        // Buscar dados da empresa para saber qual instância usar
+        // Buscar dados da empresa
         const empresa = await new Promise((resolve, reject) => {
             const sql = isProduction
                 ? `SELECT id, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado 
@@ -7545,8 +7561,8 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
-        // 🔥 LÓGICA DE FALLBACK - usar instância própria se conectada, senão usar padrão
-        let instanceName = 'seeagende'; // instância padrão
+        // LÓGICA DE FALLBACK
+        let instanceName = 'seeagende';
 
         const proprioHabilitado = empresa.whatsapp_proprio_habilitado === true ||
             empresa.whatsapp_proprio_habilitado === 1 ||
@@ -7561,7 +7577,7 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
                 instanceName = empresa.whatsapp_instance;
                 console.log(`📱 Usando instância própria: ${instanceName}`);
             } else {
-                console.log(`⚠️ Instância própria ${empresa.whatsapp_instance} não está conectada, usando padrão seeagende`);
+                console.log(`⚠️ Instância própria não conectada, usando padrão`);
                 instanceName = 'seeagende';
             }
         } else {
@@ -7571,9 +7587,25 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
         // Enviar via Evolution API
         try {
             const EvolutionInstances = require('./server/services/evolution-instances');
+
+            // 🔥 DELAY ALEATÓRIO NO BACKEND (2-5 segundos)
+            const delayBackend = 2000 + Math.random() * 3000;
+            await new Promise(resolve => setTimeout(resolve, delayBackend));
+
             const resultado = await EvolutionInstances.enviarMensagem(instanceName, numeroLimpo, mensagem);
 
             if (resultado.success) {
+                // 🔥 ATUALIZA O CACHE
+                enviosCache.set(chaveCache, Date.now());
+
+                // 🔥 LIMPA CACHE ANTIGO (mais de 1 hora)
+                const agora = Date.now();
+                for (const [key, time] of enviosCache) {
+                    if (agora - time > 3600000) {
+                        enviosCache.delete(key);
+                    }
+                }
+
                 console.log(`✅ Mensagem enviada para ${numeroLimpo} via ${instanceName}`);
                 res.json({
                     success: true,
