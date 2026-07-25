@@ -4684,6 +4684,7 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 
 // Buscar todos os grupos de todos os clientes da empresa
 app.get('/api/clientes/grupos', auth, async (req, res) => {
+    console.log('🔍 ROTA /api/clientes/grupos CHAMADA!'); // 👈 ADICIONE ESTA LINHA
     try {
         const empresaId = req.usuario.empresa_id;
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -4704,12 +4705,9 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
         const gruposMap = {};
         for (let cliente of clientes) {
             if (cliente.grupos) {
-                // 🔥 CORREÇÃO: PostgreSQL retorna JSONB como objeto, SQLite como string
                 if (Array.isArray(cliente.grupos)) {
-                    // Já é um array (PostgreSQL JSONB)
                     gruposMap[cliente.id] = cliente.grupos;
                 } else if (typeof cliente.grupos === 'string') {
-                    // É uma string (SQLite)
                     try {
                         gruposMap[cliente.id] = JSON.parse(cliente.grupos);
                     } catch (e) {
@@ -4723,6 +4721,7 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
             }
         }
 
+        console.log('📊 Grupos retornados:', Object.keys(gruposMap).length, 'clientes');
         res.json({ success: true, data: gruposMap });
     } catch (error) {
         console.error('❌ Erro ao buscar grupos:', error);
