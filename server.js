@@ -4834,7 +4834,44 @@ app.put('/api/clientes/:id/grupos', auth, async (req, res) => {
         res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
 });
+// ROTA DE DEBUG PARA VERIFICAR GRUPOS
+app.get('/api/debug/grupos/:id', auth, async (req, res) => {
+    try {
+        const clienteId = req.params.id;
+        const empresaId = req.usuario.empresa_id;
 
+        console.log('🔍 DEBUG - Buscando cliente:', clienteId);
+
+        // Usar pool.query diretamente
+        const { Pool } = require('pg');
+        const pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: false
+        });
+
+        const result = await pool.query(
+            'SELECT id, grupos FROM clientes WHERE id = $1 AND empresa_id = $2',
+            [clienteId, empresaId]
+        );
+
+        await pool.end();
+
+        console.log('🔍 DEBUG - Resultado:', result.rows);
+
+        res.json({
+            success: true,
+            data: {
+                cliente: result.rows[0],
+                raw: result.rows[0]?.grupos,
+                tipo: typeof result.rows[0]?.grupos,
+                isArray: Array.isArray(result.rows[0]?.grupos)
+            }
+        });
+    } catch (error) {
+        console.error('❌ Erro no debug:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 // Buscar todos os grupos de todos os clientes da empresa
 app.get('/api/clientes/grupos', auth, async (req, res) => {
     console.log('🔍 ROTA /api/clientes/grupos CHAMADA!');
