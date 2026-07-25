@@ -4682,24 +4682,35 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 // ROTAS DE GRUPOS/TAGS PARA CLIENTES
 // ============================================================
 
-// Buscar todos os grupos de todos os clientes da empresa
 app.get('/api/clientes/grupos', auth, async (req, res) => {
-    console.log('🔍 ROTA /api/clientes/grupos CHAMADA!'); // 👈 ADICIONE ESTA LINHA
+    console.log('🔍 ROTA /api/clientes/grupos CHAMADA!');
+    console.log('👤 Usuário:', req.usuario?.empresa_id);
     try {
         const empresaId = req.usuario.empresa_id;
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+        console.log('📌 isProduction:', isProduction);
+        console.log('📌 empresaId:', empresaId);
 
         // Busca todos os clientes da empresa
         const sql = isProduction
             ? 'SELECT id, grupos FROM clientes WHERE empresa_id = $1'
             : 'SELECT id, grupos FROM clientes WHERE empresa_id = ?';
 
+        console.log('📌 SQL:', sql);
+
         const clientes = await new Promise((resolve, reject) => {
             db.all(sql, [empresaId], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows || []);
+                if (err) {
+                    console.error('❌ Erro no db.all:', err);
+                    reject(err);
+                } else {
+                    console.log('📌 Clientes encontrados:', rows?.length);
+                    resolve(rows || []);
+                }
             });
         });
+
+        console.log('📌 clientes[0]?.grupos:', clientes[0]?.grupos);
 
         // Monta um objeto com os grupos de cada cliente
         const gruposMap = {};
@@ -4722,6 +4733,7 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
         }
 
         console.log('📊 Grupos retornados:', Object.keys(gruposMap).length, 'clientes');
+        console.log('📊 Primeiro cliente com grupos:', Object.entries(gruposMap).find(([k, v]) => v.length > 0));
         res.json({ success: true, data: gruposMap });
     } catch (error) {
         console.error('❌ Erro ao buscar grupos:', error);
