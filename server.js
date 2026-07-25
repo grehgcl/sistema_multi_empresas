@@ -4682,22 +4682,22 @@ app.put('/api/horarios/:dia', auth, verificarDono, (req, res) => {
 // ROTAS DE GRUPOS/TAGS PARA CLIENTES
 // ============================================================
 
+// Buscar todos os grupos de todos os clientes da empresa
 app.get('/api/clientes/grupos', auth, async (req, res) => {
     console.log('🔍 ROTA /api/clientes/grupos CHAMADA!');
-    console.log('👤 Usuário:', req.usuario?.empresa_id);
     try {
         const empresaId = req.usuario.empresa_id;
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-        console.log('📌 isProduction:', isProduction);
-        console.log('📌 empresaId:', empresaId);
 
-        // Busca todos os clientes da empresa
+        // Busca todos os clientes da empresa com seus grupos
         const sql = isProduction
             ? 'SELECT id, grupos FROM clientes WHERE empresa_id = $1'
             : 'SELECT id, grupos FROM clientes WHERE empresa_id = ?';
 
         console.log('📌 SQL:', sql);
+        console.log('📌 empresaId:', empresaId);
 
+        // Usar db.all com Promise
         const clientes = await new Promise((resolve, reject) => {
             db.all(sql, [empresaId], (err, rows) => {
                 if (err) {
@@ -4710,21 +4710,27 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
             });
         });
 
-        console.log('📌 clientes[0]?.grupos:', clientes[0]?.grupos);
-
         // Monta um objeto com os grupos de cada cliente
         const gruposMap = {};
         for (let cliente of clientes) {
+            // 🔥 CORREÇÃO: Verifica se o cliente tem grupos
             if (cliente.grupos) {
+                console.log(`📌 Cliente ${cliente.id} tem grupos:`, cliente.grupos);
+                // Se já é um array (PostgreSQL)
                 if (Array.isArray(cliente.grupos)) {
                     gruposMap[cliente.id] = cliente.grupos;
-                } else if (typeof cliente.grupos === 'string') {
+                }
+                // Se é uma string (SQLite)
+                else if (typeof cliente.grupos === 'string') {
                     try {
-                        gruposMap[cliente.id] = JSON.parse(cliente.grupos);
+                        const parsed = JSON.parse(cliente.grupos);
+                        gruposMap[cliente.id] = Array.isArray(parsed) ? parsed : [];
                     } catch (e) {
                         gruposMap[cliente.id] = [];
                     }
-                } else {
+                }
+                // Outros casos
+                else {
                     gruposMap[cliente.id] = [];
                 }
             } else {
@@ -4732,15 +4738,13 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
             }
         }
 
-        console.log('📊 Grupos retornados:', Object.keys(gruposMap).length, 'clientes');
-        console.log('📊 Primeiro cliente com grupos:', Object.entries(gruposMap).find(([k, v]) => v.length > 0));
+        console.log('📊 Grupos retornados para', Object.keys(gruposMap).length, 'clientes');
         res.json({ success: true, data: gruposMap });
     } catch (error) {
         console.error('❌ Erro ao buscar grupos:', error);
         res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
 });
-
 // Buscar grupos de um cliente específico
 app.get('/api/clientes/:id/grupos', auth, async (req, res) => {
     try {
@@ -4831,36 +4835,71 @@ app.put('/api/clientes/:id/grupos', auth, async (req, res) => {
     }
 });
 
-// Buscar todos os grupos disponíveis (para o filtro na promoção)
-app.get('/api/clientes/grupos/todos', auth, async (req, res) => {
+// Buscar todos os grupos de todos os clientes da empresa
+app.get('/api/clientes/grupos', auth, async (req, res) => {
+    console.log('🔍 ROTA /api/clientes/grupos CHAMADA!');
     try {
         const empresaId = req.usuario.empresa_id;
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-        const sql = isProduction
-            ? 'SELECT grupos FROM clientes WHERE empresa_id = $1 AND grupos IS NOT NULL AND grupos != "[]"'
-            : 'SELECT grupos FROM clientes WHERE empresa_id = ? AND grupos IS NOT NULL AND grupos != "[]"';
-
-        const clientes = await new Promise((resolve, reject) => {
-            db.all(sql, [empresaId], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows || []);
+        if (isProduction) {
+            // 🔥 PostgreSQL: Usar pool.query diretamente
+            const { Pool } = require('pg');
+            const pool = new Pool({
+                connectionString: process.env.DATABASE_URL,
+                ssl: false
             });
-        });
 
-        const gruposSet = new Set();
-        for (let cliente of clientes) {
-            if (cliente.grupos) {
-                try {
-                    const grupos = JSON.parse(cliente.grupos);
-                    grupos.forEach(g => gruposSet.add(g));
-                } catch (e) { }
+            const result = await pool.query(
+                'SELECT id, grupos FROM clientes WHERE empresa_id = $1',
+                [empresaId]
+            );
+
+            const clientes = result.rows;
+            console.log('📌 Clientes encontrados:', clientes.length);
+
+            const gruposMap = {};
+            for (let cliente of clientes) {
+                // 🔥 CORREÇÃO: O JSONB já vem como objeto/array
+                if (cliente.grupos && Array.isArray(cliente.grupos) && cliente.grupos.length > 0) {
+                    gruposMap[cliente.id] = cliente.grupos;
+                    console.log(`📌 Cliente ${cliente.id} tem grupos:`, cliente.grupos);
+                } else {
+                    gruposMap[cliente.id] = [];
+                }
             }
-        }
 
-        res.json({ success: true, data: Array.from(gruposSet) });
+            console.log('📊 Grupos retornados para', Object.keys(gruposMap).length, 'clientes');
+            await pool.end();
+            return res.json({ success: true, data: gruposMap });
+
+        } else {
+            // SQLite: Usar db.all
+            const clientes = await new Promise((resolve, reject) => {
+                db.all('SELECT id, grupos FROM clientes WHERE empresa_id = ?', [empresaId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+            });
+
+            const gruposMap = {};
+            for (let cliente of clientes) {
+                if (cliente.grupos) {
+                    try {
+                        gruposMap[cliente.id] = typeof cliente.grupos === 'string'
+                            ? JSON.parse(cliente.grupos)
+                            : cliente.grupos;
+                    } catch (e) {
+                        gruposMap[cliente.id] = [];
+                    }
+                } else {
+                    gruposMap[cliente.id] = [];
+                }
+            }
+            res.json({ success: true, data: gruposMap });
+        }
     } catch (error) {
-        console.error('❌ Erro ao buscar grupos disponíveis:', error);
+        console.error('❌ Erro ao buscar grupos:', error);
         res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
 });
