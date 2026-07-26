@@ -83,10 +83,11 @@ let carregandoClientes = false;
 let gruposClientes = [];
 let clienteEditandoGrupos = null;
 let gruposSelecionadosTemp = [];
-let timeoutBusca = null;        // 🔥 ADICIONE ESTA LINHA
-let resizeTimeoutClientes;      // 🔥 ADICIONE ESTA LINHA (se não tiver)
+let timeoutBusca = null;
+let resizeTimeoutClientes = null;
 let ultimoResizeClientes = 0;
 let envioLock = false;
+let carregandoBackground = false;
 
 // ============================================
 // CARREGAR GRUPOS DO CLIENTE
@@ -218,16 +219,14 @@ function fecharModalGrupos() {
 }
 
 // ============================================
-// EXCLUIR GRUPO DO CLIENTE - CORRIGIDO
+// EXCLUIR GRUPO DO CLIENTE
 // ============================================
 
 function excluirGrupoCliente(grupo) {
     if (!confirm(`Remover o grupo "${grupo}" deste cliente?`)) return;
 
-    // 🔥 REMOVE DO ARRAY TEMPORÁRIO
     gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
 
-    // 🔥 ATUALIZA O BOTÃO DO GRUPO (desmarca visualmente)
     const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
     if (btn) {
         btn.textContent = `☐ ${grupo}`;
@@ -237,18 +236,15 @@ function excluirGrupoCliente(grupo) {
         btn.style.fontWeight = '500';
     }
 
-    // 🔥 ATUALIZA A LISTA DE GRUPOS ATUAIS
     const clienteId = clienteEditandoGrupos;
     atualizarGruposAtuais(clienteId);
 
-    // 🔥 ATUALIZA O CONTADOR DE GRUPOS SELECIONADOS
-    const gruposAtuais = document.querySelectorAll('#modalGrupos .modal-content span[style*="background: rgba(139,92,246,0.1);"]');
-    if (gruposAtuais) {
-        // Atualiza visualmente
-    }
-
     showToast(`Grupo "${grupo}" removido deste cliente`, 'info');
 }
+
+// ============================================
+// TOGGLE GRUPO CLIENTE
+// ============================================
 
 async function toggleGrupoCliente(grupo) {
     const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
@@ -276,7 +272,7 @@ async function toggleGrupoCliente(grupo) {
 }
 
 // ============================================
-// CRIAR NOVO GRUPO - CORRIGIDO
+// CRIAR NOVO GRUPO
 // ============================================
 
 function criarNovoGrupo() {
@@ -288,7 +284,6 @@ function criarNovoGrupo() {
         return;
     }
 
-    // 🔥 VERIFICA SE O GRUPO JÁ EXISTE NA LISTA DE DISPONÍVEIS
     const gruposDisponiveis = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais'];
 
     if (gruposDisponiveis.includes(nome)) {
@@ -296,20 +291,16 @@ function criarNovoGrupo() {
         return;
     }
 
-    // 🔥 ADICIONA O GRUPO AOS SELECIONADOS TEMPORARIAMENTE
     if (!gruposSelecionadosTemp.includes(nome)) {
         gruposSelecionadosTemp.push(nome);
     }
 
-    // 🔥 RECONSTRÓI O MODAL PARA MOSTRAR O NOVO GRUPO
     const clienteId = clienteEditandoGrupos;
     fecharModalGrupos();
 
-    // 🔥 ABRE O MODAL NOVAMENTE E APLICA OS GRUPOS SELECIONADOS
     setTimeout(() => {
         abrirModalGrupos(clienteId);
         setTimeout(() => {
-            // Marca o novo grupo como selecionado
             gruposSelecionadosTemp.forEach(g => {
                 const btn = document.getElementById(`grupo_btn_${g.replace(/\s/g, '_')}`);
                 if (btn) {
@@ -321,7 +312,6 @@ function criarNovoGrupo() {
                 }
             });
 
-            // 🔥 ADICIONA O NOVO GRUPO VISUALMENTE
             const btnNovoGrupo = document.getElementById(`grupo_btn_${nome.replace(/\s/g, '_')}`);
             if (btnNovoGrupo) {
                 btnNovoGrupo.textContent = `✅ ${nome}`;
@@ -331,10 +321,8 @@ function criarNovoGrupo() {
                 btnNovoGrupo.style.fontWeight = '700';
             }
 
-            // 🔥 ATUALIZA O CAMPO DE GRUPOS ATUAIS
             atualizarGruposAtuais(clienteId);
 
-            // 🔥 LIMPA O INPUT
             const input = document.getElementById('novoGrupoInput');
             if (input) input.value = '';
 
@@ -344,18 +332,16 @@ function criarNovoGrupo() {
 }
 
 // ============================================
-// ATUALIZAR GRUPOS ATUAIS (REFRESH VISUAL)
+// ATUALIZAR GRUPOS ATUAIS
 // ============================================
 
 function atualizarGruposAtuais(clienteId) {
     const container = document.querySelector('#modalGrupos .modal-content');
     if (!container) return;
 
-    // Encontra a div de grupos atuais
     const gruposAtuaisDiv = container.querySelector('div:has(> div > span)');
     if (!gruposAtuaisDiv) return;
 
-    // Limpa e recria os grupos atuais
     const gruposHtml = gruposSelecionadosTemp.length > 0 ? `
         <div style="display: flex; flex-wrap: wrap; gap: 6px;">
             ${gruposSelecionadosTemp.map(g => `
@@ -378,10 +364,8 @@ function atualizarGruposAtuais(clienteId) {
         </div>
     `;
 
-    // Atualiza apenas a parte dos grupos atuais
     const gruposAtuaisDivParent = gruposAtuaisDiv.parentElement;
     if (gruposAtuaisDivParent) {
-        // Mantém o título
         const title = gruposAtuaisDivParent.querySelector('div[style*="font-size: 12px; font-weight: 600;"]');
         if (title) {
             gruposAtuaisDivParent.innerHTML = `
@@ -393,7 +377,7 @@ function atualizarGruposAtuais(clienteId) {
 }
 
 // ============================================
-// SALVAR GRUPOS DO CLIENTE - VERSÃO DEFINITIVA
+// SALVAR GRUPOS DO CLIENTE
 // ============================================
 
 async function salvarGruposCliente() {
@@ -419,20 +403,16 @@ async function salvarGruposCliente() {
             showToast('Grupos atualizados com sucesso!', 'success');
             fecharModalGrupos();
 
-            // 🔥 SOLUÇÃO: ATUALIZA O CLIENTE LOCALMENTE
             const clienteIndex = clientesCompletos.findIndex(c => c.id === clienteEditandoGrupos);
             if (clienteIndex !== -1) {
                 clientesCompletos[clienteIndex].grupos = [...gruposSelecionadosTemp];
                 console.log(`✅ Cliente atualizado: ${clientesCompletos[clienteIndex].nome} → Grupos:`, gruposSelecionadosTemp);
             }
 
-            // 🔥 RE-RENDERIZA A LISTA COM OS DADOS ATUALIZADOS
             renderizarListaClientes();
 
-            // 🔥 SE TIVER UM FILTRO DE GRUPO ATIVO, APLICA ELE NOVAMENTE
             if (filtroGrupo !== 'todos') {
                 setTimeout(() => {
-                    // Força a reaplicação do filtro
                     const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
                     for (let btn of botoes) {
                         const onclick = btn.getAttribute('onclick');
@@ -455,89 +435,7 @@ async function salvarGruposCliente() {
 }
 
 // ============================================
-// APLICAR FILTRO DO GRUPO ATUAL
-// ============================================
-
-function aplicarFiltroGrupoAtual() {
-    if (filtroGrupo === 'todos') return;
-
-    // Encontra os botões de grupo
-    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
-    for (let btn of botoes) {
-        const onclick = btn.getAttribute('onclick');
-        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
-            btn.click();
-            return;
-        }
-    }
-
-    // Se não encontrou o botão, recarrega
-    carregarClientes();
-}
-
-// ============================================
-// APLICAR FILTRO DO GRUPO ATUAL
-// ============================================
-
-function aplicarFiltroGrupoAtual() {
-    if (filtroGrupo === 'todos') return;
-
-    // Encontra os botões de grupo
-    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
-    for (let btn of botoes) {
-        const onclick = btn.getAttribute('onclick');
-        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
-            btn.click();
-            return;
-        }
-    }
-
-    // Se não encontrou o botão, recarrega
-    carregarClientes();
-}
-// ============================================
-// APLICAR FILTRO DO GRUPO ATUAL
-// ============================================
-
-function aplicarFiltroGrupoAtual() {
-    if (filtroGrupo === 'todos') return;
-
-    // Encontra os botões de grupo
-    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
-    for (let btn of botoes) {
-        const onclick = btn.getAttribute('onclick');
-        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
-            btn.click();
-            return;
-        }
-    }
-
-    // Se não encontrou o botão, recarrega
-    carregarClientes();
-}
-
-// ============================================
-// APLICAR FILTRO DO GRUPO ATUAL
-// ============================================
-
-function aplicarFiltroGrupoAtual() {
-    if (filtroGrupo === 'todos') return;
-
-    // Encontra os botões de grupo
-    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
-    for (let btn of botoes) {
-        const onclick = btn.getAttribute('onclick');
-        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
-            btn.click();
-            return;
-        }
-    }
-
-    // Se não encontrou o botão, recarrega
-    carregarClientes();
-}
-// ============================================
-// SET FILTRO GRUPO - CORRIGIDO
+// SET FILTRO GRUPO
 // ============================================
 
 function setFiltroGrupo(grupo) {
@@ -548,88 +446,49 @@ function setFiltroGrupo(grupo) {
         filtroClientes = 'todos';
     }
 
-    // 🔥 CANCELA TIMEOUT ANTERIOR
     if (window._filtroTimeout) {
         clearTimeout(window._filtroTimeout);
     }
 
-    // 🔥 USA O FILTRO LOCAL (SEM RECARREGAR DA API)
     window._filtroTimeout = setTimeout(() => {
-        // Filtra os clientes localmente
         const clientesFiltrados = clientesCompletos.filter(c => {
-            // Filtro por grupo
             if (filtroGrupo !== 'todos') {
                 return c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo);
             }
             return true;
         });
 
-        // Atualiza a lista na tela
         atualizarListaClientes(clientesFiltrados);
-
-        // Atualiza os botões e stats
         atualizarBotoesFiltro();
 
         console.log(`✅ Filtro aplicado: ${clientesFiltrados.length} clientes encontrados`);
     }, 100);
 }
+
 // ============================================
-// RENDERIZAR LISTA DE CLIENTES (RECRIA O HTML)
+// APLICAR FILTRO DO GRUPO ATUAL
 // ============================================
 
-function renderizarListaClientes() {
-    // Verifica se está na página de clientes
-    const content = document.getElementById('content');
-    if (!content || !content.innerHTML.includes('👥 Clientes')) {
-        // Se não estiver na página de clientes, apenas atualiza os dados
-        return;
+function aplicarFiltroGrupoAtual() {
+    if (filtroGrupo === 'todos') return;
+
+    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
+    for (let btn of botoes) {
+        const onclick = btn.getAttribute('onclick');
+        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
+            btn.click();
+            return;
+        }
     }
 
-    // Reaplica os filtros e renderiza
-    const isMobile = window.innerWidth < 768;
-
-    let clientesFiltrados = clientesCompletos;
-
-    // Filtro por busca
-    if (termoBuscaClientes) {
-        const busca = termoBuscaClientes.toLowerCase().trim();
-        clientesFiltrados = clientesFiltrados.filter(c => {
-            const nomeMatch = c.nome.toLowerCase().includes(busca);
-            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
-            const emailMatch = c.email && c.email.toLowerCase().includes(busca);
-            return nomeMatch || telefoneMatch || emailMatch;
-        });
-    }
-
-    // Filtro por classificação
-    if (filtroClientes === 'vip') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
-    } else if (filtroClientes === 'sumidos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
-    } else if (filtroClientes === 'frequentes') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
-    } else if (filtroClientes === 'novos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
-    }
-
-    // 🔥 FILTRO POR GRUPO
-    if (filtroGrupo !== 'todos') {
-        clientesFiltrados = clientesFiltrados.filter(c =>
-            c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
-        );
-    }
-
-    // Atualiza a lista
-    atualizarListaClientes(clientesFiltrados);
-    atualizarBotoesFiltro();
+    carregarClientes();
 }
 
 // ============================================
-// APLICAR FILTROS (SEM RECARREGAR A PÁGINA)
+// APLICAR FILTROS CLIENTES
 // ============================================
 
 function aplicarFiltrosClientes() {
-    // Verifica se está na página de clientes
     const content = document.getElementById('content');
     if (!content || !content.innerHTML.includes('👥 Clientes')) return;
 
@@ -638,10 +497,8 @@ function aplicarFiltrosClientes() {
         return;
     }
 
-    // 🔥 FILTRA OS CLIENTES
     let clientesFiltrados = clientesCompletos;
 
-    // Filtro por busca
     if (termoBuscaClientes) {
         const busca = termoBuscaClientes.toLowerCase().trim();
         clientesFiltrados = clientesFiltrados.filter(c => {
@@ -652,7 +509,6 @@ function aplicarFiltrosClientes() {
         });
     }
 
-    // Filtro por classificação
     if (filtroClientes === 'vip') {
         clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
     } else if (filtroClientes === 'sumidos') {
@@ -663,17 +519,57 @@ function aplicarFiltrosClientes() {
         clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
     }
 
-    // 🔥 FILTRO POR GRUPO
     if (filtroGrupo !== 'todos') {
         clientesFiltrados = clientesFiltrados.filter(c =>
             c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
         );
     }
 
-    // 🔥 ATUALIZA A LISTA NA TELA
     atualizarListaClientes(clientesFiltrados);
+    atualizarBotoesFiltro();
+}
 
-    // 🔥 ATUALIZA OS BOTÕES DE FILTRO
+// ============================================
+// RENDERIZAR LISTA DE CLIENTES
+// ============================================
+
+function renderizarListaClientes() {
+    const content = document.getElementById('content');
+    if (!content || !content.innerHTML.includes('👥 Clientes')) {
+        return;
+    }
+
+    const isMobile = window.innerWidth < 768;
+
+    let clientesFiltrados = clientesCompletos;
+
+    if (termoBuscaClientes) {
+        const busca = termoBuscaClientes.toLowerCase().trim();
+        clientesFiltrados = clientesFiltrados.filter(c => {
+            const nomeMatch = c.nome.toLowerCase().includes(busca);
+            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
+            const emailMatch = c.email && c.email.toLowerCase().includes(busca);
+            return nomeMatch || telefoneMatch || emailMatch;
+        });
+    }
+
+    if (filtroClientes === 'vip') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
+    } else if (filtroClientes === 'sumidos') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
+    } else if (filtroClientes === 'frequentes') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
+    } else if (filtroClientes === 'novos') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
+    }
+
+    if (filtroGrupo !== 'todos') {
+        clientesFiltrados = clientesFiltrados.filter(c =>
+            c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
+        );
+    }
+
+    atualizarListaClientes(clientesFiltrados);
     atualizarBotoesFiltro();
 }
 
@@ -689,7 +585,6 @@ function atualizarBotoesFiltro() {
     const novosCount = clientesCompletos.filter(c => c.classificacao === 'novo').length;
     const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
 
-    // Atualiza botões de classificação
     const btnTodos = document.querySelector('button[onclick*="setFiltroClientes(\'todos\')"]');
     if (btnTodos) btnTodos.textContent = `📊 Todos (${totalClientes})`;
 
@@ -705,38 +600,6 @@ function atualizarBotoesFiltro() {
     const btnNovos = document.querySelector('button[onclick*="setFiltroClientes(\'novos\')"]');
     if (btnNovos) btnNovos.textContent = `🌱 Novos (${novosCount})`;
 
-    // Atualiza WhatsApp
-    const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
-    if (whatsEl) whatsEl.textContent = comWhatsApp;
-}
-// ============================================
-// ATUALIZAR BOTÕES DE FILTRO
-// ============================================
-
-function atualizarBotoesFiltro() {
-    const totalClientes = clientesCompletos.length;
-    const vipCount = clientesCompletos.filter(c => c.classificacao === 'vip').length;
-    const sumidosCount = clientesCompletos.filter(c => c.classificacao === 'sumido').length;
-    const frequentesCount = clientesCompletos.filter(c => c.classificacao === 'frequente').length;
-    const novosCount = clientesCompletos.filter(c => c.classificacao === 'novo').length;
-
-    const btnTodos = document.querySelector('button[onclick*="setFiltroClientes(\'todos\')"]');
-    if (btnTodos) btnTodos.textContent = `📊 Todos (${totalClientes})`;
-
-    const btnVip = document.querySelector('button[onclick*="setFiltroClientes(\'vip\')"]');
-    if (btnVip) btnVip.textContent = `⭐ VIP (${vipCount})`;
-
-    const btnFreq = document.querySelector('button[onclick*="setFiltroClientes(\'frequentes\')"]');
-    if (btnFreq) btnFreq.textContent = `🔥 Frequentes (${frequentesCount})`;
-
-    const btnSumidos = document.querySelector('button[onclick*="setFiltroClientes(\'sumidos\')"]');
-    if (btnSumidos) btnSumidos.textContent = `😴 Sumidos (${sumidosCount})`;
-
-    const btnNovos = document.querySelector('button[onclick*="setFiltroClientes(\'novos\')"]');
-    if (btnNovos) btnNovos.textContent = `🌱 Novos (${novosCount})`;
-
-    // Atualiza stats
-    const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
     const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
     if (whatsEl) whatsEl.textContent = comWhatsApp;
 }
@@ -744,8 +607,6 @@ function atualizarBotoesFiltro() {
 // ============================================
 // CARREGAR CLIENTES EM BACKGROUND
 // ============================================
-
-let carregandoBackground = false;
 
 async function carregarClientesBackground() {
     if (carregandoBackground) return;
@@ -777,7 +638,6 @@ async function carregarClientesBackground() {
         const agendamentos = dataAgendamentos.data || [];
         const gruposMap = dataGrupos.data || {};
 
-        // Processa os clientes
         clientesCompletos = clientes.map(cliente => {
             const ags = agendamentos.filter(a => a.cliente_id === cliente.id);
             const agsConcluidos = ags.filter(a => a.status === 'concluido');
@@ -838,7 +698,6 @@ async function carregarClientesBackground() {
 
         clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
 
-        // 🔥 REAPLICA O FILTRO ATUAL
         aplicarFiltrosClientes();
 
         console.log(`✅ Background: ${clientesCompletos.length} clientes atualizados`);
@@ -851,7 +710,7 @@ async function carregarClientesBackground() {
 }
 
 // ============================================
-// CARREGAR CLIENTES (COM GRUPOS)
+// CARREGAR CLIENTES (PRINCIPAL)
 // ============================================
 
 async function carregarClientes() {
@@ -876,7 +735,6 @@ async function carregarClientes() {
             return;
         }
 
-        // Busca clientes, agendamentos e grupos em paralelo
         const [resClientes, resAgendamentos, resGrupos] = await Promise.all([
             fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -952,7 +810,6 @@ async function carregarClientes() {
                 icone = '🌱';
             }
 
-            // Pega os grupos do cliente
             const grupos = gruposMap[cliente.id] || [];
 
             return {
@@ -997,7 +854,6 @@ async function carregarClientes() {
             clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
         }
 
-        // 🔥 FILTRO POR GRUPO
         if (filtroGrupo !== 'todos') {
             clientesFiltrados = clientesFiltrados.filter(c =>
                 c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
@@ -1066,9 +922,7 @@ async function carregarClientes() {
                 </button>
             </div>`;
 
-        // ==========================================
         // FILTROS POR GRUPO
-        // ==========================================
         const gruposDisponiveis = new Set();
         clientesCompletos.forEach(c => {
             if (c.grupos && Array.isArray(c.grupos)) {
@@ -1192,7 +1046,7 @@ async function carregarClientes() {
                 </div>
             `;
         } else if (isMobile) {
-            // RENDERIZAÇÃO MOBILE (CARDS) - COM ESCAPE HTML E GRUPOS
+            // RENDERIZAÇÃO MOBILE (CARDS)
             html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
             for (let c of clientesFiltrados) {
                 const isBloqueado = c.bloqueado_chatbot === 1;
@@ -1208,7 +1062,6 @@ async function carregarClientes() {
                 };
                 const cor = cores[c.classificacao] || cores.regular;
 
-                // Tags de grupos
                 const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
                     `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:8px;color:#8b5cf6;margin:1px;">${g}</span>`
                 ).join(' ') : '';
@@ -1251,7 +1104,7 @@ async function carregarClientes() {
             }
             html += `</div>`;
         } else {
-            // RENDERIZAÇÃO DESKTOP (TABELA) - COM GRUPOS
+            // RENDERIZAÇÃO DESKTOP (TABELA)
             const cores = {
                 vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
                 frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
@@ -1369,7 +1222,7 @@ async function carregarClientes() {
 }
 
 // ============================================
-// BUSCA E FILTROS - COM DEBOUNCE E FILTRO LOCAL
+// BUSCAR CLIENTES - CORRIGIDO PARA MOBILE
 // ============================================
 
 function buscarClientes() {
@@ -1384,14 +1237,11 @@ function buscarClientes() {
         btnLimpar.style.display = termo ? 'block' : 'none';
     }
 
-    // 🔥 CANCELA A BUSCA ANTERIOR
     if (timeoutBusca) {
         clearTimeout(timeoutBusca);
     }
 
-    // 🔥 SÓ EXECUTA APÓS 300ms DE INATIVIDADE
     timeoutBusca = setTimeout(() => {
-        // 🔥 FILTRA LOCALMENTE - SEM RECARREGAR
         if (clientesCompletos.length > 0) {
             const clientesFiltrados = clientesCompletos.filter(c => {
                 const nomeMatch = c.nome.toLowerCase().includes(termo);
@@ -1400,11 +1250,14 @@ function buscarClientes() {
                 return nomeMatch || telefoneMatch || emailMatch;
             });
 
-            // Atualiza a lista sem recarregar a página
             atualizarListaClientes(clientesFiltrados);
         }
-    }, 300);
+    }, 500);
 }
+
+// ============================================
+// LIMPAR BUSCA CLIENTES
+// ============================================
 
 function limparBuscaClientes() {
     const input = document.getElementById('buscaClientesInput');
@@ -1421,9 +1274,12 @@ function limparBuscaClientes() {
         clearTimeout(timeoutBusca);
     }
 
-    // 🔥 RECARREGA A LISTA COMPLETA
     carregarClientes();
 }
+
+// ============================================
+// SET FILTRO CLIENTES
+// ============================================
 
 function setFiltroClientes(filtro) {
     filtroClientes = filtro;
@@ -1435,36 +1291,13 @@ function setFiltroClientes(filtro) {
         clearTimeout(window._filtroTimeout);
     }
 
-    // 🔥 APLICA O FILTRO IMEDIATAMENTE
     aplicarFiltrosClientes();
 
-    // 🔥 RECARREGA EM BACKGROUND
     window._filtroTimeout = setTimeout(() => {
         carregarClientesBackground();
-    }, 500);
+    }, 1000);
 }
-// ============================================
-// SET FILTRO GRUPO - SIMPLES E DIRETO
-// ============================================
 
-function setFiltroGrupo(grupo) {
-    console.log(`🔍 Filtrando por grupo: ${grupo}`);
-
-    filtroGrupo = grupo;
-    if (filtroClientes !== 'todos') {
-        filtroClientes = 'todos';
-    }
-
-    // 🔥 CANCELA TIMEOUT ANTERIOR
-    if (window._filtroTimeout) {
-        clearTimeout(window._filtroTimeout);
-    }
-
-    // 🔥 RECARREGA OS CLIENTES COM O NOVO FILTRO
-    window._filtroTimeout = setTimeout(() => {
-        carregarClientes();
-    }, 100);
-}
 // ============================================
 // FORCAR ATUALIZAÇÃO DOS GRUPOS
 // ============================================
@@ -1476,7 +1309,6 @@ async function forcarAtualizacaoGrupos() {
     if (!token) return;
 
     try {
-        // Busca apenas os grupos atualizados
         const res = await fetch('/api/clientes/grupos', {
             headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -1485,7 +1317,6 @@ async function forcarAtualizacaoGrupos() {
             const data = await res.json();
             const gruposMap = data.data || {};
 
-            // Atualiza os grupos nos clientes já carregados
             clientesCompletos.forEach(c => {
                 if (gruposMap[c.id]) {
                     c.grupos = gruposMap[c.id];
@@ -1495,30 +1326,26 @@ async function forcarAtualizacaoGrupos() {
             });
 
             console.log('✅ Grupos atualizados localmente');
-
-            // Reaplica o filtro
             aplicarFiltrosClientes();
         }
     } catch (error) {
         console.error('❌ Erro ao forçar atualização:', error);
     }
 }
+
 // ============================================
-// ATUALIZAR LISTA DE CLIENTES (SEM RECARREGAR) - CORRIGIDO
+// ATUALIZAR LISTA DE CLIENTES
 // ============================================
 
 function atualizarListaClientes(clientesFiltrados) {
-    // Verifica se estamos na página de clientes
     const content = document.getElementById('content');
     if (!content || !content.innerHTML.includes('👥 Clientes')) return;
 
     const isMobile = window.innerWidth < 768;
 
-    // 🔥 ATUALIZAR STATS
     const totalExibidos = clientesFiltrados.length;
     const totalClientes = clientesCompletos.length;
 
-    // Atualiza contador
     const contador = document.getElementById('contadorBuscaClientes');
     if (contador) {
         contador.innerHTML = `
@@ -1528,39 +1355,31 @@ function atualizarListaClientes(clientesFiltrados) {
         `;
     }
 
-    // Atualiza total
     const totalEl = document.getElementById('totalClientes');
     if (totalEl) totalEl.textContent = totalExibidos;
 
-    // 🔥 Atualiza os cards de estatísticas
-    // VIP
     const vipCount = clientesFiltrados.filter(c => c.classificacao === 'vip').length;
     const vipEl = document.querySelector('.stat-mini-value[style*="color: #f59e0b"]');
     if (vipEl) vipEl.textContent = vipCount;
 
-    // Frequentes
     const freqCount = clientesFiltrados.filter(c => c.classificacao === 'frequente').length;
     const freqEl = document.querySelector('.stat-mini-value[style*="color: #22c55e"]');
     if (freqEl && freqEl.parentElement?.querySelector('.stat-mini-label')?.textContent.includes('Frequentes')) {
         freqEl.textContent = freqCount;
     }
 
-    // Sumidos
     const sumidosCount = clientesFiltrados.filter(c => c.classificacao === 'sumido').length;
     const sumidosEl = document.querySelector('.stat-mini-value[style*="color: #ef4444"]');
     if (sumidosEl) sumidosEl.textContent = sumidosCount;
 
-    // Novos
     const novosCount = clientesFiltrados.filter(c => c.classificacao === 'novo').length;
     const novosEl = document.querySelector('.stat-mini-value[style*="color: #667eea"]');
     if (novosEl) novosEl.textContent = novosCount;
 
-    // WhatsApp
     const whatsCount = clientesFiltrados.filter(c => c.telefone && c.telefone.trim() !== '').length;
     const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
     if (whatsEl) whatsEl.textContent = whatsCount;
 
-    // 🔥 Atualizar os botões de filtro com os novos números
     const btnTodos = document.querySelector('button[onclick*="setFiltroClientes(\'todos\')"]');
     if (btnTodos) btnTodos.textContent = `📊 Todos (${totalClientes})`;
 
@@ -1576,13 +1395,11 @@ function atualizarListaClientes(clientesFiltrados) {
     const btnNovos = document.querySelector('button[onclick*="setFiltroClientes(\'novos\')"]');
     if (btnNovos) btnNovos.textContent = `🌱 Novos (${clientesCompletos.filter(c => c.classificacao === 'novo').length})`;
 
-    // 🔥 Encontra o container da lista
     let container = document.getElementById('listaClientesContainer');
     if (!container) {
         const card = content.querySelector('.card');
         if (card) {
             const oldContent = card.innerHTML;
-            // Remove o container antigo se existir
             const oldContainer = card.querySelector('#listaClientesContainer');
             if (oldContainer) {
                 card.innerHTML = oldContainer.innerHTML;
@@ -1607,7 +1424,6 @@ function atualizarListaClientes(clientesFiltrados) {
             </div>
         `;
     } else if (isMobile) {
-        // Renderiza cards mobile
         html = `<div style="display:flex;flex-direction:column;gap:8px;">`;
         for (let c of clientesFiltrados) {
             const isBloqueado = c.bloqueado_chatbot === 1;
@@ -1665,7 +1481,6 @@ function atualizarListaClientes(clientesFiltrados) {
         }
         html += `</div>`;
     } else {
-        // Renderiza tabela desktop
         const cores = {
             vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
             frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
@@ -1756,11 +1571,44 @@ function atualizarListaClientes(clientesFiltrados) {
     }
 
     container.innerHTML = html;
+
+    const buscaInput = document.getElementById('buscaClientesInput');
+    if (buscaInput && termoBuscaClientes) {
+        buscaInput.focus();
+        const len = buscaInput.value.length;
+        buscaInput.setSelectionRange(len, len);
+    }
 }
+
 // ============================================
-// REDIMENSIONAMENTO
+// PREVENIR RECARREGAMENTOS NO MOBILE
 // ============================================
+
+document.addEventListener('touchstart', function (e) {
+    if (e.target && e.target.id === 'buscaClientesInput') {
+        console.log('📱 Toque no input de busca');
+        if (window._touchTimeout) {
+            clearTimeout(window._touchTimeout);
+        }
+        window._touchTimeout = setTimeout(() => { }, 2000);
+    }
+}, { passive: true });
+
+// ============================================
+// REDIMENSIONAMENTO - CORRIGIDO PARA MOBILE
+// ============================================
+
 window.addEventListener('resize', function () {
+    const content = document.getElementById('content');
+    if (!content || !content.innerHTML.includes('👥 Clientes')) {
+        return;
+    }
+
+    if (termoBuscaClientes && termoBuscaClientes.length > 0) {
+        console.log('📱 Busca ativa, ignorando resize');
+        return;
+    }
+
     const agora = Date.now();
     if (agora - ultimoResizeClientes < 500) {
         return;
@@ -1769,15 +1617,13 @@ window.addEventListener('resize', function () {
 
     clearTimeout(resizeTimeoutClientes);
     resizeTimeoutClientes = setTimeout(function () {
-        const content = document.getElementById('content');
-        if (content && content.innerHTML.includes('👥 Clientes') && !carregandoClientes) {
-            // Só recarrega se NÃO estiver em uma busca ativa
-            if (!termoBuscaClientes) {
-                carregarClientes();
-            }
+        if (!termoBuscaClientes && !carregandoClientes) {
+            console.log('📱 Recarregando clientes após resize...');
+            carregarClientes();
         }
-    }, 300);
+    }, 500);
 });
+
 // ============================================
 // APAGAR TODOS OS CLIENTES
 // ============================================
@@ -2225,7 +2071,7 @@ async function desbloquearChatbot(id) {
 }
 
 // ============================================
-// IMPORTAÇÃO - APENAS DESKTOP (COM LIMPEZA)
+// IMPORTAÇÃO - APENAS DESKTOP
 // ============================================
 
 function abrirModalImportarCSV() {
@@ -2319,7 +2165,6 @@ async function processarArquivoContatosDesktop(file) {
             clientesParaImportar = parseCSVMobile(content);
         }
 
-        // 🔥 FILTRA APENAS CONTATOS COM NOME E TELEFONE VÁLIDOS
         clientesParaImportar = clientesParaImportar.filter(c => {
             const temNome = c.nome && c.nome.trim().length > 0 && c.nome !== 'Contato';
             const temTelefone = c.telefone && c.telefone.trim().length >= 10;
@@ -2337,7 +2182,6 @@ async function processarArquivoContatosDesktop(file) {
             return;
         }
 
-        // Mostra preview com nomes limpos
         const preview = clientesParaImportar.slice(0, 5).map(c =>
             `${c.nome} (${c.telefone})`
         ).join('\n');
@@ -2583,13 +2427,12 @@ async function salvarLoteClientesDesktop(lista) {
 }
 
 // ============================================
-// ABRIR MODAL PROMOÇÃO - COM TODOS OS GRUPOS
+// ABRIR MODAL PROMOÇÃO
 // ============================================
 
 function abrirModalPromocao() {
     const isMobile = window.innerWidth < 768;
 
-    // 🔥 FILTRA OS CLIENTES COM WHATSAPP
     let clientesComWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '');
 
     if (clientesComWhatsApp.length === 0) {
@@ -2597,8 +2440,6 @@ function abrirModalPromocao() {
         return;
     }
 
-    // 🔥 BUSCA TODOS OS GRUPOS DISPONÍVEIS (inclusive os vazios)
-    // 1. Grupos que já existem nos clientes
     const gruposExistentes = new Set();
     clientesCompletos.forEach(c => {
         if (c.grupos && Array.isArray(c.grupos)) {
@@ -2606,16 +2447,13 @@ function abrirModalPromocao() {
         }
     });
 
-    // 2. Grupos padrão do sistema (mesmo que vazios)
     const gruposPadrao = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais', 'VIP', 'Sumidos'];
 
-    // 3. Combina todos os grupos
     const todosGrupos = new Set([...gruposPadrao, ...gruposExistentes]);
     const gruposAtivos = Array.from(todosGrupos).sort();
 
     console.log('📋 Grupos disponíveis para promoção:', gruposAtivos);
 
-    // 🔥 CRIA A LISTA DE CLIENTES
     let listaClientesHTML = '';
     const totalClientes = clientesComWhatsApp.length;
 
@@ -2653,10 +2491,8 @@ function abrirModalPromocao() {
         `;
     }
 
-    // Opções do select de grupos (incluindo os vazios)
     let gruposOptions = '<option value="todos">📊 Todos</option>';
     for (let g of gruposAtivos) {
-        // Conta quantos clientes têm esse grupo
         const count = clientesComWhatsApp.filter(c =>
             c.grupos && Array.isArray(c.grupos) && c.grupos.includes(g)
         ).length;
@@ -2705,7 +2541,6 @@ Venha aproveitar nossa promoção imperdível!
                         </div>
                     </div>
 
-                    <!-- 🔍 LUPA DE BUSCA -->
                     <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 8px;">
                         <i class="fas fa-search" style="color: var(--text-muted); font-size: 14px;"></i>
                         <input type="text" id="buscaClientePromocao" 
@@ -2761,7 +2596,6 @@ Venha aproveitar nossa promoção imperdível!
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // 🔥 APLICA O FILTRO INICIAL (se houver grupo selecionado)
     setTimeout(() => {
         const select = document.getElementById('filtroGrupoPromocao');
         if (select && select.value !== 'todos') {
@@ -2770,6 +2604,7 @@ Venha aproveitar nossa promoção imperdível!
         atualizarContadorSelecionados();
     }, 100);
 }
+
 function filtrarClientesPromocao() {
     const filtroGrupo = document.getElementById('filtroGrupoPromocao')?.value || 'todos';
     const termoBusca = document.getElementById('buscaClientePromocao')?.value?.toLowerCase().trim() || '';
@@ -2783,7 +2618,6 @@ function filtrarClientesPromocao() {
         const checkbox = item.querySelector('input[type="checkbox"]');
         if (!checkbox) continue;
 
-        // 🔥 PEGA OS DADOS DOS DATA-ATRIBUTES
         const nome = (item.dataset.nome || '').toLowerCase();
         const telefone = item.dataset.telefone || '';
         const gruposData = item.dataset.grupos || '';
@@ -2791,14 +2625,12 @@ function filtrarClientesPromocao() {
 
         let mostrar = true;
 
-        // 🔥 FILTRO POR GRUPO
         if (filtroGrupo !== 'todos') {
             if (!gruposArray.includes(filtroGrupo)) {
                 mostrar = false;
             }
         }
 
-        // 🔥 FILTRO POR BUSCA
         if (mostrar && termoBusca) {
             const nomeMatch = nome.includes(termoBusca);
             const telefoneMatch = telefone.includes(termoBusca);
@@ -2807,20 +2639,18 @@ function filtrarClientesPromocao() {
             }
         }
 
-        // 🔥 APLICA O FILTRO
         item.style.display = mostrar ? 'flex' : 'none';
         if (mostrar) visiveis++;
     }
 
-    // 🔥 ATUALIZA O CONTADOR
     atualizarContadorSelecionados();
 }
+
 function selecionarTodosClientes(selecionar) {
     const container = document.getElementById('listaClientesPromocao');
     const items = container.querySelectorAll('.cliente-item');
 
     for (let item of items) {
-        // 🔥 SÓ SELECIONA OS ITENS VISÍVEIS
         if (item.style.display !== 'none') {
             const checkbox = item.querySelector('input[type="checkbox"]');
             if (checkbox) {
@@ -2837,7 +2667,6 @@ function atualizarContadorSelecionados() {
 
     let selecionados = 0;
     for (let item of items) {
-        // 🔥 SÓ CONTA OS ITENS VISÍVEIS
         if (item.style.display !== 'none') {
             const checkbox = item.querySelector('input[type="checkbox"]');
             if (checkbox && checkbox.checked) {
@@ -2857,39 +2686,34 @@ function fecharModalPromocao() {
 }
 
 // ============================================
-// NORMALIZAR NÚMERO (EVITA DUPLICATAS)
+// NORMALIZAR NÚMERO
 // ============================================
 
 function normalizarNumero(telefone) {
     if (!telefone) return '';
     let numero = telefone.replace(/\D/g, '');
 
-    // Remove DDD 0 inicial se houver
     if (numero.startsWith('0')) {
         numero = numero.substring(1);
     }
 
-    // Se tem 10 dígitos (sem DDD) ou 11 dígitos (com DDD)
     if (numero.length === 10 || numero.length === 11) {
         return '55' + numero;
     }
 
-    // Se já tem 13 dígitos com 55, retorna
     if (numero.length === 13 && numero.startsWith('55')) {
         return numero;
     }
 
-    // Se tem 12 dígitos e começa com 55, retorna
     if (numero.length === 12 && numero.startsWith('55')) {
         return numero;
     }
 
-    // Fallback
     return numero;
 }
 
 // ============================================
-// ENVIAR PROMOÇÃO - CORRIGIDO
+// ENVIAR PROMOÇÃO
 // ============================================
 
 async function enviarPromocao() {
@@ -2909,7 +2733,6 @@ async function enviarPromocao() {
         return;
     }
 
-    // PEGA OS CHECKBOX VISÍVEIS
     const container = document.getElementById('listaClientesPromocao');
     const items = container.querySelectorAll('.cliente-item');
 
@@ -2930,7 +2753,6 @@ async function enviarPromocao() {
         return;
     }
 
-    // FILTRA CLIENTES COM TELEFONE
     const clientesAlvo = clientesCompletos.filter(c =>
         idsSelecionados.includes(c.id) && c.telefone && c.telefone.trim() !== ''
     );
@@ -2967,7 +2789,6 @@ async function enviarPromocao() {
     let duplicados = 0;
     const total = clientesAlvo.length;
 
-    // CACHE LOCAL PARA EVITAR DUPLICATAS (USANDO NÚMERO NORMALIZADO)
     const enviadosCache = new Set();
 
     function getDelay(index, total) {
@@ -2990,14 +2811,11 @@ async function enviarPromocao() {
         return mensagemBase;
     }
 
-    // ENVIA AS MENSAGENS
     for (let i = 0; i < clientesAlvo.length; i++) {
         const cliente = clientesAlvo[i];
-        // 🔥 NORMALIZA O NÚMERO
         const telefoneRaw = cliente.telefone || '';
         const telefone = normalizarNumero(telefoneRaw);
 
-        // 🔥 CHAVE COM NÚMERO NORMALIZADO
         const chaveLocal = `${telefone}_${mensagem.substring(0, 20)}`;
 
         if (enviadosCache.has(chaveLocal)) {
@@ -3091,6 +2909,7 @@ async function enviarPromocao() {
         }
     }, 5000);
 }
+
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -3125,7 +2944,6 @@ window.enviarPromocao = enviarPromocao;
 window.selecionarTodosClientes = selecionarTodosClientes;
 window.atualizarContadorSelecionados = atualizarContadorSelecionados;
 window.filtrarClientesPromocao = filtrarClientesPromocao;
-// FUNÇÕES DE GRUPOS
 window.abrirModalGrupos = abrirModalGrupos;
 window.fecharModalGrupos = fecharModalGrupos;
 window.toggleGrupoCliente = toggleGrupoCliente;
@@ -3135,4 +2953,6 @@ window.excluirGrupoCliente = excluirGrupoCliente;
 window.aplicarFiltrosClientes = aplicarFiltrosClientes;
 window.carregarClientesBackground = carregarClientesBackground;
 window.renderizarListaClientes = renderizarListaClientes;
+window.forcarAtualizacaoGrupos = forcarAtualizacaoGrupos;
+
 console.log('✅ clientes.js carregado (CRM COMPLETO + MOBILE + GRUPOS + LIMPEZA DE NOMES)');
