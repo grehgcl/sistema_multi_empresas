@@ -132,22 +132,33 @@ function getInstanciaEmpresa(empresaId) {
 }
 
 // ============================================
-// 🔥 ENVIAR MENSAGEM VIA EVOLUTION API (MULTI-INSTÂNCIA)
+// 🔥 ENVIAR MENSAGEM VIA EVOLUTION API (MULTI-INSTÂNCIA) - CORRIGIDO
 // ============================================
 async function enviarEvolution(empresaId, numero, mensagem) {
     try {
         // Busca instância (própria OU padrão)
         const instancia = await getInstanciaEmpresa(empresaId);
 
-        // ✅ CORREÇÃO PARA EVOLUTION API v2:
         const url = `${config.evolution.apiUrl}/message/sendText/${instancia.instanceName}`;
 
         console.log('🔍 Número original recebido:', numero);
 
-        const numeroLimpo = numero.replace(/\D/g, '');
+        // 🔥 LIMPA O NÚMERO (remove tudo que não é dígito)
+        const numeroLimpo = String(numero).replace(/\D/g, '');
         console.log('🔍 Número limpo (sem caracteres):', numeroLimpo);
+        console.log('🔍 Tamanho do número limpo:', numeroLimpo.length);
 
-        const numeroFinal = numeroLimpo.length === 11 ? `55${numeroLimpo}` : numeroLimpo;
+        // 🔥 CORREÇÃO: SEMPRE ADICIONA 55 SE NÃO TIVER
+        let numeroFinal = numeroLimpo;
+        if (!numeroFinal.startsWith('55')) {
+            numeroFinal = '55' + numeroFinal;
+        }
+
+        // 🔥 SE TIVER 11 DÍGITOS (55 + DDD + 8 sem 9), PODE FALTAR O 9
+        // Exemplo: 55419003903 (11 dígitos) - falta o 9 após o DDD
+        // O correto seria 554199003903 (12 dígitos) - com o 9
+        // Mas a Evolution API pode aceitar ambos, vamos manter como está
+
         console.log('🔍 Número final (enviado):', numeroFinal);
         console.log('🔍 Tamanho do número final:', numeroFinal.length);
 
@@ -158,7 +169,7 @@ async function enviarEvolution(empresaId, numero, mensagem) {
         };
 
         console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
-        console.log(`📡 Tentando enviar via URL: ${url}`); // Log útil para debug
+        console.log(`📡 Tentando enviar via URL: ${url}`);
 
         const response = await axios.post(url, payload, {
             headers: {
@@ -168,13 +179,69 @@ async function enviarEvolution(empresaId, numero, mensagem) {
             timeout: 30000,
         });
 
-        console.log(`📱 WhatsApp: Mensagem enviada para ${numero} via ${instancia.isOwn ? '🆕 INSTÂNCIA PRÓPRIA' : '📌 INSTÂNCIA PADRÃO'} (${instancia.instanceName})`);
+        console.log(`📱 WhatsApp: Mensagem enviada para ${numeroFinal} via ${instancia.isOwn ? '🆕 INSTÂNCIA PRÓPRIA' : '📌 INSTÂNCIA PADRÃO'} (${instancia.instanceName})`);
         return { success: true, data: response.data };
+
     } catch (error) {
         console.error(`❌ Erro ao enviar WhatsApp (Evolution):`, error.message);
+
         if (error.response) {
-            console.error('📡 Resposta da API (Erro):', error.response.data);
+            console.log('📡 Resposta da API (Erro):', JSON.stringify(error.response.data, null, 2));
+
+            // 🔥 TENTA FORMATO ALTERNATIVO SE O ERRO FOR 400
+            if (error.response.status === 400) {
+                const numeroLimpo = String(numero).replace(/\D/g, '');
+
+                // 🔥 TENTA SEM O 55
+                if (numeroLimpo.startsWith('55')) {
+                    const sem55 = numeroLimpo.substring(2);
+                    console.log(`🔄 Tentando formato alternativo (sem 55): ${sem55}`);
+                    try {
+                        const payload2 = {
+                            number: sem55,
+                            text: mensagem,
+                            delay: 1,
+                        };
+                        const response2 = await axios.post(url, payload2, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': config.evolution.apiKey,
+                            },
+                            timeout: 30000,
+                        });
+                        console.log(`✅ Mensagem enviada com formato alternativo (sem 55)!`);
+                        return { success: true, data: response2.data };
+                    } catch (e) {
+                        console.log('❌ Formato alternativo também falhou');
+                    }
+                }
+
+                // 🔥 TENTA COM 9 (se não tiver)
+                if (numeroLimpo.length === 11 && numeroLimpo.startsWith('55')) {
+                    const com9 = numeroLimpo.substring(0, 4) + '9' + numeroLimpo.substring(4);
+                    console.log(`🔄 Tentando formato alternativo (com 9): ${com9}`);
+                    try {
+                        const payload3 = {
+                            number: com9,
+                            text: mensagem,
+                            delay: 1,
+                        };
+                        const response3 = await axios.post(url, payload3, {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': config.evolution.apiKey,
+                            },
+                            timeout: 30000,
+                        });
+                        console.log(`✅ Mensagem enviada com formato alternativo (com 9)!`);
+                        return { success: true, data: response3.data };
+                    } catch (e) {
+                        console.log('❌ Formato com 9 também falhou');
+                    }
+                }
+            }
         }
+
         return { success: false, error: error.message };
     }
 }
