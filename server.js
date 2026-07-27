@@ -7709,7 +7709,79 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
         });
     }
 });
+// ============================================
+// WEBHOOK DO MERCADO PAGO
+// ============================================
+// Se o server.js está na raiz do projeto
+const mercadoPagoService = require('./server/services/mercadopago');
 
+app.post('/api/mercadopago/webhook', async (req, res) => {
+    console.log('📥 Webhook recebido:', JSON.stringify(req.body, null, 2));
+
+    try {
+        const { type, data, action } = req.body;
+
+        // 🔥 NOTIFICAÇÃO DE PAGAMENTO
+        if (type === 'payment' || type === 'payment.created' || type === 'payment.updated') {
+            const paymentId = data?.id || req.body?.data?.id;
+
+            if (!paymentId) {
+                console.log('⚠️ Webhook sem ID do pagamento');
+                return res.status(200).json({ success: true });
+            }
+
+            console.log(`💰 Consultando pagamento ID: ${paymentId}`);
+
+            // Busca o pagamento no Mercado Pago
+            const result = await mercadoPagoService.consultarPagamento(paymentId);
+
+            if (result.success) {
+                console.log(`✅ Status do pagamento: ${result.status}`);
+                console.log(`🔑 External Reference: ${result.external_reference}`);
+
+                // 🔥 SE PAGAMENTO FOI APROVADO
+                if (result.status === 'approved') {
+                    const externalRef = result.external_reference || '';
+                    const empresaId = externalRef.replace('emp_', '').split('_')[0];
+
+                    console.log(`🎉 Pagamento aprovado para empresa: ${empresaId}`);
+
+                    // 🔥 ATUALIZA A EMPRESA (plano ativo)
+                    if (empresaId && !isNaN(empresaId)) {
+                        const isPg = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+                        const sql = isPg
+                            ? `UPDATE empresas SET assinatura_ativa = true, assinatura_valida_ate = datetime('now', '+30 days') WHERE id = $1`
+                            : `UPDATE empresas SET assinatura_ativa = 1, assinatura_valida_ate = datetime('now', '+30 days') WHERE id = ?`;
+
+                        db.run(sql, [parseInt(empresaId)], (err) => {
+                            if (err) {
+                                console.error('❌ Erro ao atualizar empresa:', err);
+                            } else {
+                                console.log(`✅ Empresa ${empresaId} atualizada com sucesso!`);
+                            }
+                        });
+                    }
+                }
+            } else {
+                console.log('❌ Erro ao consultar pagamento');
+            }
+        }
+
+        // 🔥 NOTIFICAÇÃO DE ASSINATURA
+        if (type === 'subscription' || type === 'subscription_authorized' || type === 'subscription.created' || type === 'subscription.updated') {
+            console.log(`📅 Notificação de assinatura:`, data);
+            // TODO: Processar assinatura
+        }
+
+        // 🔥 SEMPRE RETORNA 200 PARA O MERCADO PAGO (não pode retornar erro)
+        res.status(200).json({ success: true });
+
+    } catch (error) {
+        console.error('❌ Erro no webhook:', error);
+        // 🔥 MESMO COM ERRO, RETORNA 200 PARA O MERCADO PAGO NÃO TENTAR REENVIAR
+        res.status(200).json({ success: false, error: error.message });
+    }
+});
 // ============================================================
 // INICIALIZA��O DO SERVIDOR
 // ============================================================
