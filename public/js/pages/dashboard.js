@@ -301,7 +301,6 @@ function renderizarAgendaInteligente() {
 
     const diaSemanaHoje = hoje.getDay();
     const horarioConfiguradoHoje = agendaInteligenteHorarios.find(h => h.dia_semana === diaSemanaHoje);
-
     function gerarHorariosDoDiaConfig(horaInicio, horaFim, almocoInicio, almocoFim) {
         const horarios = [];
         if (!horaInicio || !horaFim) return horarios;
@@ -317,7 +316,9 @@ function renderizarAgendaInteligente() {
         const almocoInicioMin = almocoInicioH * 60 + almocoInicioM;
         const almocoFimMin = almocoFimH * 60 + almocoFimM;
 
-        for (let minutos = inicioMin; minutos < fimMin; minutos += intervalo) {
+        // 🔥 GERA TODOS OS HORÁRIOS ATÉ O FIM (INCLUSIVE)
+        for (let minutos = inicioMin; minutos <= fimMin; minutos += intervalo) {
+            // Pula horário de almoço
             if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
                 continue;
             }
@@ -325,6 +326,14 @@ function renderizarAgendaInteligente() {
             const m = minutos % 60;
             horarios.push(String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'));
         }
+
+        // 🔥 GARANTE QUE 18:00 ESTÁ NA LISTA
+        const fimStr = String(fimH).padStart(2, '0') + ':' + String(fimM).padStart(2, '0');
+        if (!horarios.includes(fimStr)) {
+            horarios.push(fimStr);
+        }
+
+        console.log(`📋 Horários gerados:`, horarios);
         return horarios;
     }
 
@@ -669,7 +678,8 @@ function renderizarAgendaInteligente() {
                 const minutosAtual = hAtual * 60 + mAtual;
                 const minutosInicio = hInicio * 60 + mInicio;
                 const minutosFim = hFim * 60 + mFim;
-                dentroExpediente = minutosAtual >= minutosInicio && minutosAtual < minutosFim;
+                // 🔥 CORREÇÃO: PERMITE O HORÁRIO EXATO DO FIM (18:00)
+                dentroExpediente = minutosAtual >= minutosInicio && minutosAtual <= minutosFim;
             }
 
             let cellContent = '';
@@ -1027,10 +1037,10 @@ function forcarRecarregarAgenda() {
 }
 
 // ============================================
-// ABRIR AGENDAMENTO - DIRETO PELA BOLINHA (CORRIGIDO - V4)
+// ABRIR AGENDAMENTO - DIRETO PELA BOLINHA (CORRIGIDO - V5)
 // ============================================
 
-function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
+async function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
     console.log(`📝 Abrindo agendamento:`, { data, hora, profissionalId });
 
     // 🔥 GARANTE QUE DATA É STRING
@@ -1087,78 +1097,130 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
         return;
     }
 
-    // 🔥 VERIFICA SE TEM CLIENTES CARREGADOS
-    // Primeiro tenta sincronizar com o agendamentos.js
-    let temClientes = false;
-
-    // Verifica se clientesList (do agendamentos.js) está preenchido
-    if (typeof clientesList !== 'undefined' && clientesList && clientesList.length > 0) {
-        window.clientesList = clientesList;
-        temClientes = true;
-        console.log(`✅ Usando clientesList do agendamentos.js: ${clientesList.length} clientes`);
-    }
-    // Verifica se window.clientesList está preenchido
-    else if (window.clientesList && window.clientesList.length > 0) {
-        temClientes = true;
-        console.log(`✅ Usando window.clientesList: ${window.clientesList.length} clientes`);
-    }
-
-    if (!temClientes) {
-        console.log('🔄 Carregando clientes da API...');
-        showToast('🔄 Carregando clientes...', 'info');
-
-        const token = localStorage.getItem('token');
-        if (!token) {
-            showToast('❌ Sessão expirada', 'error');
-            return;
-        }
-
-        fetch('/api/clientes', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success && data.data) {
-                    window.clientesList = data.data;
-                    // 🔥 TAMBÉM ATUALIZA A VARIÁVEL DO agendamentos.js
-                    if (typeof clientesList !== 'undefined') {
-                        // Não podemos reatribuir const, mas podemos usar window
-                    }
-                    console.log(`✅ ${window.clientesList.length} clientes carregados da API`);
-                    // Tenta abrir novamente
-                    abrirAgendamentoInteligente(dataStr, horaStr, profissionalId);
-                } else {
-                    showToast('❌ Erro ao carregar clientes', 'error');
-                }
-            })
-            .catch(err => {
-                console.error('❌ Erro:', err);
-                showToast('❌ Erro ao carregar clientes', 'error');
-            });
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('❌ Sessão expirada', 'error');
         return;
     }
 
-    console.log(`✅ Usando ${window.clientesList.length} clientes`);
+    // 🔥 CARREGA CLIENTES, SERVIÇOS E PROFISSIONAIS SE NECESSÁRIO
+    try {
+        // Verifica se tem clientes
+        let temClientes = false;
+        if (typeof clientesList !== 'undefined' && clientesList && clientesList.length > 0) {
+            window.clientesList = clientesList;
+            temClientes = true;
+            console.log(`✅ clientesList: ${clientesList.length} clientes`);
+        } else if (window.clientesList && window.clientesList.length > 0) {
+            temClientes = true;
+            console.log(`✅ window.clientesList: ${window.clientesList.length} clientes`);
+        }
+
+        // Verifica se tem serviços
+        let temServicos = false;
+        if (typeof servicosList !== 'undefined' && servicosList && servicosList.length > 0) {
+            window.servicosList = servicosList;
+            temServicos = true;
+            console.log(`✅ servicosList: ${servicosList.length} serviços`);
+        } else if (window.servicosList && window.servicosList.length > 0) {
+            temServicos = true;
+            console.log(`✅ window.servicosList: ${window.servicosList.length} serviços`);
+        }
+
+        // Verifica se tem profissionais
+        let temProfissionais = false;
+        if (typeof profissionaisList !== 'undefined' && profissionaisList && profissionaisList.length > 0) {
+            window.profissionaisList = profissionaisList;
+            temProfissionais = true;
+            console.log(`✅ profissionaisList: ${profissionaisList.length} profissionais`);
+        } else if (window.profissionaisList && window.profissionaisList.length > 0) {
+            temProfissionais = true;
+            console.log(`✅ window.profissionaisList: ${window.profissionaisList.length} profissionais`);
+        }
+
+        // 🔥 SE NÃO TIVER CLIENTES, CARREGA
+        if (!temClientes) {
+            console.log('🔄 Carregando clientes da API...');
+            showToast('🔄 Carregando clientes...', 'info');
+            const res = await fetch('/api/clientes', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success && data.data) {
+                window.clientesList = data.data;
+                temClientes = true;
+                console.log(`✅ ${window.clientesList.length} clientes carregados`);
+            } else {
+                showToast('❌ Erro ao carregar clientes', 'error');
+                return;
+            }
+        }
+
+        // 🔥 SE NÃO TIVER SERVIÇOS, CARREGA
+        if (!temServicos) {
+            console.log('🔄 Carregando serviços da API...');
+            const res = await fetch('/api/servicos', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success && data.data) {
+                window.servicosList = data.data;
+                temServicos = true;
+                console.log(`✅ ${window.servicosList.length} serviços carregados`);
+            } else {
+                console.warn('⚠️ Nenhum serviço encontrado');
+                window.servicosList = [];
+            }
+        }
+
+        // 🔥 SE NÃO TIVER PROFISSIONAIS, CARREGA
+        if (!temProfissionais) {
+            console.log('🔄 Carregando profissionais da API...');
+            const res = await fetch('/api/profissionais', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success && data.data) {
+                window.profissionaisList = data.data;
+                temProfissionais = true;
+                console.log(`✅ ${window.profissionaisList.length} profissionais carregados`);
+            } else {
+                console.warn('⚠️ Nenhum profissional encontrado');
+                window.profissionaisList = [];
+            }
+        }
+
+        // 🔥 ATUALIZA AS VARIÁVEIS DO agendamentos.js
+        if (typeof clientesList !== 'undefined') {
+            // Não podemos reatribuir const
+        }
+        if (typeof servicosList !== 'undefined') {
+            // Não podemos reatribuir const
+        }
+        if (typeof profissionaisList !== 'undefined') {
+            // Não podemos reatribuir const
+        }
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar dados:', error);
+        showToast('❌ Erro ao carregar dados', 'error');
+        return;
+    }
+
+    console.log(`✅ Dados prontos: ${window.clientesList?.length || 0} clientes, ${window.servicosList?.length || 0} serviços, ${window.profissionaisList?.length || 0} profissionais`);
 
     // 🔥 ABRE O MODAL DE AGENDAMENTO
     showLoading();
 
     try {
-        // Chama a função que abre o modal (do agendamentos.js)
         if (typeof abrirModalAgendamentoDono !== 'function') {
             showToast('❌ Função de agendamento não disponível', 'error');
             hideLoading();
             return;
         }
 
-        // 🔥 ANTES DE ABRIR, GARANTE QUE clientesList (do agendamentos.js) ESTÁ PREENCHIDO
-        // O agendamentos.js usa a variável global clientesList para o autocomplete
-        // Como não podemos reatribuir a const, usamos window.clientesList e o agendamentos.js usa
-        // a lista de clientes do fetch que ele faz internamente
-
-        // Mas para garantir, vamos forçar o carregamento dos clientes no agendamentos.js
+        // 🔥 FORÇA O CARREGAMENTO DOS AGENDAMENTOS PARA POPULAR AS LISTAS
         if (typeof carregarAgendamentos === 'function') {
-            // Recarrega os agendamentos para popular as listas
             carregarAgendamentos();
         }
 
@@ -1230,13 +1292,9 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 }
             }
 
-            // 🔥 ATUALIZA A LISTA DE CLIENTES NO AUTCOMPLETE
-            // O agendamentos.js já tem a função filtrarClientesDono que usa clientesList
-            // Vamos forçar a atualização se o campo de busca estiver vazio
+            // 🔥 ATUALIZA A LISTA DE CLIENTES NO AUTOCOMPLETE
             if (buscaInput && window.clientesList && window.clientesList.length > 0) {
-                // Se não tiver cliente selecionado, mostra sugestões
                 if (!clienteSelect.value) {
-                    // Dispara a busca com uma letra para mostrar sugestões
                     setTimeout(() => {
                         buscaInput.value = '';
                         buscaInput.focus();
@@ -1276,7 +1334,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 }
             }
 
-            // 🔥 MOSTRA TOAST DE CONFIRMAÇÃO
             hideLoading();
             showToast(`📅 ${formatarDataBr(dataStr)} às ${horaStr} - Selecione um cliente`, 'info');
         }
@@ -1360,7 +1417,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                     if (result.success) {
                         showToast('✅ Agendamento criado com sucesso!', 'success');
                         fecharModalAgendamentoDono();
-                        // Recarrega a agenda
                         agendaInteligenteData = [];
                         agendaInteligenteCarregando = false;
                         setTimeout(() => carregarAgendaInteligente(), 500);
@@ -1378,7 +1434,6 @@ function abrirAgendamentoInteligente(data, hora, profissionalId = null) {
                 });
         }
 
-        // Inicia o preenchimento
         setTimeout(preencherModal, 500);
 
     } catch (error) {

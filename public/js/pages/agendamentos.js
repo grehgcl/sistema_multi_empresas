@@ -909,6 +909,54 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
 // ============================================
 
 async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
+    const token = localStorage.getItem('token');
+
+    // 🔥 CARREGA CLIENTES, SERVIÇOS E PROFISSIONAIS SE NÃO TIVER
+    if (!clientesList || clientesList.length === 0) {
+        try {
+            const res = await fetch('/api/clientes', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success) {
+                clientesList = data.data || [];
+                console.log(`✅ ${clientesList.length} clientes carregados`);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar clientes:', error);
+        }
+    }
+
+    if (!servicosList || servicosList.length === 0) {
+        try {
+            const res = await fetch('/api/servicos', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success) {
+                servicosList = data.data || [];
+                console.log(`✅ ${servicosList.length} serviços carregados`);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar serviços:', error);
+        }
+    }
+
+    if (!profissionaisList || profissionaisList.length === 0) {
+        try {
+            const res = await fetch('/api/profissionais', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success) {
+                profissionaisList = data.data || [];
+                console.log(`✅ ${profissionaisList.length} profissionais carregados`);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar profissionais:', error);
+        }
+    }
+
     const clientes = Array.isArray(clientesList) ? clientesList : [];
     const servicos = Array.isArray(servicosList) ? servicosList : [];
     const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
@@ -924,6 +972,8 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
                 servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`;
             }
         }
+    } else {
+        servicosOptions += `<option value="" disabled>⚠️ Nenhum serviço cadastrado</option>`;
     }
 
     let profissionaisOptions = '<option value="">Não atribuir</option>';
@@ -933,6 +983,8 @@ async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
                 profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`;
             }
         }
+    } else {
+        profissionaisOptions += `<option value="" disabled>⚠️ Nenhum profissional cadastrado</option>`;
     }
 
     // Gerar lista de clientes para o datalist

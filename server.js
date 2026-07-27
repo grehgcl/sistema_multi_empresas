@@ -5779,18 +5779,69 @@ app.get('/api/chatbot/dono/:empresaId', (req, res) => {
 app.post('/api/chatbot/cliente/buscar', (req, res) => {
     const { telefone, empresaId } = req.body;
 
-    const telefoneLimpo = telefone.replace(/\D/g, '');
+    if (!telefone) {
+        return res.json({ success: false, message: 'Telefone não informado' });
+    }
 
-    db.get(`SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, false) as bloqueado_chatbot 
+    // 🔥 NORMALIZA O TELEFONE (remove tudo que não é dígito)
+    const telefoneLimpo = String(telefone).replace(/\D/g, '');
+    console.log(`🔍 Buscando cliente com telefone: ${telefoneLimpo} (empresa: ${empresaId})`);
+
+    // 🔥 BUSCA TODOS OS CLIENTES DA EMPRESA
+    db.all(`SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, false) as bloqueado_chatbot 
             FROM clientes 
-            WHERE empresa_id = ? AND (telefone = ? OR telefone = ?)`,
-        [empresaId, telefoneLimpo, telefone],
-        (err, cliente) => {
+            WHERE empresa_id = ?`,
+        [empresaId],
+        (err, clientes) => {
             if (err) {
+                console.error('❌ Erro ao buscar clientes:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            if (cliente) {
+            if (!clientes || clientes.length === 0) {
+                return res.json({ success: true, cliente: null });
+            }
+
+            // 🔥 PROCURA O CLIENTE COMPARANDO TELEFONES NORMALIZADOS
+            const clienteEncontrado = clientes.find(c => {
+                const telefoneCliente = String(c.telefone || '').replace(/\D/g, '');
+
+                // 🔥 COMPARA EM VÁRIOS FORMATOS POSSÍVEIS
+                // 1. Exatamente igual
+                if (telefoneCliente === telefoneLimpo) return true;
+
+                // 2. Cliente com 55, usuário sem 55
+                if (telefoneCliente === '55' + telefoneLimpo) return true;
+
+                // 3. Cliente sem 55, usuário com 55
+                if ('55' + telefoneCliente === telefoneLimpo) return true;
+
+                // 4. Cliente tem 11 dígitos (com 9), usuário tem 10 (sem 9)
+                if (telefoneCliente.length === 11 && telefoneLimpo.length === 10) {
+                    // Remove o 9 do cliente (ex: 4199003903 -> 419003903)
+                    const sem9 = telefoneCliente.substring(0, 2) + telefoneCliente.substring(3);
+                    if (sem9 === telefoneLimpo) return true;
+                }
+
+                // 5. Cliente tem 10 dígitos (sem 9), usuário tem 11 (com 9)
+                if (telefoneCliente.length === 10 && telefoneLimpo.length === 11) {
+                    // Adiciona 9 no cliente (ex: 419003903 -> 4199003903)
+                    const com9 = telefoneCliente.substring(0, 2) + '9' + telefoneCliente.substring(2);
+                    if (com9 === telefoneLimpo) return true;
+                }
+
+                // 6. Usuário digitou com 55 e o cliente tem sem 55
+                if (telefoneLimpo.startsWith('55') && telefoneLimpo.substring(2) === telefoneCliente) return true;
+
+                // 7. Usuário digitou sem 55 e o cliente tem com 55
+                if (telefoneCliente.startsWith('55') && telefoneCliente.substring(2) === telefoneLimpo) return true;
+
+                return false;
+            });
+
+            console.log(`🔍 Resultado: ${clienteEncontrado ? '✅ Encontrado' : '❌ Não encontrado'}`);
+
+            if (clienteEncontrado) {
                 const dataLimite = new Date();
                 dataLimite.setDate(dataLimite.getDate() - 20);
                 const dataLimiteStr = dataLimite.toISOString().split('T')[0];
@@ -5798,15 +5849,15 @@ app.post('/api/chatbot/cliente/buscar', (req, res) => {
                 db.get(`SELECT id FROM agendamentos 
                         WHERE cliente_id = ? AND data >= ? AND status != 'cancelado' 
                         LIMIT 1`,
-                    [cliente.id, dataLimiteStr], (err, agendamento) => {
+                    [clienteEncontrado.id, dataLimiteStr], (err, agendamento) => {
                         res.json({
                             success: true,
                             cliente: {
-                                id: cliente.id,
-                                nome: cliente.nome,
-                                telefone: cliente.telefone,
-                                email: cliente.email,
-                                bloqueado_chatbot: cliente.bloqueado_chatbot || 0
+                                id: clienteEncontrado.id,
+                                nome: clienteEncontrado.nome,
+                                telefone: clienteEncontrado.telefone,
+                                email: clienteEncontrado.email,
+                                bloqueado_chatbot: clienteEncontrado.bloqueado_chatbot || 0
                             },
                             temAgendamentoRecente: !!agendamento
                         });
@@ -5986,7 +6037,7 @@ app.post('/api/chatbot/datas-disponiveis-mes', (req, res) => {
 app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     const { empresaId, profissionalId, data, duracao } = req.body;
 
-    console.log(`?? Buscando hor�rios para ${data} - Profissional: ${profissionalId || 'todos'} - Dura��o: ${duracao || 30}min`);
+    console.log(`🔍 Buscando horários para ${data} - Profissional: ${profissionalId || 'todos'} - Duração: ${duracao || 30}min`);
 
     let profissionalIdNum = null;
 
@@ -6006,7 +6057,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
     const duracaoMin = duracao || 30;
 
-    // Buscar agendamentos do dia com dura��o dos servi�os
+    // Buscar agendamentos do dia com duração dos serviços
     let sqlAgendamentos = `
         SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
         FROM agendamentos a
@@ -6024,7 +6075,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
     db.all(sqlAgendamentos, params, (err, agendamentos) => {
         if (err) {
-            console.error('? Erro ao buscar agendamentos:', err);
+            console.error('❌ Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -6038,7 +6089,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
             ocupados.push({ inicio: inicioMin, fim: fimMin });
         }
 
-        // Buscar hor�rio de funcionamento do dia
+        // Buscar horário de funcionamento do dia
         const dataObj = new Date(data + 'T00:00:00');
         const diaSemana = dataObj.getDay();
 
@@ -6049,7 +6100,7 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
             [empresaId, diaSemana],
             (err, horario) => {
                 if (err) {
-                    console.error('? Erro ao buscar hor�rio:', err);
+                    console.error('❌ Erro ao buscar horário:', err);
                     return res.json({ success: false, message: err.message });
                 }
 
@@ -6065,14 +6116,29 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
 
                 const horariosDisponiveis = [];
 
-                for (let minutos = inicioMin; minutos + duracaoMin <= fimMin; minutos += intervalo) {
-                    // Pular almo�o
+                // 🔥 GERA TODOS OS HORÁRIOS (INCLUINDO 18:00)
+                for (let minutos = inicioMin; minutos <= fimMin; minutos += intervalo) {
+                    // Pular almoço
                     if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
                         continue;
                     }
 
-                    // Verificar se o hor�rio + dura��o n�o conflita com agendamentos
+                    // 🔥 PERMITE 18:00 COMO HORÁRIO DISPONÍVEL
+                    // Se o horário é exatamente o fim do expediente (18:00), adiciona
+                    if (minutos === fimMin) {
+                        horariosDisponiveis.push(minutosParaHora(minutos));
+                        continue;
+                    }
+
+                    // Para outros horários, verifica se cabe o serviço
                     const fimProposto = minutos + duracaoMin;
+
+                    // Se o horário + duração ultrapassa o fim do expediente, pula
+                    if (fimProposto > fimMin) {
+                        continue;
+                    }
+
+                    // Verificar se o horário + duração não conflita com agendamentos
                     let conflito = false;
 
                     for (let ocupado of ocupados) {
@@ -6087,7 +6153,16 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
                     }
                 }
 
-                console.log(`? ${horariosDisponiveis.length} hor�rios dispon�veis para ${data} (dura��o: ${duracaoMin}min)`);
+                // 🔥 GARANTE QUE 18:00 ESTÁ NA LISTA (mesmo que não tenha sido adicionado)
+                const fimStr = minutosParaHora(fimMin);
+                if (!horariosDisponiveis.includes(fimStr)) {
+                    horariosDisponiveis.push(fimStr);
+                }
+
+                // Ordena os horários
+                horariosDisponiveis.sort();
+
+                console.log(`✅ ${horariosDisponiveis.length} horários disponíveis para ${data} (duração: ${duracaoMin}min):`, horariosDisponiveis);
 
                 res.json({
                     success: true,

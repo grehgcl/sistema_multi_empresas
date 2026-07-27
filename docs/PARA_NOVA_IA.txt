@@ -1,6 +1,6 @@
 ﻿=========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 22/07/2026
+ULTIMA ATUALIZACAO: 27/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -25,7 +25,40 @@ Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
 
 =========================================
-✅ IMPLEMENTADO (22/07/2026) - CORREÇÕES CRÍTICAS
+✅ IMPLEMENTADO (27/07/2026) - CORREÇÕES CLIENTES E PROMOÇÕES
+=========================================
+
+1. GRUPOS DE CLIENTES 👥
+-----------------------------------------
+- Sistema de grupos: Premium, Frequentes, Promoções, Aniversariantes, Amigos, Indicados, Especiais
+- Filtro por grupos na página de clientes (atualiza sem recarregar)
+- Modal de gerenciamento com criação dinâmica de grupos
+- Botão de excluir grupo (✕) funcionando
+- Persistência de grupos personalizados
+
+2. BUSCA MOBILE OTIMIZADA 📱
+-----------------------------------------
+- Filtro local sem recarregar a página
+- Debounce de 500ms
+- Evento resize não interfere na digitação
+- Foco do input é restaurado
+
+3. MODAL DE PROMOÇÃO 📢
+-----------------------------------------
+- Todos os grupos disponíveis no filtro (inclusive vazios)
+- Filtro por grupo funcionando corretamente
+- Busca por nome/telefone dentro do modal
+- Contagem de clientes por grupo exibida
+
+4. WHATSAPP CORRIGIDO 📱
+-----------------------------------------
+- Formatação de números com 55
+- Fallback para diferentes formatos
+- Instância própria da empresa funcionando
+- Mensagens de confirmação e conclusão enviadas
+
+=========================================
+✅ IMPLEMENTADO (22/07/2026) - CORREÇÕES EVOLUTION V2 E SCRIPT BLINDADO
 =========================================
 1. ENDPOINTS EVOLUTION API v2 CORRIGIDOS 📱
 -----------------------------------------
@@ -95,7 +128,8 @@ server/
 public/js/pages/
 ├── dashboard.js, financeiro.js, agendamentos.js
 ├── empresas.js, whatsapp-config.js, planos.js
-└── configuracoes.js, clientes.js, servicos.js
+├── configuracoes.js, clientes.js (CORRIGIDO), servicos.js
+└── clientes.js (CORRIGIDO - GRUPOS + MOBILE + PROMOÇÕES)
 
 scripts/
 ├── migrate-vps.js (Script principal de migração segura)
@@ -128,7 +162,7 @@ pm2 restart seeagende --update-env
 pm2 logs seeagende --lines 30
 
 =========================================
-✅ STATUS ATUAL
+✅ STATUS ATUAL (27/07/2026)
 =========================================
 Tudo funcionando em AMBOS os bancos!
 ✅ SQLite (desenvolvimento local)
@@ -138,3 +172,5 @@ Tudo funcionando em AMBOS os bancos!
 ✅ Script de atualização blindado contra conflitos de Git
 ✅ Super Admin com controle WhatsApp
 ✅ Dono com WhatsApp exclusivo e fallback inteligente
+✅ Grupos de clientes com filtro e promoção
+✅ Busca mobile otimizada

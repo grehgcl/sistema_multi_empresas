@@ -279,9 +279,10 @@ async function send(empresaId, numero, mensagem) {
     }
 }
 
-// Dentro da função gerarMensagemConfirmacao() em server/services/whatsapp.js
-
-function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa) {
+// ============================================
+// GERAR MENSAGEM DE CONFIRMAÇÃO - COM LINK CLICÁVEL
+// ============================================
+function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink) {
     let valor = 0;
     if (servico && servico.valor !== undefined && servico.valor !== null) {
         valor = parseFloat(servico.valor) || 0;
@@ -292,11 +293,22 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
     const telefoneDonoFormatado = formatarTelefone(telefoneDono);
     const endereco = empresa?.endereco || '';
 
-    // ✅ AQUI USAMOS O NOME DA EMPRESA PARA O AGRADECIMENTO FINAL
     const nomeEmpresa = empresa?.nome || 'nossa empresa';
     const nomeCliente = cliente?.nome || 'Cliente';
 
-    // ✅ CABEÇALHO FIXO COMO "See&Agende"
+    // 🔥 SE NÃO TIVER LINK, CRIA UM
+    if (!chatbotLink) {
+        const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
+        const slugEmpresa = nomeEmpresa
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '');
+        const identificador = slugEmpresa || empresa?.id || '1';
+        chatbotLink = `${baseUrl}/chatbot.html?empresa=${identificador}`;
+    }
+
     let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
         `Olá *${nomeCliente}*! Seu agendamento foi confirmado com sucesso! ✅\n\n` +
         `📋 *DETALHES DO AGENDAMENTO:*\n` +
@@ -317,10 +329,10 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
         mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
     }
 
-    // ✅ AGRADECIMENTO PERSONALIZADO COM O NOME DA EMPRESA
     mensagem += `💡 *Dicas:*\n` +
         `• Chegue com 10 minutos de antecedência\n` +
         `• Em caso de imprevisto, entre em contato\n\n` +
+        `🔗 *Agende seu próximo horário:*\n${chatbotLink}\n\n` + // ← LINK EM LINHA SEPARADA
         `🙏 Agradecemos por ter escolhido a *${nomeEmpresa}*!\n` +
         `_Esta é uma mensagem automática do See&Agende._`;
 
@@ -328,7 +340,7 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
 }
 
 // ============================================
-// 🔥 ENVIAR CONFIRMAÇÃO DE AGENDAMENTO
+// 🔥 ENVIAR CONFIRMAÇÃO - COM LINK PERSONALIZADO
 // ============================================
 async function enviarConfirmacao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
@@ -343,7 +355,21 @@ async function enviarConfirmacao(dados) {
         valor: parseFloat(servico?.valor) || 0
     };
 
-    const mensagem = gerarMensagemConfirmacao(cliente, servicoComValor, data, hora, profissional, empresa);
+    // ✅ NOME DA EMPRESA PARA PERSONALIZAÇÃO
+    const nomeEmpresa = empresa?.nome || 'nossa empresa';
+
+    // 🔥 CRIA O LINK PERSONALIZADO
+    const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
+    const slugEmpresa = nomeEmpresa
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    const identificador = slugEmpresa || empresa?.id || '1';
+    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${identificador}`;
+
+    const mensagem = gerarMensagemConfirmacao(cliente, servicoComValor, data, hora, profissional, empresa, chatbotLink);
 
     console.log(`📱 WhatsApp - Dados recebidos:`, {
         empresa_id: empresa?.id,
@@ -410,7 +436,7 @@ async function enviarCancelamento(dados) {
 }
 
 // ============================================
-// 🔥 ENVIAR CONCLUSÃO
+// 🔥 ENVIAR CONCLUSÃO - COM LINK CLICÁVEL
 // ============================================
 async function enviarConclusao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
@@ -425,24 +451,31 @@ async function enviarConclusao(dados) {
     const telefoneDono = empresa?.telefone_dono || '';
     const telefoneDonoFormatado = formatarTelefone(telefoneDono);
 
-    // ✅ NOME DA EMPRESA PARA PERSONALIZAÇÃO
     const nomeEmpresa = empresa?.nome || 'nossa empresa';
+
+    // 🔥 CRIA O LINK PERSONALIZADO
+    const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
+    const slugEmpresa = nomeEmpresa
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    const identificador = slugEmpresa || empresa?.id || '1';
+    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${identificador}`;
 
     const valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
 
-    const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-    const empresaId = empresa?.id || '';
-    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
-
-    // ✅ CABEÇALHO FIXO COMO "See&Agende"
+    // ✅ MENSAGEM COM LINK CLICÁVEL (em linha separada)
     let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
         `✅ *Atendimento Concluído!*\n\n` +
         `Olá *${nomeCliente}*! Seu atendimento foi concluído com sucesso. 😊\n\n` +
         `📋 *Resumo do Atendimento:*\n` +
         `✂️ Serviço: *${servicoNome}*\n` +
         `📅 Data: *${formatarDataBr(data)}*\n` +
-        `⏰ Hora: *${hora}*\n\n`;
+        `⏰ Hora: *${hora}*\n` +
+        `💰 Valor: *R$ ${valorFormatado}*\n\n`;
 
     if (telefoneDonoFormatado) {
         mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
@@ -450,8 +483,7 @@ async function enviarConclusao(dados) {
 
     mensagem += `🌟 *Já pensou em agendar seu próximo atendimento?*\n` +
         `Agende pelo nosso chatbot! 🤖\n\n` +
-        `🔗 *Link do Chatbot:* ${chatbotLink}\n\n` +
-        // ✅ AGRADECIMENTO PERSONALIZADO COM O NOME DA EMPRESA
+        `🔗 *Link do Chatbot:*\n${chatbotLink}\n\n` + // ← LINK EM LINHA SEPARADA
         `🙏 Agradecemos por ter escolhido a *${nomeEmpresa}*!\n` +
         `_Esta é uma mensagem automática do See&Agende._`;
 

@@ -1,6 +1,6 @@
 ﻿﻿=========================================
 ESTRUTURA.md - SEE&AGENDE
-ULTIMA ATUALIZACAO: 22/07/2026
+ULTIMA ATUALIZACAO: 27/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -31,7 +31,7 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 │       └── pages/
 │           ├── dashboard.js              # Dashboard com Agenda Inteligente
 │           ├── dashboard-profissional.js # Dashboard Profissional
-│           ├── clientes.js               # CRUD Clientes + dias_bloqueio
+│           ├── clientes.js               # CRUD Clientes + GRUPOS + PROMOÇÕES ⭐
 │           ├── agendamentos.js           # CRUD Agendamentos
 │           ├── agendamentos-profissional.js # Agendamentos (Profissional)
 │           ├── servicos.js               # CRUD Servicos
@@ -52,7 +52,7 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 │   ├── middlewares/
 │   │   └── auth.js          # Middlewares de autenticação
 │   ├── services/
-│   │   ├── whatsapp.js      # Serviço de notificações WhatsApp
+│   │   ├── whatsapp.js      # Serviço de notificações WhatsApp (CORRIGIDO)
 │   │   ├── evolution-instances.js  # Gestão de instâncias WhatsApp (CORRIGIDO v2)
 │   │   └── mercadopago.js   # Integração com MercadoPago
 │   ├── jobs/
@@ -72,6 +72,36 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 ├── atualizar.sh             # Script de atualização blindado da VPS ⭐
 ├── server.js                # Backend completo + rotas
 └── package.json             # Dependências e scripts
+
+=========================================
+🔥 NOVIDADES (27/07/2026) - CORREÇÕES CLIENTES E PROMOÇÕES
+=========================================
+1. GRUPOS DE CLIENTES 👥
+-----------------------------------------
+- Sistema de grupos: Premium, Frequentes, Promoções, Aniversariantes, Amigos, Indicados, Especiais
+- Filtro por grupos na página de clientes (atualiza sem recarregar)
+- Modal de gerenciamento de grupos com criação dinâmica
+- Persistência de grupos personalizados
+
+2. BUSCA MOBILE OTIMIZADA 📱
+-----------------------------------------
+- Busca local sem recarregar a página
+- Debounce de 500ms para melhor performance
+- Evento resize não interfere na digitação
+- Foco restaurado após atualização
+
+3. MODAL DE PROMOÇÃO 📢
+-----------------------------------------
+- Todos os grupos disponíveis no filtro
+- Filtro por grupo funcionando
+- Busca por nome/telefone dentro do modal
+- Contagem de clientes por grupo
+
+4. WHATSAPP CORRIGIDO 📱
+-----------------------------------------
+- Formatação de números com 55
+- Fallback para diferentes formatos
+- Instância própria funcionando
 
 =========================================
 🔥 NOVIDADES (22/07/2026) - CORREÇÕES EVOLUTION V2 E SCRIPT BLINDADO
@@ -208,7 +238,10 @@ Sistema de Acessos                 ✅       ✅           OK
 WhatsApp Evolution                 LOG      REAL         OK
 WhatsApp Multi-Instância (v2)      ✅       ✅           OK (Endpoints corrigidos)
 Script de Atualização Blindado     ✅       ✅           NOVO! ⭐
+Grupos de Clientes                 ✅       ✅           NOVO! ⭐
+Promoções com Grupos               ✅       ✅           NOVO! ⭐
+Busca Mobile Otimizada             ✅       ✅           NOVO! ⭐
 
 =========================================
-ULTIMA ATUALIZACAO: 22/07/2026
+ULTIMA ATUALIZACAO: 27/07/2026
 =========================================
