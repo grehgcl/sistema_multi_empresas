@@ -899,9 +899,11 @@ async function carregarClientes() {
                     </button>
                     
                     ${!isMobile ? `
+                    <!-- BOTÃO IMPORTAR DESATIVADO TEMPORARIAMENTE
                     <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 6px 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
                         <i class="fas fa-file-csv"></i> Importar
                     </button>
+                    -->
                     ` : ''}
                     
                     <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
