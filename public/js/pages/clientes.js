@@ -881,18 +881,38 @@ async function carregarClientes() {
                 </div>
                 <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
                     <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: ${isMobile ? '100%' : '250px'};">
-                        <i class="fas fa-search" style="color: var(--text-muted); padding-left: 8px; font-size: 12px;"></i>
-                        <input type="text" id="buscaClientesInput" 
-                               placeholder="🔍 Buscar..." 
-                               style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
-                               oninput="buscarClientes()"
-                               autocomplete="off"
-                               value="${escapeHtml(termoBuscaClientes)}"
-                        >
-                        <button onclick="limparBuscaClientes()" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" id="btnLimparBusca">
-                            <i class="fas fa-times-circle"></i>
-                        </button>
-                    </div>
+    <i class="fas fa-search" style="color: var(--text-muted); padding-left: 8px; font-size: 12px;"></i>
+    <input type="text" id="buscaClientesInput" 
+           placeholder="🔍 Buscar..." 
+           style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
+           oninput="buscarClientes()"
+           onsearch="buscarClientes()"
+           autocomplete="off"
+           value="${escapeHtml(termoBuscaClientes)}"
+           enterkeyhint="search"
+    >
+    <button onclick="buscarClientesBotao()" 
+            style="background: linear-gradient(135deg, #667eea, #764ba2); 
+                   border: none; 
+                   color: white; 
+                   padding: ${isMobile ? '4px 8px' : '4px 12px'}; 
+                   border-radius: 6px; 
+                   cursor: pointer; 
+                   font-size: ${isMobile ? '11px' : '12px'}; 
+                   font-weight: 600;
+                   min-width: ${isMobile ? '32px' : 'auto'};
+                   display: flex;
+                   align-items: center;
+                   justify-content: center;">
+        <i class="fas fa-search"></i>
+        ${!isMobile ? ' Buscar' : ''}
+    </button>
+    <button onclick="limparBuscaClientes()" 
+            style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" 
+            id="btnLimparBusca">
+        <i class="fas fa-times-circle"></i>
+    </button>
+</div>
                     
                     <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'};">
                         <i class="fas fa-bullhorn"></i> ${isMobile ? '' : 'Promoção'}
@@ -1224,7 +1244,7 @@ async function carregarClientes() {
 }
 
 // ============================================
-// BUSCAR CLIENTES - CORRIGIDO PARA MOBILE (SEM DEBOUNCE)
+// BUSCAR CLIENTES - CORRIGIDO PARA MOBILE
 // ============================================
 
 function buscarClientes() {
@@ -1275,6 +1295,54 @@ function buscarClientes() {
     }
 }
 
+// ============================================
+// BUSCAR CLIENTES - VIA BOTÃO (PARA MOBILE)
+// ============================================
+
+function buscarClientesBotao() {
+    console.log('🔍 Busca via botão acionada!');
+    // Força o foco no input e executa a busca
+    const input = document.getElementById('buscaClientesInput');
+    if (input) {
+        input.focus();
+    }
+    buscarClientes();
+}
+
+// ============================================
+// LIMPAR BUSCA CLIENTES
+// ============================================
+
+function limparBuscaClientes() {
+    const input = document.getElementById('buscaClientesInput');
+    if (input) {
+        input.value = '';
+        input.focus();
+    }
+
+    termoBuscaClientes = '';
+
+    const btnLimpar = document.getElementById('btnLimparBusca');
+    if (btnLimpar) {
+        btnLimpar.style.display = 'none';
+    }
+
+    if (timeoutBusca) {
+        clearTimeout(timeoutBusca);
+        timeoutBusca = null;
+    }
+
+    // 🔥 RECARREGA A LISTA COMPLETA
+    carregarClientes();
+}
+// ============================================
+// BUSCAR CLIENTES - VIA BOTÃO (PARA MOBILE)
+// ============================================
+
+function buscarClientesBotao() {
+    console.log('🔍 Busca via botão acionada!');
+    buscarClientes();
+}
 // ============================================
 // ATUALIZAR STATS DOS CLIENTES
 // ============================================
@@ -3026,5 +3094,6 @@ window.aplicarFiltrosClientes = aplicarFiltrosClientes;
 window.carregarClientesBackground = carregarClientesBackground;
 window.renderizarListaClientes = renderizarListaClientes;
 window.forcarAtualizacaoGrupos = forcarAtualizacaoGrupos;
+window.buscarClientesBotao = buscarClientesBotao;
 
 console.log('✅ clientes.js carregado (CRM COMPLETO + MOBILE + GRUPOS + LIMPEZA DE NOMES)');
