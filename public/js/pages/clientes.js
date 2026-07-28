@@ -925,23 +925,19 @@ async function carregarClientes() {
                     ${!isMobile ? `<p class="page-subtitle"><i class="fas fa-users"></i> Gerencie seus clientes e acompanhe métricas importantes</p>` : ''}
                 </div>
                 <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: ${isMobile ? '100%' : '250px'};" 
-     onclick="event.stopPropagation(); event.preventDefault();">
+                    <!-- 🔥 SUBSTITUA O DIV DO INPUT DE BUSCA POR ESTE: -->
+<div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: ${isMobile ? '100%' : '250px'};">
     <i class="fas fa-search" style="color: var(--text-muted); padding-left: 8px; font-size: 12px;"></i>
     <input type="text" id="buscaClientesInput" 
            placeholder="🔍 Buscar..." 
-           inputmode="search"
            style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
            oninput="buscarClientes()"
            onsearch="buscarClientes()"
-           onfocus="event.stopPropagation(); event.preventDefault();"
-           onclick="event.stopPropagation(); event.preventDefault();"
-           ontouchstart="event.stopPropagation(); event.preventDefault();"
            autocomplete="off"
            value="${escapeHtml(termoBuscaClientes)}"
            enterkeyhint="search"
     >
-    <button onclick="event.stopPropagation(); event.preventDefault(); buscarClientesBotao();" 
+    <button onclick="buscarClientesBotao();" 
             style="background: linear-gradient(135deg, #667eea, #764ba2); 
                    border: none; 
                    color: white; 
@@ -957,7 +953,7 @@ async function carregarClientes() {
         <i class="fas fa-search"></i>
         ${!isMobile ? ' Buscar' : ''}
     </button>
-    <button onclick="event.stopPropagation(); event.preventDefault(); limparBuscaClientes();" 
+    <button onclick="limparBuscaClientes();" 
             style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" 
             id="btnLimparBusca">
         <i class="fas fa-times-circle"></i>
