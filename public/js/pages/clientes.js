@@ -1224,7 +1224,7 @@ async function carregarClientes() {
 }
 
 // ============================================
-// BUSCAR CLIENTES - CORRIGIDO PARA MOBILE
+// BUSCAR CLIENTES - CORRIGIDO PARA MOBILE (SEM DEBOUNCE)
 // ============================================
 
 function buscarClientes() {
@@ -1234,27 +1234,95 @@ function buscarClientes() {
     const termo = input.value.toLowerCase().trim();
     termoBuscaClientes = termo;
 
+    console.log(`🔍 Buscando: "${termo}"`);
+
     const btnLimpar = document.getElementById('btnLimparBusca');
     if (btnLimpar) {
         btnLimpar.style.display = termo ? 'block' : 'none';
     }
 
+    // 🔥 CANCELA QUALQUER TIMEOUT ANTERIOR
     if (timeoutBusca) {
         clearTimeout(timeoutBusca);
+        timeoutBusca = null;
     }
 
-    timeoutBusca = setTimeout(() => {
-        if (clientesCompletos.length > 0) {
-            const clientesFiltrados = clientesCompletos.filter(c => {
-                const nomeMatch = c.nome.toLowerCase().includes(termo);
-                const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(termo);
-                const emailMatch = c.email && c.email.toLowerCase().includes(termo);
-                return nomeMatch || telefoneMatch || emailMatch;
-            });
+    // 🔥 SE NÃO TIVER NADA DIGITADO, RECARREGA A LISTA COMPLETA
+    if (!termo) {
+        carregarClientes();
+        return;
+    }
 
-            atualizarListaClientes(clientesFiltrados);
-        }
-    }, 500);
+    // 🔥 FILTRA LOCALMENTE - SEM RECARREGAR A PÁGINA
+    if (clientesCompletos.length > 0) {
+        const clientesFiltrados = clientesCompletos.filter(c => {
+            const nomeMatch = c.nome.toLowerCase().includes(termo);
+            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(termo);
+            const emailMatch = c.email && c.email.toLowerCase().includes(termo);
+            return nomeMatch || telefoneMatch || emailMatch;
+        });
+
+        console.log(`✅ Encontrados ${clientesFiltrados.length} clientes`);
+
+        // 🔥 ATUALIZA A LISTA IMEDIATAMENTE
+        atualizarListaClientes(clientesFiltrados);
+
+        // 🔥 ATUALIZA OS STATS
+        atualizarStatsClientes(clientesFiltrados);
+    } else {
+        // Se não tiver clientes carregados, recarrega
+        carregarClientes();
+    }
+}
+
+// ============================================
+// ATUALIZAR STATS DOS CLIENTES
+// ============================================
+
+function atualizarStatsClientes(clientesFiltrados) {
+    const totalExibidos = clientesFiltrados.length;
+    const totalClientes = clientesCompletos.length;
+
+    // Atualiza contador
+    const contador = document.getElementById('contadorBuscaClientes');
+    if (contador) {
+        contador.innerHTML = `
+            ${termoBuscaClientes ? `🔍 "${escapeHtml(termoBuscaClientes)}" → ` : ''}
+            ${filtroGrupo !== 'todos' ? `🏷️ "${filtroGrupo}" → ` : ''}
+            <strong>${totalExibidos}</strong> de <strong>${totalClientes}</strong> clientes
+        `;
+    }
+
+    // Atualiza total
+    const totalEl = document.getElementById('totalClientes');
+    if (totalEl) totalEl.textContent = totalExibidos;
+
+    // VIP
+    const vipCount = clientesFiltrados.filter(c => c.classificacao === 'vip').length;
+    const vipEl = document.querySelector('.stat-mini-value[style*="color: #f59e0b"]');
+    if (vipEl) vipEl.textContent = vipCount;
+
+    // Frequentes
+    const freqCount = clientesFiltrados.filter(c => c.classificacao === 'frequente').length;
+    const freqEl = document.querySelector('.stat-mini-value[style*="color: #22c55e"]');
+    if (freqEl && freqEl.parentElement?.querySelector('.stat-mini-label')?.textContent.includes('Frequentes')) {
+        freqEl.textContent = freqCount;
+    }
+
+    // Sumidos
+    const sumidosCount = clientesFiltrados.filter(c => c.classificacao === 'sumido').length;
+    const sumidosEl = document.querySelector('.stat-mini-value[style*="color: #ef4444"]');
+    if (sumidosEl) sumidosEl.textContent = sumidosCount;
+
+    // Novos
+    const novosCount = clientesFiltrados.filter(c => c.classificacao === 'novo').length;
+    const novosEl = document.querySelector('.stat-mini-value[style*="color: #667eea"]');
+    if (novosEl) novosEl.textContent = novosCount;
+
+    // WhatsApp
+    const whatsCount = clientesFiltrados.filter(c => c.telefone && c.telefone.trim() !== '').length;
+    const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
+    if (whatsEl) whatsEl.textContent = whatsCount;
 }
 
 // ============================================
@@ -1274,8 +1342,10 @@ function limparBuscaClientes() {
 
     if (timeoutBusca) {
         clearTimeout(timeoutBusca);
+        timeoutBusca = null;
     }
 
+    // 🔥 RECARREGA A LISTA COMPLETA
     carregarClientes();
 }
 
