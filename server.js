@@ -5319,7 +5319,9 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
         });
 });
 
-// 4. ANÁLISE DIÁRIA - BUSCANDO VALOR DA TABELA SERVICOS
+// ============================================================
+// ANÁLISE DIÁRIA - CORRIGIDA (VALOR FORÇADO)
+// ============================================================
 app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
@@ -5329,20 +5331,29 @@ app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
 
     console.log(`📊 Análise Diária - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}`);
 
-    // 🔥 NOVA QUERY: Buscar valor diretamente da tabela servicos
     let sql, params;
 
     if (isProduction) {
-        // POSTGRESQL - JOIN com servicos para pegar o valor
+        // POSTGRESQL
         sql = `
             SELECT 
                 EXTRACT(DAY FROM a.data) as dia,
                 COUNT(*) as qtd_servicos,
-                COALESCE(SUM(COALESCE(a.valor_total, a.valor, s.valor, 0)), 0) as faturamento
+                COALESCE(
+                    SUM(
+                        COALESCE(
+                            CASE WHEN a.valor > 0 THEN a.valor END,
+                            CASE WHEN a.valor_total > 0 THEN a.valor_total END,
+                            s.valor,
+                            0
+                        )
+                    ),
+                    0
+                ) as faturamento
             FROM agendamentos a
             LEFT JOIN servicos s ON a.servico_id = s.id
             WHERE a.empresa_id = $1
-                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído', 'pendente')
                 AND EXTRACT(MONTH FROM a.data) = $2
                 AND EXTRACT(YEAR FROM a.data) = $3
             GROUP BY EXTRACT(DAY FROM a.data)
@@ -5350,16 +5361,24 @@ app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
         `;
         params = [empresaId, parseInt(mes), parseInt(ano)];
     } else {
-        // SQLITE
+        // SQLITE - 🔥 CORRIGIDO
         sql = `
             SELECT 
                 CAST(strftime('%d', a.data) AS INTEGER) as dia,
                 COUNT(*) as qtd_servicos,
-                COALESCE(SUM(COALESCE(a.valor_total, a.valor, s.valor, 0)), 0) as faturamento
+                COALESCE(
+                    SUM(
+                        CASE 
+                            WHEN a.valor > 0 THEN a.valor
+                            WHEN a.valor_total > 0 THEN a.valor_total
+                            ELSE (SELECT valor FROM servicos WHERE id = a.servico_id)
+                        END
+                    ),
+                    0
+                ) as faturamento
             FROM agendamentos a
-            LEFT JOIN servicos s ON a.servico_id = s.id
             WHERE a.empresa_id = ?
-                AND a.status IN ('concluido', 'finalizado', 'Concluído', 'Finalizado')
+                AND a.status IN ('concluido', 'finalizado', 'Concluído', 'Finalizado', 'pendente')
                 AND strftime('%m', a.data) = ?
                 AND strftime('%Y', a.data) = ?
             GROUP BY CAST(strftime('%d', a.data) AS INTEGER)
@@ -5377,10 +5396,15 @@ app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
             return res.json({ success: false, message: 'Erro ao carregar análise: ' + err.message });
         }
 
-        console.log('📊 Rows encontrados (RAW):', JSON.stringify(rows, null, 2));
+        console.log(`📊 ${rows.length} rows encontrados`);
+
+        // 🔥 DEBUG: Ver cada row
+        rows.forEach(row => {
+            console.log(`📊 Dia ${row.dia}: ${row.qtd_servicos} serviços, R$ ${row.faturamento}`);
+        });
 
         // Processar os dados
-        const diasNoMes = new Date(ano, mes - 1, 0).getDate();
+        const diasNoMes = new Date(ano, parseInt(mes) - 1, 0).getDate();
         const mapa = {};
         for (let d = 1; d <= diasNoMes; d++) {
             mapa[d] = { dia: d, qtd_servicos: 0, faturamento: 0 };
@@ -5404,50 +5428,37 @@ app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
         const totalServicos = dias.reduce((s, d) => s + d.qtd_servicos, 0);
         const totalFaturamento = dias.reduce((s, d) => s + d.faturamento, 0);
 
-        console.log('📊 Total Faturamento:', totalFaturamento, 'Total Serviços:', totalServicos);
+        console.log(`📊 Total: ${totalServicos} serviços, R$ ${totalFaturamento}`);
 
-        // Médias
+        // Calcular dias com movimento
         const diasComMovimento = dias.filter(d => d.qtd_servicos > 0);
         const mediaServicos = diasComMovimento.length > 0
             ? diasComMovimento.reduce((s, d) => s + d.qtd_servicos, 0) / diasComMovimento.length
             : 0;
+
         const mediaFaturamento = diasComMovimento.length > 0
             ? diasComMovimento.reduce((s, d) => s + d.faturamento, 0) / diasComMovimento.length
             : 0;
 
-        const diasRuins = dias.filter(d =>
-            d.qtd_servicos > 0 && d.qtd_servicos < (mediaServicos * 0.5)
-        );
-
-        const sugestoes = diasRuins.map(d => ({
-            dia: d.dia,
-            qtd_servicos: d.qtd_servicos,
-            faturamento: d.faturamento,
-            sugestao: `📢 Dia ${d.dia} com baixo movimento (${d.qtd_servicos} serviços). Que tal oferecer ${d.qtd_servicos === 1 ? 15 : 10}% de desconto?`
-        }));
-
-        const melhorDia = diasComMovimento.length > 0
-            ? diasComMovimento.reduce((a, b) => a.faturamento > b.faturamento ? a : b)
-            : { dia: 0, faturamento: 0 };
-        const piorDia = diasComMovimento.length > 0
-            ? diasComMovimento.reduce((a, b) => a.faturamento < b.faturamento ? a : b)
-            : { dia: 0, faturamento: 0 };
-
+        // 🔥 RESPOSTA
         res.json({
             success: true,
-            data: {
-                dias: dias,
-                resumo: {
-                    total_servicos: totalServicos,
-                    total_faturamento: totalFaturamento,
-                    media_servicos_por_dia: mediaServicos,
-                    media_faturamento_por_dia: mediaFaturamento,
-                    dias_ruins: diasRuins.length,
-                    melhor_dia: melhorDia,
-                    pior_dia: piorDia
-                },
-                sugestoes: sugestoes
-            }
+            dados: dias,
+            total_servicos: totalServicos,
+            total_faturamento: totalFaturamento,
+            resumo: {
+                total_servicos: totalServicos,
+                total_faturamento: totalFaturamento,
+                media_servicos_por_dia: mediaServicos,
+                media_faturamento_por_dia: mediaFaturamento,
+                dias_ruins: dias.filter(d => d.qtd_servicos > 0 && d.qtd_servicos < (mediaServicos * 0.5)).length
+            },
+            sugestoes: dias.filter(d => d.qtd_servicos > 0 && d.qtd_servicos < (mediaServicos * 0.5)).map(d => ({
+                dia: d.dia,
+                qtd_servicos: d.qtd_servicos,
+                faturamento: d.faturamento,
+                sugestao: `📢 Dia ${d.dia} com baixo movimento (${d.qtd_servicos} serviços). Que tal oferecer ${d.qtd_servicos === 1 ? 15 : 10}% de desconto?`
+            }))
         });
     });
 });
@@ -5998,13 +6009,31 @@ app.get('/api/chatbot/empresa/:id', (req, res) => {
     });
 });
 
+// ============================================================
+// ROTA: CHATBOT - SERVIÇOS (CORRIGIDA)
+// ============================================================
 app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
     const { empresaId } = req.params;
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    const sql = isProduction
-        ? 'SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = $1 AND ativo = true ORDER BY nome'
-        : 'SELECT id, nome, valor, duracao FROM servicos WHERE empresa_id = ? AND ativo = 1 ORDER BY nome';
+    // 🔥 CORREÇÃO: Usar COALESCE para lidar com NULL e converter para booleano
+    let sql;
+    if (isProduction) {
+        sql = `SELECT id, nome, descricao, valor, duracao 
+               FROM servicos 
+               WHERE empresa_id = $1 
+               AND (ativo IS NULL OR ativo = true OR ativo = 1)
+               ORDER BY nome`;
+    } else {
+        sql = `SELECT id, nome, descricao, valor, duracao 
+               FROM servicos 
+               WHERE empresa_id = ? 
+               AND (ativo IS NULL OR ativo = 1 OR ativo = 'true')
+               ORDER BY nome`;
+    }
+
+    console.log(`🔍 Buscando serviços para empresa ${empresaId} (${isProduction ? 'PostgreSQL' : 'SQLite'})`);
+    console.log(`📝 SQL: ${sql}`);
 
     db.all(sql, [empresaId], (err, servicos) => {
         if (err) {
@@ -6013,6 +6042,12 @@ app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
             console.error('❌ Params:', [empresaId]);
             return res.json({ success: false, message: err.message });
         }
+
+        console.log(`✅ ${servicos.length} serviços encontrados para empresa ${empresaId}`);
+        servicos.forEach(s => {
+            console.log(`  - ${s.nome}: R$ ${s.valor} (${s.duracao}min)`);
+        });
+
         res.json({ success: true, servicos });
     });
 });
@@ -6444,9 +6479,67 @@ app.post('/api/chatbot/horarios-disponiveis', (req, res) => {
     });
 });
 
+// ============================================
+// ROTA: CHATBOT - AGENDAR (CORRIGIDA COM VALOR)
+// ============================================
 app.post('/api/chatbot/agendar', async (req, res) => {
     try {
         const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
+
+        console.log('📥 Recebendo agendamento do chatbot:', {
+            clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome
+        });
+
+        // ============================================
+        // 🔥 CORREÇÃO: GARANTIR QUE O VALOR ESTÁ CORRETO
+        // ============================================
+        let valorFinal = parseFloat(valor) || 0;
+        let nomeFinal = servicoNome || '';
+        let duracaoFinal = 30;
+
+        console.log(`💰 Valor recebido: R$ ${valorFinal}`);
+
+        // Se o valor veio como 0 ou null, buscar do banco
+        if (valorFinal === 0 && servicoId) {
+            console.log(`🔍 Buscando valor do serviço ID ${servicoId} para empresa ${empresaId}`);
+
+            const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+            const sqlServico = isProduction
+                ? 'SELECT nome, valor, duracao FROM servicos WHERE id = $1 AND empresa_id = $2'
+                : 'SELECT nome, valor, duracao FROM servicos WHERE id = ? AND empresa_id = ?';
+
+            try {
+                const servico = await new Promise((resolve, reject) => {
+                    db.get(sqlServico, [servicoId, empresaId], (err, row) => {
+                        if (err) {
+                            console.error('❌ Erro ao buscar serviço:', err);
+                            reject(err);
+                        } else {
+                            resolve(row);
+                        }
+                    });
+                });
+
+                if (servico) {
+                    valorFinal = parseFloat(servico.valor) || 0;
+                    nomeFinal = servico.nome || nomeFinal;
+                    duracaoFinal = servico.duracao || 30;
+                    console.log(`💰 Valor encontrado no banco: R$ ${valorFinal}`);
+                    console.log(`📝 Nome do serviço: ${nomeFinal}`);
+                    console.log(`⏱️ Duração: ${duracaoFinal}min`);
+                } else {
+                    console.warn(`⚠️ Serviço ID ${servicoId} não encontrado no banco`);
+                }
+            } catch (error) {
+                console.error('❌ Erro ao buscar serviço no banco:', error);
+                // Continua com o valor que veio (0)
+            }
+        }
+
+        // Se ainda não tem nome, usar o que veio ou um padrão
+        if (!nomeFinal || nomeFinal === '') {
+            nomeFinal = servicoNome || 'Serviço não identificado';
+        }
 
         // Verifica se é produção (VPS/PostgreSQL) ou local (SQLite)
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -6454,15 +6547,17 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         let novoAgendamentoId;
 
         // ============================================
-        // 1. INSERIR AGENDAMENTO
+        // 1. INSERIR AGENDAMENTO (COM VALOR CORRETO)
         // ============================================
         if (isProduction) {
             // PostgreSQL
             const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                               VALUES ($1, $2, $3, $4, $5, $6, 30, 'pendente', $7, $8) RETURNING id`;
-            const params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
+                               VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', $8, $9) RETURNING id`;
+            const params = [clienteId, data, hora, servicoId, nomeFinal, valorFinal, duracaoFinal, empresaId, profissionalId];
 
-            // Tenta usar db.query, se não existir, usa db.get (alguns wrappers usam get para tudo)
+            console.log('📝 SQL (PostgreSQL):', sqlInsert);
+            console.log('📝 Params:', params);
+
             if (typeof db.query === 'function') {
                 const result = await db.query(sqlInsert, params);
                 novoAgendamentoId = result.rows[0].id;
@@ -6479,21 +6574,27 @@ app.post('/api/chatbot/agendar', async (req, res) => {
         } else {
             // SQLite
             const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, 30, 'pendente', ?, ?)`;
-            const params = [clienteId, data, hora, servicoId, servicoNome, valor, empresaId, profissionalId];
+                               VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+            const params = [clienteId, data, hora, servicoId, nomeFinal, valorFinal, duracaoFinal, empresaId, profissionalId];
+
+            console.log('📝 SQL (SQLite):', sqlInsert);
+            console.log('📝 Params:', params);
 
             await new Promise((resolve, reject) => {
                 db.run(sqlInsert, params, function (err) {
-                    if (err) reject(err);
-                    else {
+                    if (err) {
+                        console.error('❌ Erro no db.run:', err);
+                        reject(err);
+                    } else {
                         novoAgendamentoId = this.lastID;
+                        console.log(`✅ Agendamento inserido com ID: ${novoAgendamentoId}`);
                         resolve();
                     }
                 });
             });
         }
 
-        console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}`);
+        console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}, Valor: R$ ${valorFinal}`);
 
         // ============================================
         // 2. BUSCAR DADOS DA EMPRESA
@@ -6521,6 +6622,8 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             });
         }
 
+        console.log('🏢 Empresa encontrada:', empresa?.nome || 'Não encontrada');
+
         // ============================================
         // 3. BUSCAR DADOS DO CLIENTE
         // ============================================
@@ -6547,28 +6650,74 @@ app.post('/api/chatbot/agendar', async (req, res) => {
             });
         }
 
-        // ============================================
-        // 4. ENVIAR WHATSAPP
-        // ============================================
-        const { enviarConfirmacao } = require('./server/services/whatsapp');
+        console.log('👤 Cliente encontrado:', cliente?.nome || 'Não encontrado');
 
-        await enviarConfirmacao({
-            cliente: cliente,
-            servico: { nome: servicoNome, valor: valor },
-            data: data,
-            hora: hora,
-            profissional: profissionalId ? { nome: 'Profissional' } : null,
-            empresa: empresa
+        // ============================================
+        // 4. ENVIAR WHATSAPP (SE TIVER TELEFONE)
+        // ============================================
+        if (cliente && cliente.telefone) {
+            try {
+                const { enviarConfirmacao } = require('./server/services/whatsapp');
+
+                await enviarConfirmacao({
+                    cliente: cliente,
+                    servico: { nome: nomeFinal, valor: valorFinal },
+                    data: data,
+                    hora: hora,
+                    profissional: profissionalId ? { nome: 'Profissional' } : null,
+                    empresa: empresa
+                });
+                console.log('📱 WhatsApp enviado com sucesso!');
+            } catch (whatsError) {
+                console.error('❌ Erro ao enviar WhatsApp:', whatsError);
+                // Não bloqueia o agendamento se o WhatsApp falhar
+            }
+        } else {
+            console.warn('⚠️ Cliente sem telefone, WhatsApp não enviado');
+        }
+
+        res.json({
+            success: true,
+            message: 'Agendamento confirmado!',
+            agendamentoId: novoAgendamentoId,
+            valor: valorFinal
         });
-
-        res.json({ success: true, message: 'Agendamento confirmado!' });
 
     } catch (error) {
         console.error('❌ Erro no agendamento do chatbot:', error);
-        res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+        res.status(500).json({
+            success: false,
+            message: 'Erro interno do servidor: ' + error.message
+        });
     }
 });
 
+// ============================================================
+// ROTA: CHATBOT - BUSCAR SERVIÇO POR ID
+// ============================================================
+app.get('/api/chatbot/servico/:id', (req, res) => {
+    const { id } = req.params;
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    const sql = isProduction
+        ? 'SELECT id, nome, valor, duracao FROM servicos WHERE id = $1'
+        : 'SELECT id, nome, valor, duracao FROM servicos WHERE id = ?';
+
+    console.log(`🔍 Buscando serviço ID ${id}`);
+
+    db.get(sql, [id], (err, servico) => {
+        if (err) {
+            console.error('❌ Erro ao buscar serviço:', err);
+            return res.json({ success: false, message: err.message });
+        }
+        if (!servico) {
+            console.warn(`⚠️ Serviço ID ${id} não encontrado`);
+            return res.json({ success: false, message: 'Serviço não encontrado' });
+        }
+        console.log(`✅ Serviço encontrado: ${servico.nome} - R$ ${servico.valor}`);
+        res.json({ success: true, servico });
+    });
+});
 // Função auxiliar para organizar o envio do WhatsApp
 async function processarWhatsApp(agendamentoId, empresaId, body, empresaDados = null) {
     console.log('🔍 [DEBUG] processarWhatsApp iniciado. body.clienteId:', body.clienteId);
@@ -7254,25 +7403,48 @@ app.post('/api/empresa/whatsapp/criar-instancia', auth, async (req, res) => {
             return res.status(400).json({ success: false, message: 'Empresa não encontrada' });
         }
 
+        // 🔥 Nome simples baseado no ID
+        const nomeInstancia = `emp-${empresaId}`;
+
+        // Se já tem instância no banco, usar ela
         if (empresa.whatsapp_instance) {
+            // Verificar se existe na Evolution
+            const status = await EvolutionInstances.getStatus(empresa.whatsapp_instance);
+            if (status.success && status.state !== 'not_found') {
+                return res.json({
+                    success: true,
+                    message: 'Instância já existe',
+                    instanceName: empresa.whatsapp_instance
+                });
+            }
+        }
+
+        // 🔥 TENTAR CRIAR A INSTÂNCIA
+        const resultado = await EvolutionInstances.criarInstancia(nomeInstancia);
+
+        // Se falhou por já existir, tenta usar a existente
+        if (!resultado.success && resultado.message && resultado.message.includes('already exists')) {
             return res.json({
                 success: true,
-                message: 'Instância já existe',
-                instanceName: empresa.whatsapp_instance
+                message: 'Instância já existe na Evolution',
+                instanceName: nomeInstancia
             });
         }
 
-        const resultado = await EvolutionInstances.criarInstancia(empresaId, empresa.nome);
-
         if (!resultado.success) {
-            return res.status(400).json({ success: false, message: resultado.message });
+            console.error('❌ Erro ao criar instância:', resultado.message);
+            return res.status(400).json({
+                success: false,
+                message: resultado.message || 'Erro ao criar instância. Tente novamente.'
+            });
         }
 
+        // Salvar no banco
         const sqlUpdate = isProduction
             ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
             : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
 
-        db.run(sqlUpdate, [resultado.instanceName, empresaId], (err) => {
+        db.run(sqlUpdate, [nomeInstancia, empresaId], (err) => {
             if (err) {
                 console.error('❌ Erro ao salvar instância:', err);
                 return res.status(500).json({ success: false, message: 'Erro ao salvar' });
@@ -7280,7 +7452,7 @@ app.post('/api/empresa/whatsapp/criar-instancia', auth, async (req, res) => {
 
             res.json({
                 success: true,
-                instanceName: resultado.instanceName,
+                instanceName: nomeInstancia,
                 message: 'Instância criada!'
             });
         });

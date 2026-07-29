@@ -1656,68 +1656,102 @@ function renderTabAnaliseDiaria(isMobile) {
     `;
 }
 
+// ============================================
+// CARREGAR ANÁLISE DIÁRIA - CORRIGIDA
+// ============================================
 async function carregarAnaliseDiaria() {
-    const token = localStorage.getItem('token');
-    const mesInput = document.getElementById('filtroMesAnalise');
-    let mes = mesInput?.value || `${filtroAnoReceitas || ''}-${filtroMesReceitas || ''}`;
-
-    let mesNum, anoNum;
-    if (mes) {
-        const parts = mes.split('-');
-        anoNum = parts[0];
-        mesNum = parts[1];
-    } else {
-        const hoje = new Date();
-        mesNum = String(hoje.getMonth() + 1).padStart(2, '0');
-        anoNum = hoje.getFullYear();
-    }
-
     try {
-        const res = await fetch(`/api/financeiro/analise-diaria?mes=${mesNum}&ano=${anoNum}`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const result = await res.json();
+        const token = localStorage.getItem('token');
+        const mesInput = document.getElementById('filtroMesAnalise');
 
-        if (result.success) {
-            renderizarAnaliseDiaria(result.data, mesNum, anoNum);
+        let mes, ano;
+        if (mesInput && mesInput.value) {
+            const [anoVal, mesVal] = mesInput.value.split('-');
+            mes = mesVal;
+            ano = anoVal;
         } else {
-            document.getElementById('analiseDiariaContent').innerHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h4>Erro ao carregar análise</h4>
-                    <p>${result.message || 'Tente novamente'}</p>
+            const hoje = new Date();
+            mes = String(hoje.getMonth() + 1).padStart(2, '0');
+            ano = String(hoje.getFullYear());
+        }
+
+        console.log(`📊 Carregando análise diária - Mês: ${mes}/${ano}`);
+
+        const content = document.getElementById('analiseDiariaContent');
+        if (!content) {
+            console.error('❌ Elemento analiseDiariaContent não encontrado');
+            return;
+        }
+
+        content.innerHTML = `
+            <div style="text-align:center;padding:30px;color:var(--text-muted);">
+                <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+                <p>Carregando análise diária...</p>
+            </div>
+        `;
+
+        const response = await fetch(`/api/financeiro/analise-diaria?mes=${mes}&ano=${ano}`, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        console.log('📊 Status:', response.status);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('📊 Dados recebidos:', data);
+
+        if (data.success && data.dados) {
+            renderizarAnaliseDiaria(data, parseInt(mes), parseInt(ano));
+        } else {
+            content.innerHTML = `
+                <div style="text-align:center;padding:20px;color:#ef4444;">
+                    ❌ ${data.message || 'Erro ao carregar dados'}
                 </div>
             `;
         }
     } catch (error) {
-        console.error('Erro:', error);
-        document.getElementById('analiseDiariaContent').innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h4>Erro ao carregar análise</h4>
-                <p>${error.message}</p>
-            </div>
-        `;
+        console.error('❌ Erro ao carregar análise diária:', error);
+        const content = document.getElementById('analiseDiariaContent');
+        if (content) {
+            content.innerHTML = `
+                <div style="text-align:center;padding:20px;color:#ef4444;">
+                    ❌ Erro: ${error.message}
+                </div>
+            `;
+        }
     }
 }
 
+// ============================================
+// RENDERIZAR ANÁLISE DIÁRIA - CORRIGIDA
+// ============================================
 function renderizarAnaliseDiaria(data, mesNum, anoNum) {
     const isMobile = window.innerWidth < 768;
-    const dias = data.dias || [];
+
+    // 🔥 CORREÇÃO: Os dados podem vir em "dados" ou "dias"
+    const dias = data.dados || data.dias || [];
     const resumo = data.resumo || {};
     const sugestoes = data.sugestoes || [];
+
+    console.log('📊 Renderizando análise - Dias:', dias.length, 'Resumo:', resumo);
 
     // Resumo rápido
     let html = `
         <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:12px;margin-bottom:16px;">
             <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
                 <div style="font-size:20px;">📊</div>
-                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;">${resumo.total_servicos || 0}</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;">${resumo.total_servicos || data.total_servicos || 0}</div>
                 <div style="font-size:11px;color:var(--text-muted);">Total de serviços</div>
             </div>
             <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
                 <div style="font-size:20px;">💰</div>
-                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:#22c55e;">R$ ${(resumo.total_faturamento || 0).toFixed(2)}</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:#22c55e;">R$ ${(resumo.total_faturamento || data.total_faturamento || 0).toFixed(2)}</div>
                 <div style="font-size:11px;color:var(--text-muted);">Faturamento total</div>
             </div>
             <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
@@ -1727,15 +1761,31 @@ function renderizarAnaliseDiaria(data, mesNum, anoNum) {
             </div>
             <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
                 <div style="font-size:20px;">⚠️</div>
-                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:${resumo.dias_ruins > 0 ? '#ef4444' : '#22c55e'};">${resumo.dias_ruins || 0}</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:${(resumo.dias_ruins || 0) > 0 ? '#ef4444' : '#22c55e'};">${resumo.dias_ruins || 0}</div>
                 <div style="font-size:11px;color:var(--text-muted);">Dias com baixo movimento</div>
             </div>
         </div>
     `;
 
-    // Calendário visual
+    // ============================================
+    // 🔥 CALENDÁRIO - CORRIGIDO
+    // ============================================
     const diasNoMes = new Date(anoNum, mesNum, 0).getDate();
     const primeiroDiaSemana = new Date(anoNum, mesNum - 1, 1).getDay();
+
+    // 🔥 Criar um mapa para acesso rápido por dia
+    const mapaDias = {};
+    dias.forEach(d => {
+        const diaNum = parseInt(d.dia) || 0;
+        if (diaNum > 0) {
+            mapaDias[diaNum] = {
+                qtd_servicos: parseInt(d.qtd_servicos) || 0,
+                faturamento: parseFloat(d.faturamento) || 0
+            };
+        }
+    });
+
+    console.log('📊 Mapa de dias:', Object.keys(mapaDias));
 
     html += `
         <div style="margin-bottom:16px;">
@@ -1744,39 +1794,86 @@ function renderizarAnaliseDiaria(data, mesNum, anoNum) {
             </h4>
             <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:12px;">
                 ${['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => `
-                    <div style="text-align:center;padding:4px 0;font-weight:600;color:var(--text-muted);">${isMobile ? d.substring(0, 1) : d}</div>
+                    <div style="text-align:center;padding:4px 0;font-weight:600;color:var(--text-muted);font-size:${isMobile ? '10px' : '12px'};">
+                        ${isMobile ? d.substring(0, 1) : d}
+                    </div>
                 `).join('')}
-                ${Array.from({ length: primeiroDiaSemana }, (_, i) => `
-                    <div style="padding:4px;border-radius:6px;background:transparent;"></div>
-                `).join('')}
-                ${dias.map(d => {
-        const isRuim = sugestoes.some(s => s.dia === d.dia);
-        const fat = d.faturamento || 0;
-        const corFundo = fat === 0 ? 'var(--bg-hover)' : (fat > resumo.media_faturamento_por_dia ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)');
-        const corTexto = fat === 0 ? 'var(--text-muted)' : (fat > resumo.media_faturamento_por_dia ? '#22c55e' : '#ef4444');
-        return `
-                        <div style="
-                            padding:${isMobile ? '6px 2px' : '8px 4px'}; 
-                            border-radius:6px; 
-                            text-align:center; 
-                            background:${corFundo};
-                            border: ${isRuim ? '2px solid #ef4444' : '1px solid var(--border-color)'};
-                            cursor: default;
-                            transition: 0.2s;
-                        ">
-                            <div style="font-weight:600;font-size:${isMobile ? '11px' : '14px'};color:var(--text-primary);">${d.dia}</div>
-                            <div style="font-size:${isMobile ? '9px' : '11px'};color:${corTexto};">R$ ${fat.toFixed(2)}</div>
-                            <div style="font-size:${isMobile ? '8px' : '10px'};color:var(--text-muted);">${d.qtd_servicos} serv.</div>
-                            ${isRuim ? `<div style="font-size:9px;color:#ef4444;font-weight:700;">⚠️</div>` : ''}
-                        </div>
-                    `;
-    }).join('')}
+    `;
+
+    // Dias vazios antes do primeiro dia
+    for (let i = 0; i < primeiroDiaSemana; i++) {
+        html += `
+            <div style="padding:${isMobile ? '6px 2px' : '8px 4px'};border-radius:6px;background:transparent;min-height:${isMobile ? '50px' : '65px'};"></div>
+        `;
+    }
+
+    // 🔥 Dias do mês
+    const hoje = new Date();
+    const hojeMes = hoje.getMonth() + 1;
+    const hojeAno = hoje.getFullYear();
+    const hojeDia = hoje.getDate();
+
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+        const info = mapaDias[dia] || { qtd_servicos: 0, faturamento: 0 };
+        const qtd = info.qtd_servicos || 0;
+        const fat = info.faturamento || 0;
+
+        const isHoje = (dia === hojeDia && mesNum === hojeMes && anoNum === hojeAno);
+        const temServico = qtd > 0;
+        const temValor = fat > 0;
+
+        let bgColor = 'var(--bg-card)';
+        let borderColor = 'var(--border-color)';
+        let textColor = 'var(--text-primary)';
+        let borderWidth = '1px';
+
+        if (temServico && temValor) {
+            bgColor = 'rgba(34,197,94,0.15)';
+            borderColor = '#22c55e';
+            textColor = '#065f46';
+        } else if (temServico && !temValor) {
+            bgColor = 'rgba(251,191,36,0.15)';
+            borderColor = '#f59e0b';
+            textColor = '#92400e';
+        }
+
+        if (isHoje) {
+            borderWidth = '2px';
+            borderColor = '#667eea';
+        }
+
+        html += `
+            <div style="
+                padding:${isMobile ? '6px 2px' : '8px 4px'}; 
+                border-radius:6px; 
+                text-align:center; 
+                background:${bgColor};
+                border: ${borderWidth} solid ${borderColor};
+                min-height: ${isMobile ? '50px' : '65px'};
+                transition: 0.2s;
+                cursor: default;
+            ">
+                <div style="font-weight:${isHoje ? 'bold' : '600'};font-size:${isMobile ? '12px' : '14px'};color:${isHoje ? '#667eea' : textColor};">
+                    ${dia}
+                    ${isHoje ? ' ●' : ''}
+                </div>
+                <div style="font-size:${isMobile ? '9px' : '11px'};color:${temValor ? '#22c55e' : (temServico ? '#f59e0b' : 'var(--text-muted)')};font-weight:${temValor ? 'bold' : 'normal'};">
+                    ${temServico ? `R$ ${fat.toFixed(2)}` : '—'}
+                </div>
+                <div style="font-size:${isMobile ? '8px' : '10px'};color:var(--text-muted);">
+                    ${temServico ? `${qtd} serv.` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    html += `
             </div>
         </div>
     `;
 
-    // Sugestões de promoção
-    if (sugestoes.length > 0) {
+    // Sugestões
+    if (sugestoes && sugestoes.length > 0) {
         html += `
             <div style="
                 background:linear-gradient(135deg, rgba(239,68,68,0.1), rgba(139,92,246,0.1));
@@ -1792,15 +1889,10 @@ function renderizarAnaliseDiaria(data, mesNum, anoNum) {
                     ${sugestoes.map(s => `
                         <li style="padding:8px 12px;border-bottom:1px solid var(--border-color);display:flex;gap:8px;align-items:center;">
                             <span style="font-size:18px;">📢</span>
-                            <span style="font-size:13px;color:var(--text-primary);">${s.sugestao}</span>
+                            <span style="font-size:13px;color:var(--text-primary);">${s.sugestao || s}</span>
                         </li>
                     `).join('')}
                 </ul>
-                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-                    <button onclick="enviarPromocaoDiasRuins()" class="btn btn-primary btn-sm">
-                        <i class="fas fa-paper-plane"></i> Enviar promoção para clientes
-                    </button>
-                </div>
             </div>
         `;
     } else {
@@ -1811,6 +1903,7 @@ function renderizarAnaliseDiaria(data, mesNum, anoNum) {
                 padding:16px;
                 border:1px solid rgba(34,197,94,0.3);
                 text-align:center;
+                margin-top:12px;
             ">
                 <i class="fas fa-check-circle" style="color:#22c55e;font-size:20px;"></i>
                 <p style="color:var(--text-primary);margin:4px 0 0;">Ótimo! Nenhum dia com baixo movimento neste mês. 👏</p>
@@ -1818,7 +1911,12 @@ function renderizarAnaliseDiaria(data, mesNum, anoNum) {
         `;
     }
 
-    document.getElementById('analiseDiariaContent').innerHTML = html;
+    const content = document.getElementById('analiseDiariaContent');
+    if (content) {
+        content.innerHTML = html;
+    } else {
+        console.error('❌ Elemento analiseDiariaContent não encontrado');
+    }
 }
 
 async function enviarPromocaoDiasRuins() {

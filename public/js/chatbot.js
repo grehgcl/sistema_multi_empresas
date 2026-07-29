@@ -82,25 +82,47 @@ async function carregarDadosEmpresa() {
 }
 
 // ============================================
-// CARREGAR SERVIÇOS
+// CARREGAR SERVIÇOS - CORRIGIDO
 // ============================================
 async function carregarServicos() {
     try {
         console.log('🔍 Buscando serviços para empresa:', empresaId);
         const res = await fetch(`/api/chatbot/servicos/${empresaId}`);
         const data = await res.json();
-        console.log('📦 Resposta serviços:', data);
+        console.log('📦 Resposta serviços (RAW):', JSON.stringify(data, null, 2));
 
         if (data.success) {
+            // 🔥 O BACKEND RETORNA COMO "servicos" (plural)
             servicosList = data.servicos || data.data || [];
             console.log(`✅ ${servicosList.length} serviços carregados`);
+
+            // 🔥 LOG DE CADA SERVIÇO
+            servicosList.forEach((s, i) => {
+                console.log(`  ${i + 1}. ${s.nome} - R$ ${s.valor}`);
+            });
         } else {
             servicosList = [];
-            console.warn('⚠ Nenhum serviço encontrado');
+            console.warn('⚠ Nenhum serviço encontrado - success: false');
         }
     } catch (error) {
         console.error('❌ Erro ao carregar serviços:', error);
         servicosList = [];
+    }
+
+    // 🔥 SE NÃO TIVER SERVIÇOS, TENTA BUSCAR DE OUTRA FORMA (FALLBACK)
+    if (servicosList.length === 0) {
+        console.log('🔄 Tentando buscar serviços via rota alternativa...');
+        try {
+            const res2 = await fetch(`/api/servicos?empresa_id=${empresaId}`);
+            const data2 = await res2.json();
+            console.log('📦 Resposta rota alternativa:', data2);
+            if (data2.success && data2.data) {
+                servicosList = data2.data;
+                console.log(`✅ ${servicosList.length} serviços carregados via rota alternativa`);
+            }
+        } catch (e) {
+            console.error('❌ Rota alternativa também falhou:', e);
+        }
     }
 }
 
@@ -1169,7 +1191,7 @@ async function verificarEConfirmar() {
 }
 
 // ============================================
-// FINALIZAR AGENDAMENTO
+// FINALIZAR AGENDAMENTO - CORRIGIDO (COM VALOR)
 // ============================================
 async function finalizarAgendamento() {
     try {
@@ -1244,6 +1266,57 @@ async function finalizarAgendamento() {
             return;
         }
 
+        // ============================================
+        // 🔥 CORREÇÃO: GARANTIR QUE O VALOR ESTÁ CORRETO
+        // ============================================
+        let valorFinal = 0;
+
+        // 1. Tentar pegar do agendamentoAtual
+        if (agendamentoAtual.valor && parseFloat(agendamentoAtual.valor) > 0) {
+            valorFinal = parseFloat(agendamentoAtual.valor);
+            console.log(`💰 Valor obtido do agendamentoAtual: R$ ${valorFinal}`);
+        }
+
+        // 2. Se ainda for 0, buscar do banco pelo ID do serviço
+        if (valorFinal === 0 && agendamentoAtual.servico_id) {
+            try {
+                console.log('🔍 Buscando valor do serviço no banco (ID:', agendamentoAtual.servico_id, ')');
+                const resServico = await fetch(`/api/chatbot/servico/${agendamentoAtual.servico_id}`);
+                const dataServico = await resServico.json();
+                console.log('📦 Resposta do serviço:', dataServico);
+
+                if (dataServico.success && dataServico.servico) {
+                    valorFinal = parseFloat(dataServico.servico.valor) || 0;
+                    // Atualiza o nome também se veio
+                    if (dataServico.servico.nome) {
+                        agendamentoAtual.servico_nome = dataServico.servico.nome;
+                    }
+                    console.log(`💰 Valor obtido do banco: R$ ${valorFinal}`);
+                }
+            } catch (e) {
+                console.warn('⚠️ Erro ao buscar valor do serviço:', e);
+            }
+        }
+
+        // 3. Se ainda for 0, buscar da lista de serviços carregada
+        if (valorFinal === 0 && servicosList.length > 0) {
+            const servicoEncontrado = servicosList.find(s =>
+                s.id == agendamentoAtual.servico_id ||
+                s.nome === agendamentoAtual.servico_nome
+            );
+            if (servicoEncontrado) {
+                valorFinal = parseFloat(servicoEncontrado.valor) || 0;
+                if (servicoEncontrado.nome) {
+                    agendamentoAtual.servico_nome = servicoEncontrado.nome;
+                }
+                console.log(`💰 Valor encontrado na lista de serviços: R$ ${valorFinal}`);
+            }
+        }
+
+        // 4. Atualizar o valor no agendamentoAtual
+        agendamentoAtual.valor = valorFinal;
+        console.log(`💰 Valor final a ser enviado: R$ ${valorFinal}`);
+
         var empresaIdFinal = empresaId;
         if (!empresaIdFinal) {
             var params = new URLSearchParams(window.location.search);
@@ -1269,7 +1342,7 @@ async function finalizarAgendamento() {
             data: agendamentoAtual.data,
             hora: agendamentoAtual.hora,
             empresaId: parseInt(empresaIdFinal),
-            valor: parseFloat(agendamentoAtual.valor) || 0,
+            valor: valorFinal, // ← VALOR CORRETO
             servicoNome: agendamentoAtual.servico_nome || ''
         };
 
@@ -1287,8 +1360,8 @@ async function finalizarAgendamento() {
         if (result3.success) {
             var dataFormatada = formatarDataBr(agendamentoAtual.data);
             var nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
-            var valorFinal = parseFloat(agendamentoAtual.valor) || 0;
-            var valorFinalFormatado = valorFinal.toFixed(2).replace('.', ',');
+            var valorExibicao = parseFloat(agendamentoAtual.valor) || 0;
+            var valorFinalFormatado = valorExibicao.toFixed(2).replace('.', ',');
 
             adicionarMensagem(
                 '✅ <strong>AGENDAMENTO CONFIRMADO, ' + clienteAtual.nome + '!</strong><br><br>' +
