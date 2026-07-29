@@ -59,32 +59,22 @@ const config = {
 console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
 
 // ============================================
-// 🔥 BUSCAR INSTÂNCIA DA EMPRESA (COM CONTROLE DO SUPER ADMIN)
+// 🔥 BUSCAR INSTÂNCIA DA EMPRESA (MODO ESTRITO - SEM FALLBACK)
 // ============================================
 function getInstanciaEmpresa(empresaId) {
     return new Promise((resolve) => {
         try {
             const isPg = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-            // 🔥 NOVO: Buscar também whatsapp_proprio_habilitado e plano
             const sql = isPg
-                ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado, plano FROM empresas WHERE id = $1'
-                : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado, plano FROM empresas WHERE id = ?';
+                ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
+                : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
 
             db.get(sql, [empresaId], (err, empresa) => {
                 if (err) {
                     console.error('[WHATSAPP] Erro ao buscar instância:', err.message);
-                    return resolve({
-                        instanceName: config.evolution.instance,
-                        connected: true,
-                        isOwn: false
-                    });
+                    return resolve({ success: false, error: 'Erro no banco de dados' });
                 }
-
-                // 🔥 VERIFICAÇÃO EM 3 CAMADAS:
-                // 1. Super Admin habilitou? (whatsapp_proprio_habilitado)
-                // 2. Empresa tem instância criada? (whatsapp_instance)
-                // 3. Instância está conectada? (whatsapp_connected)
 
                 const superAdminHabilitou = empresa?.whatsapp_proprio_habilitado === true ||
                     empresa?.whatsapp_proprio_habilitado === 1 ||
@@ -95,38 +85,31 @@ function getInstanciaEmpresa(empresaId) {
                     empresa?.whatsapp_connected === 1 ||
                     empresa?.whatsapp_connected === 't';
 
-                if (superAdminHabilitou && temInstancia && estaConectada) {
-                    console.log(`[WHATSAPP] ✅ Usando instância PRÓPRIA: ${empresa.whatsapp_instance} (plano: ${empresa.plano})`);
-                    return resolve({
-                        instanceName: empresa.whatsapp_instance,
-                        connected: true,
-                        isOwn: true
-                    });
+                // 🔥 LÓGICA ESTRITA:
+                if (!superAdminHabilitou) {
+                    return resolve({ success: false, error: 'WhatsApp próprio não habilitado pelo Super Admin' });
                 }
 
-                // Log detalhado do motivo do fallback
-                if (superAdminHabilitou && temInstancia && !estaConectada) {
-                    console.log(`[WHATSAPP] ⚠️ Instância ${temInstancia} existe mas NÃO está conectada`);
-                } else if (superAdminHabilitou && !temInstancia) {
-                    console.log(`[WHATSAPP] ⚠️ Super Admin habilitou mas empresa não criou instância ainda`);
-                } else if (!superAdminHabilitou) {
-                    console.log(`[WHATSAPP] ⚠️ WhatsApp próprio NÃO habilitado pelo Super Admin (plano: ${empresa?.plano})`);
+                if (!temInstancia) {
+                    return resolve({ success: false, error: 'Empresa ainda não criou sua instância WhatsApp' });
                 }
 
-                // Fallback para instância padrão
+                if (!estaConectada) {
+                    return resolve({ success: false, error: `Instância ${temInstancia} existe mas NÃO está conectada. Conecte-a primeiro.` });
+                }
+
+                // Se passou por tudo, retorna a instância própria
+                console.log(`[WHATSAPP] ✅ Usando APENAS instância PRÓPRIA: ${temInstancia}`);
                 resolve({
-                    instanceName: config.evolution.instance,
+                    instanceName: temInstancia,
                     connected: true,
-                    isOwn: false
+                    isOwn: true,
+                    success: true
                 });
             });
         } catch (error) {
             console.error('[WHATSAPP] Erro crítico:', error);
-            resolve({
-                instanceName: config.evolution.instance,
-                connected: true,
-                isOwn: false
-            });
+            resolve({ success: false, error: 'Erro interno ao verificar instância' });
         }
     });
 }
@@ -136,9 +119,16 @@ function getInstanciaEmpresa(empresaId) {
 // ============================================
 async function enviarEvolution(empresaId, numero, mensagem) {
     try {
-        // Busca instância (própria OU padrão)
-        const instancia = await getInstanciaEmpresa(empresaId);
+        // Busca instância (AGORA COM VERIFICAÇÃO DE SUCESSO)
+        const instanciaData = await getInstanciaEmpresa(empresaId);
 
+        // 🔥 SE NÃO FOR SUCESSO, BLOQUEIA O ENVIO
+        if (!instanciaData.success) {
+            console.warn(`[WHATSAPP] 🚫 Envio bloqueado: ${instanciaData.error}`);
+            return { success: false, error: instanciaData.error };
+        }
+
+        const instancia = instanciaData; // Agora temos certeza que é a própria
         const url = `${config.evolution.apiUrl}/message/sendText/${instancia.instanceName}`;
 
         console.log('🔍 Número original recebido:', numero);
@@ -154,18 +144,13 @@ async function enviarEvolution(empresaId, numero, mensagem) {
             numeroFinal = '55' + numeroFinal;
         }
 
-        // 🔥 SE TIVER 11 DÍGITOS (55 + DDD + 8 sem 9), PODE FALTAR O 9
-        // Exemplo: 55419003903 (11 dígitos) - falta o 9 após o DDD
-        // O correto seria 554199003903 (12 dígitos) - com o 9
-        // Mas a Evolution API pode aceitar ambos, vamos manter como está
-
         console.log('🔍 Número final (enviado):', numeroFinal);
         console.log('🔍 Tamanho do número final:', numeroFinal.length);
 
         const payload = {
             number: numeroFinal,
             text: mensagem,
-            delay: 1,
+            delay: 1200, // ✅ ALTERADO DE 1 PARA 1200 (Melhora a formatação e evita mensagens "estranhas")
         };
 
         console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
@@ -179,7 +164,7 @@ async function enviarEvolution(empresaId, numero, mensagem) {
             timeout: 30000,
         });
 
-        console.log(`📱 WhatsApp: Mensagem enviada para ${numeroFinal} via ${instancia.isOwn ? '🆕 INSTÂNCIA PRÓPRIA' : '📌 INSTÂNCIA PADRÃO'} (${instancia.instanceName})`);
+        console.log(`📱 WhatsApp: Mensagem enviada para ${numeroFinal} via 🆕 INSTÂNCIA PRÓPRIA (${instancia.instanceName})`);
         return { success: true, data: response.data };
 
     } catch (error) {
@@ -200,9 +185,9 @@ async function enviarEvolution(empresaId, numero, mensagem) {
                         const payload2 = {
                             number: sem55,
                             text: mensagem,
-                            delay: 1,
+                            delay: 1200,
                         };
-                        const response2 = await axios.post(url, payload2, {
+                        const response2 = await axios.post(`${config.evolution.apiUrl}/message/sendText/${instanciaData.instanceName}`, payload2, {
                             headers: {
                                 'Content-Type': 'application/json',
                                 'apikey': config.evolution.apiKey,
@@ -224,9 +209,9 @@ async function enviarEvolution(empresaId, numero, mensagem) {
                         const payload3 = {
                             number: com9,
                             text: mensagem,
-                            delay: 1,
+                            delay: 1200,
                         };
-                        const response3 = await axios.post(url, payload3, {
+                        const response3 = await axios.post(`${config.evolution.apiUrl}/message/sendText/${instanciaData.instanceName}`, payload3, {
                             headers: {
                                 'Content-Type': 'application/json',
                                 'apikey': config.evolution.apiKey,

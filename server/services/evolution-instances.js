@@ -1,6 +1,6 @@
 // ============================================
 // EVOLUTION-INSTANCES.JS - GESTÃO DE INSTÂNCIAS WHATSAPP
-// CORRIGIDO - 22/07/2026
+// CORRIGIDO - 30/07/2026
 // ============================================
 
 const axios = require('axios');
@@ -165,7 +165,7 @@ class EvolutionInstances {
         } catch (error) {
             console.error('❌ Erro ao verificar status:', error.message);
 
-            // Se for 404, instância não existe
+            // Se for 404, consideramos como desconectado mas não falha crítica
             if (error.response && error.response.status === 404) {
                 return {
                     success: true,
@@ -175,8 +175,9 @@ class EvolutionInstances {
                 };
             }
 
+            // Para outros erros, também retornamos desconectado para não travar o fluxo
             return {
-                success: false,
+                success: true, // ✅ MUDANÇA: Sucesso true para não quebrar o promise.all nas promoções
                 state: 'error',
                 connected: false,
                 message: error.message || 'Erro ao verificar status'
@@ -210,7 +211,7 @@ class EvolutionInstances {
             const response = await api.post(`/message/sendText/${instanceName}`, {
                 number: numeroLimpo,
                 text: mensagem,
-                delay: 1
+                delay: 1200
             });
 
             return {

@@ -1505,36 +1505,8 @@ app.post('/api/simulate-downgrade', auth, verificarDono, (req, res) => {
         res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! V�lido at� ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
     });
 });
-// ============================================
-// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN
-// ============================================
 
-// 🔹 Habilitar/Desabilitar WhatsApp próprio de uma empresa
-app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, (req, res) => {
-    const { id } = req.params;
-    const { habilitado } = req.body; // true ou false
 
-    console.log(`🔧 Super Admin - ${habilitado ? 'Habilitando' : 'Desabilitando'} WhatsApp próprio da empresa ${id}`);
-
-    const sql = isProduction
-        ? 'UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2'
-        : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
-
-    const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
-
-    db.run(sql, [valor, id], function (err) {
-        if (err) {
-            console.error('❌ Erro ao atualizar:', err);
-            return res.json({ success: false, message: err.message });
-        }
-
-        console.log(`✅ WhatsApp próprio ${habilitado ? 'HABILITADO' : 'DESABILITADO'} para empresa ${id}`);
-        res.json({
-            success: true,
-            message: `WhatsApp próprio ${habilitado ? 'habilitado' : 'desabilitado'} com sucesso!`
-        });
-    });
-});
 
 // 🔹 Listar status do WhatsApp de todas as empresas (para o Super Admin)
 app.get('/api/admin/empresas/whatsapp-status', auth, verificarSuperAdmin, (req, res) => {
@@ -7275,34 +7247,103 @@ app.get('/api/agendamentos/periodo', auth, (req, res) => {
 const EvolutionInstances = require('./server/services/evolution-instances');
 
 // ============================================
-// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN
+// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN (VERSÃO FINAL BLINDADA)
 // ============================================
 
-// 🔹 Habilitar/Desabilitar WhatsApp próprio de uma empresa
-app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, (req, res) => {
+app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
 
-    console.log(`🔧 Super Admin - ${habilitado ? 'Habilitando' : 'Desabilitando'} WhatsApp próprio da empresa ${id}`);
+    console.log(`🔧 [SUPERADMIN] Recebido: ID=${id}, Habilitado=${habilitado}`);
 
-    const sql = isProduction
-        ? 'UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2'
-        : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
+    try {
+        // 1. Atualiza o status no banco primeiro
+        const sqlUpdate = isProduction
+            ? 'UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2'
+            : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
 
-    const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
+        const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
+        
+        // Usando db.run padrão com callback envolvido em Promise para segurança
+        await new Promise((resolve, reject) => {
+            db.run(sqlUpdate, [valor, id], function(err) {
+                if (err) reject(err);
+                else resolve(this);
+            });
+        });
 
-    db.run(sql, [valor, id], function (err) {
-        if (err) {
-            console.error('❌ Erro ao atualizar:', err);
-            return res.json({ success: false, message: err.message });
+        console.log(`✅ [SUPERADMIN] Banco atualizado.`);
+
+        // 2. Se estiver HABILITANDO, garante que a instância existe na Evolution
+        if (habilitado === true || habilitado === 1 || habilitado === 'true') {
+            const nomeInstancia = `emp-${id}`;
+            
+            console.log(`🚀 [SUPERADMIN] Verificando/Criando instância ${nomeInstancia}...`);
+            
+            try {
+                const axios = require('axios');
+                const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+                const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+
+                // Tenta criar a instância. Se já existir, a Evolution geralmente retorna um aviso ou sucesso.
+                // O importante é garantir que ela exista lá.
+                await axios.post(`${evolutionUrl}/instance/create`, {
+                    instanceName: nomeInstancia,
+                    qrcode: true,
+                    integration: 'WHATSAPP-BAILEYS'
+                }, {
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'apikey': apiKey 
+                    }
+                });
+
+                console.log(`✅ [SUPERADMIN] Instância garantida na Evolution.`);
+
+                // Atualiza o banco com o nome da instância para o sistema saber qual usar
+                const sqlSave = isProduction
+                    ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
+                    : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
+                
+                await new Promise((resolve, reject) => {
+                    db.run(sqlSave, [nomeInstancia, id], function(err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    });
+                });
+
+            } catch (err) {
+                // Se der erro 400 (já existe), consideramos sucesso pois o objetivo foi atingido
+                if (err.response && err.response.status === 400) {
+                    console.log(`ℹ️ [SUPERADMIN] Instância já existia na Evolution.`);
+                    
+                    // Garante que o banco está atualizado mesmo assim
+                    const sqlSave = isProduction
+                        ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
+                        : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
+                    
+                    await new Promise((resolve, reject) => {
+                        db.run(sqlSave, [nomeInstancia, id], function(err) {
+                            if (err) reject(err);
+                            else resolve(this);
+                        });
+                    });
+                } else {
+                    console.error(`❌ [SUPERADMIN] Erro ao comunicar com Evolution:`, err.message);
+                    // Não falhamos a requisição inteira, apenas logamos o erro
+                }
+            }
         }
 
-        console.log(`✅ WhatsApp próprio ${habilitado ? 'HABILITADO' : 'DESABILITADO'} para empresa ${id}`);
         res.json({
             success: true,
             message: `WhatsApp próprio ${habilitado ? 'habilitado' : 'desabilitado'} com sucesso!`
         });
-    });
+
+    } catch (err) {
+        console.error('❌ [SUPERADMIN] Erro crítico na rota:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 // 🔹 Listar status do WhatsApp de todas as empresas (para o Super Admin)
@@ -7459,18 +7500,45 @@ app.post('/api/empresa/whatsapp/criar-instancia', auth, async (req, res) => {
     });
 });
 
-// 🔹 Buscar QR Code
+// 🔹 Buscar QR Code (COM CRIAÇÃO AUTOMÁTICA SE NÃO EXISTIR)
 app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const sql = isProduction
-        ? 'SELECT whatsapp_instance, whatsapp_connected FROM empresas WHERE id = $1'
-        : 'SELECT whatsapp_instance, whatsapp_connected FROM empresas WHERE id = ?';
+        ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
+        : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
 
     db.get(sql, [empresaId], async (err, empresa) => {
-        if (err || !empresa?.whatsapp_instance) {
+        if (err) return res.status(500).json({ success: false, message: 'Erro no banco' });
+
+        if (!empresa) return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+
+        let nomeInstancia = empresa.whatsapp_instance;
+
+        // 🔥 SE NÃO TEM INSTÂNCIA SALVA MAS ESTÁ HABILITADO, CRIA AGORA
+        if (!nomeInstancia && (empresa.whatsapp_proprio_habilitado === 1 || empresa.whatsapp_proprio_habilitado === true)) {
+            nomeInstancia = `emp-${empresaId}`;
+            console.log(`[QR CODE] 🚀 Instância não encontrada, criando ${nomeInstancia}...`);
+
+            try {
+                const EvolutionInstances = require('./server/services/evolution-instances');
+                const resultado = await EvolutionInstances.criarInstancia(nomeInstancia);
+
+                if (resultado.success) {
+                    const sqlSave = isProduction
+                        ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
+                        : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
+                    await db.runAsync(sqlSave, [nomeInstancia, empresaId]);
+                    console.log(`[QR CODE] ✅ Instância ${nomeInstancia} criada e salva.`);
+                }
+            } catch (e) {
+                console.error(`[QR CODE] ❌ Erro ao criar instância automática:`, e.message);
+            }
+        }
+
+        if (!nomeInstancia) {
             return res.status(400).json({
                 success: false,
-                message: 'Crie uma instância primeiro'
+                message: 'Crie uma instância primeiro ou peça ao Super Admin para habilitar.'
             });
         }
 
@@ -7487,7 +7555,8 @@ app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
             });
         }
 
-        const resultado = await EvolutionInstances.getQrCode(empresa.whatsapp_instance);
+        const EvolutionInstances = require('./server/services/evolution-instances');
+        const resultado = await EvolutionInstances.getQrCode(nomeInstancia);
 
         if (resultado.success && resultado.qrCode) {
             res.json({
@@ -7498,7 +7567,7 @@ app.get('/api/empresa/whatsapp/qrcode', auth, async (req, res) => {
         } else {
             res.json({
                 success: false,
-                message: resultado.message || 'Erro ao gerar QR Code'
+                message: resultado.message || 'Erro ao gerar QR Code. Tente novamente em alguns segundos.'
             });
         }
     });
