@@ -753,9 +753,57 @@ async function carregarClientesBackground() {
 
     carregandoBackground = false;
 }
-
 // ============================================
-// CARREGAR CLIENTES (PRINCIPAL)
+// BUSCA POR ÍNDICE ALFABÉTICO (A-Z)
+// ============================================
+
+let letraSelecionada = '';
+
+function filtrarPorLetra(letra) {
+    console.log(`🔍 Filtrando por letra: ${letra}`);
+    letraSelecionada = letra;
+
+    const botoesLetras = document.querySelectorAll('.letra-btn');
+    botoesLetras.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.letra === letra) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Se clicou na mesma letra, limpa o filtro
+    if (letra === 'todos') {
+        letraSelecionada = '';
+        termoBuscaClientes = '';
+        const input = document.getElementById('buscaClientesInput');
+        if (input) input.value = '';
+        carregarClientes();
+        return;
+    }
+
+    // Filtrar clientes pela letra
+    if (clientesCompletos.length > 0) {
+        const clientesFiltrados = clientesCompletos.filter(c => {
+            const nome = c.nome.toLowerCase();
+            return nome.startsWith(letra.toLowerCase());
+        });
+
+        atualizarListaClientes(clientesFiltrados);
+        atualizarStatsClientes(clientesFiltrados);
+    }
+}
+
+function limparFiltroLetra() {
+    letraSelecionada = '';
+    const botoesLetras = document.querySelectorAll('.letra-btn');
+    botoesLetras.forEach(btn => btn.classList.remove('active'));
+    termoBuscaClientes = '';
+    const input = document.getElementById('buscaClientesInput');
+    if (input) input.value = '';
+    carregarClientes();
+}
+// ============================================
+// CARREGAR CLIENTES (PRINCIPAL) - COM FILTRO DE LETRA SALVO
 // ============================================
 
 async function carregarClientes() {
@@ -877,8 +925,23 @@ async function carregarClientes() {
 
         const isMobile = window.innerWidth < 768;
 
-        let clientesFiltrados = clientesCompletos;
+        // ==========================================
+        // 🔥 APLICAR FILTRO DE LETRA SALVO DO LOCALSTORAGE
+        // ==========================================
+        const letraSalva = localStorage.getItem('letraSelecionada') || '';
+        let clientesFiltrados = [...clientesCompletos];
 
+        // 🔥 SE TIVER LETRA SELECIONADA, APLICAR O FILTRO PRIMEIRO
+        if (letraSalva && letraSalva !== 'todos') {
+            clientesFiltrados = clientesFiltrados.filter(c => {
+                const nome = (c.nome || '').toLowerCase();
+                return nome.startsWith(letraSalva.toLowerCase());
+            });
+            letraSelecionada = letraSalva;
+            console.log(`🔍 Filtro de letra aplicado: ${letraSalva} → ${clientesFiltrados.length} clientes`);
+        }
+
+        // 🔥 DEPOIS APLICAR BUSCA POR TEXTO (se houver)
         if (termoBuscaClientes) {
             const busca = termoBuscaClientes.toLowerCase().trim();
             clientesFiltrados = clientesFiltrados.filter(c => {
@@ -889,6 +952,7 @@ async function carregarClientes() {
             });
         }
 
+        // 🔥 FILTROS POR CLASSIFICAÇÃO
         if (filtroClientes === 'vip') {
             clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
         } else if (filtroClientes === 'sumidos') {
@@ -899,6 +963,7 @@ async function carregarClientes() {
             clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
         }
 
+        // 🔥 FILTRO POR GRUPO
         if (filtroGrupo !== 'todos') {
             clientesFiltrados = clientesFiltrados.filter(c =>
                 c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
@@ -925,11 +990,9 @@ async function carregarClientes() {
                     ${!isMobile ? `<p class="page-subtitle"><i class="fas fa-users"></i> Gerencie seus clientes e acompanhe métricas importantes</p>` : ''}
                 </div>
                 <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <!-- 🔥 SUBSTITUA O DIV DO INPUT DE BUSCA POR ESTE: -->
-<div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: ${isMobile ? '100%' : '250px'};">
-    <i class="fas fa-search" style="color: var(--text-muted); padding-left: 8px; font-size: 12px;"></i>
+                    <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: 100%;">
     <input type="text" id="buscaClientesInput" 
-           placeholder="🔍 Buscar..." 
+           placeholder="🔍 Buscar por nome..." 
            style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
            oninput="buscarClientes()"
            onsearch="buscarClientes()"
@@ -937,22 +1000,6 @@ async function carregarClientes() {
            value="${escapeHtml(termoBuscaClientes)}"
            enterkeyhint="search"
     >
-    <button onclick="buscarClientesBotao();" 
-            style="background: linear-gradient(135deg, #667eea, #764ba2); 
-                   border: none; 
-                   color: white; 
-                   padding: ${isMobile ? '4px 8px' : '4px 12px'}; 
-                   border-radius: 6px; 
-                   cursor: pointer; 
-                   font-size: ${isMobile ? '11px' : '12px'}; 
-                   font-weight: 600;
-                   min-width: ${isMobile ? '32px' : 'auto'};
-                   display: flex;
-                   align-items: center;
-                   justify-content: center;">
-        <i class="fas fa-search"></i>
-        ${!isMobile ? ' Buscar' : ''}
-    </button>
     <button onclick="limparBuscaClientes();" 
             style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" 
             id="btnLimparBusca">
@@ -965,11 +1012,9 @@ async function carregarClientes() {
                     </button>
                     
                     ${!isMobile ? `
-                    <!-- BOTÃO IMPORTAR DESATIVADO TEMPORARIAMENTE
                     <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 6px 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
                         <i class="fas fa-file-csv"></i> Importar
                     </button>
-                    -->
                     ` : ''}
                     
                     <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
@@ -1020,6 +1065,31 @@ async function carregarClientes() {
                 </div>
             `;
         }
+
+        // ==========================================
+        // 🔥 ÍNDICE ALFABÉTICO (A-Z) - COM ESTADO SALVO
+        // ==========================================
+        const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const letraAtiva = localStorage.getItem('letraSelecionada') || '';
+
+        html += `
+            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color); justify-content: center; position: sticky; top: 0; background: var(--bg-primary); z-index: 10; padding: 8px 4px;">
+                <button onclick="limparFiltroLetra()" 
+                        class="letra-btn ${!letraAtiva || letraAtiva === 'todos' ? 'active' : ''}" 
+                        data-letra="todos"
+                        style="padding: 4px 10px; border-radius: 20px; border: 2px solid ${!letraAtiva || letraAtiva === 'todos' ? 'transparent' : 'var(--border-color)'}; background: ${!letraAtiva || letraAtiva === 'todos' ? 'var(--gradient)' : 'var(--bg-card)'}; color: ${!letraAtiva || letraAtiva === 'todos' ? 'white' : 'var(--text-secondary)'}; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; user-select: none;">
+                    📋 Todos
+                </button>
+                ${letras.map(letra => `
+                    <button onclick="filtrarPorLetra('${letra}')" 
+                            class="letra-btn ${letraAtiva === letra ? 'active' : ''}" 
+                            data-letra="${letra}"
+                            style="padding: 4px 10px; border-radius: 20px; border: 2px solid ${letraAtiva === letra ? 'transparent' : 'var(--border-color)'}; background: ${letraAtiva === letra ? 'var(--gradient)' : 'var(--bg-card)'}; color: ${letraAtiva === letra ? 'white' : 'var(--text-secondary)'}; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; user-select: none;">
+                        ${letra}
+                    </button>
+                `).join('')}
+            </div>
+        `;
 
         // STATS MINI - DESKTOP
         if (!isMobile) {
@@ -1091,10 +1161,12 @@ async function carregarClientes() {
             <div class="card" style="padding: ${isMobile ? '10px' : '16px'};">
         `;
 
-        if (clientesFiltrados.length > 0 || termoBuscaClientes) {
+        if (clientesFiltrados.length > 0 || termoBuscaClientes || (letraSalva && letraSalva !== 'todos')) {
+            const letraExibida = letraSalva && letraSalva !== 'todos' ? letraSalva : '';
             html += `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: ${isMobile ? '10px' : '12px'}; color: var(--text-muted); border-bottom: 1px solid var(--border-color); margin-bottom: 10px;">
                     <span>
+                        ${letraExibida ? `🔍 "${letraExibida}" → ` : ''}
                         ${termoBuscaClientes ? `🔍 "${escapeHtml(termoBuscaClientes)}" → ` : ''}
                         ${filtroGrupo !== 'todos' ? `🏷️ "${filtroGrupo}" → ` : ''}
                         <strong>${clientesFiltrados.length}</strong> de ${clientesCompletos.length}
@@ -1107,9 +1179,9 @@ async function carregarClientes() {
             html += `
                 <div class="empty-state" style="padding: 20px; text-align: center;">
                     <i class="fas fa-user-plus" style="font-size: 32px; color: var(--text-muted);"></i>
-                    <h4 style="font-size: 14px; margin: 8px 0;">${termoBuscaClientes ? 'Nenhum cliente encontrado' : 'Nenhum cliente'}</h4>
-                    <button class="btn btn-primary btn-sm" onclick="${termoBuscaClientes ? 'limparBuscaClientes()' : 'setFiltroClientes(\'todos\')'}" style="font-size: 11px; padding: 4px 12px;">
-                        <i class="fas fa-undo"></i> ${termoBuscaClientes ? 'Limpar Busca' : 'Mostrar Todos'}
+                    <h4 style="font-size: 14px; margin: 8px 0;">${termoBuscaClientes || (letraSalva && letraSalva !== 'todos') ? 'Nenhum cliente encontrado' : 'Nenhum cliente'}</h4>
+                    <button class="btn btn-primary btn-sm" onclick="${termoBuscaClientes || (letraSalva && letraSalva !== 'todos') ? 'limparBuscaClientes()' : 'setFiltroClientes(\'todos\')'}" style="font-size: 11px; padding: 4px 12px;">
+                        <i class="fas fa-undo"></i> ${termoBuscaClientes || (letraSalva && letraSalva !== 'todos') ? 'Limpar Busca' : 'Mostrar Todos'}
                     </button>
                 </div>
             `;
@@ -1288,7 +1360,6 @@ async function carregarClientes() {
     carregandoClientes = false;
     hideLoading();
 }
-
 // ============================================
 // BUSCAR CLIENTES - CORRIGIDO PARA MOBILE
 // ============================================
@@ -1299,6 +1370,13 @@ function buscarClientes() {
 
     const termo = input.value.toLowerCase().trim();
     termoBuscaClientes = termo;
+
+    // Se houver letra selecionada, limpar
+    if (letraSelecionada) {
+        letraSelecionada = '';
+        const botoesLetras = document.querySelectorAll('.letra-btn');
+        botoesLetras.forEach(btn => btn.classList.remove('active'));
+    }
 
     console.log(`🔍 Buscando: "${termo}"`);
 
@@ -1333,7 +1411,6 @@ function buscarClientes() {
         carregarClientes();
     }
 }
-
 function buscarClientesBotao() {
     console.log('🔍 Busca via botão acionada!');
     if (window.event) {
@@ -1356,10 +1433,18 @@ function limparBuscaClientes() {
     const input = document.getElementById('buscaClientesInput');
     if (input) {
         input.value = '';
-        // 🔥 REMOVIDO: input.focus(); - causava recarga no mobile
     }
 
     termoBuscaClientes = '';
+    letraSelecionada = '';
+
+    // Limpar botões de letra
+    const botoesLetras = document.querySelectorAll('.letra-btn');
+    botoesLetras.forEach(btn => btn.classList.remove('active'));
+
+    // Ativar o botão "Todos"
+    const btnTodos = document.querySelector('.letra-btn[data-letra="todos"]');
+    if (btnTodos) btnTodos.classList.add('active');
 
     const btnLimpar = document.getElementById('btnLimparBusca');
     if (btnLimpar) {
@@ -1373,7 +1458,6 @@ function limparBuscaClientes() {
 
     carregarClientes();
 }
-
 // ============================================
 // ATUALIZAR STATS DOS CLIENTES
 // ============================================
@@ -1474,7 +1558,7 @@ async function forcarAtualizacaoGrupos() {
 }
 
 // ============================================
-// ATUALIZAR LISTA DE CLIENTES
+// ATUALIZAR LISTA DE CLIENTES - COM SUPORTE A FILTRO DE LETRA
 // ============================================
 
 function atualizarListaClientes(clientesFiltrados) {
@@ -1486,14 +1570,53 @@ function atualizarListaClientes(clientesFiltrados) {
     const totalExibidos = clientesFiltrados.length;
     const totalClientes = clientesCompletos.length;
 
+    // 🔥 PEGAR A LETRA SELECIONADA DO LOCALSTORAGE
+    const letraAtiva = localStorage.getItem('letraSelecionada') || '';
+
+    // 🔥 ATUALIZAR O CONTADOR COM A LETRA SELECIONADA
     const contador = document.getElementById('contadorBuscaClientes');
     if (contador) {
+        let texto = '';
+        if (letraAtiva && letraAtiva !== 'todos') {
+            texto = `🔍 "${letraAtiva}" → `;
+        } else if (termoBuscaClientes) {
+            texto = `🔍 "${escapeHtml(termoBuscaClientes)}" → `;
+        } else if (filtroGrupo !== 'todos') {
+            texto = `🏷️ "${filtroGrupo}" → `;
+        }
         contador.innerHTML = `
-            ${termoBuscaClientes ? `🔍 "${escapeHtml(termoBuscaClientes)}" → ` : ''}
-            ${filtroGrupo !== 'todos' ? `🏷️ "${filtroGrupo}" → ` : ''}
+            ${texto}
             <strong>${totalExibidos}</strong> de <strong>${totalClientes}</strong> clientes
         `;
     }
+
+    // 🔥 ATUALIZAR OS BOTÕES DE LETRA (MANTER O ESTADO)
+    const botoesLetras = document.querySelectorAll('.letra-btn');
+    botoesLetras.forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.background = 'var(--bg-card)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.borderColor = 'var(--border-color)';
+
+        if (btn.dataset.letra === letraAtiva) {
+            btn.classList.add('active');
+            btn.style.background = 'var(--gradient)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'var(--primary)';
+        }
+        if (!letraAtiva && btn.dataset.letra === 'todos') {
+            btn.classList.add('active');
+            btn.style.background = 'var(--gradient)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'transparent';
+        }
+        if (letraAtiva === 'todos' && btn.dataset.letra === 'todos') {
+            btn.classList.add('active');
+            btn.style.background = 'var(--gradient)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'transparent';
+        }
+    });
 
     const totalEl = document.getElementById('totalClientes');
     if (totalEl) totalEl.textContent = totalExibidos;
@@ -1719,7 +1842,6 @@ function atualizarListaClientes(clientesFiltrados) {
         buscaInput.setSelectionRange(len, len);
     }
 }
-
 // ============================================
 // PREVENIR RECARREGAMENTOS NO MOBILE
 // ============================================
@@ -1744,8 +1866,14 @@ window.addEventListener('resize', function () {
         return;
     }
 
+    // 🔥 SE TIVER LETRA SELECIONADA OU BUSCA ATIVA, NÃO RECARREGAR
     if (termoBuscaClientes && termoBuscaClientes.length > 0) {
         console.log('📱 Busca ativa, ignorando resize');
+        return;
+    }
+
+    if (letraSelecionada) {
+        console.log('📱 Filtro de letra ativo, ignorando resize');
         return;
     }
 
@@ -1757,7 +1885,7 @@ window.addEventListener('resize', function () {
 
     clearTimeout(resizeTimeoutClientes);
     resizeTimeoutClientes = setTimeout(function () {
-        if (!termoBuscaClientes && !carregandoClientes) {
+        if (!termoBuscaClientes && !letraSelecionada && !carregandoClientes) {
             console.log('📱 Recarregando clientes após resize...');
             carregarClientes();
         }
@@ -3095,5 +3223,7 @@ window.aplicarFiltrosClientes = aplicarFiltrosClientes;
 window.carregarClientesBackground = carregarClientesBackground;
 window.renderizarListaClientes = renderizarListaClientes;
 window.forcarAtualizacaoGrupos = forcarAtualizacaoGrupos;
+window.filtrarPorLetra = filtrarPorLetra;
+window.limparFiltroLetra = limparFiltroLetra;
 
 console.log('✅ clientes.js carregado (CRM COMPLETO + MOBILE + GRUPOS + LIMPEZA DE NOMES)');

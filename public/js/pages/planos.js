@@ -802,7 +802,6 @@ function gerarBeneficiosAdicionaisMobile(isMobile) {
 
 async function escolherPlano(plano, valor) {
     const planosNomes = {
-        //'teste': 'Teste R$ 1,00',  // ← ADICIONE ESTA LINHA
         'starter': 'Starter',
         'pro': 'Pro',
         'business': 'Business',
@@ -812,6 +811,18 @@ async function escolherPlano(plano, valor) {
     const planoConfig = PLANOS_CONFIG[plano];
     const valorFinal = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
     const periodoLabel = periodoSelecionado === 'anual' ? 'ano' : 'mês';
+
+    // 🔥 PEGA O EMPRESA_ID DO USUÁRIO LOGADO
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const empresaId = usuario.empresa_id || usuario.empresaId;
+
+    if (!empresaId) {
+        showToast('Erro: Empresa não identificada. Faça login novamente.', 'error');
+        return;
+    }
+
+    console.log('🏢 empresaId:', empresaId);
+    console.log('📦 plano:', plano);
 
     // 🔥 Buscar modo de pagamento atual
     let modoAtual = 'simulation';
@@ -912,10 +923,8 @@ async function escolherPlano(plano, valor) {
                             'Authorization': 'Bearer ' + token
                         },
                         body: JSON.stringify({
-                            plano_id: plano,
-                            plano_nome: planosNomes[plano],
-                            valor: valorFinal,
-                            periodo: periodoSelecionado
+                            plano: plano,
+                            empresaId: empresaId
                         })
                     });
                     const data = await res.json();
@@ -960,7 +969,6 @@ async function escolherPlano(plano, valor) {
                     console.log('📥 Resposta do /api/create-payment:', data);
 
                     if (data.success) {
-                        // Abrir o checkout do Mercado Pago
                         const url = data.sandbox_init_point || data.init_point;
                         if (url) {
                             window.open(url, '_blank');

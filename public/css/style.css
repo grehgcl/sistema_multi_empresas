@@ -8297,3 +8297,14 @@ input[type="month"] {
         transform: translateX(18px);
     }
 }
+
+/* Esconder lupa e botão buscar no mobile */
+@media (max-width: 768px) {
+    .lupa-desktop-only {
+        display: none !important;
+    }
+
+    .btn-buscar-desktop-only {
+        display: none !important;
+    }
+}

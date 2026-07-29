@@ -1,6 +1,6 @@
 ﻿=========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 27/07/2026
+ULTIMA ATUALIZACAO: 28/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -25,11 +25,39 @@ Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
 
 =========================================
-✅ IMPLEMENTADO (27/07/2026) - CORREÇÕES CLIENTES E PROMOÇÕES
+✅ IMPLEMENTADO (28/07/2026) - CLIENTES: ÍNDICE A-Z E BUSCA MOBILE
 =========================================
 
-1. GRUPOS DE CLIENTES 👥
+1. ÍNDICE ALFABÉTICO (A-Z) PARA CLIENTES 📋
 -----------------------------------------
+- Botões A-Z na página de clientes (Desktop e Mobile)
+- Filtra clientes pela letra inicial do nome
+- Botão "Todos" para limpar o filtro
+- Estado salvo no localStorage (não perde ao recarregar/scrollar)
+- Posição sticky no topo (fixo ao rolar a página)
+
+2. REMOÇÃO DA LUPA NO MOBILE 📱
+-----------------------------------------
+- Lupa removida do input de busca no mobile
+- Placeholder: "🔍 Buscar por nome..."
+- Botão "Buscar" removido no mobile
+- Apenas o botão de limpar (✕) permanece
+
+3. CORREÇÃO DO SCROLL 🔄
+-----------------------------------------
+- Scroll não recarrega mais a página
+- Filtro de letra permanece ativo ao rolar
+- Evento resize ignorado quando há filtro ativo
+
+4. BUSCA POR TEXTO 🔍
+-----------------------------------------
+- Busca por nome, telefone e email
+- Compatível com o filtro de letra
+
+=========================================
+✅ IMPLEMENTADO (27/07/2026) - CORREÇÕES CLIENTES E PROMOÇÕES
+=========================================
+1. GRUPOS DE CLIENTES 👥
 - Sistema de grupos: Premium, Frequentes, Promoções, Aniversariantes, Amigos, Indicados, Especiais
 - Filtro por grupos na página de clientes (atualiza sem recarregar)
 - Modal de gerenciamento com criação dinâmica de grupos
@@ -37,21 +65,18 @@ Dono: admin@teste.com / 123456
 - Persistência de grupos personalizados
 
 2. BUSCA MOBILE OTIMIZADA 📱
------------------------------------------
 - Filtro local sem recarregar a página
 - Debounce de 500ms
 - Evento resize não interfere na digitação
 - Foco do input é restaurado
 
 3. MODAL DE PROMOÇÃO 📢
------------------------------------------
 - Todos os grupos disponíveis no filtro (inclusive vazios)
 - Filtro por grupo funcionando corretamente
 - Busca por nome/telefone dentro do modal
 - Contagem de clientes por grupo exibida
 
 4. WHATSAPP CORRIGIDO 📱
------------------------------------------
 - Formatação de números com 55
 - Fallback para diferentes formatos
 - Instância própria da empresa funcionando
@@ -61,28 +86,23 @@ Dono: admin@teste.com / 123456
 ✅ IMPLEMENTADO (22/07/2026) - CORREÇÕES EVOLUTION V2 E SCRIPT BLINDADO
 =========================================
 1. ENDPOINTS EVOLUTION API v2 CORRIGIDOS 📱
------------------------------------------
-- Envio de mensagem: `/message/sendText/{instanceName}` (antes era /instance/{name}/send)
-- Obter QR Code: `/instance/connect/{instanceName}` (trata estado 'open' e erro 404 gracefully)
-- Verificar status: `/instance/connectionState/{instanceName}` (verifica state === 'open')
+- Envio de mensagem: `/message/sendText/{instanceName}`
+- Obter QR Code: `/instance/connect/{instanceName}`
+- Verificar status: `/instance/connectionState/{instanceName}`
 
 2. NOVAS COLUNAS NO BANCO (Tabela: agendamentos) 💾
------------------------------------------
 - valor_total (NUMERIC DEFAULT 0)
 - servicos_extras (JSONB DEFAULT '[]'::jsonb)
 - valor_extras (NUMERIC DEFAULT 0)
 
 3. SCRIPT DE ATUALIZAÇÃO BLINDADO (`atualizar.sh`) 🛡️
------------------------------------------
 - Salva .env em /tmp antes do git.
-- Usa `git reset --hard origin/main` e `git clean -fd` para zerar conflitos.
+- Usa `git reset --hard origin/main` e `git clean -fd`
 - Restaura o .env do /tmp.
-- Roda `npm install --omit=dev` e migração sem erro de SSL.
-- Reinicia PM2 com --update-env.
+- Roda `npm install --omit=dev` e migração
 
 4. LÓGICA DE FALLBACK CONFIRMADA ✅
------------------------------------------
-- Se a instância própria da empresa existir no banco mas NÃO estiver conectada, o sistema usa automaticamente a instância padrão (`seeagende`) para garantir que a mensagem do cliente seja enviada.
+- Se a instância própria NÃO estiver conectada, usa a instância padrão
 
 =========================================
 ✅ IMPLEMENTADO (13/07/2026) - FINANCEIRO COMPLETO
@@ -91,10 +111,8 @@ Dono: admin@teste.com / 123456
 - Abas: Resumo, Receitas, Despesas, Comissões
 - Comparativo mês atual vs mês anterior com variação percentual
 - Cards coloridos para Faturamento, Despesas e Lucro
-- Receitas filtradas por mês, Despesas com CRUD completo
 
 2. NOVAS ROTAS
------------------------------------------
 GET /api/financeiro/receitas?mes=07&ano=2026
 GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_anterior=2026
 
@@ -103,9 +121,51 @@ GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_
 =========================================
 - Provedor: Evolution API
 - Instância Padrão: seeagende
-- Instância Própria: Cada empresa Business/Enterprise
+- Instância Própria: Empresas Business/Enterprise
 - Confirmação, Lembrete 24h, Cancelamento e Conclusão automáticos
-- Telefone do Dono e Endereço aparecem nas mensagens
+- Telefone do Dono e Endereço nas mensagens
+
+=========================================
+🚀 DEPLOY PARA VPS (MÉTODO RECOMENDADO)
+=========================================
+
+ENVIO DE ARQUIVOS ESPECÍFICOS VIA SCP
+---------------------------------------------------------
+
+# Comando base:
+scp caminho/do/arquivo.js ubuntu@163.176.218.131:~/seeagende/caminho/do/arquivo.js
+
+# Enviar clientes.js e reiniciar (MAIS USADO)
+scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
+
+# Enviar todos os JS de uma vez
+scp public/js/pages/*.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/
+
+# Enviar CSS
+scp public/css/style.css ubuntu@163.176.218.131:~/seeagende/public/css/
+
+# Enviar pasta inteira
+scp -r public/js/pages ubuntu@163.176.218.131:~/seeagende/public/js/
+
+# Verificar arquivos na VPS
+ssh ubuntu@163.176.218.131 "ls -la ~/seeagende/public/js/pages/"
+
+# Ver logs
+ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 20"
+
+# Reiniciar servidor
+ssh ubuntu@163.176.218.131 "pm2 restart seeagende --update-env"
+
+EXEMPLO DE DEPLOY COMPLETO DE clientes.js
+---------------------------------------------------------
+# 1. Enviar o arquivo
+scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/
+
+# 2. Reiniciar o servidor
+ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
+
+# OU em um único comando:
+scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
 
 =========================================
 🔧 CORREÇÕES NO BACKEND (Histórico)
@@ -128,8 +188,8 @@ server/
 public/js/pages/
 ├── dashboard.js, financeiro.js, agendamentos.js
 ├── empresas.js, whatsapp-config.js, planos.js
-├── configuracoes.js, clientes.js (CORRIGIDO), servicos.js
-└── clientes.js (CORRIGIDO - GRUPOS + MOBILE + PROMOÇÕES)
+├── configuracoes.js, servicos.js
+└── clientes.js (CORRIGIDO - GRUPOS + MOBILE + PROMOÇÕES + ÍNDICE A-Z) ⭐
 
 scripts/
 ├── migrate-vps.js (Script principal de migração segura)
@@ -161,8 +221,14 @@ pm2 restart seeagende --update-env
 # Ver logs em tempo real
 pm2 logs seeagende --lines 30
 
+# Enviar arquivo para VPS
+scp arquivo.js ubuntu@163.176.218.131:~/seeagende/pasta/
+
+# Enviar e reiniciar
+scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
+
 =========================================
-✅ STATUS ATUAL (27/07/2026)
+✅ STATUS ATUAL (28/07/2026)
 =========================================
 Tudo funcionando em AMBOS os bancos!
 ✅ SQLite (desenvolvimento local)
@@ -174,3 +240,6 @@ Tudo funcionando em AMBOS os bancos!
 ✅ Dono com WhatsApp exclusivo e fallback inteligente
 ✅ Grupos de clientes com filtro e promoção
 ✅ Busca mobile otimizada
+✅ ÍNDICE A-Z PARA CLIENTES (NOVO!)
+✅ Lupa removida no mobile (NOVO!)
+✅ Filtro de letra com localStorage (NOVO!)

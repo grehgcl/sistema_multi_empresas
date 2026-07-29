@@ -3540,7 +3540,7 @@ app.get('/api/agendamentos', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL E DURA��O)
+// ROTA: CRIAR AGENDAMENTO (COM BLOQUEIO GERAL E DURAÇÃO)
 // ============================================
 app.post('/api/agendamentos',
     auth,
@@ -3550,34 +3550,34 @@ app.post('/api/agendamentos',
         const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
         const empresa_id = req.usuario.empresa_id;
 
-        console.log('?? Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
+        console.log('📝 Criando agendamento:', JSON.stringify({ cliente_id, data, hora, servico_id, profissional_id, empresa_id }, null, 2));
 
         if (!cliente_id || !data) {
-            console.log('? Cliente ou data faltando');
-            return res.json({ success: false, message: 'Cliente e data s�o obrigat�rios' });
+            console.log('❌ Cliente ou data faltando');
+            return res.json({ success: false, message: 'Cliente e data são obrigatórios' });
         }
 
         if (!hora) {
-            console.log('? Hor�rio faltando');
-            return res.json({ success: false, message: 'Hor�rio � obrigat�rio' });
+            console.log('❌ Horário faltando');
+            return res.json({ success: false, message: 'Horário é obrigatório' });
         }
 
         // ============================================
-        // ?????? VALIDA��O: DATA/HORA N�O PODE SER NO PASSADO ??????
+        // ✅ VALIDAÇÃO: DATA/HORA NÃO PODE SER NO PASSADO
         // ============================================
         const agora = new Date();
         const [ano, mes, dia] = data.split('-').map(Number);
         const [horaStr, minutoStr] = hora.split(':').map(Number);
         const dataHoraAgendamento = new Date(ano, mes - 1, dia, horaStr, minutoStr, 0, 0);
 
-        console.log('?? Data/Hora agendamento:', dataHoraAgendamento);
-        console.log('?? Agora:', agora);
+        console.log('📅 Data/Hora agendamento:', dataHoraAgendamento);
+        console.log('🕐 Agora:', agora);
 
         if (dataHoraAgendamento < agora) {
-            console.log('? Tentativa de agendar em data/hora passada');
+            console.log('❌ Tentativa de agendar em data/hora passada');
             return res.json({
                 success: false,
-                message: '? N�o � poss�vel agendar em datas ou hor�rios que j� passaram. Selecione uma data/hora futura.'
+                message: '⛔ Não é possível agendar em datas ou horários que já passaram. Selecione uma data/hora futura.'
             });
         }
 
@@ -3589,16 +3589,16 @@ app.post('/api/agendamentos',
             const minutoAgendamento = parseInt(minutoStr);
 
             if (horaAgendamento < horaAtual || (horaAgendamento === horaAtual && minutoAgendamento <= minutoAtual)) {
-                console.log('? Tentativa de agendar em hor�rio que j� passou hoje');
+                console.log('❌ Tentativa de agendar em horário que já passou hoje');
                 return res.json({
                     success: false,
-                    message: `? N�o � poss�vel agendar no hor�rio ${hora} pois j� passou. Escolha um hor�rio futuro.`
+                    message: `⛔ Não é possível agendar no horário ${hora} pois já passou. Escolha um horário futuro.`
                 });
             }
         }
 
         // ============================================
-        // ?? VALIDA��O: CLIENTE J� TEM AGENDAMENTO NESTE DIA? (REGRRA FIXA)
+        // ✅ VALIDAÇÃO: CLIENTE JÁ TEM AGENDAMENTO NESTE DIA? (REGRRA FIXA)
         // ============================================
         const sqlAgendamentoHoje = isProduction
             ? `SELECT id FROM agendamentos 
@@ -3617,7 +3617,7 @@ app.post('/api/agendamentos',
         const agendamentoHoje = await new Promise((resolve) => {
             db.get(sqlAgendamentoHoje, [parseInt(cliente_id), data, parseInt(empresa_id)], (err, row) => {
                 if (err) {
-                    console.error('? Erro ao verificar agendamento no mesmo dia:', err);
+                    console.error('❌ Erro ao verificar agendamento no mesmo dia:', err);
                     resolve(null);
                 } else {
                     resolve(row);
@@ -3626,15 +3626,15 @@ app.post('/api/agendamentos',
         });
 
         if (agendamentoHoje) {
-            console.log(`? Cliente ${cliente_id} j� tem agendamento no dia ${data}`);
+            console.log(`⛔ Cliente ${cliente_id} já tem agendamento no dia ${data}`);
             return res.json({
                 success: false,
-                message: `Voc� j� possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente s� pode fazer UM agendamento por dia.`
+                message: `Você já possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente só pode fazer UM agendamento por dia.`
             });
         }
 
         // ============================================
-        // ?? VALIDA��O: BUSCAR DIAS_BLOQUEIO_GERAL DA EMPRESA
+        // ✅ VALIDAÇÃO: BUSCAR DIAS_BLOQUEIO_GERAL DA EMPRESA
         // ============================================
         const sqlDiasBloqueioEmpresa = isProduction
             ? `SELECT COALESCE(dias_bloqueio_geral, 0) as dias_bloqueio_geral FROM empresas WHERE id = $1`
@@ -3643,20 +3643,20 @@ app.post('/api/agendamentos',
         const empresaInfo = await new Promise((resolve) => {
             db.get(sqlDiasBloqueioEmpresa, [parseInt(empresa_id)], (err, row) => {
                 if (err) {
-                    console.error('? Erro ao buscar dias_bloqueio_geral:', err);
+                    console.error('❌ Erro ao buscar dias_bloqueio_geral:', err);
                     resolve({ dias_bloqueio_geral: 0 });
                 } else {
-                    console.log(`?? Empresa ${empresa_id} - dias_bloqueio_geral:`, row?.dias_bloqueio_geral || 0);
+                    console.log(`🏢 Empresa ${empresa_id} - dias_bloqueio_geral:`, row?.dias_bloqueio_geral || 0);
                     resolve(row || { dias_bloqueio_geral: 0 });
                 }
             });
         });
 
         const diasBloqueioGeral = empresaInfo?.dias_bloqueio_geral || 0;
-        console.log(`?? Empresa ${empresa_id} - Dias de bloqueio geral: ${diasBloqueioGeral}`);
+        console.log(`🏢 Empresa ${empresa_id} - Dias de bloqueio geral: ${diasBloqueioGeral}`);
 
         if (diasBloqueioGeral > 0) {
-            console.log(`?? Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
+            console.log(`🔒 Bloqueio geral ATIVO (${diasBloqueioGeral} dias) - Validando...`);
 
             const sqlUltimoAgendamento = isProduction
                 ? `SELECT data FROM agendamentos 
@@ -3675,10 +3675,10 @@ app.post('/api/agendamentos',
             const ultimoAgendamento = await new Promise((resolve) => {
                 db.get(sqlUltimoAgendamento, [parseInt(cliente_id), parseInt(empresa_id)], (err, row) => {
                     if (err) {
-                        console.error('? Erro ao buscar �ltimo agendamento:', err);
+                        console.error('❌ Erro ao buscar último agendamento:', err);
                         resolve(null);
                     } else {
-                        console.log(`?? �ltimo agendamento encontrado (raw):`, row);
+                        console.log(`📅 Último agendamento encontrado (raw):`, row);
                         resolve(row);
                     }
                 });
@@ -3698,7 +3698,7 @@ app.post('/api/agendamentos',
                         dataUltimo.setHours(0, 0, 0, 0);
                     }
 
-                    console.log(`?? Data do �ltimo agendamento convertida:`, dataUltimo);
+                    console.log(`📅 Data do último agendamento convertida:`, dataUltimo);
 
                     if (!isNaN(dataUltimo.getTime())) {
                         const dataMinima = new Date(dataUltimo);
@@ -3718,32 +3718,32 @@ app.post('/api/agendamentos',
                             dataAgendamento.setHours(0, 0, 0, 0);
                         }
 
-                        console.log(`?? �ltimo agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
-                        console.log(`?? Data m�nima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
-                        console.log(`?? Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
+                        console.log(`📅 Último agendamento: ${dataUltimo.toISOString().split('T')[0]}`);
+                        console.log(`📅 Data mínima permitida (${diasBloqueioGeral} dias): ${dataMinimaStr}`);
+                        console.log(`📅 Data do novo agendamento: ${dataAgendamento.toISOString().split('T')[0]}`);
 
                         if (dataAgendamento < dataMinima) {
-                            console.log(`? BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} n�o pode agendar antes de ${dataMinimaStr}`);
+                            console.log(`⛔ BLOQUEIO GERAL ATIVADO! Cliente ${cliente_id} não pode agendar antes de ${dataMinimaStr}`);
                             return res.json({
                                 success: false,
-                                message: `Voc� s� pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeral} dias ap�s o �ltimo agendamento).`
+                                message: `Você só pode fazer um novo agendamento a partir de ${formatarDataBr(dataMinimaStr)} (${diasBloqueioGeral} dias após o último agendamento).`
                             });
                         } else {
-                            console.log(`? Cliente ${cliente_id} pode agendar em ${data} - Dentro do prazo permitido`);
+                            console.log(`✅ Cliente ${cliente_id} pode agendar em ${data} - Dentro do prazo permitido`);
                         }
                     }
                 } catch (error) {
-                    console.error('? Erro ao processar data do �ltimo agendamento:', error);
+                    console.error('❌ Erro ao processar data do último agendamento:', error);
                 }
             } else {
-                console.log(`? Cliente ${cliente_id} n�o tem agendamentos anteriores - pode agendar livremente`);
+                console.log(`✅ Cliente ${cliente_id} não tem agendamentos anteriores - pode agendar livremente`);
             }
         } else {
-            console.log(`?? Bloqueio geral DESATIVADO (0 dias) - Sem valida��o extra`);
+            console.log(`🔓 Bloqueio geral DESATIVADO (0 dias) - Sem validação extra`);
         }
 
         // ============================================
-        // ?? VALIDA��O: BUSCAR DURA��O DO SERVI�O
+        // ✅ VALIDAÇÃO: BUSCAR DURAÇÃO DO SERVIÇO
         // ============================================
         let duracaoServico = 30;
         let nomeServico = '';
@@ -3754,11 +3754,10 @@ app.post('/api/agendamentos',
                 ? `SELECT nome, valor, duracao FROM servicos WHERE id = $1 AND empresa_id = $2 AND ativo = true`
                 : `SELECT nome, valor, duracao FROM servicos WHERE id = ? AND empresa_id = ? AND ativo = 1`;
 
-
             const servicoInfo = await new Promise((resolve) => {
                 db.get(sqlServico, [parseInt(servico_id), empresa_id], (err, row) => {
                     if (err) {
-                        console.error('? Erro ao buscar servi�o:', err);
+                        console.error('❌ Erro ao buscar serviço:', err);
                         resolve(null);
                     } else {
                         resolve(row);
@@ -3770,27 +3769,25 @@ app.post('/api/agendamentos',
                 duracaoServico = servicoInfo.duracao || 30;
                 nomeServico = servicoInfo.nome;
                 valorServico = servicoInfo.valor || 0;
-                console.log(`?? Servi�o encontrado: ${nomeServico} - ${duracaoServico}min - R$ ${valorServico}`);
+                console.log(`✅ Serviço encontrado: ${nomeServico} - ${duracaoServico}min - R$ ${valorServico}`);
             } else {
-                console.log(`?? Servi�o ${servico_id} n�o encontrado, usando padr�o 30min`);
+                console.log(`⚠️ Serviço ${servico_id} não encontrado, usando padrão 30min`);
             }
         } else {
-            nomeServico = req.body.servico || 'Servi�o';
+            nomeServico = req.body.servico || 'Serviço';
             valorServico = parseFloat(req.body.valor) || 0;
             duracaoServico = 30;
         }
 
         // ============================================
-        // ?? VERIFICAR PROFISSIONAL - CORRIGIDO
+        // ✅ VERIFICAR PROFISSIONAL - CORRIGIDO
         // ============================================
         let profissionalIdFinal = null;
 
-        // Verificar se o usu�rio especificou um profissional
         if (profissional_id && profissional_id !== '' && profissional_id !== 'null') {
             profissionalIdFinal = parseInt(profissional_id);
-            console.log(`?? Profissional especificado: ${profissionalIdFinal}`);
+            console.log(`👨‍💼 Profissional especificado: ${profissionalIdFinal}`);
 
-            // Verificar se o profissional est� dispon�vel
             const disponivel = await verificarDisponibilidadeHorario(
                 empresa_id,
                 profissionalIdFinal,
@@ -3800,27 +3797,29 @@ app.post('/api/agendamentos',
             );
 
             if (!disponivel) {
-                console.log(`? Hor�rio ${hora} ocupado para o profissional ${profissionalIdFinal}`);
+                console.log(`⛔ Horário ${hora} ocupado para o profissional ${profissionalIdFinal}`);
                 return res.json({
                     success: false,
-                    message: `Este hor�rio j� est� ocupado para este profissional. O servi�o dura ${duracaoServico}min.`
+                    message: `Este horário já está ocupado para este profissional. O serviço dura ${duracaoServico}min.`
                 });
             }
         } else {
-            // ?? QUANDO � DONO (sem profissional), N�O ATRIBUI A NINGU�M
             profissionalIdFinal = null;
-            console.log(`?? Agendamento como Dono (sem profissional)`);
+            console.log(`👤 Agendamento como Dono (sem profissional)`);
         }
 
         // ============================================
-        // FUN��O PARA CRIAR O AGENDAMENTO
+        // FUNÇÃO PARA CRIAR O AGENDAMENTO
         // ============================================
         async function criarAgendamento(servicoNome, servicoValor, servicoId) {
+            // 🔥 CORREÇÃO: Incluir valor_total no INSERT
             const sqlInsert = isProduction
-                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                   VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', $8, $9) RETURNING id`
-                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+                ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, valor_total, duracao, status, empresa_id, profissional_id) 
+                   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10) RETURNING id`
+                : `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, valor_total, duracao, status, empresa_id, profissional_id) 
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+
+            const valor = parseFloat(servicoValor) || 0;
 
             const params = [
                 parseInt(cliente_id),
@@ -3828,34 +3827,35 @@ app.post('/api/agendamentos',
                 hora,
                 servicoId || null,
                 servicoNome || '',
-                parseFloat(servicoValor) || 0,
+                valor,           // valor
+                valor,           // 🔥 valor_total (mesmo valor)
                 duracaoServico,
                 parseInt(empresa_id),
                 profissionalIdFinal
             ];
 
-            console.log('?? SQL Insert:', sqlInsert);
-            console.log('?? Par�metros:', params);
+            console.log('📊 SQL Insert:', sqlInsert);
+            console.log('📊 Parâmetros:', params);
 
             db.run(sqlInsert, params, async function (err) {
                 if (err) {
-                    console.error('? Erro ao criar agendamento:', err.message);
+                    console.error('❌ Erro ao criar agendamento:', err.message);
                     return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
                 }
 
                 let id = this?.lastID || this?.id || null;
-                console.log('? Agendamento criado com ID:', id);
+                console.log('✅ Agendamento criado com ID:', id);
 
                 incrementarContadorAgendamentos(empresa_id, (err) => {
                     if (err) {
-                        console.error('?? Erro ao incrementar contador:', err);
+                        console.error('⚠️ Erro ao incrementar contador:', err);
                     } else {
-                        console.log('? Contador de agendamentos incrementado');
+                        console.log('📊 Contador de agendamentos incrementado');
                     }
                 });
 
                 // ============================================
-                // ENVIA NOTIFICA��ES WHATSAPP
+                // ENVIA NOTIFICAÇÕES WHATSAPP
                 // ============================================
                 try {
                     const cliente = await new Promise((resolve, reject) => {
@@ -3896,7 +3896,7 @@ app.post('/api/agendamentos',
                         },
                         servico: {
                             nome: servico?.nome || servicoNome,
-                            valor: parseFloat(servico?.valor || servicoValor || 0)  // 🔥 CONVERTER PARA NÚMERO
+                            valor: parseFloat(servico?.valor || servicoValor || 0)
                         },
                         profissional: profissional ? {
                             nome: profissional.nome,
@@ -3911,7 +3911,7 @@ app.post('/api/agendamentos',
                             telefone_dono: empresa?.telefone_dono || ''
                         },
                     };
-                    console.log('?? Dados do WhatsApp:', {
+                    console.log('📱 Dados do WhatsApp:', {
                         cliente: dadosNotificacao.cliente.telefone,
                         empresa: dadosNotificacao.empresa.nome,
                         telefone_dono: dadosNotificacao.empresa.telefone_dono,
@@ -3920,16 +3920,16 @@ app.post('/api/agendamentos',
 
                     if (dadosNotificacao.cliente.telefone) {
                         await whatsappService.enviarConfirmacao(dadosNotificacao);
-                        console.log(`?? WhatsApp: Confirma��o enviada para ${dadosNotificacao.cliente.telefone}`);
+                        console.log(`✅ WhatsApp: Confirmação enviada para ${dadosNotificacao.cliente.telefone}`);
                     }
 
                     if (profissional?.telefone) {
                         await whatsappService.enviarNovoAgendamentoProfissional(dadosNotificacao);
-                        console.log(`?? WhatsApp: Notifica��o enviada para profissional ${profissional.telefone}`);
+                        console.log(`✅ WhatsApp: Notificação enviada para profissional ${profissional.telefone}`);
                     }
 
                 } catch (whatsappError) {
-                    console.error('?? Erro ao enviar WhatsApp:', whatsappError.message);
+                    console.error('⚠️ Erro ao enviar WhatsApp:', whatsappError.message);
                 }
 
                 res.json({
@@ -3940,7 +3940,7 @@ app.post('/api/agendamentos',
             });
         }
 
-        // Chamar a fun��o de cria��o
+        // Chamar a função de criação
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
             criarAgendamento(nomeServico, valorServico, parseInt(servico_id));
         } else {
@@ -4878,49 +4878,95 @@ app.get('/api/clientes/grupos', auth, async (req, res) => {
         res.status(500).json({ success: false, message: 'Erro interno do servidor' });
     }
 });
-// ============================================
-// ROTA: /api/financeiro
-// ============================================
+
+
+// ============================================================
+// 🚀 ROTAS DE FINANCEIRO (COMPLETO E CORRIGIDO)
+// ============================================================
+
+// 1. RESUMO GERAL - COMPLETO E CORRIGIDO (VERSÃO FINAL)
 app.get('/api/financeiro', auth, (req, res) => {
     const role = req.usuario.role;
     const empresa_id = req.usuario.empresa_id;
+    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
 
+    const hoje = new Date();
+    const mesAtual = req.query.mes || String(hoje.getMonth() + 1).padStart(2, '0');
+    const anoAtual = req.query.ano || hoje.getFullYear();
+
+    console.log(`📊 Financeiro - Empresa: ${empresa_id}, Mês: ${mesAtual}, Ano: ${anoAtual}, Role: ${role}`);
+
+    // ============================================================
+    // -------- PROFISSIONAL --------
+    // ============================================================
     if (role === 'profissional') {
         const profissional_id = req.usuario.id;
+        let sql, params;
 
-        const sql = isProduction
-            ? `SELECT a.*, 
-               to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-               c.nome as cliente_nome, 
-               s.nome as servico_nome
-               FROM agendamentos a
-               LEFT JOIN clientes c ON a.cliente_id = c.id
-               LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.profissional_id = $1 AND a.status = 'concluido'
-               ORDER BY a.data DESC`
-            : `SELECT a.*, 
-               date(a.data) as data_formatada,
-               c.nome as cliente_nome, 
-               s.nome as servico_nome
-               FROM agendamentos a
-               LEFT JOIN clientes c ON a.cliente_id = c.id
-               LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.profissional_id = ? AND a.status = 'concluido'
-               ORDER BY a.data DESC`;
+        if (isProduction) {
+            // POSTGRESQL
+            sql = `
+                SELECT 
+                    a.*,
+                    to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+                    c.nome as cliente_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.profissional_id = $1
+                    AND a.empresa_id = $2
+                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                    AND EXTRACT(MONTH FROM a.data) = $3
+                    AND EXTRACT(YEAR FROM a.data) = $4
+                ORDER BY a.data DESC
+            `;
+            params = [profissional_id, empresa_id, parseInt(mesAtual), parseInt(anoAtual)];
+        } else {
+            // SQLITE
+            sql = `
+                SELECT 
+                    a.*,
+                    date(a.data) as data_formatada,
+                    c.nome as cliente_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.profissional_id = ?
+                    AND a.empresa_id = ?
+                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                    AND strftime('%m', a.data) = ?
+                    AND strftime('%Y', a.data) = ?
+                ORDER BY a.data DESC
+            `;
+            params = [profissional_id, empresa_id, mesAtual.padStart(2, '0'), String(anoAtual)];
+        }
 
-        db.all(sql, [profissional_id], (err, comissoes) => {
+        console.log('📊 SQL Profissional:', sql);
+        console.log('📊 Params:', params);
+
+        db.all(sql, params, (err, comissoes) => {
             if (err) {
                 console.error('❌ Erro no financeiro profissional:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
+            console.log('📊 Profissional - Encontrados:', comissoes.length, 'registros');
+
             const dadosFormatados = comissoes.map(a => ({
                 ...a,
                 data: a.data_formatada || a.data,
-                data_formatada: undefined
+                data_formatada: undefined,
+                valor: parseFloat(a.valor) || 0,
+                valor_total: parseFloat(a.valor_total) || parseFloat(a.valor) || 0,
+                comissao: parseFloat(a.comissao) || 0
             }));
 
-            const totalComissoes = dadosFormatados.reduce((s, c) => s + (parseFloat(c.comissao) || 0), 0);
+            const totalComissoes = dadosFormatados.reduce((s, c) => s + c.comissao, 0);
+
+            console.log('📊 Profissional - Total Comissões:', totalComissoes);
+            console.log('📊 Profissional - Total Serviços:', dadosFormatados.length);
 
             res.json({
                 success: true,
@@ -4936,77 +4982,96 @@ app.get('/api/financeiro', auth, (req, res) => {
         return;
     }
 
+    // ============================================================
+    // -------- DONO --------
+    // ============================================================
     if (role === 'dono') {
-        // 🔥 CORRIGIDO: Usar valor_total em vez de valor
-        const sql = isProduction
-            ? `SELECT 
-                a.id,
-                to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-                a.valor_total,
-                a.valor,
-                a.servico,
-                a.comissao,
-                a.profissional_id,
-                a.cliente_id,
-                c.nome as cliente_nome,
-                p.nome as profissional_nome,
-                s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.empresa_id = $1 
-            AND a.status = 'concluido'
-            ORDER BY a.data DESC`
-            : `SELECT 
-                a.id,
-                date(a.data) as data_formatada,
-                a.valor_total,
-                a.valor_total,
-                a.servico,
-                a.comissao,
-                a.profissional_id,
-                a.cliente_id,
-                c.nome as cliente_nome,
-                p.nome as profissional_nome,
-                s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.empresa_id = ? 
-            AND a.status = 'concluido'
-            ORDER BY a.data DESC`;
+        const mes = req.query.mes || String(hoje.getMonth() + 1).padStart(2, '0');
+        const ano = req.query.ano || hoje.getFullYear();
 
-        db.all(sql, [empresa_id], (err, comissoes) => {
+        let sql, params;
+
+        if (isProduction) {
+            // POSTGRESQL
+            sql = `
+                SELECT 
+                    a.id,
+                    to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+                    COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                    a.valor,
+                    a.comissao,
+                    a.servico,
+                    a.profissional_id,
+                    a.cliente_id,
+                    c.nome as cliente_nome,
+                    p.nome as profissional_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN profissionais p ON a.profissional_id = p.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.empresa_id = $1
+                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                    AND EXTRACT(MONTH FROM a.data) = $2
+                    AND EXTRACT(YEAR FROM a.data) = $3
+                ORDER BY a.data DESC
+            `;
+            params = [empresa_id, parseInt(mes), parseInt(ano)];
+        } else {
+            // SQLITE
+            sql = `
+                SELECT 
+                    a.id,
+                    date(a.data) as data_formatada,
+                    COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                    a.valor,
+                    a.comissao,
+                    a.servico,
+                    a.profissional_id,
+                    a.cliente_id,
+                    c.nome as cliente_nome,
+                    p.nome as profissional_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN profissionais p ON a.profissional_id = p.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.empresa_id = ?
+                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                    AND strftime('%m', a.data) = ?
+                    AND strftime('%Y', a.data) = ?
+                ORDER BY a.data DESC
+            `;
+            params = [empresa_id, mes.padStart(2, '0'), String(ano)];
+        }
+
+        console.log('📊 SQL Dono:', sql);
+        console.log('📊 Params:', params);
+
+        db.all(sql, params, (err, comissoes) => {
             if (err) {
                 console.error('❌ Erro no financeiro dono:', err.message);
                 return res.json({ success: false, message: err.message });
             }
 
+            console.log('📊 Dono - Encontrados:', comissoes.length, 'registros');
+
             let faturamentoBruto = 0;
             let totalComissoes = 0;
-            let totalServicos = comissoes.length;
             const comissoesPorProfissional = {};
 
             for (let item of comissoes) {
-                const dataFinal = item.data_formatada || item.data;
-                item.data = dataFinal;
+                item.data = item.data_formatada || item.data;
                 delete item.data_formatada;
 
-                // 🔥 CORRIGIDO: Usar valor_total primeiro, se não existir usa valor
                 const valor = parseFloat(item.valor_total) || parseFloat(item.valor) || 0;
                 faturamentoBruto += valor;
 
-                if (!item.profissional_id) {
-                    item.comissao = 0;
-                } else {
+                if (item.profissional_id) {
                     const comissao = parseFloat(item.comissao) || 0;
                     totalComissoes += comissao;
-
                     const profId = item.profissional_id;
                     const profNome = item.profissional_nome || 'Profissional';
-
                     if (!comissoesPorProfissional[profId]) {
                         comissoesPorProfissional[profId] = {
                             id: profId,
@@ -5017,12 +5082,17 @@ app.get('/api/financeiro', auth, (req, res) => {
                     }
                     comissoesPorProfissional[profId].total_comissao += comissao;
                     comissoesPorProfissional[profId].total_servicos += 1;
+                } else {
+                    item.comissao = 0;
                 }
             }
 
+            console.log('📊 Dono - Faturamento Bruto:', faturamentoBruto);
+            console.log('📊 Dono - Total Serviços:', comissoes.length);
+
             const faturamentoLiquido = faturamentoBruto - totalComissoes;
-            const comissoesPorProfissionalArray = Object.values(comissoesPorProfissional);
-            comissoesPorProfissionalArray.sort((a, b) => b.total_comissao - a.total_comissao);
+            const comissoesPorProfissionalArray = Object.values(comissoesPorProfissional)
+                .sort((a, b) => b.total_comissao - a.total_comissao);
 
             res.json({
                 success: true,
@@ -5031,9 +5101,13 @@ app.get('/api/financeiro', auth, (req, res) => {
                         faturamento_bruto: faturamentoBruto,
                         total_comissoes: totalComissoes,
                         faturamento_liquido: faturamentoLiquido,
-                        total_servicos: totalServicos
+                        total_servicos: comissoes.length
                     },
-                    comissoes: comissoes,
+                    comissoes: comissoes.map(item => ({
+                        ...item,
+                        valor_total: parseFloat(item.valor_total) || 0,
+                        comissao: parseFloat(item.comissao) || 0
+                    })),
                     comissoes_por_profissional: comissoesPorProfissionalArray
                 }
             });
@@ -5041,18 +5115,415 @@ app.get('/api/financeiro', auth, (req, res) => {
         return;
     }
 
-    if (role === 'superadmin') {
-        // ... superadmin financeiro
+    // -------- SUPERADMIN (placeholder) --------
+    res.status(403).json({ success: false, message: 'Acesso negado' });
+});
+
+// 2. RECEITAS (LISTA DE SERVIÇOS CONCLUÍDOS)
+app.get('/api/financeiro/receitas', auth, (req, res) => {
+    const { mes, ano } = req.query;
+    const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
+
+    if (!mes || !ano) {
+        return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
     }
 
-    res.status(403).json({
-        success: false,
-        message: 'Acesso negado'
+    let sql, params;
+    if (isProduction) {
+        sql = `
+            SELECT 
+                a.id,
+                to_char(a.data, 'YYYY-MM-DD') as data_formatada,
+                COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                a.valor,
+                a.comissao,
+                a.servico,
+                a.cliente_id,
+                a.profissional_id,
+                c.nome as cliente_nome,
+                s.nome as servico_nome,
+                p.nome as profissional_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            WHERE a.empresa_id = $1
+                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                AND EXTRACT(MONTH FROM a.data) = $2
+                AND EXTRACT(YEAR FROM a.data) = $3
+            ORDER BY a.data DESC
+        `;
+        params = [empresaId, parseInt(mes), parseInt(ano)];
+    } else {
+        sql = `
+            SELECT 
+                a.id,
+                date(a.data) as data_formatada,
+                COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                a.valor,
+                a.comissao,
+                a.servico,
+                a.cliente_id,
+                a.profissional_id,
+                c.nome as cliente_nome,
+                s.nome as servico_nome,
+                p.nome as profissional_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            LEFT JOIN profissionais p ON a.profissional_id = p.id
+            WHERE a.empresa_id = ?
+                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                AND strftime('%m', a.data) = ?
+                AND strftime('%Y', a.data) = ?
+            ORDER BY a.data DESC
+        `;
+        params = [empresaId, mes.padStart(2, '0'), ano];
+    }
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao buscar receitas:', err);
+            return res.json({ success: false, message: 'Erro ao buscar receitas' });
+        }
+
+        let total = 0;
+        const receitas = rows.map(row => {
+            const valor = parseFloat(row.valor_total) || parseFloat(row.valor) || 0;
+            total += valor;
+            return {
+                ...row,
+                data: row.data_formatada || row.data,
+                data_formatada: undefined,
+                valor_total: valor,
+                valor: parseFloat(row.valor) || 0,
+                comissao: parseFloat(row.comissao) || 0
+            };
+        });
+
+        res.json({
+            success: true,
+            data: {
+                receitas: receitas,
+                total: total,
+                quantidade: receitas.length
+            }
+        });
     });
 });
-// ============================================================
-// ?? ROTAS DE DESPESAS
-// ============================================================
+
+// 3. COMPARATIVO MENSAL - VERSÃO QUE FUNCIONA EM AMBOS
+app.get('/api/financeiro/comparativo', auth, (req, res) => {
+    const { mes_atual, ano_atual, mes_anterior, ano_anterior } = req.query;
+    const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
+
+    console.log('📊 Comparativo - Parâmetros:', { mes_atual, ano_atual, mes_anterior, ano_anterior, empresaId });
+
+    if (!mes_atual || !ano_atual || !mes_anterior || !ano_anterior) {
+        return res.json({ success: false, message: 'Parâmetros incompletos' });
+    }
+
+    function getDados(mes, ano) {
+        return new Promise((resolve, reject) => {
+            let sql, params;
+
+            if (isProduction) {
+                // POSTGRESQL
+                sql = `
+                    SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) as total
+                    FROM agendamentos
+                    WHERE empresa_id = $1
+                        AND LOWER(status) IN ('concluido', 'finalizado', 'concluído')
+                        AND EXTRACT(MONTH FROM data) = $2
+                        AND EXTRACT(YEAR FROM data) = $3
+                `;
+                params = [empresaId, parseInt(mes), parseInt(ano)];
+            } else {
+                // SQLITE
+                sql = `
+                    SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) as total
+                    FROM agendamentos
+                    WHERE empresa_id = ?
+                        AND status IN ('concluido', 'finalizado', 'Concluído', 'Finalizado')
+                        AND strftime('%m', data) = ?
+                        AND strftime('%Y', data) = ?
+                `;
+                params = [empresaId, mes.padStart(2, '0'), ano];
+            }
+
+            // 🔥 USAR db.get PARA AMBOS
+            db.get(sql, params, (err, row) => {
+                if (err) {
+                    console.error('❌ Erro faturamento:', err);
+                    reject(err);
+                    return;
+                }
+                const faturamento = parseFloat(row?.total || 0);
+                console.log(`📊 Faturamento ${mes}/${ano}: R$ ${faturamento}`);
+
+                // Buscar despesas
+                let sqlDesp, paramsDesp;
+                if (isProduction) {
+                    sqlDesp = `
+                        SELECT COALESCE(SUM(valor), 0) as total
+                        FROM despesas
+                        WHERE empresa_id = $1
+                            AND EXTRACT(MONTH FROM data) = $2
+                            AND EXTRACT(YEAR FROM data) = $3
+                    `;
+                    paramsDesp = [empresaId, parseInt(mes), parseInt(ano)];
+                } else {
+                    sqlDesp = `
+                        SELECT COALESCE(SUM(valor), 0) as total
+                        FROM despesas
+                        WHERE empresa_id = ?
+                            AND strftime('%m', data) = ?
+                            AND strftime('%Y', data) = ?
+                    `;
+                    paramsDesp = [empresaId, mes.padStart(2, '0'), ano];
+                }
+
+                db.get(sqlDesp, paramsDesp, (err, despRow) => {
+                    if (err) {
+                        console.error('❌ Erro despesas:', err);
+                        reject(err);
+                        return;
+                    }
+                    const despesas = parseFloat(despRow?.total || 0);
+                    console.log(`📊 Despesas ${mes}/${ano}: R$ ${despesas}`);
+                    resolve({ faturamento, despesas, lucro: faturamento - despesas });
+                });
+            });
+        });
+    }
+
+    Promise.all([
+        getDados(mes_atual, ano_atual),
+        getDados(mes_anterior, ano_anterior)
+    ])
+        .then(([mesAtual, mesAnterior]) => {
+            console.log('📊 Resultado final:', { mesAtual, mesAnterior });
+            res.json({
+                success: true,
+                data: {
+                    mes_atual: mesAtual,
+                    mes_anterior: mesAnterior
+                }
+            });
+        })
+        .catch(err => {
+            console.error('❌ Erro no comparativo:', err);
+            res.json({ success: false, message: 'Erro ao gerar comparativo' });
+        });
+});
+
+// 4. ANÁLISE DIÁRIA - BUSCANDO VALOR DA TABELA SERVICOS
+app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
+    const hoje = new Date();
+    const mes = req.query.mes || String(hoje.getMonth() + 1).padStart(2, '0');
+    const ano = req.query.ano || hoje.getFullYear();
+
+    console.log(`📊 Análise Diária - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}`);
+
+    // 🔥 NOVA QUERY: Buscar valor diretamente da tabela servicos
+    let sql, params;
+
+    if (isProduction) {
+        // POSTGRESQL - JOIN com servicos para pegar o valor
+        sql = `
+            SELECT 
+                EXTRACT(DAY FROM a.data) as dia,
+                COUNT(*) as qtd_servicos,
+                COALESCE(SUM(COALESCE(a.valor_total, a.valor, s.valor, 0)), 0) as faturamento
+            FROM agendamentos a
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.empresa_id = $1
+                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                AND EXTRACT(MONTH FROM a.data) = $2
+                AND EXTRACT(YEAR FROM a.data) = $3
+            GROUP BY EXTRACT(DAY FROM a.data)
+            ORDER BY dia ASC
+        `;
+        params = [empresaId, parseInt(mes), parseInt(ano)];
+    } else {
+        // SQLITE
+        sql = `
+            SELECT 
+                CAST(strftime('%d', a.data) AS INTEGER) as dia,
+                COUNT(*) as qtd_servicos,
+                COALESCE(SUM(COALESCE(a.valor_total, a.valor, s.valor, 0)), 0) as faturamento
+            FROM agendamentos a
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.empresa_id = ?
+                AND a.status IN ('concluido', 'finalizado', 'Concluído', 'Finalizado')
+                AND strftime('%m', a.data) = ?
+                AND strftime('%Y', a.data) = ?
+            GROUP BY CAST(strftime('%d', a.data) AS INTEGER)
+            ORDER BY dia ASC
+        `;
+        params = [empresaId, mes.padStart(2, '0'), ano];
+    }
+
+    console.log('📊 SQL:', sql);
+    console.log('📊 Params:', params);
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('❌ Erro na análise diária:', err);
+            return res.json({ success: false, message: 'Erro ao carregar análise: ' + err.message });
+        }
+
+        console.log('📊 Rows encontrados (RAW):', JSON.stringify(rows, null, 2));
+
+        // Processar os dados
+        const diasNoMes = new Date(ano, mes - 1, 0).getDate();
+        const mapa = {};
+        for (let d = 1; d <= diasNoMes; d++) {
+            mapa[d] = { dia: d, qtd_servicos: 0, faturamento: 0 };
+        }
+
+        rows.forEach(row => {
+            const dia = parseInt(row.dia) || 0;
+            if (dia > 0 && dia <= diasNoMes) {
+                const faturamento = parseFloat(row.faturamento) || 0;
+                const qtd = parseInt(row.qtd_servicos) || 0;
+                mapa[dia] = {
+                    dia: dia,
+                    qtd_servicos: qtd,
+                    faturamento: faturamento
+                };
+                console.log(`📊 Dia ${dia}: ${qtd} serviços, R$ ${faturamento}`);
+            }
+        });
+
+        const dias = Object.values(mapa);
+        const totalServicos = dias.reduce((s, d) => s + d.qtd_servicos, 0);
+        const totalFaturamento = dias.reduce((s, d) => s + d.faturamento, 0);
+
+        console.log('📊 Total Faturamento:', totalFaturamento, 'Total Serviços:', totalServicos);
+
+        // Médias
+        const diasComMovimento = dias.filter(d => d.qtd_servicos > 0);
+        const mediaServicos = diasComMovimento.length > 0
+            ? diasComMovimento.reduce((s, d) => s + d.qtd_servicos, 0) / diasComMovimento.length
+            : 0;
+        const mediaFaturamento = diasComMovimento.length > 0
+            ? diasComMovimento.reduce((s, d) => s + d.faturamento, 0) / diasComMovimento.length
+            : 0;
+
+        const diasRuins = dias.filter(d =>
+            d.qtd_servicos > 0 && d.qtd_servicos < (mediaServicos * 0.5)
+        );
+
+        const sugestoes = diasRuins.map(d => ({
+            dia: d.dia,
+            qtd_servicos: d.qtd_servicos,
+            faturamento: d.faturamento,
+            sugestao: `📢 Dia ${d.dia} com baixo movimento (${d.qtd_servicos} serviços). Que tal oferecer ${d.qtd_servicos === 1 ? 15 : 10}% de desconto?`
+        }));
+
+        const melhorDia = diasComMovimento.length > 0
+            ? diasComMovimento.reduce((a, b) => a.faturamento > b.faturamento ? a : b)
+            : { dia: 0, faturamento: 0 };
+        const piorDia = diasComMovimento.length > 0
+            ? diasComMovimento.reduce((a, b) => a.faturamento < b.faturamento ? a : b)
+            : { dia: 0, faturamento: 0 };
+
+        res.json({
+            success: true,
+            data: {
+                dias: dias,
+                resumo: {
+                    total_servicos: totalServicos,
+                    total_faturamento: totalFaturamento,
+                    media_servicos_por_dia: mediaServicos,
+                    media_faturamento_por_dia: mediaFaturamento,
+                    dias_ruins: diasRuins.length,
+                    melhor_dia: melhorDia,
+                    pior_dia: piorDia
+                },
+                sugestoes: sugestoes
+            }
+        });
+    });
+});
+
+// ============================================
+// FUNÇÃO AUXILIAR PARA PROCESSAR ANÁLISE DIÁRIA
+// ============================================
+function processarAnaliseDiaria(rows, mes, ano, res) {
+    console.log('📊 Rows encontrados:', rows);
+
+    const diasNoMes = new Date(ano, mes - 1, 0).getDate();
+    const mapa = {};
+    for (let d = 1; d <= diasNoMes; d++) {
+        mapa[d] = { dia: d, qtd_servicos: 0, faturamento: 0 };
+    }
+
+    rows.forEach(row => {
+        const dia = parseInt(row.dia) || 0;
+        if (dia > 0 && dia <= diasNoMes) {
+            mapa[dia] = {
+                dia: dia,
+                qtd_servicos: parseInt(row.qtd_servicos) || 0,
+                faturamento: parseFloat(row.faturamento) || 0
+            };
+        }
+    });
+
+    const dias = Object.values(mapa);
+    const totalServicos = dias.reduce((s, d) => s + d.qtd_servicos, 0);
+    const totalFaturamento = dias.reduce((s, d) => s + d.faturamento, 0);
+
+    console.log('📊 Total Faturamento:', totalFaturamento, 'Total Serviços:', totalServicos);
+
+    const diasComMovimento = dias.filter(d => d.qtd_servicos > 0);
+    const mediaServicos = diasComMovimento.length > 0
+        ? diasComMovimento.reduce((s, d) => s + d.qtd_servicos, 0) / diasComMovimento.length
+        : 0;
+    const mediaFaturamento = diasComMovimento.length > 0
+        ? diasComMovimento.reduce((s, d) => s + d.faturamento, 0) / diasComMovimento.length
+        : 0;
+
+    const diasRuins = dias.filter(d =>
+        d.qtd_servicos > 0 && d.qtd_servicos < (mediaServicos * 0.5)
+    );
+
+    const sugestoes = diasRuins.map(d => ({
+        dia: d.dia,
+        qtd_servicos: d.qtd_servicos,
+        faturamento: d.faturamento,
+        sugestao: `📢 Dia ${d.dia} com baixo movimento (${d.qtd_servicos} serviços). Que tal oferecer ${d.qtd_servicos === 1 ? 15 : 10}% de desconto?`
+    }));
+
+    const melhorDia = diasComMovimento.length > 0
+        ? diasComMovimento.reduce((a, b) => a.faturamento > b.faturamento ? a : b)
+        : { dia: 0, faturamento: 0 };
+    const piorDia = diasComMovimento.length > 0
+        ? diasComMovimento.reduce((a, b) => a.faturamento < b.faturamento ? a : b)
+        : { dia: 0, faturamento: 0 };
+
+    res.json({
+        success: true,
+        data: {
+            dias: dias,
+            resumo: {
+                total_servicos: totalServicos,
+                total_faturamento: totalFaturamento,
+                media_servicos_por_dia: mediaServicos,
+                media_faturamento_por_dia: mediaFaturamento,
+                dias_ruins: diasRuins.length,
+                melhor_dia: melhorDia,
+                pior_dia: piorDia
+            },
+            sugestoes: sugestoes
+        }
+    });
+}
 
 // ============================================
 // GET /api/despesas - LISTAR DESPESAS (CORRIGIDO)
@@ -5201,207 +5672,6 @@ app.get('/api/despesas/categorias', auth, (req, res) => {
             res.json({ success: true, data: todasCategorias });
         }
     );
-});
-// ============================================
-// NOVAS ROTAS FINANCEIRO - RECEITAS E COMPARATIVO
-// ============================================
-
-// GET /api/financeiro/receitas - Listar receitas filtradas
-app.get('/api/financeiro/receitas', auth, (req, res) => {
-    const { mes, ano } = req.query;
-    const empresaId = req.usuario.empresa_id;
-
-    console.log('📊 Receitas - Parâmetros:', { mes, ano, empresaId });
-
-    if (!mes || !ano) {
-        return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
-    }
-
-    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
-    console.log('📊 Receitas - Ambiente:', isProduction ? 'PRODUÇÃO' : 'DESENVOLVIMENTO');
-
-    let sql;
-    let params;
-
-    if (isProduction) {
-        // ✅ POSTGRESQL - Usa EXTRACT
-        sql = `
-            SELECT 
-                a.id,
-                a.data,
-                a.cliente_id,
-                a.servico,
-                a.valor_total,
-                a.comissao,
-                a.profissional_id,
-                a.status,
-                c.nome as cliente_nome,
-                s.nome as servico_nome,
-                p.nome as profissional_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            WHERE a.empresa_id = $1
-                AND a.status = 'concluido'
-                AND EXTRACT(MONTH FROM a.data) = $2
-                AND EXTRACT(YEAR FROM a.data) = $3
-            ORDER BY a.data DESC
-        `;
-        params = [empresaId, parseInt(mes), parseInt(ano)];
-    } else {
-        // ✅ SQLITE - Usa strftime
-        sql = `
-            SELECT 
-                a.id,
-                a.data,
-                a.cliente_id,
-                a.servico,
-                a.valor_total,
-                a.comissao,
-                a.profissional_id,
-                a.status,
-                c.nome as cliente_nome,
-                s.nome as servico_nome,
-                p.nome as profissional_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            WHERE a.empresa_id = ?
-                AND a.status = 'concluido'
-                AND strftime('%m', a.data) = ?
-                AND strftime('%Y', a.data) = ?
-            ORDER BY a.data DESC
-        `;
-        params = [empresaId, mes.padStart(2, '0'), ano];
-    }
-
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            console.error('❌ Erro ao buscar receitas:', err);
-            console.error('❌ SQL:', sql);
-            console.error('❌ Params:', params);
-            return res.json({ success: false, message: 'Erro ao buscar receitas' });
-        }
-
-        // 🔥 CORRIGIDO: Usar valor_total
-        let total = 0;
-        rows.forEach(row => {
-            total += parseFloat(row.valor_total) || parseFloat(row.valor) || 0;
-        });
-
-        res.json({
-            success: true,
-            data: {
-                receitas: rows,
-                total: total,
-                quantidade: rows.length
-            }
-        });
-    });
-});
-
-// GET /api/financeiro/comparativo - Comparativo mês atual vs mês anterior
-app.get('/api/financeiro/comparativo', auth, (req, res) => {
-    const { mes_atual, ano_atual, mes_anterior, ano_anterior } = req.query;
-    const empresaId = req.usuario.empresa_id;
-
-    if (!mes_atual || !ano_atual || !mes_anterior || !ano_anterior) {
-        return res.json({ success: false, message: 'Parâmetros incompletos' });
-    }
-
-    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
-
-    async function getDados(mes, ano) {
-        return new Promise((resolve, reject) => {
-            // Faturamento do mês
-            let sqlFat, paramsFat;
-            if (isProduction) {
-                // ✅ POSTGRESQL - CORRIGIDO
-                sqlFat = `
-                SELECT COALESCE(SUM(valor_total), 0) as total
-                FROM agendamentos
-                WHERE empresa_id = $1
-                    AND status = 'concluido'
-                    AND EXTRACT(MONTH FROM data) = $2
-                    AND EXTRACT(YEAR FROM data) = $3
-            `;
-                paramsFat = [empresaId, parseInt(mes), parseInt(ano)];
-            } else {
-                // ✅ SQLITE - CORRIGIDO
-                sqlFat = `
-                SELECT COALESCE(SUM(valor_total), 0) as total
-                FROM agendamentos
-                WHERE empresa_id = ?
-                    AND status = 'concluido'
-                    AND strftime('%m', data) = ?
-                    AND strftime('%Y', data) = ?
-            `;
-                paramsFat = [empresaId, mes.padStart(2, '0'), ano];
-            }
-
-            db.get(sqlFat, paramsFat, (err, fatRow) => {
-                if (err) {
-                    reject(err);
-                    return;
-                }
-
-                // Despesas do mês (mantém SUM(valor) porque despesas não têm valor_total)
-                let sqlDesp, paramsDesp;
-                if (isProduction) {
-                    sqlDesp = `
-                    SELECT COALESCE(SUM(valor), 0) as total
-                    FROM despesas
-                    WHERE empresa_id = $1
-                        AND EXTRACT(MONTH FROM data) = $2
-                        AND EXTRACT(YEAR FROM data) = $3
-                `;
-                    paramsDesp = [empresaId, parseInt(mes), parseInt(ano)];
-                } else {
-                    sqlDesp = `
-                    SELECT COALESCE(SUM(valor), 0) as total
-                    FROM despesas
-                    WHERE empresa_id = ?
-                        AND strftime('%m', data) = ?
-                        AND strftime('%Y', data) = ?
-                `;
-                    paramsDesp = [empresaId, mes.padStart(2, '0'), ano];
-                }
-
-                db.get(sqlDesp, paramsDesp, (err, despRow) => {
-                    if (err) {
-                        reject(err);
-                        return;
-                    }
-
-                    const faturamento = parseFloat(fatRow?.total || 0);
-                    const despesas = parseFloat(despRow?.total || 0);
-                    const lucro = faturamento - despesas;
-
-                    resolve({ faturamento, despesas, lucro });
-                });
-            });
-        });
-    }
-
-    Promise.all([
-        getDados(mes_atual, ano_atual),
-        getDados(mes_anterior, ano_anterior)
-    ])
-        .then(([mesAtual, mesAnterior]) => {
-            res.json({
-                success: true,
-                data: {
-                    mes_atual: mesAtual,
-                    mes_anterior: mesAnterior
-                }
-            });
-        })
-        .catch(err => {
-            console.error('Erro no comparativo:', err);
-            res.json({ success: false, message: 'Erro ao gerar comparativo' });
-        });
 });
 // ============================================
 // POST /api/despesas - CRIAR DESPESA
@@ -6610,7 +6880,104 @@ if (process.env.WHATSAPP_ENABLED === 'true') {
 } else {
     console.log('?? WhatsApp desabilitado (WHATSAPP_ENABLED=false)');
 }
+// ============================================================
+// SIMULAÇÃO DE PAGAMENTO (UNIFICADA)
+// ============================================================
 
+app.post('/api/simulate-payment', auth, async (req, res) => {
+    try {
+        const { plano, empresaId } = req.body;
+        const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+        console.log(`💳 Simulação de pagamento: plano=${plano}, empresa=${empresaId || req.usuario?.empresa_id}`);
+
+        const empresaIdFinal = empresaId || req.usuario?.empresa_id;
+
+        if (!empresaIdFinal) {
+            return res.status(400).json({
+                success: false,
+                message: 'Empresa não identificada'
+            });
+        }
+
+        const planos = {
+            starter: { nome: 'Starter', limite: 1, valor: 29.90 },
+            pro: { nome: 'Pro', limite: 5, valor: 59.90 },
+            business: { nome: 'Business', limite: 15, valor: 119.90 },
+            enterprise: { nome: 'Enterprise', limite: 999, valor: 249.90 }
+        };
+
+        const planoInfo = planos[plano];
+        if (!planoInfo) {
+            return res.status(400).json({
+                success: false,
+                message: 'Plano inválido'
+            });
+        }
+
+        const paymentId = "sim_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9);
+
+        // 🔥 SALVA A TRANSAÇÃO
+        const sqlInsert = isProduction
+            ? `INSERT INTO transacoes_pagamento 
+               (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
+               VALUES ($1, $2, $3, $4, 'simulado', $5, 'approved', CURRENT_TIMESTAMP)`
+            : `INSERT INTO transacoes_pagamento 
+               (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
+               VALUES (?, ?, ?, ?, 'simulado', ?, 'approved', CURRENT_TIMESTAMP)`;
+
+        await new Promise((resolve, reject) => {
+            db.run(sqlInsert, [empresaIdFinal, plano, planoInfo.nome, planoInfo.valor, paymentId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        // 🔥 ATUALIZA A EMPRESA COM O NOVO PLANO
+        const dataValidade = new Date();
+        dataValidade.setMonth(dataValidade.getMonth() + 1);
+
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET 
+               plano = $1,
+               limite_profissionais = $2,
+               assinatura_ativa = true,
+               assinatura_valida_ate = $3,
+               ultima_cobranca = CURRENT_TIMESTAMP
+               WHERE id = $4`
+            : `UPDATE empresas SET 
+               plano = ?,
+               limite_profissionais = ?,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = ?,
+               ultima_cobranca = CURRENT_TIMESTAMP
+               WHERE id = ?`;
+
+        await new Promise((resolve, reject) => {
+            db.run(sqlUpdate, [planoInfo.nome, planoInfo.limite, dataValidade.toISOString(), empresaIdFinal], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        console.log(`✅ Simulação concluída: ${planoInfo.nome} ativado para empresa ${empresaIdFinal}`);
+
+        res.json({
+            success: true,
+            message: `✅ Plano ${planoInfo.nome} ativado com sucesso! (Simulação)`,
+            plano: planoInfo.nome,
+            payment_id: paymentId,
+            simulado: true
+        });
+
+    } catch (error) {
+        console.error('❌ Erro na simulação:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro na simulação'
+        });
+    }
+});
 // ============================================================
 // INICIAR WPPCONNECT LOCAL (SE HABILITADO)
 // ============================================================

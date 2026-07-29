@@ -1,6 +1,6 @@
 ﻿﻿=========================================
 ESTRUTURA.md - SEE&AGENDE
-ULTIMA ATUALIZACAO: 27/07/2026
+ULTIMA ATUALIZACAO: 28/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -31,7 +31,7 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 │       └── pages/
 │           ├── dashboard.js              # Dashboard com Agenda Inteligente
 │           ├── dashboard-profissional.js # Dashboard Profissional
-│           ├── clientes.js               # CRUD Clientes + GRUPOS + PROMOÇÕES ⭐
+│           ├── clientes.js               # CRUD Clientes + GRUPOS + PROMOÇÕES + ÍNDICE A-Z ⭐
 │           ├── agendamentos.js           # CRUD Agendamentos
 │           ├── agendamentos-profissional.js # Agendamentos (Profissional)
 │           ├── servicos.js               # CRUD Servicos
@@ -74,31 +74,50 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 └── package.json             # Dependências e scripts
 
 =========================================
+🔥 NOVIDADES (28/07/2026) - CLIENTES: ÍNDICE A-Z E BUSCA MOBILE
+=========================================
+
+1. ÍNDICE ALFABÉTICO (A-Z) PARA CLIENTES 📋
+-----------------------------------------
+- Botões A-Z para filtrar clientes por nome
+- Estado salvo no localStorage (mantém ao recarregar/scrollar)
+- Posição sticky no topo da lista
+- Compatível com desktop e mobile
+
+2. REMOÇÃO DA LUPA NO MOBILE 📱
+-----------------------------------------
+- Lupa removida do input de busca
+- Placeholder: "🔍 Buscar por nome..."
+- Botão "Buscar" removido no mobile
+
+3. CORREÇÃO DO SCROLL 🔄
+-----------------------------------------
+- Scroll não recarrega mais a página
+- Filtro de letra permanece ativo ao rolar
+- Evento resize ignorado com filtro ativo
+
+=========================================
 🔥 NOVIDADES (27/07/2026) - CORREÇÕES CLIENTES E PROMOÇÕES
 =========================================
 1. GRUPOS DE CLIENTES 👥
------------------------------------------
 - Sistema de grupos: Premium, Frequentes, Promoções, Aniversariantes, Amigos, Indicados, Especiais
 - Filtro por grupos na página de clientes (atualiza sem recarregar)
 - Modal de gerenciamento de grupos com criação dinâmica
 - Persistência de grupos personalizados
 
 2. BUSCA MOBILE OTIMIZADA 📱
------------------------------------------
 - Busca local sem recarregar a página
 - Debounce de 500ms para melhor performance
 - Evento resize não interfere na digitação
 - Foco restaurado após atualização
 
 3. MODAL DE PROMOÇÃO 📢
------------------------------------------
 - Todos os grupos disponíveis no filtro
 - Filtro por grupo funcionando
 - Busca por nome/telefone dentro do modal
 - Contagem de clientes por grupo
 
 4. WHATSAPP CORRIGIDO 📱
------------------------------------------
 - Formatação de números com 55
 - Fallback para diferentes formatos
 - Instância própria funcionando
@@ -107,9 +126,9 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 🔥 NOVIDADES (22/07/2026) - CORREÇÕES EVOLUTION V2 E SCRIPT BLINDADO
 =========================================
 1. ENDPOINTS EVOLUTION API v2 CORRIGIDOS 📱
-- Envio de mensagem: `/message/sendText/{instanceName}` (antes era /instance/{name}/send)
-- Obter QR Code: `/instance/connect/{instanceName}` (trata estado 'open' e erro 404 gracefully)
-- Verificar status: `/instance/connectionState/{instanceName}` (verifica state === 'open')
+- Envio de mensagem: `/message/sendText/{instanceName}`
+- Obter QR Code: `/instance/connect/{instanceName}`
+- Verificar status: `/instance/connectionState/{instanceName}`
 
 2. NOVAS COLUNAS NO BANCO (Tabela: agendamentos) 💾
 - valor_total (NUMERIC DEFAULT 0)
@@ -118,13 +137,12 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 
 3. SCRIPT DE ATUALIZAÇÃO BLINDADO (`atualizar.sh`) 🛡️
 - Salva .env em /tmp antes do git.
-- Usa `git reset --hard origin/main` e `git clean -fd` para zerar conflitos.
+- Usa `git reset --hard origin/main` e `git clean -fd`
 - Restaura o .env do /tmp.
-- Roda `npm install --omit=dev` e migração sem erro de SSL.
-- Reinicia PM2 com --update-env.
+- Roda `npm install --omit=dev` e migração
 
 4. LÓGICA DE FALLBACK CONFIRMADA ✅
-- Se a instância própria da empresa existir no banco mas NÃO estiver conectada, o sistema usa automaticamente a instância padrão (`seeagende`) para garantir que a mensagem do cliente seja enviada.
+- Se a instância própria NÃO estiver conectada, usa a instância padrão
 
 =========================================
 🔥 NOVIDADES (13/07/2026) - FINANCEIRO COMPLETO
@@ -136,45 +154,10 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 =========================================
 🔥 NOVIDADES (10/07/2026) - WHATSAPP MULTI-INSTÂNCIA
 =========================================
-- Provedor: Evolution API (servidor externo: http://163.176.218.131:8080)
-- Instância Padrão: seeagende (usado por empresas sem WhatsApp próprio)
-- Instância Própria: Cada empresa Business/Enterprise pode ter sua própria instância
-- Confirmação de Agendamento: Enviada automaticamente ao criar
-- Lembrete 24h: Job automático às 09:00
-- Cancelamento: Notifica o cliente
-- Conclusão: Agradecimento automático
-- Telefone do Dono: Aparece em todas as mensagens
-- Formatação: Telefone formatado como (XX) XXXXX-XXXX
-- Endereço: Aparece nas mensagens
-- Arquivos: server/services/whatsapp.js, server/services/evolution-instances.js, server.js
-
-NOVOS CAMPOS NO BANCO (Tabela: empresas)
------------------------------------------
-whatsapp_instance VARCHAR(100)              -- Nome da instância na Evolution
-whatsapp_connected BOOLEAN DEFAULT FALSE    -- Status de conexão
-whatsapp_number VARCHAR(20)                 -- Número conectado
-whatsapp_connected_at TIMESTAMP             -- Data da última conexão
-whatsapp_proprio_habilitado BOOLEAN DEFAULT FALSE  -- Controle do Super Admin
-
-SUPER ADMIN - CONTROLE WHATSAPP 🏢
------------------------------------------
-- Coluna 💬 WhatsApp na lista de empresas
-- 3 estados: 🔴 OFF, 🟡 PEND, 🟢 ON, 🔒 [plano]
-- Habilitar/desabilitar WhatsApp próprio de cada empresa
-- Status WhatsApp de todas empresas
-
-DONO - WHATSAPP EXCLUSIVO 👨‍💼
------------------------------------------
-3 cenários:
-- Plano não permite (Trial/Starter/Pro) → Tela de upgrade
-- Plano permite mas Super Admin não habilitou → "Aguarde o administrador"
-- Tudo OK → Pode criar instância e conectar WhatsApp
-
-Funcionalidades:
-- Criar instância na Evolution API
-- Escanear QR Code com WhatsApp pessoal
-- Ver status de conexão
-- Desconectar WhatsApp
+- Provedor: Evolution API
+- Instância Padrão: seeagende
+- Instância Própria: Empresas Business/Enterprise
+- Confirmação, Lembrete 24h, Cancelamento e Conclusão automáticos
 
 =========================================
 🗄️ TABELAS DO BANCO
@@ -193,7 +176,7 @@ clientes                    id, nome, telefone, email, empresa_id,              
 servicos                    id, nome, descricao, valor, duracao, ativo, empresa_id     ✅
 agendamentos                id, cliente_id, data, hora, servico_id, servico, valor,    ✅
                             duracao, status, comissao, empresa_id, profissional_id,
-                            lembrete_enviado, valor_total, servicos_extras, valor_extras <-- NOVAS COLUNAS
+                            lembrete_enviado, valor_total, servicos_extras, valor_extras
 despesas                    id, empresa_id, descricao, categoria, valor, data,         ✅
                             data_vencimento, pago, forma_pagamento, observacao
 horarios_funcionamento      id, empresa_id, dia_semana, aberto, hora_inicio,           ✅
@@ -220,28 +203,75 @@ EVOLUTION_API_KEY=seeagende2024
 EVOLUTION_INSTANCE=seeagende
 
 =========================================
+🚀 DEPLOY PARA VPS
+=========================================
+
+MÉTODO RECOMENDADO: SCP (ENVIO DE ARQUIVOS ESPECÍFICOS)
+---------------------------------------------------------
+
+# Enviar um arquivo específico
+scp caminho/do/arquivo.js ubuntu@163.176.218.131:~/seeagende/caminho/do/arquivo.js
+
+# Enviar vários arquivos
+scp public/js/pages/*.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/
+
+# Enviar pasta inteira
+scp -r public/js/pages ubuntu@163.176.218.131:~/seeagende/public/js/
+
+# Enviar e reiniciar (comando completo)
+scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
+
+MÉTODO TRADICIONAL: GIT PULL (ATUALIZAÇÃO COMPLETA)
+---------------------------------------------------------
+
+ssh ubuntu@163.176.218.131
+cd ~/seeagende
+cp .env /tmp/seeagende_env_backup
+git pull origin main
+cp /tmp/seeagende_env_backup .env
+pm2 restart seeagende --update-env
+
+COMANDOS ÚTEIS PARA DEPLOY
+---------------------------------------------------------
+
+# Verificar arquivos na VPS
+ssh ubuntu@163.176.218.131 "ls -la ~/seeagende/public/js/pages/"
+
+# Verificar data do arquivo
+ssh ubuntu@163.176.218.131 "stat ~/seeagende/public/js/pages/clientes.js"
+
+# Ver logs do servidor
+ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 20"
+
+# Reiniciar servidor
+ssh ubuntu@163.176.218.131 "pm2 restart seeagende --update-env"
+
+=========================================
 ✅ STATUS DAS FUNCIONALIDADES
 =========================================
 Funcionalidade                     SQLite   PostgreSQL   Status
 Login                              ✅       ✅           OK
 Dashboard                          ✅       ✅           OK
 Agenda Inteligente                 ✅       ✅           OK
-Agendamentos (com extras)          ✅       ✅           OK (Colunas adicionadas)
+Agendamentos (com extras)          ✅       ✅           OK
 Despesas                           ✅       ✅           OK
 Profissionais                      ✅       ✅           OK
 Horários                           ✅       ✅           OK
 Serviços                           ✅       ✅           OK
-Financeiro com TABS                ✅       ✅           NOVO! ⭐
-Comparativo Mensal                 ✅       ✅           NOVO! ⭐
+Financeiro com TABS                ✅       ✅           OK
+Comparativo Mensal                 ✅       ✅           OK
 Super Admin                        ✅       ✅           OK
 Sistema de Acessos                 ✅       ✅           OK
 WhatsApp Evolution                 LOG      REAL         OK
-WhatsApp Multi-Instância (v2)      ✅       ✅           OK (Endpoints corrigidos)
-Script de Atualização Blindado     ✅       ✅           NOVO! ⭐
-Grupos de Clientes                 ✅       ✅           NOVO! ⭐
-Promoções com Grupos               ✅       ✅           NOVO! ⭐
-Busca Mobile Otimizada             ✅       ✅           NOVO! ⭐
+WhatsApp Multi-Instância (v2)      ✅       ✅           OK
+Script de Atualização Blindado     ✅       ✅           OK
+Grupos de Clientes                 ✅       ✅           OK
+Promoções com Grupos               ✅       ✅           OK
+Busca Mobile Otimizada             ✅       ✅           OK
+Índice A-Z para Clientes           ✅       ✅           NOVO! ⭐
+Lupa removida no mobile            ✅       ✅           NOVO! ⭐
+Filtro de letra com localStorage   ✅       ✅           NOVO! ⭐
 
 =========================================
-ULTIMA ATUALIZACAO: 27/07/2026
+ULTIMA ATUALIZACAO: 28/07/2026
 =========================================

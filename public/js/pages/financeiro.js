@@ -44,7 +44,7 @@ let filtroPagoAtual = null;
 let despesaEditandoId = null;
 
 // ============================================
-// CARREGAR FINANCEIRO
+// CARREGAR FINANCEIRO (CORRIGIDO)
 // ============================================
 
 async function carregarFinanceiro() {
@@ -93,6 +93,58 @@ async function carregarFinanceiro() {
         const categoriasResult = await categoriasRes.json();
         const comparativoResult = await comparativoRes.json();
 
+        // 🔥 DEBUG: Ver o que está chegando
+        console.log('📊 Financeiro Result:', financeiroResult);
+        console.log('📊 Receitas Result:', receitasResult);
+
+        // 🔥 CORREÇÃO: Se o financeiro veio zerado mas a rota de receitas tem dados, usa os dados da rota de receitas
+        if (financeiroResult.success && financeiroResult.data) {
+            const fatBruto = financeiroResult.data.totais?.faturamento_bruto || 0;
+            const totalServicos = financeiroResult.data.totais?.total_servicos || 0;
+
+            // Se o financeiro veio com 0 serviços mas a rota de receitas tem dados
+            if (totalServicos === 0 && receitasResult.success && receitasResult.data) {
+                console.log('⚠️ Financeiro veio zerado, usando dados da rota de receitas');
+                const receitas = receitasResult.data.receitas || [];
+                let total = 0;
+                receitas.forEach(r => {
+                    total += parseFloat(r.valor_total) || parseFloat(r.valor) || 0;
+                });
+
+                // Atualizar os totais do financeiro com os dados das receitas
+                if (!financeiroResult.data.totais) {
+                    financeiroResult.data.totais = {};
+                }
+                financeiroResult.data.totais.faturamento_bruto = total;
+                financeiroResult.data.totais.total_servicos = receitas.length;
+
+                // Atualizar comissoes também
+                financeiroResult.data.comissoes = receitas.map(r => ({
+                    ...r,
+                    valor_total: parseFloat(r.valor_total) || parseFloat(r.valor) || 0,
+                    comissao: parseFloat(r.comissao) || 0
+                }));
+
+                console.log('✅ Financeiro corrigido:', financeiroResult.data.totais);
+            }
+        }
+
+        // Se o financeiroResult não tiver sucesso, cria dados vazios
+        if (!financeiroResult.success) {
+            console.warn('⚠️ Financeiro não retornou sucesso, criando dados vazios');
+            financeiroResult.data = {
+                totais: {
+                    faturamento_bruto: 0,
+                    total_servicos: 0,
+                    total_comissoes: 0,
+                    faturamento_liquido: 0
+                },
+                comissoes: [],
+                comissoes_por_profissional: []
+            };
+            financeiroResult.success = true;
+        }
+
         if (financeiroResult.success) {
             financeiroData = financeiroResult.data;
         }
@@ -135,7 +187,7 @@ async function carregarFinanceiro() {
 }
 
 // ============================================
-// RENDERIZAR FINANCEIRO COMPLETO
+// RENDERIZAR FINANCEIRO COMPLETO (CORRIGIDO COM FORÇA)
 // ============================================
 
 function renderizarFinanceiroCompleto(financeiro, despesas, receitas, categorias, usuario, comparativo) {
@@ -143,17 +195,62 @@ function renderizarFinanceiroCompleto(financeiro, despesas, receitas, categorias
     const isDono = usuario?.role === 'dono';
     const temaSalvo = localStorage.getItem('theme') || 'light';
 
-    // Dados do comparativo
+    // 🔥 CORREÇÃO: Extrair dados do comparativo corretamente
     const comp = comparativo || {};
-    const mesAtualData = comp.mes_atual || {};
-    const mesAnteriorData = comp.mes_anterior || {};
+    let mesAtualData = comp.mes_atual || {};
+    let mesAnteriorData = comp.mes_anterior || {};
 
-    const fatAtual = toNumber(mesAtualData.faturamento);
-    const fatAnterior = toNumber(mesAnteriorData.faturamento);
-    const despesasAtual = toNumber(mesAtualData.despesas);
-    const despesasAnterior = toNumber(mesAnteriorData.despesas);
-    const lucroAtual = toNumber(mesAtualData.lucro);
-    const lucroAnterior = toNumber(mesAnteriorData.lucro);
+    // 🔥 FALLBACK 1: Se o comparativo veio vazio, usar os dados das receitas
+    if (Object.keys(mesAtualData).length === 0 && receitas && receitas.total) {
+        console.log('⚠️ Comparativo vazio, usando dados das receitas como fallback');
+        const totalReceitas = parseFloat(receitas.total) || 0;
+        const totalDespesasFallback = despesas?.totais?.total || 0;
+
+        mesAtualData = {
+            faturamento: totalReceitas,
+            despesas: totalDespesasFallback,
+            lucro: totalReceitas - totalDespesasFallback
+        };
+        mesAnteriorData = {
+            faturamento: 0,
+            despesas: 0,
+            lucro: 0
+        };
+    }
+
+    // 🔥 FALLBACK 2: Se ainda estiver zerado, usar os dados do resumo (financeiro)
+    const fatResumo = toNumber(financeiro?.totais?.faturamento_bruto) || 0;
+    const despResumo = toNumber(despesas?.totais?.total) || 0;
+
+    if (isDono && (mesAtualData.faturamento === 0 || mesAtualData.faturamento === undefined) && fatResumo > 0) {
+        console.log('⚠️ Comparativo ainda zerado, usando dados do resumo como fallback');
+        console.log('📊 Fat Resumo:', fatResumo, 'Desp Resumo:', despResumo);
+
+        mesAtualData = {
+            faturamento: fatResumo,
+            despesas: despResumo,
+            lucro: fatResumo - despResumo
+        };
+        mesAnteriorData = {
+            faturamento: 0,
+            despesas: 0,
+            lucro: 0
+        };
+    }
+
+    // 🔥 FORÇAR valores numéricos
+    const fatAtual = parseFloat(mesAtualData.faturamento) || 0;
+    const fatAnterior = parseFloat(mesAnteriorData.faturamento) || 0;
+    const despesasAtual = parseFloat(mesAtualData.despesas) || 0;
+    const despesasAnterior = parseFloat(mesAnteriorData.despesas) || 0;
+    const lucroAtual = parseFloat(mesAtualData.lucro) || 0;
+    const lucroAnterior = parseFloat(mesAnteriorData.lucro) || 0;
+
+    // 🔥 DEBUG: Ver o que está chegando
+    console.log('📊 Comparativo - Mes Atual:', mesAtualData);
+    console.log('📊 Comparativo - Mes Anterior:', mesAnteriorData);
+    console.log('📊 Fat Atual:', fatAtual, 'Fat Anterior:', fatAnterior);
+    console.log('📊 Fat Resumo:', fatResumo, 'Desp Resumo:', despResumo);
 
     // Variações percentuais
     const variacaoFat = fatAnterior > 0 ? ((fatAtual - fatAnterior) / fatAnterior * 100) : 0;
@@ -186,7 +283,7 @@ function renderizarFinanceiroCompleto(financeiro, despesas, receitas, categorias
                 </div>
             </div>
             
-            <!-- TABS - ESTILO CONFIGURAÇÕES -->
+            <!-- TABS -->
             <div class="config-tabs" style="
                 display: flex;
                 gap: ${isMobile ? '4px' : '8px'};
@@ -272,16 +369,42 @@ function renderizarFinanceiroCompleto(financeiro, despesas, receitas, categorias
                 ">
                     <i class="fas fa-users" style="font-size:${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Comissões' : 'Comissões'}
                 </button>
+                <!-- 🔥 NOVA TAB: ANÁLISE DIÁRIA -->
+                <button class="config-tab" onclick="switchFinanceiroTab('analise')" style="
+                    padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                    border: none;
+                    border-radius: ${isMobile ? '8px' : '12px'};
+                    background: transparent;
+                    color: var(--text-secondary);
+                    font-weight: 600;
+                    font-size: ${isMobile ? '12px' : '14px'};
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: ${isMobile ? '4px' : '8px'};
+                    white-space: nowrap;
+                    flex-shrink: 0;
+                ">
+                    <i class="fas fa-calendar-day" style="font-size:${isMobile ? '14px' : '16px'};color:#8b5cf6;"></i> ${isMobile ? 'Análise' : 'Análise Diária'}
+                </button>
             </div>
             
             <div id="financeiroContent">
     `;
 
     // ============================================
-    // TAB: RESUMO (PADRÃO)
+    // TAB: RESUMO (PADRÃO) - COM DADOS DO COMPARATIVO
     // ============================================
     if (isDono) {
-        html += renderTabResumo(isMobile, fatAtual, fatAnterior, variacaoFat, despesasAtual, despesasAnterior, variacaoDesp, lucroAtual, lucroAnterior, variacaoLucro, faturamentoBruto, totalDespesas, lucroLiquido, faturamentoLiquido, totalServicos, despesasTotais);
+        html += renderTabResumo(
+            isMobile,
+            fatAtual, fatAnterior, variacaoFat,
+            despesasAtual, despesasAnterior, variacaoDesp,
+            lucroAtual, lucroAnterior, variacaoLucro,
+            faturamentoBruto, totalDespesas, lucroLiquido,
+            faturamentoLiquido, totalServicos, despesasTotais
+        );
     } else {
         html += renderTabResumoProfissional(isMobile, totais);
     }
@@ -516,7 +639,7 @@ function switchFinanceiroTab(tab) {
     });
 
     const tabs = document.querySelectorAll('.config-tab');
-    const index = ['resumo', 'receitas', 'despesas', 'profissionais'].indexOf(tab);
+    const index = ['resumo', 'receitas', 'despesas', 'profissionais', 'analise'].indexOf(tab);
     if (tabs[index]) {
         tabs[index].classList.add('active');
         tabs[index].style.background = 'var(--gradient)';
@@ -531,7 +654,6 @@ function switchFinanceiroTab(tab) {
 
     switch (tab) {
         case 'resumo':
-            // Recarregar tudo
             carregarFinanceiro();
             break;
         case 'receitas':
@@ -555,6 +677,15 @@ function switchFinanceiroTab(tab) {
         case 'profissionais':
             document.getElementById('financeiroContent').innerHTML = renderTabComissoes(isMobile);
             carregarComissoesTab();
+            break;
+        case 'analise':
+            if (isDono) {
+                document.getElementById('financeiroContent').innerHTML = renderTabAnaliseDiaria(isMobile);
+                carregarAnaliseDiaria();
+            } else {
+                showToast('Apenas o dono pode ver análise diária', 'warning');
+                carregarFinanceiro();
+            }
             break;
         default:
             break;
@@ -743,7 +874,6 @@ function renderizarReceitas(receitas) {
 function renderTabDespesas(isMobile) {
     const token = localStorage.getItem('token');
 
-    // Buscar categorias para o filtro
     fetch('/api/despesas/categorias', {
         headers: { 'Authorization': 'Bearer ' + token }
     })
@@ -774,7 +904,6 @@ function renderTabDespesas(isMobile) {
                 </div>
             </div>
             
-            <!-- Filtros -->
             <div style="padding:${isMobile ? '8px' : '12px'};display:flex;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--border-color);">
                 <select id="filtroCategoriaDespesa" onchange="aplicarFiltrosDespesasTab()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
                     <option value="">Todas Categorias</option>
@@ -899,7 +1028,6 @@ function renderizarDespesasTab(despesas) {
         html += `<div style="display:flex;flex-direction:column;gap:10px;">`;
         for (let d of lista) {
             const valor = toNumber(d.valor);
-            const statusClass = d.pago ? 'pago' : 'pendente';
             const statusLabel = d.pago ? '✅ Paga' : '⏳ Pendente';
             html += `
                 <div style="background:var(--bg-card);border-radius:12px;padding:14px 16px;border:1px solid var(--border-color);">
@@ -1043,39 +1171,17 @@ function renderizarComissoesTab(data, isDono) {
     const comissoes = data.comissoes || [];
     const comissoesPorProf = data.comissoes_por_profissional || [];
 
-    // Ordenar por data (mais recente primeiro)
     comissoes.sort((a, b) => new Date(b.data) - new Date(a.data));
 
     let html = '';
 
-    // ============================================
-    // COMISSÕES POR PROFISSIONAL - VERSÃO MELHORADA MOBILE
-    // ============================================
     if (isDono && comissoesPorProf.length > 0) {
-        // Título da seção
         html += `
             <div style="margin-bottom:16px;">
-                <h4 style="
-                    font-size:14px;
-                    font-weight:700;
-                    color:var(--text-primary);
-                    margin:0 0 10px 0;
-                    display:flex;
-                    align-items:center;
-                    gap:8px;
-                    padding-bottom:8px;
-                    border-bottom:2px solid var(--border-color);
-                ">
+                <h4 style="font-size:14px;font-weight:700;color:var(--text-primary);margin:0 0 10px 0;display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--border-color);">
                     <i class="fas fa-crown" style="color:#f59e0b;font-size:16px;"></i>
                     Profissionais
-                    <span style="
-                        font-size:11px;
-                        font-weight:400;
-                        color:var(--text-muted);
-                        background:var(--bg-hover);
-                        padding:2px 10px;
-                        border-radius:12px;
-                    ">
+                    <span style="font-size:11px;font-weight:400;color:var(--text-muted);background:var(--bg-hover);padding:2px 10px;border-radius:12px;">
                         ${comissoesPorProf.length}
                     </span>
                 </h4>
@@ -1083,114 +1189,36 @@ function renderizarComissoesTab(data, isDono) {
         `;
 
         if (isMobile) {
-            // VERSÃO MOBILE - CARDS MAIS DETALHADOS
             html += `<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;">`;
-
             for (let prof of comissoesPorProf) {
                 const totalComissao = toNumber(prof.total_comissao);
                 const totalServicos = prof.total_servicos || 0;
-                const mediaPorServico = totalServicos > 0 ? totalComissao / totalServicos : 0;
                 const inicial = prof.nome ? prof.nome.charAt(0).toUpperCase() : '?';
                 const cores = ['#667eea', '#f59e0b', '#22c55e', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
                 const corIndex = comissoesPorProf.indexOf(prof) % cores.length;
                 const corProfissional = cores[corIndex];
 
                 html += `
-                    <div style="
-                        background:var(--bg-card);
-                        border-radius:14px;
-                        padding:16px;
-                        border:1px solid var(--border-color);
-                        box-shadow:0 2px 8px rgba(0,0,0,0.04);
-                        transition:all 0.2s ease;
-                    ">
-                        <!-- Header do Profissional -->
-                        <div style="
-                            display:flex;
-                            align-items:center;
-                            gap:14px;
-                            margin-bottom:12px;
-                            padding-bottom:12px;
-                            border-bottom:1px solid var(--border-color);
-                        ">
-                            <div style="
-                                width:48px;
-                                height:48px;
-                                border-radius:50%;
-                                background:${corProfissional};
-                                display:flex;
-                                align-items:center;
-                                justify-content:center;
-                                color:white;
-                                font-weight:700;
-                                font-size:20px;
-                                flex-shrink:0;
-                                box-shadow:0 2px 12px ${corProfissional}40;
-                            ">
+                    <div style="background:var(--bg-card);border-radius:14px;padding:16px;border:1px solid var(--border-color);">
+                        <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border-color);">
+                            <div style="width:48px;height:48px;border-radius:50%;background:${corProfissional};display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:20px;flex-shrink:0;">
                                 ${inicial}
                             </div>
                             <div style="flex:1;min-width:0;">
-                                <div style="
-                                    font-size:16px;
-                                    font-weight:700;
-                                    color:var(--text-primary);
-                                    white-space:nowrap;
-                                    overflow:hidden;
-                                    text-overflow:ellipsis;
-                                ">
-                                    ${escapeHtml(prof.nome)}
-                                </div>
-                                <div style="
-                                    display:flex;
-                                    align-items:center;
-                                    gap:10px;
-                                    font-size:12px;
-                                    color:var(--text-muted);
-                                    flex-wrap:wrap;
-                                ">
-                                    <span>📋 ${totalServicos} serviço(s)</span>
-                                    <span>•</span>
-                                    <span>📊 ${mediaPorServico > 0 ? `R$ ${mediaPorServico.toFixed(2)}/serv` : '-'}</span>
-                                </div>
+                                <div style="font-size:16px;font-weight:700;color:var(--text-primary);">${escapeHtml(prof.nome)}</div>
+                                <div style="font-size:12px;color:var(--text-muted);">📋 ${totalServicos} serviço(s)</div>
                             </div>
-                            <div style="
-                                font-size:18px;
-                                font-weight:800;
-                                color:var(--primary);
-                                background:rgba(102,126,234,0.08);
-                                padding:6px 16px;
-                                border-radius:12px;
-                                flex-shrink:0;
-                            ">
+                            <div style="font-size:18px;font-weight:800;color:var(--primary);background:rgba(102,126,234,0.08);padding:6px 16px;border-radius:12px;flex-shrink:0;">
                                 R$ ${totalComissao.toFixed(2)}
                             </div>
                         </div>
-                        
-                        <!-- Barra de progresso -->
                         <div style="margin-top:4px;">
-                            <div style="
-                                display:flex;
-                                justify-content:space-between;
-                                font-size:10px;
-                                color:var(--text-muted);
-                                margin-bottom:4px;
-                            ">
+                            <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted);margin-bottom:4px;">
                                 <span>Serviços realizados</span>
                                 <span>${totalServicos} de ${comissoes.length}</span>
                             </div>
-                            <div style="
-                                background:var(--bg-hover);
-                                border-radius:8px;
-                                height:6px;
-                                overflow:hidden;
-                            ">
-                                <div style="
-                                    width:${comissoes.length > 0 ? (totalServicos / comissoes.length * 100) : 0}%;
-                                    height:100%;
-                                    background:${corProfissional};
-                                    border-radius:8px;
-                                    transition:width 0.5s ease;
-                                "></div>
+                            <div style="background:var(--bg-hover);border-radius:8px;height:6px;overflow:hidden;">
+                                <div style="width:${comissoes.length > 0 ? (totalServicos / comissoes.length * 100) : 0}%;height:100%;background:${corProfissional};border-radius:8px;"></div>
                             </div>
                         </div>
                     </div>
@@ -1198,33 +1226,13 @@ function renderizarComissoesTab(data, isDono) {
             }
             html += `</div>`;
         } else {
-            // VERSÃO DESKTOP - Grid
             html += `
                 <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));gap:12px;margin-bottom:20px;">
                     ${comissoesPorProf.map(prof => {
                 const totalComissao = toNumber(prof.total_comissao);
                 return `
-                            <div style="
-                                background:var(--bg-card);
-                                border-radius:12px;
-                                padding:16px;
-                                border:1px solid var(--border-color);
-                                text-align:center;
-                                box-shadow:0 2px 8px rgba(0,0,0,0.04);
-                            ">
-                                <div style="
-                                    width:48px;
-                                    height:48px;
-                                    border-radius:50%;
-                                    background:var(--gradient-primary);
-                                    display:inline-flex;
-                                    align-items:center;
-                                    justify-content:center;
-                                    color:white;
-                                    font-weight:700;
-                                    font-size:18px;
-                                    margin-bottom:8px;
-                                ">
+                            <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);text-align:center;">
+                                <div style="width:48px;height:48px;border-radius:50%;background:var(--gradient-primary);display:inline-flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:18px;margin-bottom:8px;">
                                     ${prof.nome ? prof.nome.charAt(0).toUpperCase() : '?'}
                                 </div>
                                 <div style="font-size:16px;font-weight:600;color:var(--text-primary);">${escapeHtml(prof.nome)}</div>
@@ -1238,9 +1246,6 @@ function renderizarComissoesTab(data, isDono) {
         }
     }
 
-    // ============================================
-    // HISTÓRICO DE SERVIÇOS
-    // ============================================
     if (comissoes.length === 0) {
         html += `
             <div class="empty-state">
@@ -1264,7 +1269,7 @@ function renderizarComissoesTab(data, isDono) {
                     <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border-color);">
                         <div style="width:40px;height:40px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;flex-shrink:0;">${inicial}</div>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(clienteNome)}</div>
+                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${escapeHtml(clienteNome)}</div>
                             <div style="font-size:12px;color:var(--text-muted);">✂️ ${escapeHtml(servicoNome)}</div>
                         </div>
                         <div style="font-size:14px;font-weight:700;color:var(--primary);">R$ ${valor.toFixed(2)}</div>
@@ -1341,7 +1346,7 @@ function abrirModalDespesa(despesa = null) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group" style="margin-bottom:14px;">
                         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#c0c0d0;">📂 Categoria *</label>
-                        <select id="despCategoria" style="width:100%;padding:10px 12px;border:1px solid ${borderDark};border-radius:8px;background:${bgSelect};color:${textLight};font-size:14px;appearance:auto;-webkit-appearance:auto;" required>
+                        <select id="despCategoria" style="width:100%;padding:10px 12px;border:1px solid ${borderDark};border-radius:8px;background:${bgSelect};color:${textLight};font-size:14px;" required>
                             <option value="">Selecione...</option>
                             ${categoriasDisponiveis.map(cat => `
                                 <option value="${escapeHtml(cat)}" ${despesa?.categoria === cat ? 'selected' : ''} style="background:${bgDark};color:${textLight};">
@@ -1376,7 +1381,7 @@ function abrirModalDespesa(despesa = null) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="form-group" style="margin-bottom:14px;">
                         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#c0c0d0;">📊 Status</label>
-                        <select id="despPago" style="width:100%;padding:10px 12px;border:1px solid ${borderDark};border-radius:8px;background:${bgSelect};color:${textLight};font-size:14px;appearance:auto;-webkit-appearance:auto;">
+                        <select id="despPago" style="width:100%;padding:10px 12px;border:1px solid ${borderDark};border-radius:8px;background:${bgSelect};color:${textLight};font-size:14px;">
                             <option value="0" ${!despesa?.pago ? 'selected' : ''} style="background:${bgDark};color:${textLight};">⏳ Pendente</option>
                             <option value="1" ${despesa?.pago ? 'selected' : ''} style="background:${bgDark};color:${textLight};">✅ Paga</option>
                         </select>
@@ -1384,7 +1389,7 @@ function abrirModalDespesa(despesa = null) {
                     
                     <div class="form-group" style="margin-bottom:14px;">
                         <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:#c0c0d0;">💳 Forma de Pagamento</label>
-                        <select id="despFormaPagamento" style="width:100%;padding:10px 12px;border:1px solid ${borderDark};border-radius:8px;background:${bgSelect};color:${textLight};font-size:14px;appearance:auto;-webkit-appearance:auto;">
+                        <select id="despFormaPagamento" style="width:100%;padding:10px 12px;border:1px solid ${borderDark};border-radius:8px;background:${bgSelect};color:${textLight};font-size:14px;">
                             <option value="" style="background:${bgDark};color:${textLight};">Selecione...</option>
                             <option value="Dinheiro" ${despesa?.forma_pagamento === 'Dinheiro' ? 'selected' : ''} style="background:${bgDark};color:${textLight};">Dinheiro</option>
                             <option value="Cartão de Crédito" ${despesa?.forma_pagamento === 'Cartão de Crédito' ? 'selected' : ''} style="background:${bgDark};color:${textLight};">Cartão de Crédito</option>
@@ -1622,6 +1627,205 @@ function escapeHtml(text) {
 }
 
 // ============================================
+// TAB: ANÁLISE DIÁRIA
+// ============================================
+
+function renderTabAnaliseDiaria(isMobile) {
+    return `
+        <div class="card" style="padding:${isMobile ? '14px' : '20px'};">
+            <div class="card-header" style="flex-direction:${isMobile ? 'column' : 'row'};align-items:${isMobile ? 'stretch' : 'center'};gap:${isMobile ? '10px' : '0'};">
+                <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;">
+                    <i class="fas fa-calendar-day" style="color:#8b5cf6;"></i> Análise Diária
+                </h3>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <input type="month" id="filtroMesAnalise" value="${filtroAnoReceitas || ''}-${filtroMesReceitas || ''}" 
+                           onchange="carregarAnaliseDiaria()" 
+                           style="padding:6px 12px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);color:var(--text-primary);font-size:12px;">
+                    <button class="btn btn-outline btn-sm" onclick="carregarAnaliseDiaria()">
+                        <i class="fas fa-sync"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+            <div id="analiseDiariaContent">
+                <div style="text-align:center;padding:30px;color:var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;"></i>
+                    <p>Carregando análise diária...</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+async function carregarAnaliseDiaria() {
+    const token = localStorage.getItem('token');
+    const mesInput = document.getElementById('filtroMesAnalise');
+    let mes = mesInput?.value || `${filtroAnoReceitas || ''}-${filtroMesReceitas || ''}`;
+
+    let mesNum, anoNum;
+    if (mes) {
+        const parts = mes.split('-');
+        anoNum = parts[0];
+        mesNum = parts[1];
+    } else {
+        const hoje = new Date();
+        mesNum = String(hoje.getMonth() + 1).padStart(2, '0');
+        anoNum = hoje.getFullYear();
+    }
+
+    try {
+        const res = await fetch(`/api/financeiro/analise-diaria?mes=${mesNum}&ano=${anoNum}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            renderizarAnaliseDiaria(result.data, mesNum, anoNum);
+        } else {
+            document.getElementById('analiseDiariaContent').innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Erro ao carregar análise</h4>
+                    <p>${result.message || 'Tente novamente'}</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        document.getElementById('analiseDiariaContent').innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-exclamation-triangle"></i>
+                <h4>Erro ao carregar análise</h4>
+                <p>${error.message}</p>
+            </div>
+        `;
+    }
+}
+
+function renderizarAnaliseDiaria(data, mesNum, anoNum) {
+    const isMobile = window.innerWidth < 768;
+    const dias = data.dias || [];
+    const resumo = data.resumo || {};
+    const sugestoes = data.sugestoes || [];
+
+    // Resumo rápido
+    let html = `
+        <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:12px;margin-bottom:16px;">
+            <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
+                <div style="font-size:20px;">📊</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;">${resumo.total_servicos || 0}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Total de serviços</div>
+            </div>
+            <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
+                <div style="font-size:20px;">💰</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:#22c55e;">R$ ${(resumo.total_faturamento || 0).toFixed(2)}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Faturamento total</div>
+            </div>
+            <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
+                <div style="font-size:20px;">📈</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:#8b5cf6;">${(resumo.media_servicos_por_dia || 0).toFixed(1)}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Média de serviços/dia</div>
+            </div>
+            <div style="background:var(--bg-card);border-radius:12px;padding:12px;border:1px solid var(--border-color);text-align:center;">
+                <div style="font-size:20px;">⚠️</div>
+                <div style="font-size:${isMobile ? '18px' : '22px'};font-weight:700;color:${resumo.dias_ruins > 0 ? '#ef4444' : '#22c55e'};">${resumo.dias_ruins || 0}</div>
+                <div style="font-size:11px;color:var(--text-muted);">Dias com baixo movimento</div>
+            </div>
+        </div>
+    `;
+
+    // Calendário visual
+    const diasNoMes = new Date(anoNum, mesNum, 0).getDate();
+    const primeiroDiaSemana = new Date(anoNum, mesNum - 1, 1).getDay();
+
+    html += `
+        <div style="margin-bottom:16px;">
+            <h4 style="font-size:14px;color:var(--text-primary);margin-bottom:8px;">
+                📅 Mês ${String(mesNum).padStart(2, '0')}/${anoNum} - Dias
+            </h4>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;font-size:12px;">
+                ${['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(d => `
+                    <div style="text-align:center;padding:4px 0;font-weight:600;color:var(--text-muted);">${isMobile ? d.substring(0, 1) : d}</div>
+                `).join('')}
+                ${Array.from({ length: primeiroDiaSemana }, (_, i) => `
+                    <div style="padding:4px;border-radius:6px;background:transparent;"></div>
+                `).join('')}
+                ${dias.map(d => {
+        const isRuim = sugestoes.some(s => s.dia === d.dia);
+        const fat = d.faturamento || 0;
+        const corFundo = fat === 0 ? 'var(--bg-hover)' : (fat > resumo.media_faturamento_por_dia ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.15)');
+        const corTexto = fat === 0 ? 'var(--text-muted)' : (fat > resumo.media_faturamento_por_dia ? '#22c55e' : '#ef4444');
+        return `
+                        <div style="
+                            padding:${isMobile ? '6px 2px' : '8px 4px'}; 
+                            border-radius:6px; 
+                            text-align:center; 
+                            background:${corFundo};
+                            border: ${isRuim ? '2px solid #ef4444' : '1px solid var(--border-color)'};
+                            cursor: default;
+                            transition: 0.2s;
+                        ">
+                            <div style="font-weight:600;font-size:${isMobile ? '11px' : '14px'};color:var(--text-primary);">${d.dia}</div>
+                            <div style="font-size:${isMobile ? '9px' : '11px'};color:${corTexto};">R$ ${fat.toFixed(2)}</div>
+                            <div style="font-size:${isMobile ? '8px' : '10px'};color:var(--text-muted);">${d.qtd_servicos} serv.</div>
+                            ${isRuim ? `<div style="font-size:9px;color:#ef4444;font-weight:700;">⚠️</div>` : ''}
+                        </div>
+                    `;
+    }).join('')}
+            </div>
+        </div>
+    `;
+
+    // Sugestões de promoção
+    if (sugestoes.length > 0) {
+        html += `
+            <div style="
+                background:linear-gradient(135deg, rgba(239,68,68,0.1), rgba(139,92,246,0.1));
+                border-radius:12px;
+                padding:16px;
+                border:1px solid rgba(239,68,68,0.3);
+                margin-top:12px;
+            ">
+                <h4 style="font-size:14px;color:#ef4444;margin:0 0 8px 0;">
+                    <i class="fas fa-bullhorn"></i> Sugestões de Promoção
+                </h4>
+                <ul style="list-style:none;padding:0;margin:0;">
+                    ${sugestoes.map(s => `
+                        <li style="padding:8px 12px;border-bottom:1px solid var(--border-color);display:flex;gap:8px;align-items:center;">
+                            <span style="font-size:18px;">📢</span>
+                            <span style="font-size:13px;color:var(--text-primary);">${s.sugestao}</span>
+                        </li>
+                    `).join('')}
+                </ul>
+                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <button onclick="enviarPromocaoDiasRuins()" class="btn btn-primary btn-sm">
+                        <i class="fas fa-paper-plane"></i> Enviar promoção para clientes
+                    </button>
+                </div>
+            </div>
+        `;
+    } else {
+        html += `
+            <div style="
+                background:rgba(34,197,94,0.1);
+                border-radius:12px;
+                padding:16px;
+                border:1px solid rgba(34,197,94,0.3);
+                text-align:center;
+            ">
+                <i class="fas fa-check-circle" style="color:#22c55e;font-size:20px;"></i>
+                <p style="color:var(--text-primary);margin:4px 0 0;">Ótimo! Nenhum dia com baixo movimento neste mês. 👏</p>
+            </div>
+        `;
+    }
+
+    document.getElementById('analiseDiariaContent').innerHTML = html;
+}
+
+async function enviarPromocaoDiasRuins() {
+    showToast('Funcionalidade em desenvolvimento: em breve você poderá enviar promoções automáticas!', 'info');
+}
+
+// ============================================
 // LISTA DE CATEGORIAS (global)
 // ============================================
 
@@ -1661,8 +1865,10 @@ window.aplicarFiltroReceitas = aplicarFiltroReceitas;
 window.carregarDespesasTab = carregarDespesasTab;
 window.aplicarFiltrosDespesasTab = aplicarFiltrosDespesasTab;
 window.carregarComissoesTab = carregarComissoesTab;
+window.carregarAnaliseDiaria = carregarAnaliseDiaria;
+window.enviarPromocaoDiasRuins = enviarPromocaoDiasRuins;
 
-console.log('✅ financeiro.js atualizado com TABS estilo configurações e COMPARATIVO MENSAL!');
+console.log('✅ financeiro.js atualizado com TABS estilo configurações, COMPARATIVO MENSAL e ANÁLISE DIÁRIA!');
 
 // ============================================
 // ATUALIZAR AO REDIMENSIONAR
@@ -1673,11 +1879,9 @@ window.addEventListener('resize', function () {
     clearTimeout(resizeTimeoutFinanceiro);
     resizeTimeoutFinanceiro = setTimeout(function () {
         if (document.querySelector('.financeiro-container')) {
-            // Recarregar a view atual baseado na tab ativa
             const activeTab = document.querySelector('.config-tab.active');
             if (activeTab) {
-                const tabs = ['resumo', 'receitas', 'despesas', 'profissionais'];
-                const tabNames = ['Resumo', 'Receitas', 'Despesas', 'Comissões'];
+                const tabs = ['resumo', 'receitas', 'despesas', 'profissionais', 'analise'];
                 const index = Array.from(document.querySelectorAll('.config-tab')).indexOf(activeTab);
                 if (index >= 0 && index < tabs.length) {
                     switchFinanceiroTab(tabs[index]);

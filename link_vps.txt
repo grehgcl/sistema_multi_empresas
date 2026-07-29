@@ -1,1 +1,15 @@
 https://cloud.oracle.com/?region=sa-saopaulo-1&tenant=grehgcl&username=grehgcl%40hotmail.com&provider=OracleIdentityCloudService
+
+comandos pra enviar pra vps 
+# No PowerShell
+cd C:\Users\jonat\Documents\barbearia_nova
+
+# Enviar TODOS os arquivos JS
+scp public/js/pages/*.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/
+
+# Enviar ui.js
+scp public/js/ui.js ubuntu@163.176.218.131:~/seeagende/public/js/
+
+# Enviar index.html (se tiver mudanças)
+scp public/index.html ubuntu@163.176.218.131:~/seeagende/public/
+
