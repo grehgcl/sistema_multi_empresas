@@ -5994,7 +5994,7 @@ app.get('/api/chatbot/servicos/:empresaId', (req, res) => {
         sql = `SELECT id, nome, descricao, valor, duracao 
                FROM servicos 
                WHERE empresa_id = $1 
-               AND (ativo IS NULL OR ativo = true OR ativo = 1)
+               AND (ativo IS NULL OR ativo = true OR ativo = 't')
                ORDER BY nome`;
     } else {
         sql = `SELECT id, nome, descricao, valor, duracao 
