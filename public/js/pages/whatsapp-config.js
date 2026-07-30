@@ -1,5 +1,5 @@
 // ============================================
-// WHATSAPP CONFIG - COM SUPER ADMIN OVERRIDE
+// WHATSAPP CONFIG - COM SUPER ADMIN OVERRIDE E LÓGICA BINÁRIA CORRIGIDA
 // ============================================
 
 async function carregarConfigWhatsApp() {
@@ -13,7 +13,7 @@ async function carregarConfigWhatsApp() {
     });
     const { data } = await res.json();
 
-    let html = `<div class="fade-in"><h2 class="page-title"> WhatsApp</h2>`;
+    let html = `<div class="fade-in"><h2 class="page-title">📱 WhatsApp</h2>`;
 
     // 🔥 CENÁRIO 1: Super Admin NÃO habilitou E plano não permite
     if (!data.superAdminHabilitou && !data.planoPermitido) {
@@ -36,14 +36,12 @@ async function carregarConfigWhatsApp() {
                         </ul>
                     </div>
                     
-                    <button onclick="irParaPlanos()" class="btn btn-primary">
-    💎 Ver Planos
-</button>
+                    <button onclick="irParaPlanos()" class="btn btn-primary">💎 Ver Planos</button>
                 </div>
             `;
     }
 
-    //  CENÁRIO 2: Plano permite MAS Super Admin NÃO habilitou
+    // 🔥 CENÁRIO 2: Plano permite MAS Super Admin NÃO habilitou
     else if (data.planoPermitido && !data.superAdminHabilitou) {
       html += `
                 <div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
@@ -64,6 +62,9 @@ async function carregarConfigWhatsApp() {
 
     // 🔥 CENÁRIO 3: Super Admin habilitou OU plano permite → PODE USAR!
     else {
+      // ✅ CORREÇÃO: Verifica estado REAL antes de renderizar qualquer botão
+      const isConectado = data.connected || data.state === 'open' || data.state === 'connected';
+
       if (!data.instanceName) {
         // Instância não criada ainda
         html += `
@@ -81,39 +82,57 @@ async function carregarConfigWhatsApp() {
                         </button>
                     </div>
                 `;
-      } else if (!data.connected) {
-        // Instância criada, precisa conectar
+      }
+      else if (!isConectado) {
+        // ✅ DESCONECTADO: Mostra QR Code e botões de conexão
         html += `
-                    <div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
-                        <div style="font-size: 64px; margin-bottom: 20px;">📷</div>
-                        <h3>Conecte seu WhatsApp</h3>
-                        <p style="color: var(--text-muted);">
+                    <div class="card fade-in" style="max-width: 600px; margin: 0 auto; text-align: center; padding: 30px 20px;">
+                        <h3 style="color: var(--text-primary); margin-bottom: 8px;">Conecte seu WhatsApp</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 14px;">
                             Escaneie o QR Code com o WhatsApp da sua empresa
                         </p>
-                        <div id="qrcode-container" style="margin: 20px auto; background: white; padding: 20px; border-radius: 12px; display: inline-block;">
-                            <div class="loading-spinner"></div>
+
+                        <!-- Container do QR Code -->
+                        <div id="qrcode-container" style="background: white; padding: 15px; border-radius: 12px; display: inline-block; margin-bottom: 24px; min-width: 250px; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                            ${data.qrCode
+            ? `<img src="${data.qrCode}" alt="QR Code WhatsApp" style="max-width: 220px; max-height: 220px;" />`
+            : '<p style="color: #666; font-size: 12px;">Clique em "Gerar QR Code" abaixo</p>'
+          }
                         </div>
-                        <div style="margin-top: 20px;">
-                            <button onclick="buscarQrCode()" class="btn btn-secondary">🔄 Atualizar</button>
-                            <button onclick="verificarStatus()" class="btn btn-primary">✅ Já Conectei</button>
+
+                        <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="gerarQrCode()" class="btn btn-primary" style="padding: 10px 20px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-qrcode"></i> Gerar QR Code
+                            </button>
+                            
+                            <button onclick="verificarConexao()" class="btn btn-outline" style="padding: 10px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-sync-alt"></i> Verificar Conexão
+                            </button>
+
+                            <button onclick="confirmarConexao()" class="btn btn-success" style="padding: 10px 20px; border-radius: 8px; border: none; background: linear-gradient(135deg, #22c55e, #16a34a); color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-check-circle"></i> Já Conectei
+                            </button>
                         </div>
                     </div>
                 `;
-        setTimeout(buscarQrCode, 500);
-      } else {
-        // Conectado com sucesso
+
+        // Busca QR Code automaticamente apenas se não houver um salvo no data
+        if (!data.qrCode) setTimeout(buscarQrCode, 500);
+      }
+      else {
+        // ✅ CONECTADO: Mostra APENAS info e botão de desconectar
         html += `
-                    <div class="card" style="max-width: 600px; margin: 0 auto; text-align: center;">
-                        <div style="font-size: 64px; margin-bottom: 20px;">✅</div>
-                        <h3 style="color: var(--success);">WhatsApp Exclusivo Ativo!</h3>
-                        <div style="background: rgba(72, 187, 120, 0.1); padding: 20px; border-radius: 12px; margin: 20px 0;">
-                            <p style="font-size: 18px; margin: 0;"> <strong>${data.number || 'Conectado'}</strong></p>
-                            <p style="font-size: 14px; color: var(--text-muted); margin-top: 10px;">
-                                As mensagens saem do WhatsApp da SUA empresa
-                            </p>
+                    <div class="card fade-in" style="max-width: 600px; margin: 0 auto; text-align: center; padding: 40px 20px;">
+                        <div style="width: 80px; height: 80px; background: rgba(37,211,102,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                            <i class="fab fa-whatsapp" style="font-size: 40px; color: #25D366;"></i>
                         </div>
-                        <button onclick="desconectarWhatsApp()" class="btn btn-danger">
-                            🔌 Desconectar
+                        <h3 style="color: var(--text-primary); margin-bottom: 8px;">WhatsApp Conectado!</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 14px;">
+                            Número ativo: <strong style="color: var(--text-primary);">${data.number || 'Carregando...'}</strong>
+                        </p>
+                        
+                        <button onclick="desconectarWhatsApp()" class="btn btn-danger" style="padding: 12px 24px; border-radius: 10px; border: none; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 16px rgba(239,68,68,0.25);">
+                            <i class="fas fa-power-off"></i> Desconectar WhatsApp
                         </button>
                     </div>
                 `;
@@ -227,28 +246,54 @@ async function verificarStatus() {
 // DESCONECTAR WHATSAPP
 // ============================================
 async function desconectarWhatsApp() {
-  if (!confirm('Deseja realmente desconectar o WhatsApp?')) return;
+  if (!confirm('Tem certeza que deseja desconectar este WhatsApp?')) return;
 
   showLoading();
   const token = localStorage.getItem('token');
 
+  // Tenta pegar o ID da empresa de múltiplas fontes
+  let empresaId = window.empresaId;
+  if (!empresaId && token) {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      empresaId = payload.empresa_id;
+    } catch (e) { console.error('Erro ao decodificar token', e); }
+  }
+
   try {
     const res = await fetch('/api/empresa/whatsapp/disconnect', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ empresa_id: empresaId })
     });
+
+    // ✅ Verifica se a resposta HTTP foi OK antes de parsear JSON
+    if (!res.ok) {
+      throw new Error(`Erro HTTP: ${res.status} ${res.statusText}`);
+    }
+
     const data = await res.json();
-    hideLoading();
 
     if (data.success) {
-      showToast('WhatsApp desconectado', 'success');
-      carregarConfigWhatsApp();
+      showToast(data.message || 'WhatsApp desconectado!', 'success');
+
+      // Recarrega a configuração APENAS se a função existir
+      if (typeof carregarConfigWhatsApp === 'function') {
+        await carregarConfigWhatsApp();
+      } else {
+        location.reload();
+      }
     } else {
-      showToast(data.message, 'error');
+      showToast(data.message || 'Falha ao desconectar.', 'error');
     }
   } catch (error) {
+    console.error('❌ Erro na desconexão:', error);
+    showToast('Erro de conexão. Tente novamente.', 'error');
+  } finally {
     hideLoading();
-    showToast('Erro ao desconectar', 'error');
   }
 }
 

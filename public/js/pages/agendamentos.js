@@ -510,7 +510,7 @@ async function carregarListaAgendamentosComFiltro() {
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FORMATAR DATA BR - CORRIGIDO (SEM TIMEZONE)
 // ============================================
 
 function formatarDataBr(dataStr) {
@@ -519,16 +519,8 @@ function formatarDataBr(dataStr) {
         if (typeof dataStr === 'string' && dataStr.includes('-')) {
             const partes = dataStr.split('-');
             if (partes.length === 3) {
-                const ano = parseInt(partes[0]);
-                const mes = parseInt(partes[1]) - 1;
-                const dia = parseInt(partes[2]);
-                const data = new Date(Date.UTC(ano, mes, dia));
-                return data.toLocaleDateString('pt-BR');
+                return partes[2] + '/' + partes[1] + '/' + partes[0];
             }
-        }
-        const data = new Date(dataStr);
-        if (!isNaN(data.getTime())) {
-            return data.toLocaleDateString('pt-BR');
         }
         return dataStr;
     } catch {
@@ -1426,7 +1418,7 @@ function limparClienteSelecionado() {
 }
 
 // ============================================
-// SALVAR AGENDAMENTO (ATUALIZADO)
+// SALVAR AGENDAMENTO - CORRIGIDO (DATA SEM TIMEZONE)
 // ============================================
 
 async function salvarAgendamentoDono() {
@@ -1441,7 +1433,6 @@ async function salvarAgendamentoDono() {
 
     if (!cliente_id || !data) {
         showToast("Selecione um cliente e uma data", "warning");
-        // Se não tiver cliente, focar na busca
         if (!cliente_id) {
             document.getElementById('buscaClienteDono').focus();
         }
@@ -1453,12 +1444,25 @@ async function salvarAgendamentoDono() {
         return;
     }
 
+    // 🔥 VALIDAR SE A DATA/HORA NÃO JÁ PASSOU
+    const agora = new Date();
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const [horaNum, minutoNum] = hora.split(':').map(Number);
+    const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
+
+    if (dataHoraSelecionada < agora) {
+        showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
+        return;
+    }
+
     showLoading();
 
     const token = localStorage.getItem("token");
+
+    // 🔥 CORREÇÃO: DATA NO FORMATO YYYY-MM-DD (SEM CONVERSÃO)
     const body = {
         cliente_id: parseInt(cliente_id),
-        data: data,
+        data: data,  // ← Manter como string pura, sem new Date()
         hora: hora,
         valor: parseFloat(valor) || 0,
         profissional_id: profissional_id ? parseInt(profissional_id) : null
@@ -1469,6 +1473,8 @@ async function salvarAgendamentoDono() {
     } else if (servico_descricao && servico_descricao.trim() !== '') {
         body.servico = servico_descricao.trim();
     }
+
+    console.log('📤 Enviando agendamento:', body);
 
     try {
         const res = await fetch("/api/agendamentos", {
@@ -1677,107 +1683,425 @@ async function excluirAgendamento(id) {
 }
 
 // ============================================
-// EDITAR AGENDAMENTO
+// EDITAR AGENDAMENTO - CORRIGIDO (PRESERVA HORÁRIO)
 // ============================================
 
 async function editarAgendamento(id) {
     const token = localStorage.getItem("token");
+
+    // Buscar o agendamento específico
     const res = await fetch("/api/agendamentos", {
         headers: { "Authorization": "Bearer " + token }
     });
     const result = await res.json();
 
-    if (result.success) {
-        const agendamento = result.data.find(a => a.id === id);
-        if (!agendamento) {
-            showToast("Agendamento não encontrado", "error");
-            return;
+    if (!result.success) {
+        showToast("Erro ao carregar agendamento", "error");
+        return;
+    }
+
+    const agendamento = result.data.find(a => a.id === id);
+    if (!agendamento) {
+        showToast("Agendamento não encontrado", "error");
+        return;
+    }
+
+    if (agendamento.status === "concluido") {
+        showToast("Concluídos não podem ser editados", "warning");
+        return;
+    }
+
+    // 🔥 PRESERVAR O HORÁRIO ORIGINAL
+    const horarioOriginal = agendamento.hora;
+    const dataOriginal = agendamento.data;
+
+    console.log(`✏️ Editando: ${dataOriginal} às ${horarioOriginal}`);
+
+    // Carregar dados atualizados
+    const [clientesRes, servicosRes, profissionaisRes] = await Promise.all([
+        fetch("/api/clientes", { headers: { "Authorization": "Bearer " + token } }),
+        fetch("/api/servicos", { headers: { "Authorization": "Bearer " + token } }),
+        fetch("/api/profissionais", { headers: { "Authorization": "Bearer " + token } })
+    ]);
+
+    const clientesData = await clientesRes.json();
+    const servicosData = await servicosRes.json();
+    const profissionaisData = await profissionaisRes.json();
+
+    const clientes = clientesData.success ? clientesData.data : [];
+    const servicos = servicosData.success ? servicosData.data : [];
+    const profissionais = profissionaisData.success ? profissionaisData.data : [];
+
+    // Montar options
+    let clientesOptions = "";
+    for (let c of clientes) {
+        const selected = c.id === agendamento.cliente_id ? "selected" : "";
+        clientesOptions += `<option value="${c.id}" ${selected}>${escapeHtml(c.nome)}</option>`;
+    }
+
+    let servicosOptions = '<option value="">Selecione</option>';
+    for (let s of servicos) {
+        const selected = s.id === agendamento.servico_id ? "selected" : "";
+        servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`;
+    }
+
+    let profissionaisOptions = '<option value="">Não atribuir</option>';
+    for (let p of profissionais) {
+        if ((p.ativo == 1 || p.ativo == true)) {
+            const selected = p.id === agendamento.profissional_id ? "selected" : "";
+            profissionaisOptions += `<option value="${p.id}" ${selected}>${escapeHtml(p.nome)}</option>`;
+        }
+    }
+
+    const isMobile = window.innerWidth < 768;
+
+    const modalHtml = `
+        <div id="modalEditarAgendamentoDono" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: ${isMobile ? '8px' : '20px'};">
+            <div class="modal-content" style="
+                max-width: ${isMobile ? '100%' : '500px'}; 
+                width: ${isMobile ? '100%' : '90%'}; 
+                max-height: ${isMobile ? '98vh' : '90vh'}; 
+                overflow-y: auto; 
+                background: var(--bg-card); 
+                border-radius: ${isMobile ? '12px' : '16px'}; 
+                padding: ${isMobile ? '16px' : '24px'}; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${isMobile ? '12px' : '16px'};">
+                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-pen" style="color: var(--primary);"></i> 
+                        ${isMobile ? 'Editar' : 'Editar Agendamento'}
+                        <span style="font-size: 11px; font-weight: 400; color: var(--text-muted);">#${id}</span>
+                    </h3>
+                    <button onclick="fecharModalEditarAgendamentoDono()" style="
+                        background: none; 
+                        border: none; 
+                        font-size: ${isMobile ? '20px' : '24px'}; 
+                        cursor: pointer; 
+                        color: var(--text-muted);
+                        padding: ${isMobile ? '4px' : '8px'};
+                        line-height: 1;
+                    ">✕</button>
+                </div>
+
+                <!-- ALERTA: HORÁRIO ORIGINAL PRESERVADO -->
+                <div style="background: rgba(102,126,234,0.08); border: 1px solid rgba(102,126,234,0.2); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-clock" style="color: var(--primary);"></i>
+                    <span style="font-size: ${isMobile ? '11px' : '12px'}; color: var(--text-secondary);">
+                        Horário original: <strong style="color: var(--primary);">${horarioOriginal}</strong> - 
+                        <span style="color: var(--text-muted);">(mantido automaticamente)</span>
+                    </span>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                        👤 Cliente *
+                    </label>
+                    <select id="editClienteIdDono" class="form-control" style="
+                        width: 100%; 
+                        padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: 1px solid var(--border-color); 
+                        background: var(--bg-input); 
+                        color: var(--text-primary); 
+                        font-size: ${isMobile ? '13px' : '14px'};
+                    ">
+                        ${clientesOptions}
+                    </select>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '10px' : '14px'};">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                            📅 Data *
+                        </label>
+                        <input type="date" id="editDataAgendamentoDono" class="form-control" value="${agendamento.data}" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                            ⏰ Horário *
+                        </label>
+                        <select id="editHoraAgendamentoDono" class="form-control" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
+                            <option value="${horarioOriginal}" selected>🕐 ${horarioOriginal} (original)</option>
+                            <!-- Os outros horários serão carregados via JavaScript -->
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '10px' : '14px'};">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                            ✂️ Serviço
+                        </label>
+                        <select id="editServicoIdDono" class="form-control" onchange="atualizarValorPorServicoEditDono()" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '13px' : '14px'};
+                        ">
+                            ${servicosOptions}
+                        </select>
+                        <input type="text" id="editServicoDescricaoDono" class="form-control" style="
+                            width: 100%; 
+                            margin-top: 4px; 
+                            padding: ${isMobile ? '6px 8px' : '8px 10px'}; 
+                            border-radius: ${isMobile ? '4px' : '6px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '11px' : '12px'};
+                        " value="${escapeHtml(agendamento.servico || '')}" placeholder="Ou digite manualmente">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                            💰 Valor
+                        </label>
+                        <input type="number" id="editValorAgendamentoDono" class="form-control" step="0.01" value="${agendamento.valor || 0}" style="
+                            width: 100%; 
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                            border-radius: ${isMobile ? '6px' : '8px'}; 
+                            border: 1px solid var(--border-color); 
+                            background: var(--bg-input); 
+                            color: var(--text-primary); 
+                            font-size: ${isMobile ? '14px' : '14px'};
+                            font-weight: 600;
+                        ">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 4px;">
+                        👨‍💼 Profissional
+                    </label>
+                    <select id="editProfissionalIdDono" class="form-control" style="
+                        width: 100%; 
+                        padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: 1px solid var(--border-color); 
+                        background: var(--bg-input); 
+                        color: var(--text-primary); 
+                        font-size: ${isMobile ? '13px' : '14px'};
+                    ">
+                        ${profissionaisOptions}
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: ${isMobile ? '6px' : '10px'}; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: ${isMobile ? '12px' : '16px'};">
+                    <button onclick="fecharModalEditarAgendamentoDono()" style="
+                        padding: ${isMobile ? '6px 14px' : '10px 24px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: 1px solid var(--border-color); 
+                        background: transparent; 
+                        color: var(--text-secondary); 
+                        font-size: ${isMobile ? '12px' : '14px'}; 
+                        cursor: pointer;
+                    ">
+                        ${isMobile ? '✕' : 'Cancelar'}
+                    </button>
+                    <button onclick="salvarEdicaoAgendamentoDono(${id})" style="
+                        padding: ${isMobile ? '6px 16px' : '10px 28px'}; 
+                        border-radius: ${isMobile ? '6px' : '8px'}; 
+                        border: none; 
+                        background: linear-gradient(135deg, #667eea, #764ba2); 
+                        color: white; 
+                        font-size: ${isMobile ? '12px' : '14px'}; 
+                        font-weight: 600; 
+                        cursor: pointer;
+                        box-shadow: 0 2px 12px rgba(102,126,234,0.3);
+                    ">
+                        <i class="fas fa-save"></i> ${isMobile ? 'Salvar' : 'Salvar Alterações'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existingModal = document.getElementById("modalEditarAgendamentoDono");
+    if (existingModal) existingModal.remove();
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // 🔥 CARREGAR HORÁRIOS DISPONÍVEIS E PRESERVAR O ORIGINAL
+    setTimeout(() => {
+        carregarHorariosParaEdicao(dataOriginal, horarioOriginal);
+    }, 200);
+}
+
+// ============================================
+// CARREGAR HORÁRIOS PARA EDIÇÃO - PRESERVANDO O ORIGINAL
+// ============================================
+
+async function carregarHorariosParaEdicao(data, horarioOriginal) {
+    const select = document.getElementById('editHoraAgendamentoDono');
+    if (!select) return;
+
+    const token = localStorage.getItem('token');
+    const hoje = new Date();
+    const hojeStr = hoje.toISOString().split('T')[0];
+
+    try {
+        // Buscar horários disponíveis
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const empresaId = payload.empresa_id;
+
+        const response = await fetch("/api/chatbot/horarios-disponiveis", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                empresaId: empresaId,
+                data: data,
+                duracao: 30
+            })
+        });
+
+        const result = await response.json();
+
+        // Limpar opções (mantendo a primeira que é o original)
+        while (select.options.length > 1) {
+            select.remove(1);
         }
 
-        if (agendamento.status === "concluido") {
-            showToast("Concluídos não podem ser editados", "warning");
-            return;
+        let horarios = [];
+        if (result.success && Array.isArray(result.horarios)) {
+            horarios = result.horarios;
         }
 
-        const clientes = Array.isArray(clientesList) ? clientesList : [];
-        const servicos = Array.isArray(servicosList) ? servicosList : [];
-        const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
-
-        let clientesOptions = "";
-        for (let c of clientes) {
-            const selected = c.id === agendamento.cliente_id ? "selected" : "";
-            clientesOptions += `<option value="${c.id}" ${selected}>${c.nome}</option>`;
+        // 🔥 FILTRAR HORÁRIOS QUE JÁ PASSARAM (se for hoje)
+        if (data === hojeStr) {
+            const horaAtual = hoje.getHours();
+            const minutoAtual = hoje.getMinutes();
+            horarios = horarios.filter(h => {
+                const [hNum, mNum] = h.split(':').map(Number);
+                return hNum > horaAtual || (hNum === horaAtual && mNum > minutoAtual);
+            });
         }
 
-        let servicosOptions = '<option value="">Selecione</option>';
-        for (let s of servicos) {
-            const selected = s.id === agendamento.servico_id ? "selected" : "";
-            servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" ${selected}>${s.nome} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`;
-        }
-
-        let profissionaisOptions = '<option value="">Não atribuir</option>';
-        for (let p of profissionais) {
-            if ((p.ativo == 1 || p.ativo == true)) {
-                const selected = p.id === agendamento.profissional_id ? "selected" : "";
-                profissionaisOptions += `<option value="${p.id}" ${selected}>${p.nome}</option>`;
+        // Adicionar horários à lista (exceto o original que já está)
+        for (let h of horarios) {
+            if (h !== horarioOriginal) {
+                const opt = document.createElement('option');
+                opt.value = h;
+                opt.textContent = h;
+                select.appendChild(opt);
             }
         }
 
-        const modalHtml = `
-            <div id="modalEditarAgendamentoDono" class="modal" style="display: flex;">
-                <div class="modal-content" style="max-width: 500px; width: 90%;">
-                    <h3>✏ Editar Agendamento</h3>
+        // 🔥 GARANTIR QUE O ORIGINAL ESTÁ SELECIONADO
+        select.value = horarioOriginal;
 
-                    <div class="form-group">
-                        <label>Cliente *</label>
-                        <select id="editClienteIdDono" class="form-control">
-                            ${clientesOptions}
-                        </select>
-                    </div>
+        console.log(`✅ Horários carregados para edição. Original: ${horarioOriginal}`);
 
-                    <div class="form-group">
-                        <label>Data *</label>
-                        <input type="date" id="editDataAgendamentoDono" class="form-control" value="${agendamento.data}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Hora</label>
-                        <input type="time" id="editHoraAgendamentoDono" class="form-control" value="${agendamento.hora || ''}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Serviço</label>
-                        <select id="editServicoIdDono" class="form-control" onchange="atualizarValorPorServicoEditDono()">
-                            ${servicosOptions}
-                        </select>
-                        <input type="text" id="editServicoDescricaoDono" class="form-control" style="margin-top: 10px;" value="${agendamento.servico || ''}" placeholder="Ou digite manualmente">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Valor (R$)</label>
-                        <input type="number" id="editValorAgendamentoDono" class="form-control" step="0.01" value="${agendamento.valor || 0}">
-                    </div>
-
-                    <div class="form-group">
-                        <label>Profissional</label>
-                        <select id="editProfissionalIdDono" class="form-control">
-                            ${profissionaisOptions}
-                        </select>
-                    </div>
-
-                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                        <button class="btn btn-secondary" onclick="fecharModalEditarAgendamentoDono()">Cancelar</button>
-                        <button class="btn btn-primary" onclick="salvarEdicaoAgendamentoDono(${id})">Salvar</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const existingModal = document.getElementById("modalEditarAgendamentoDono");
-        if (existingModal) existingModal.remove();
-
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    } catch (error) {
+        console.error('❌ Erro ao carregar horários:', error);
     }
+}
+
+// ============================================
+// SALVAR EDIÇÃO - CORRIGIDO
+// ============================================
+
+async function salvarEdicaoAgendamentoDono(id) {
+    const cliente_id = document.getElementById("editClienteIdDono").value;
+    const data = document.getElementById("editDataAgendamentoDono").value;
+    const horaSelect = document.getElementById("editHoraAgendamentoDono");
+    const hora = horaSelect ? horaSelect.value : null;
+    const servico_id = document.getElementById("editServicoIdDono").value;
+    const servico_descricao = document.getElementById("editServicoDescricaoDono").value;
+    const valor = document.getElementById("editValorAgendamentoDono").value;
+    const profissional_id = document.getElementById("editProfissionalIdDono").value;
+
+    if (!cliente_id || !data) {
+        showToast("Cliente e data são obrigatórios", "warning");
+        return;
+    }
+
+    if (!hora || hora === '') {
+        showToast("Selecione um horário", "warning");
+        return;
+    }
+
+    // 🔥 VALIDAR SE A DATA/HORA NÃO JÁ PASSOU
+    const agora = new Date();
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const [horaNum, minutoNum] = hora.split(':').map(Number);
+    const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
+
+    if (dataHoraSelecionada < agora) {
+        showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
+        return;
+    }
+
+    showLoading();
+
+    const token = localStorage.getItem("token");
+    const body = {
+        cliente_id: parseInt(cliente_id),
+        data: data,
+        hora: hora,
+        valor: parseFloat(valor) || 0,
+        profissional_id: profissional_id ? parseInt(profissional_id) : null
+    };
+
+    if (servico_id && servico_id !== '') {
+        body.servico_id = parseInt(servico_id);
+    } else if (servico_descricao && servico_descricao.trim() !== '') {
+        body.servico = servico_descricao.trim();
+    }
+
+    try {
+        const res = await fetch(`/api/agendamentos/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(body)
+        });
+
+        const result = await res.json();
+
+        if (result.success) {
+            showToast("✅ Agendamento atualizado!", "success");
+            fecharModalEditarAgendamentoDono();
+
+            // 🔥 ATUALIZAR A AGENDA
+            if (typeof carregarAgendamentos === 'function') {
+                carregarAgendamentos();
+            }
+            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                window.atualizarAgendaAposAgendamento();
+            }
+        } else {
+            showToast("❌ Erro: " + result.message, "error");
+        }
+    } catch (error) {
+        console.error("❌ Erro:", error);
+        showToast("❌ Erro ao atualizar", "error");
+    }
+
+    hideLoading();
 }
 
 function fecharModalEditarAgendamentoDono() {

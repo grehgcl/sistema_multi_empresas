@@ -1078,7 +1078,7 @@ function selecionarDataCalendario(dataStr) {
 }
 
 // ============================================
-// PERGUNTAR HORÁRIO
+// PERGUNTAR HORÁRIO - COM FILTRO DE HORÁRIOS PASSADOS
 // ============================================
 async function perguntarHorario(data) {
     try {
@@ -1099,7 +1099,33 @@ async function perguntarHorario(data) {
         var result = await res.json();
 
         if (result.success && result.horarios && result.horarios.length > 0) {
-            horariosDisponiveis = result.horarios;
+            // 🔥 FILTRAR HORÁRIOS QUE JÁ PASSARAM (SE FOR HOJE)
+            let horarios = result.horarios;
+            const hoje = new Date();
+            const hojeStr = hoje.toISOString().split('T')[0];
+            const horaAtual = hoje.getHours();
+            const minutoAtual = hoje.getMinutes();
+
+            if (data === hojeStr) {
+                horarios = horarios.filter(h => {
+                    const [hNum, mNum] = h.split(':').map(Number);
+                    return hNum > horaAtual || (hNum === horaAtual && mNum >= minutoAtual);
+                });
+                console.log(`🕐 Filtrados ${horarios.length} horários válidos para hoje`);
+            }
+
+            if (horarios.length === 0) {
+                adicionarMensagem(
+                    '⏰ <strong>Nenhum horário disponível para hoje.</strong><br><br>' +
+                    'Por favor, selecione outra data.',
+                    'bot'
+                );
+                estado = 'aguardando_data';
+                perguntarData();
+                return;
+            }
+
+            horariosDisponiveis = horarios;
             var dataFormatada = formatarDataBr(data);
 
             var botoesHorarios = [];
@@ -1189,9 +1215,53 @@ async function verificarEConfirmar() {
         await finalizarAgendamento();
     }
 }
-
 // ============================================
-// FINALIZAR AGENDAMENTO - CORRIGIDO (COM VALOR)
+// VALIDAR DATA/HORA - NÃO PERMITIR PASSADO
+// ============================================
+
+function validarDataHora(data, hora) {
+    if (!data || !hora) {
+        return {
+            valido: false,
+            mensagem: '⚠️ Data e hora são obrigatórias.'
+        };
+    }
+
+    const agora = new Date();
+    const [ano, mes, dia] = data.split('-').map(Number);
+    const [horaNum, minutoNum] = hora.split(':').map(Number);
+
+    // Criar data selecionada
+    const dataSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
+
+    // 🔥 VERIFICAR SE A DATA/HORA JÁ PASSOU
+    if (dataSelecionada < agora) {
+        // Verificar se é hoje
+        const hoje = new Date();
+        const isHoje = dataSelecionada.getDate() === hoje.getDate() &&
+            dataSelecionada.getMonth() === hoje.getMonth() &&
+            dataSelecionada.getFullYear() === hoje.getFullYear();
+
+        let mensagem = '⏰ Não é possível agendar em datas ou horários que já passaram!';
+        if (isHoje) {
+            mensagem = '⏰ Este horário já passou hoje! Por favor, selecione um horário futuro.';
+        } else {
+            mensagem = '⏰ Esta data já passou! Por favor, selecione uma data futura.';
+        }
+
+        return {
+            valido: false,
+            mensagem: mensagem
+        };
+    }
+
+    return {
+        valido: true,
+        mensagem: '✅ Data e hora válidas!'
+    };
+}
+// ============================================
+// FINALIZAR AGENDAMENTO - CORRIGIDO (COM VALIDAÇÃO DE DATA/HORA)
 // ============================================
 async function finalizarAgendamento() {
     try {
@@ -1199,6 +1269,18 @@ async function finalizarAgendamento() {
         console.log('  - clienteAtual:', clienteAtual);
         console.log('  - agendamentoAtual:', agendamentoAtual);
         console.log('  - empresaId:', empresaId);
+
+        // ============================================
+        // 🔥 VALIDAR DATA/HORA ANTES DE AGENDAR
+        // ============================================
+        const validacao = validarDataHora(agendamentoAtual.data, agendamentoAtual.hora);
+        if (!validacao.valido) {
+            adicionarMensagem(`❌ ${validacao.mensagem}`, 'bot');
+            // Voltar para escolher outro horário
+            estado = 'aguardando_horario';
+            perguntarHorario(agendamentoAtual.data);
+            return;
+        }
 
         if (!clienteAtual || !clienteAtual.id) {
             console.log('⚠️ Cliente não identificado, tentando buscar...');
@@ -1287,7 +1369,6 @@ async function finalizarAgendamento() {
 
                 if (dataServico.success && dataServico.servico) {
                     valorFinal = parseFloat(dataServico.servico.valor) || 0;
-                    // Atualiza o nome também se veio
                     if (dataServico.servico.nome) {
                         agendamentoAtual.servico_nome = dataServico.servico.nome;
                     }
@@ -1342,7 +1423,7 @@ async function finalizarAgendamento() {
             data: agendamentoAtual.data,
             hora: agendamentoAtual.hora,
             empresaId: parseInt(empresaIdFinal),
-            valor: valorFinal, // ← VALOR CORRETO
+            valor: valorFinal,
             servicoNome: agendamentoAtual.servico_nome || ''
         };
 
@@ -1391,13 +1472,19 @@ async function finalizarAgendamento() {
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FORMATAR DATA BR - CHATBOT (SEM TIMEZONE)
 // ============================================
+
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        var partes = dataStr.split('-');
-        return partes[2] + '/' + partes[1] + '/' + partes[0];
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                return partes[2] + '/' + partes[1] + '/' + partes[0];
+            }
+        }
+        return dataStr;
     } catch {
         return dataStr;
     }

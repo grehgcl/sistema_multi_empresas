@@ -1,19 +1,17 @@
 ﻿=========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 28/07/2026
+ULTIMA ATUALIZACAO: 30/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
-=========================================
-Modo Local (SQLite - Desenvolvimento)
 -----------------------------------------
+Modo Local (SQLite - Desenvolvimento)
 npm start
 - WhatsApp em modo LOG
 - Banco SQLite local
 - Acesse: http://localhost:3000
 
 Modo com PostgreSQL (Teste com dados reais / Produção)
------------------------------------------
 node -r dotenv/config server.js dotenv_config_path=.env.local
 - WhatsApp Evolution REAL
 - Banco PostgreSQL (Render ou VPS)
@@ -25,9 +23,19 @@ Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
 
 =========================================
+✅ IMPLEMENTADO (30/07/2026) - AUTOMAÇÃO WHATSAPP SUPER ADMIN & CORREÇÕES VPS
+=========================================
+1. CRIAÇÃO AUTOMÁTICA DE INSTÂNCIAS PELO SUPER ADMIN 🚀
+- Ao habilitar "WhatsApp Próprio", o sistema cria a instância `emp-X` na Evolution API.
+- Lógica de "Recriação de Emergência" se a instância sumir.
+- Correção do erro `db.runAsync is not a function`.
+
+2. CORREÇÃO DE QUERY BOOLEANA NO POSTGRESQL 🛠️
+- Corrigido erro na busca de serviços do Chatbot na VPS.
+
+=========================================
 ✅ IMPLEMENTADO (28/07/2026) - CLIENTES: ÍNDICE A-Z E BUSCA MOBILE
 =========================================
-
 1. ÍNDICE ALFABÉTICO (A-Z) PARA CLIENTES 📋
 -----------------------------------------
 - Botões A-Z na página de clientes (Desktop e Mobile)
@@ -128,10 +136,18 @@ GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_
 =========================================
 🚀 DEPLOY PARA VPS (MÉTODO RECOMENDADO)
 =========================================
-
-ENVIO DE ARQUIVOS ESPECÍFICOS VIA SCP
+ENVIO VIA GIT (MÉTODO PRÁTICO E SEGURO)
 ---------------------------------------------------------
+# 1. No VS Code (Local):
+git add .
+git commit -m "feat: Descrição da atualização"
+git push origin main
 
+# 2. Na VPS (Terminal Local):
+ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
+
+ENVIO DE ARQUIVOS ESPECÍFICOS VIA SCP (MÉTODO TRADICIONAL)
+---------------------------------------------------------
 # Comando base:
 scp caminho/do/arquivo.js ubuntu@163.176.218.131:~/seeagende/caminho/do/arquivo.js
 
@@ -155,17 +171,6 @@ ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 20"
 
 # Reiniciar servidor
 ssh ubuntu@163.176.218.131 "pm2 restart seeagende --update-env"
-
-EXEMPLO DE DEPLOY COMPLETO DE clientes.js
----------------------------------------------------------
-# 1. Enviar o arquivo
-scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/
-
-# 2. Reiniciar o servidor
-ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
-
-# OU em um único comando:
-scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
 
 =========================================
 🔧 CORREÇÕES NO BACKEND (Histórico)
@@ -209,8 +214,8 @@ Enterprise  R$ 249,90/mês       Ilimitado       Ilimitado          ✅
 =========================================
 🔧 COMANDOS ÚTEIS
 =========================================
-# Atualizar VPS com segurança
-./atualizar.sh
+# Atualizar VPS com segurança (Git)
+ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
 
 # Migração manual do banco (VPS)
 node scripts/migrate-vps.js
@@ -228,7 +233,7 @@ scp arquivo.js ubuntu@163.176.218.131:~/seeagende/pasta/
 scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
 
 =========================================
-✅ STATUS ATUAL (28/07/2026)
+✅ STATUS ATUAL (30/07/2026)
 =========================================
 Tudo funcionando em AMBOS os bancos!
 ✅ SQLite (desenvolvimento local)
@@ -243,3 +248,5 @@ Tudo funcionando em AMBOS os bancos!
 ✅ ÍNDICE A-Z PARA CLIENTES (NOVO!)
 ✅ Lupa removida no mobile (NOVO!)
 ✅ Filtro de letra com localStorage (NOVO!)
+✅ Criação Automática de Instâncias pelo Super Admin (NOVO!)
+✅ Correção de Query Booleana no Chatbot (NOVO!)

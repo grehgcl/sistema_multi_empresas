@@ -229,14 +229,18 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // DESCONECTAR INSTÂNCIA
+    // DESCONECTAR INSTÂNCIA (CORRIGIDO PARA EVOLUTION V2)
     // ============================================
 
     static async desconectar(instanceName) {
         try {
             const api = this.getApiClient();
 
-            const response = await api.delete(`/instance/logout/${instanceName}`);
+            // ✅ CORREÇÃO CRÍTICA: Evolution V2 usa POST para logout, não DELETE
+            console.log(`🔌 Solicitando logout via POST /instance/logout/${instanceName}`);
+            const response = await api.post(`/instance/logout/${instanceName}`);
+
+            console.log(`✅ Logout realizado com sucesso na instância ${instanceName}`);
 
             return {
                 success: true,
@@ -245,6 +249,15 @@ class EvolutionInstances {
 
         } catch (error) {
             console.error('❌ Erro ao desconectar:', error.message);
+
+            // Se for 404 ou instância já desconectada, consideramos sucesso
+            if (error.response && (error.response.status === 404 || error.response.status === 400)) {
+                return {
+                    success: true,
+                    message: 'Instância já estava desconectada ou não encontrada.'
+                };
+            }
+
             return {
                 success: false,
                 message: error.message || 'Erro ao desconectar'
