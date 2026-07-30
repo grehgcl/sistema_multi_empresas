@@ -59,7 +59,7 @@ const config = {
 console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
 
 // ============================================
-// 🔥 BUSCAR INSTÂNCIA DA EMPRESA (MODO ESTRITO - SEM FALLBACK)
+// 🔥 BUSCAR INSTÂNCIA DA EMPRESA - CORRIGIDO
 // ============================================
 function getInstanciaEmpresa(empresaId) {
     return new Promise((resolve) => {
@@ -73,43 +73,76 @@ function getInstanciaEmpresa(empresaId) {
             db.get(sql, [empresaId], (err, empresa) => {
                 if (err) {
                     console.error('[WHATSAPP] Erro ao buscar instância:', err.message);
-                    return resolve({ success: false, error: 'Erro no banco de dados' });
+                    // 🔥 CORREÇÃO: Em caso de erro, usa padrão
+                    return resolve({
+                        success: true,
+                        instanceName: 'seeagende',
+                        isOwn: false,
+                        fallback: true
+                    });
                 }
 
-                const superAdminHabilitou = empresa?.whatsapp_proprio_habilitado === true ||
-                    empresa?.whatsapp_proprio_habilitado === 1 ||
-                    empresa?.whatsapp_proprio_habilitado === 't';
-
-                const temInstancia = empresa?.whatsapp_instance;
-                const estaConectada = empresa?.whatsapp_connected === true ||
-                    empresa?.whatsapp_connected === 1 ||
-                    empresa?.whatsapp_connected === 't';
-
-                // 🔥 LÓGICA ESTRITA:
-                if (!superAdminHabilitou) {
-                    return resolve({ success: false, error: 'WhatsApp próprio não habilitado pelo Super Admin' });
+                if (!empresa) {
+                    console.log('[WHATSAPP] Empresa não encontrada, usando padrão');
+                    return resolve({
+                        success: true,
+                        instanceName: 'seeagende',
+                        isOwn: false,
+                        fallback: true
+                    });
                 }
 
-                if (!temInstancia) {
-                    return resolve({ success: false, error: 'Empresa ainda não criou sua instância WhatsApp' });
-                }
+                // 🔥 CORREÇÃO: Verificar com mais flexibilidade
+                const superAdminHabilitou = empresa.whatsapp_proprio_habilitado === true ||
+                    empresa.whatsapp_proprio_habilitado === 1 ||
+                    empresa.whatsapp_proprio_habilitado === 't';
 
-                if (!estaConectada) {
-                    return resolve({ success: false, error: `Instância ${temInstancia} existe mas NÃO está conectada. Conecte-a primeiro.` });
-                }
+                const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
 
-                // Se passou por tudo, retorna a instância própria
-                console.log(`[WHATSAPP] ✅ Usando APENAS instância PRÓPRIA: ${temInstancia}`);
-                resolve({
-                    instanceName: temInstancia,
-                    connected: true,
-                    isOwn: true,
-                    success: true
+                // 🔥 CORREÇÃO PRINCIPAL: Verificar se está conectado
+                const estaConectada = empresa.whatsapp_connected === true ||
+                    empresa.whatsapp_connected === 1 ||
+                    empresa.whatsapp_connected === 't';
+
+                console.log(`[WHATSAPP] 📱 Dados da empresa ${empresaId}:`, {
+                    superAdminHabilitou,
+                    temInstancia,
+                    estaConectada,
+                    instance: empresa.whatsapp_instance,
+                    connected_raw: empresa.whatsapp_connected
                 });
+
+                // 🔥 SE TEM INSTÂNCIA PRÓPRIA E ESTÁ CONECTADA (OU NÃO ESTÁ CONECTADA MAS TEM INSTÂNCIA)
+                // Vamos tentar enviar mesmo assim - se falhar, o fallback da Evolution cuida
+                if (superAdminHabilitou && temInstancia) {
+                    console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance} (conectado: ${estaConectada})`);
+                    return resolve({
+                        success: true,
+                        instanceName: empresa.whatsapp_instance,
+                        isOwn: true,
+                        connected: estaConectada
+                    });
+                }
+
+                // 🔥 FALLBACK: Se não tiver instância própria, usa a padrão
+                console.log(`[WHATSAPP] 📱 Usando instância padrão seeagende`);
+                return resolve({
+                    success: true,
+                    instanceName: 'seeagende',
+                    isOwn: false,
+                    fallback: true
+                });
+
             });
         } catch (error) {
             console.error('[WHATSAPP] Erro crítico:', error);
-            resolve({ success: false, error: 'Erro interno ao verificar instância' });
+            // 🔥 CORREÇÃO: Nunca bloquear, sempre retornar sucesso com fallback
+            return resolve({
+                success: true,
+                instanceName: 'seeagende',
+                isOwn: false,
+                fallback: true
+            });
         }
     });
 }
