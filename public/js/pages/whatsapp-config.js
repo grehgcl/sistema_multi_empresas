@@ -190,29 +190,41 @@ async function buscarQrCode() {
     const data = await res.json();
 
     if (data.success && data.qrCode) {
-      document.getElementById('qrcode-container').innerHTML = `<img src="${data.qrCode}" style="width: 256px; height: 256px;">`;
+      const container = document.getElementById('qrcode-container');
+      if (container) {
+        container.innerHTML = `<img src="${data.qrCode}" style="width: 256px; height: 256px;">`;
+      }
     } else if (data.alreadyConnected) {
       // 🔥 Se já está conectado, atualiza a página
-      document.getElementById('qrcode-container').innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-          <p style="color: var(--success); font-size: 18px;">✅ WhatsApp já está conectado!</p>
-          <button onclick="carregarConfigWhatsApp()" class="btn btn-primary" style="margin-top: 10px;">
-            🔄 Atualizar Página
-          </button>
-        </div>
-      `;
+      const container = document.getElementById('qrcode-container');
+      if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <p style="color: var(--success); font-size: 18px;">✅ WhatsApp já está conectado!</p>
+              <button onclick="carregarConfigWhatsApp()" class="btn btn-primary" style="margin-top: 10px;">
+                🔄 Atualizar Página
+              </button>
+            </div>
+          `;
+      }
     } else {
-      document.getElementById('qrcode-container').innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-          <p style="color: var(--warning);">${data.message || 'QR Code não disponível'}</p>
-          <button onclick="verificarStatus()" class="btn btn-primary" style="margin-top: 10px;">
-            ✅ Verificar Conexão
-          </button>
-        </div>
-      `;
+      const container = document.getElementById('qrcode-container');
+      if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 20px;">
+              <p style="color: var(--warning);">${data.message || 'QR Code não disponível'}</p>
+              <button onclick="verificarStatus()" class="btn btn-primary" style="margin-top: 10px;">
+                ✅ Verificar Conexão
+              </button>
+            </div>
+          `;
+      }
     }
   } catch (error) {
-    document.getElementById('qrcode-container').innerHTML = '<p style="color: var(--danger);">Erro ao buscar QR Code</p>';
+    const container = document.getElementById('qrcode-container');
+    if (container) {
+      container.innerHTML = '<p style="color: var(--danger);">Erro ao buscar QR Code</p>';
+    }
   }
 }
 
@@ -240,6 +252,13 @@ async function verificarStatus() {
     hideLoading();
     showToast('Erro ao verificar status', 'error');
   }
+}
+
+// ============================================
+// CONFIRMAR CONEXÃO MANUAL
+// ============================================
+async function confirmarConexao() {
+  await verificarStatus();
 }
 
 // ============================================
@@ -314,13 +333,34 @@ function irParaPlanos() {
 }
 
 // ============================================
-// EXPORTAR FUNÇÕES
+// ALIASES PARA COMPATIBILIDADE COM O HTML (CORREÇÃO DO ERRO)
+// ============================================
+
+// O HTML chama gerarQrCode(), mas a função real é buscarQrCode()
+function gerarQrCode() {
+  if (typeof buscarQrCode === 'function') {
+    return buscarQrCode();
+  }
+}
+
+// O HTML chama verificarConexao(), mas a função real é verificarStatus()
+function verificarConexao() {
+  if (typeof verificarStatus === 'function') {
+    return verificarStatus();
+  }
+}
+
+// ============================================
+// EXPORTAR TODAS AS FUNÇÕES PARA O ESCOPO GLOBAL
 // ============================================
 window.carregarConfigWhatsApp = carregarConfigWhatsApp;
 window.criarInstancia = criarInstancia;
 window.buscarQrCode = buscarQrCode;
+window.gerarQrCode = gerarQrCode; // ✅ Adicionado
 window.verificarStatus = verificarStatus;
+window.verificarConexao = verificarConexao; // ✅ Adicionado
+window.confirmarConexao = confirmarConexao;
 window.desconectarWhatsApp = desconectarWhatsApp;
-window.carregarPlanos = carregarPlanos;
+window.irParaPlanos = irParaPlanos;
 
-console.log('✅ whatsapp-config.js carregado!');
+console.log('✅ whatsapp-config.js carregado com todas as funções globais!');
