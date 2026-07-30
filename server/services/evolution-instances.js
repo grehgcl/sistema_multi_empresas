@@ -186,21 +186,16 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // ENVIAR MENSAGEM
+    // ENVIAR MENSAGEM - CORRIGIDO (SEM VERIFICAÇÃO)
     // ============================================
 
     static async enviarMensagem(instanceName, numero, mensagem) {
         try {
             const api = this.getApiClient();
 
-            // Verificar se a instância está conectada
-            const status = await this.getStatus(instanceName);
-            if (!status.connected) {
-                return {
-                    success: false,
-                    message: 'WhatsApp não está conectado'
-                };
-            }
+            // 🔥 CORREÇÃO: REMOVER VERIFICAÇÃO DE STATUS
+            // Simplesmente tentar enviar a mensagem
+            // Se não estiver conectada, a Evolution retornará erro
 
             // Limpar número
             let numeroLimpo = numero.replace(/\D/g, '');
@@ -208,11 +203,15 @@ class EvolutionInstances {
                 numeroLimpo = '55' + numeroLimpo;
             }
 
+            console.log(`📤 Enviando mensagem para ${numeroLimpo} via ${instanceName}`);
+
             const response = await api.post(`/message/sendText/${instanceName}`, {
                 number: numeroLimpo,
                 text: mensagem,
                 delay: 1200
             });
+
+            console.log(`✅ Mensagem enviada para ${numeroLimpo} via ${instanceName}`);
 
             return {
                 success: true,
@@ -221,6 +220,28 @@ class EvolutionInstances {
 
         } catch (error) {
             console.error('❌ Erro ao enviar mensagem:', error.message);
+
+            // Se der erro, tentar com a instância padrão como fallback
+            if (instanceName !== 'seeagende') {
+                console.log(`🔄 Tentando enviar pela instância padrão seeagende...`);
+                try {
+                    const api = this.getApiClient();
+                    const numeroLimpo = numero.replace(/\D/g, '');
+                    const response = await api.post(`/message/sendText/seeagende`, {
+                        number: numeroLimpo,
+                        text: mensagem,
+                        delay: 1200
+                    });
+                    return {
+                        success: true,
+                        data: response.data,
+                        fallback: true
+                    };
+                } catch (fallbackError) {
+                    console.error('❌ Fallback também falhou:', fallbackError.message);
+                }
+            }
+
             return {
                 success: false,
                 message: error.message || 'Erro ao enviar mensagem'
