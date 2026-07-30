@@ -7530,38 +7530,28 @@ app.get('/api/empresa/whatsapp/status', auth, async (req, res) => {
 });
 
 // ============================================
-// ROTA DE DESCONEXÃO DO WHATSAPP (BLINDADA)
+// ROTA DE DESCONEXÃO DO WHATSAPP (BLINDADA E CORRIGIDA)
 // ============================================
-
-app.post('/api/empresa/whatsapp/disconnect', async (req, res) => {
+app.post('/api/empresa/whatsapp/disconnect', auth, async (req, res) => {
     try {
-        let empresaId = req.user?.empresa_id;
-
-        // ✅ Fallback 1: Pega do body se o middleware auth falhar
-        if (!empresaId && req.body?.empresa_id) {
-            empresaId = req.body.empresa_id;
-        }
-
-        // ✅ Fallback 2: Decodifica o JWT manualmente se necessário
-        if (!empresaId && req.headers.authorization) {
-            try {
-                const jwt = require('jsonwebtoken');
-                const token = req.headers.authorization.replace('Bearer ', '');
-                const decoded = jwt.verify(token, process.env.JWT_SECRET || 'seeagende_secret');
-                empresaId = decoded.empresa_id;
-            } catch (e) {
-                console.warn('⚠️ Token inválido na desconexão, tentando prosseguir sem ele...');
-            }
-        }
+        // ✅ Agora usamos o req.usuario vindo do middleware 'auth'
+        const empresaId = req.usuario?.empresa_id;
 
         if (!empresaId) {
             return res.status(401).json({
                 success: false,
-                message: 'Sessão inválida. Faça login novamente.'
+                message: 'Usuário não autenticado ou sem empresa vinculada.'
             });
         }
 
-        const empresa = await db.get('SELECT * FROM empresas WHERE id = ?', [empresaId]);
+        console.log(`🔌 Solicitando desconexão para empresa ID: ${empresaId}`);
+
+        const empresa = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
 
         if (!empresa) {
             return res.status(404).json({ success: false, message: 'Empresa não encontrada.' });
@@ -7570,23 +7560,19 @@ app.post('/api/empresa/whatsapp/disconnect', async (req, res) => {
         // Tenta fazer logout na Evolution API apenas se houver nome de instância
         if (empresa.whatsapp_instance) {
             try {
-                console.log(`🔌 Solicitando logout na Evolution para: ${empresa.whatsapp_instance}`);
+                console.log(`🔌 Tentando logout na Evolution para: ${empresa.whatsapp_instance}`);
                 await EvolutionInstances.desconectar(empresa.whatsapp_instance);
             } catch (err) {
                 console.warn(`⚠️ Falha ao desconectar na API externa (${empresa.whatsapp_instance}), mas continuando limpeza local.`);
             }
-        } else {
-            console.log(`ℹ️ Nenhuma instância configurada no banco para empresa ${empresaId}. Limpando status local.`);
         }
 
         // Atualiza o banco independentemente do estado anterior
-        await db.run(`
-            UPDATE empresas 
-            SET whatsapp_connected = 0, 
-                whatsapp_number = NULL, 
-                whatsapp_connected_at = NULL 
-            WHERE id = ?
-        `, [empresaId]);
+        const sqlUpdate = isProduction
+            ? 'UPDATE empresas SET whatsapp_connected = false, whatsapp_number = NULL, whatsapp_connected_at = NULL WHERE id = $1'
+            : 'UPDATE empresas SET whatsapp_connected = 0, whatsapp_number = NULL, whatsapp_connected_at = NULL WHERE id = ?';
+
+        await runQuery(sqlUpdate, [empresaId]);
 
         console.log(`✅ Status WhatsApp resetado para empresa ${empresaId}`);
 
@@ -7596,7 +7582,7 @@ app.post('/api/empresa/whatsapp/disconnect', async (req, res) => {
         });
 
     } catch (error) {
-        console.error(' Erro crítico ao desconectar:', error.message);
+        console.error('❌ Erro crítico ao desconectar:', error.message);
         res.status(500).json({
             success: false,
             message: 'Erro interno ao processar desconexão'
