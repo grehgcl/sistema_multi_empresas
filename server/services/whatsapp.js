@@ -59,7 +59,7 @@ const config = {
 console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
 
 // ============================================
-// 🔥 BUSCAR INSTÂNCIA DA EMPRESA - CORRIGIDO
+// 🔥 BUSCAR INSTÂNCIA DA EMPRESA - VERSÃO SEM BLOQUEIO
 // ============================================
 function getInstanciaEmpresa(empresaId) {
     return new Promise((resolve) => {
@@ -73,7 +73,7 @@ function getInstanciaEmpresa(empresaId) {
             db.get(sql, [empresaId], (err, empresa) => {
                 if (err) {
                     console.error('[WHATSAPP] Erro ao buscar instância:', err.message);
-                    // 🔥 CORREÇÃO: Em caso de erro, usa padrão
+                    // 🔥 NUNCA BLOQUEAR - sempre retorna sucesso com fallback
                     return resolve({
                         success: true,
                         instanceName: 'seeagende',
@@ -92,51 +92,39 @@ function getInstanciaEmpresa(empresaId) {
                     });
                 }
 
-                // 🔥 CORREÇÃO: Verificar com mais flexibilidade
+                // Verificar se tem instância própria
+                const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
                 const superAdminHabilitou = empresa.whatsapp_proprio_habilitado === true ||
                     empresa.whatsapp_proprio_habilitado === 1 ||
                     empresa.whatsapp_proprio_habilitado === 't';
 
-                const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
-
-                // 🔥 CORREÇÃO PRINCIPAL: Verificar se está conectado
-                const estaConectada = empresa.whatsapp_connected === true ||
-                    empresa.whatsapp_connected === 1 ||
-                    empresa.whatsapp_connected === 't';
-
-                console.log(`[WHATSAPP] 📱 Dados da empresa ${empresaId}:`, {
-                    superAdminHabilitou,
-                    temInstancia,
-                    estaConectada,
-                    instance: empresa.whatsapp_instance,
-                    connected_raw: empresa.whatsapp_connected
-                });
-
-                // 🔥 SE TEM INSTÂNCIA PRÓPRIA E ESTÁ CONECTADA (OU NÃO ESTÁ CONECTADA MAS TEM INSTÂNCIA)
-                // Vamos tentar enviar mesmo assim - se falhar, o fallback da Evolution cuida
+                // 🔥 CORREÇÃO: Se tem instância, usa ela (mesmo que não esteja conectada)
+                // O fallback da Evolution vai tentar enviar de qualquer jeito
                 if (superAdminHabilitou && temInstancia) {
-                    console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance} (conectado: ${estaConectada})`);
+                    console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance}`);
                     return resolve({
                         success: true,
                         instanceName: empresa.whatsapp_instance,
                         isOwn: true,
-                        connected: estaConectada
+                        // 🔥 NÃO BLOQUEAR MESMO SE NÃO ESTIVER CONECTADA
+                        connected: empresa.whatsapp_connected === true ||
+                            empresa.whatsapp_connected === 1 ||
+                            empresa.whatsapp_connected === 't'
                     });
                 }
 
-                // 🔥 FALLBACK: Se não tiver instância própria, usa a padrão
-                console.log(`[WHATSAPP] 📱 Usando instância padrão seeagende`);
+                // 🔥 SEMPRE RETORNA SUCESSO - usa fallback
+                console.log('[WHATSAPP] 📱 Usando instância padrão seeagende');
                 return resolve({
                     success: true,
                     instanceName: 'seeagende',
                     isOwn: false,
                     fallback: true
                 });
-
             });
         } catch (error) {
             console.error('[WHATSAPP] Erro crítico:', error);
-            // 🔥 CORREÇÃO: Nunca bloquear, sempre retornar sucesso com fallback
+            // 🔥 NUNCA BLOQUEAR
             return resolve({
                 success: true,
                 instanceName: 'seeagende',
