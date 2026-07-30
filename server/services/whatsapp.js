@@ -71,9 +71,9 @@ function getInstanciaEmpresa(empresaId) {
                 : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
 
             db.get(sql, [empresaId], (err, empresa) => {
-                if (err) {
-                    console.error('[WHATSAPP] Erro ao buscar instância:', err.message);
-                    // 🔥 NUNCA BLOQUEAR - sempre retorna sucesso com fallback
+                // 🔥 SEMPRE RETORNA SUCESSO - NUNCA BLOQUEIA
+                if (err || !empresa) {
+                    console.log('[WHATSAPP] Empresa não encontrada ou erro, usando padrão');
                     return resolve({
                         success: true,
                         instanceName: 'seeagende',
@@ -82,38 +82,24 @@ function getInstanciaEmpresa(empresaId) {
                     });
                 }
 
-                if (!empresa) {
-                    console.log('[WHATSAPP] Empresa não encontrada, usando padrão');
-                    return resolve({
-                        success: true,
-                        instanceName: 'seeagende',
-                        isOwn: false,
-                        fallback: true
-                    });
-                }
-
-                // Verificar se tem instância própria
-                const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
-                const superAdminHabilitou = empresa.whatsapp_proprio_habilitado === true ||
+                // Verifica se tem instância própria habilitada
+                const habilitado = empresa.whatsapp_proprio_habilitado === true ||
                     empresa.whatsapp_proprio_habilitado === 1 ||
                     empresa.whatsapp_proprio_habilitado === 't';
 
-                // 🔥 CORREÇÃO: Se tem instância, usa ela (mesmo que não esteja conectada)
-                // O fallback da Evolution vai tentar enviar de qualquer jeito
-                if (superAdminHabilitou && temInstancia) {
+                const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
+
+                // Se tem instância própria, usa ela (mesmo que não esteja conectada)
+                if (habilitado && temInstancia) {
                     console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance}`);
                     return resolve({
                         success: true,
                         instanceName: empresa.whatsapp_instance,
-                        isOwn: true,
-                        // 🔥 NÃO BLOQUEAR MESMO SE NÃO ESTIVER CONECTADA
-                        connected: empresa.whatsapp_connected === true ||
-                            empresa.whatsapp_connected === 1 ||
-                            empresa.whatsapp_connected === 't'
+                        isOwn: true
                     });
                 }
 
-                // 🔥 SEMPRE RETORNA SUCESSO - usa fallback
+                // Fallback para instância padrão
                 console.log('[WHATSAPP] 📱 Usando instância padrão seeagende');
                 return resolve({
                     success: true,
@@ -124,7 +110,6 @@ function getInstanciaEmpresa(empresaId) {
             });
         } catch (error) {
             console.error('[WHATSAPP] Erro crítico:', error);
-            // 🔥 NUNCA BLOQUEAR
             return resolve({
                 success: true,
                 instanceName: 'seeagende',
@@ -141,13 +126,11 @@ function getInstanciaEmpresa(empresaId) {
 async function enviarEvolution(empresaId, numero, mensagem) {
     try {
         // Busca instância (AGORA COM VERIFICAÇÃO DE SUCESSO)
+        // Busca instância (SEMPRE RETORNA SUCESSO)
         const instanciaData = await getInstanciaEmpresa(empresaId);
 
-        // 🔥 SE NÃO FOR SUCESSO, BLOQUEIA O ENVIO
-        if (!instanciaData.success) {
-            console.warn(`[WHATSAPP] 🚫 Envio bloqueado: ${instanciaData.error}`);
-            return { success: false, error: instanciaData.error };
-        }
+        // 🔥 REMOVIDO O BLOQUEIO - Sempre tenta enviar
+        console.log(`[WHATSAPP] 📱 Enviando via instância: ${instanciaData.instanceName}`);
 
         const instancia = instanciaData; // Agora temos certeza que é a própria
         const url = `${config.evolution.apiUrl}/message/sendText/${instancia.instanceName}`;
