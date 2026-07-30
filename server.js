@@ -7166,98 +7166,43 @@ const runQuery = (sql, params) => {
 app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
-
-    console.log(`🔧 [SUPERADMIN] Recebido: ID=${id}, Habilitado=${habilitado}`);
+    const instanceName = `emp-${id}`;
+    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+    const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
     try {
-        // 1. Atualiza o status no banco primeiro
-        const sqlUpdate = isProduction
-            ? 'UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2'
-            : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
+        // Atualiza o banco
+        await db.run('UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?', [habilitado ? 1 : 0, id]);
 
-        const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
-        await runQuery(sqlUpdate, [valor, id]);
-        console.log(`✅ [SUPERADMIN] Banco atualizado.`);
-
-        // 2. Se estiver HABILITANDO, gerencia a instância na Evolution
-        if (habilitado === true || habilitado === 1 || habilitado === 'true') {
-            const nomeInstancia = `emp-${id}`;
-            const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
-            const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
-
-            // Verifica o que tem no banco
-            const empresaCheck = await new Promise((resolve, reject) => {
-                db.get('SELECT whatsapp_instance FROM empresas WHERE id = ?', [id], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
-            });
-
-            // Cenário A: Não tem nada salvo no banco -> CRIA NOVA
-            if (!empresaCheck || !empresaCheck.whatsapp_instance) {
-                console.log(`🚀 [SUPERADMIN] Criando nova instância ${nomeInstancia} na VPS...`);
-                try {
+        if (habilitado) {
+            // Tenta criar ou garantir que existe na Evolution
+            try {
+                // Verifica se já existe
+                await axios.get(`${evolutionUrl}/instance/connectionState/${instanceName}`, { headers: { 'apikey': apiKey } });
+                console.log(`✅ Instância ${instanceName} já existe na Evolution.`);
+            } catch (err) {
+                // Se der 404, cria
+                if (err.response && err.response.status === 404) {
+                    console.log(`🚀 Criando instância ${instanceName} na Evolution...`);
                     await axios.post(`${evolutionUrl}/instance/create`, {
-                        instanceName: nomeInstancia,
-                        qrCode: true, // ✅ CamelCase correto
+                        instanceName: instanceName,
+                        qrCode: true,
                         integration: 'WHATSAPP-BAILEYS'
-                    }, {
-                        headers: { 'Content-Type': 'application/json', 'apikey': apiKey }
-                    });
+                    }, { headers: { 'Content-Type': 'application/json', 'apikey': apiKey } });
 
-                    // Salva no banco
-                    const sqlSave = isProduction
-                        ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
-                        : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
-
-                    await runQuery(sqlSave, [nomeInstancia, id]);
-                    console.log(`✅ [SUPERADMIN] Instância ${nomeInstancia} criada e salva!`);
-
-                } catch (err) {
-                    console.error(`❌ [SUPERADMIN] Erro ao criar na VPS:`, err.message);
+                    // Salva o nome no banco se ainda não tiver
+                    await db.run('UPDATE empresas SET whatsapp_instance = ? WHERE id = ?', [instanceName, id]);
                 }
             }
-            // Cenário B: Já tem nome salvo, verifica se existe na VPS (Recriação de Emergência)
-            else {
-                console.log(`ℹ️ [SUPERADMIN] Instância ${empresaCheck.whatsapp_instance} já consta no banco. Verificando na VPS...`);
-                try {
-                    // Tenta pegar o status. Se der 404, significa que sumiu da VPS.
-                    await axios.get(`${evolutionUrl}/instance/connectionState/${empresaCheck.whatsapp_instance}`, {
-                        headers: { 'apikey': apiKey }
-                    });
-                    console.log(`✅ [SUPERADMIN] Instância confirmada ativa na VPS.`);
-
-                } catch (err) {
-                    // Se der erro (especialmente 404), recriamos a instância
-                    if (err.response && err.response.status === 404) {
-                        console.log(`⚠️ [SUPERADMIN] Instância NÃO encontrada na VPS (404). Recriando agora...`);
-                        try {
-                            await axios.post(`${evolutionUrl}/instance/create`, {
-                                instanceName: empresaCheck.whatsapp_instance,
-                                qrCode: true,
-                                integration: 'WHATSAPP-BAILEYS'
-                            }, {
-                                headers: { 'Content-Type': 'application/json', 'apikey': apiKey }
-                            });
-                            console.log(`✅ [SUPERADMIN] Instância ${empresaCheck.whatsapp_instance} RECRIADA com sucesso!`);
-                        } catch (createErr) {
-                            console.error(`❌ [SUPERADMIN] Falha ao recriar:`, createErr.message);
-                        }
-                    } else {
-                        console.error(`❌ [SUPERADMIN] Erro ao verificar status na VPS:`, err.message);
-                    }
-                }
-            }
+        } else {
+            // Se desabilitou, podemos opcionalmente desconectar, mas vamos manter simples
+            console.log(`ℹ️ WhatsApp próprio desabilitado para empresa ${id}.`);
         }
 
-        res.json({
-            success: true,
-            message: `WhatsApp próprio ${habilitado ? 'habilitado' : 'desabilitado'} com sucesso!`
-        });
-
-    } catch (err) {
-        console.error('❌ [SUPERADMIN] Erro geral na rota:', err);
-        res.status(500).json({ success: false, message: err.message });
+        res.json({ success: true, message: 'Configuração salva!' });
+    } catch (error) {
+        console.error('❌ Erro Super Admin WhatsApp:', error.message);
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 

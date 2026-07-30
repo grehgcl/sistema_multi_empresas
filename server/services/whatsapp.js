@@ -1,35 +1,46 @@
 // ============================================
-// SERVIÇO WHATSAPP - EVOLUTION API (MULTI-INSTÂNCIA COM FALLBACK)
+// SERVIÇO WHATSAPP - EVOLUTION API (MULTI-INSTÂNCIA COM FALLBACK BLINDADO)
 // ============================================
 
 const axios = require('axios');
-const { db } = require('../config/database');  // ✅ Importa só o objeto db
+const { db } = require('../config/database');
 
 // ============================================
-// FUNÇÃO AUXILIAR: FORMATAR DATA BR
+// CONFIGURAÇÃO
 // ============================================
+const config = {
+    evolution: {
+        apiUrl: process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080',
+        apiKey: process.env.EVOLUTION_API_KEY || 'seeagende2024',
+        defaultInstance: 'seeagende',
+    },
+    geral: {
+        provider: process.env.WHATSAPP_PROVIDER || 'evolution',
+        enabled: process.env.WHATSAPP_ENABLED === 'true',
+    }
+};
+
+console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
         if (typeof dataStr === 'string' && dataStr.includes('-')) {
             const partes = dataStr.split('-');
-            if (partes.length === 3) {
-                return `${partes[2]}/${partes[1]}/${partes[0]}`;
-            }
+            if (partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
         }
         const data = new Date(dataStr);
-        if (!isNaN(data.getTime())) {
-            return data.toLocaleDateString('pt-BR');
-        }
+        if (!isNaN(data.getTime())) return data.toLocaleDateString('pt-BR');
         return dataStr;
     } catch {
         return dataStr;
     }
 }
 
-// ============================================
-// FUNÇÃO AUXILIAR: FORMATAR TELEFONE
-// ============================================
 function formatarTelefone(telefone) {
     if (!telefone) return '';
     const numeros = telefone.replace(/\D/g, '');
@@ -41,201 +52,106 @@ function formatarTelefone(telefone) {
     return telefone;
 }
 
-// ============================================
-// CONFIGURAÇÃO
-// ============================================
-const config = {
-    evolution: {
-        apiUrl: process.env.EVOLUTION_API_URL || 'http://localhost:8080',
-        apiKey: process.env.EVOLUTION_API_KEY || '',
-        instance: process.env.EVOLUTION_INSTANCE || 'seeagende',
-    },
-    geral: {
-        provider: process.env.WHATSAPP_PROVIDER || 'log',
-        enabled: process.env.WHATSAPP_ENABLED === 'true',
-    }
-};
-
-console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
-
-// ============================================
-// 🔥 BUSCAR INSTÂNCIA DA EMPRESA - CORRIGIDO
-// ============================================
-// Em server/services/whatsapp.js
-function getInstanciaEmpresa(empresaId) {
-    return new Promise((resolve) => {
-        try {
-            const isPg = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-            const sql = isPg
-                ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
-                : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
-
-            db.get(sql, [empresaId], (err, empresa) => {
-                if (err || !empresa) {
-                    // Fallback seguro
-                    return resolve({ success: true, instanceName: 'seeagende', isOwn: false });
-                }
-
-                const habilitado = empresa.whatsapp_proprio_habilitado === true || empresa.whatsapp_proprio_habilitado === 1;
-                const conectado = empresa.whatsapp_connected === true || empresa.whatsapp_connected === 1;
-
-                // Se estiver habilitado E conectado, usa a própria
-                if (habilitado && conectado && empresa.whatsapp_instance) {
-                    console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance}`);
-                    return resolve({ success: true, instanceName: empresa.whatsapp_instance, isOwn: true });
-                }
-
-                // Caso contrário, usa a padrão
-                console.log('[WHATSAPP] 📱 Usando instância padrão seeagende');
-                return resolve({ success: true, instanceName: 'seeagende', isOwn: false });
-            });
-        } catch (error) {
-            console.error('[WHATSAPP] Erro crítico:', error);
-            resolve({ success: true, instanceName: 'seeagende', isOwn: false });
-        }
-    });
+function formatNumber(number) {
+    let clean = String(number).replace(/\D/g, '');
+    if (!clean.startsWith('55')) clean = '55' + clean;
+    return clean;
 }
 
 // ============================================
-// 🔥 ENVIAR MENSAGEM VIA EVOLUTION API (MULTI-INSTÂNCIA) - CORRIGIDO
+// 🔥 BUSCAR INSTÂNCIA DA EMPRESA (LÓGICA INTELIGENTE)
 // ============================================
-async function enviarEvolution(empresaId, numero, mensagem) {
+async function getInstanciaEmpresa(empresaId) {
+    // Padrão inicial
+    let instanceName = config.evolution.defaultInstance;
+    let isOwn = false;
+
+    if (!empresaId) return { instanceName, isOwn };
+
     try {
-        // Busca instância (AGORA COM VERIFICAÇÃO DE SUCESSO)
-        // Busca instância (SEMPRE RETORNA SUCESSO)
-        const instanciaData = await getInstanciaEmpresa(empresaId);
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = process.env.NODE_ENV === 'production'
+                ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
+                : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
 
-        // 🔥 REMOVIDO O BLOQUEIO - Sempre tenta enviar
-        console.log(`[WHATSAPP] 📱 Enviando via instância: ${instanciaData.instanceName}`);
-
-        const instancia = instanciaData; // Agora temos certeza que é a própria
-        const url = `${config.evolution.apiUrl}/message/sendText/${instancia.instanceName}`;
-
-        console.log('🔍 Número original recebido:', numero);
-
-        // 🔥 LIMPA O NÚMERO (remove tudo que não é dígito)
-        const numeroLimpo = String(numero).replace(/\D/g, '');
-        console.log('🔍 Número limpo (sem caracteres):', numeroLimpo);
-        console.log('🔍 Tamanho do número limpo:', numeroLimpo.length);
-
-        // 🔥 CORREÇÃO: SEMPRE ADICIONA 55 SE NÃO TIVER
-        let numeroFinal = numeroLimpo;
-        if (!numeroFinal.startsWith('55')) {
-            numeroFinal = '55' + numeroFinal;
-        }
-
-        console.log('🔍 Número final (enviado):', numeroFinal);
-        console.log('🔍 Tamanho do número final:', numeroFinal.length);
-
-        const payload = {
-            number: numeroFinal,
-            text: mensagem,
-            delay: 1200, // ✅ ALTERADO DE 1 PARA 1200 (Melhora a formatação e evita mensagens "estranhas")
-        };
-
-        console.log('📦 Payload completo:', JSON.stringify(payload, null, 2));
-        console.log(`📡 Tentando enviar via URL: ${url}`);
-
-        const response = await axios.post(url, payload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'apikey': config.evolution.apiKey,
-            },
-            timeout: 30000,
+            db.get(sql, [empresaId], (err, row) => {
+                if (err) reject(err); else resolve(row);
+            });
         });
 
-        console.log(`📱 WhatsApp: Mensagem enviada para ${numeroFinal} via 🆕 INSTÂNCIA PRÓPRIA (${instancia.instanceName})`);
+        if (empresa && empresa.whatsapp_proprio_habilitado && empresa.whatsapp_instance) {
+            // Verifica se a instância realmente existe/responde na Evolution antes de usar
+            try {
+                await axios.get(`${config.evolution.apiUrl}/instance/connectionState/${empresa.whatsapp_instance}`, {
+                    headers: { 'apikey': config.evolution.apiKey },
+                    timeout: 5000
+                });
+
+                // Se chegou aqui, a instância existe na API
+                instanceName = empresa.whatsapp_instance;
+                isOwn = true;
+                console.log(`[WHATSAPP] 📱 Usando instância própria: ${instanceName}`);
+            } catch (e) {
+                // Se der erro (404 ou timeout), usa a padrão silenciosamente
+                console.log(`[WHATSAPP] ⚠️ Instância própria ${empresa.whatsapp_instance} indisponível na Evolution. Usando fallback.`);
+            }
+        }
+    } catch (err) {
+        console.error('[WHATSAPP] Erro ao buscar dados da empresa:', err.message);
+    }
+
+    return { instanceName, isOwn };
+}
+
+// ============================================
+// 🔥 ENVIAR MENSAGEM VIA EVOLUTION API
+// ============================================
+async function enviarEvolution(empresaId, numero, mensagem) {
+    const { instanceName, isOwn } = await getInstanciaEmpresa(empresaId);
+    const finalNumber = formatNumber(numero);
+    const url = `${config.evolution.apiUrl}/message/sendText/${instanceName}`;
+
+    try {
+        const response = await axios.post(url, {
+            number: finalNumber,
+            text: mensagem,
+            delay: 1200
+        }, {
+            headers: { 'Content-Type': 'application/json', 'apikey': config.evolution.apiKey },
+            timeout: 30000
+        });
+
+        console.log(`✅ Mensagem enviada via ${isOwn ? 'Instância Própria' : 'Padrão'} (${instanceName}) para ${finalNumber}`);
         return { success: true, data: response.data };
 
     } catch (error) {
-        console.error(`❌ Erro ao enviar WhatsApp (Evolution):`, error.message);
+        console.error(`❌ Erro ao enviar WhatsApp (${instanceName}):`, error.response?.status || error.message);
 
-        if (error.response) {
-            console.log('📡 Resposta da API (Erro):', JSON.stringify(error.response.data, null, 2));
-
-            // 🔥 TENTA FORMATO ALTERNATIVO SE O ERRO FOR 400
-            if (error.response.status === 400) {
-                const numeroLimpo = String(numero).replace(/\D/g, '');
-
-                // 🔥 TENTA SEM O 55
-                if (numeroLimpo.startsWith('55')) {
-                    const sem55 = numeroLimpo.substring(2);
-                    console.log(`🔄 Tentando formato alternativo (sem 55): ${sem55}`);
-                    try {
-                        const payload2 = {
-                            number: sem55,
-                            text: mensagem,
-                            delay: 1200,
-                        };
-                        const response2 = await axios.post(`${config.evolution.apiUrl}/message/sendText/${instanciaData.instanceName}`, payload2, {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'apikey': config.evolution.apiKey,
-                            },
-                            timeout: 30000,
-                        });
-                        console.log(`✅ Mensagem enviada com formato alternativo (sem 55)!`);
-                        return { success: true, data: response2.data };
-                    } catch (e) {
-                        console.log('❌ Formato alternativo também falhou');
-                    }
-                }
-
-                // 🔥 TENTA COM 9 (se não tiver)
-                if (numeroLimpo.length === 11 && numeroLimpo.startsWith('55')) {
-                    const com9 = numeroLimpo.substring(0, 4) + '9' + numeroLimpo.substring(4);
-                    console.log(`🔄 Tentando formato alternativo (com 9): ${com9}`);
-                    try {
-                        const payload3 = {
-                            number: com9,
-                            text: mensagem,
-                            delay: 1200,
-                        };
-                        const response3 = await axios.post(`${config.evolution.apiUrl}/message/sendText/${instanciaData.instanceName}`, payload3, {
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'apikey': config.evolution.apiKey,
-                            },
-                            timeout: 30000,
-                        });
-                        console.log(`✅ Mensagem enviada com formato alternativo (com 9)!`);
-                        return { success: true, data: response3.data };
-                    } catch (e) {
-                        console.log('❌ Formato com 9 também falhou');
-                    }
-                }
-            }
+        // Fallback de última hora: Se falhou na própria e não era a padrão, tenta na padrão
+        if (isOwn && instanceName !== config.evolution.defaultInstance) {
+            console.log(`🔄 Tentando fallback urgente para instância padrão ${config.evolution.defaultInstance}...`);
+            return enviarEvolution(null, numero, mensagem); // Chama recursivamente usando a padrão
         }
 
         return { success: false, error: error.message };
     }
 }
+
 // ============================================
-// ENVIAR MENSAGEM (MODO LOG - SIMULAÇÃO)
+// ENVIAR MENSAGEM (MODO LOG)
 // ============================================
 function enviarLog(numero, mensagem) {
     console.log(`[WHATSAPP] 📱 Provedor: log`);
-    console.log(`[WHATSAPP] 📞 Telefone original: ${numero}`);
-    console.log(`[WHATSAPP] 📝 Mensagem (log) para ${numero}:`);
-    console.log(`┌${'─'.repeat(50)}┐`);
-    console.log(mensagem);
-    console.log(`└${'─'.repeat(50)}┘`);
+    console.log(`[WHATSAPP] 📝 Mensagem para ${numero}: ${mensagem.substring(0, 50)}...`);
     return { success: true };
 }
 
 // ============================================
-// 🔥 FUNÇÃO PRINCIPAL: ENVIAR MENSAGEM
+// 🔥 FUNÇÃO PRINCIPAL: SEND
 // ============================================
 async function send(empresaId, numero, mensagem) {
-    if (!config.geral.enabled) {
-        console.log(`[WHATSAPP] ⚠️ WhatsApp desabilitado (WHATSAPP_ENABLED=false)`);
-        return { success: false, error: 'WhatsApp desabilitado' };
-    }
-
-    if (!numero) {
-        console.log(`[WHATSAPP] ⚠️ Número não fornecido`);
-        return { success: false, error: 'Número não fornecido' };
-    }
+    if (!config.geral.enabled) return { success: false, error: 'WhatsApp desabilitado' };
+    if (!numero) return { success: false, error: 'Número não fornecido' };
 
     if (config.geral.provider === 'evolution') {
         return await enviarEvolution(empresaId, numero, mensagem);
@@ -245,218 +161,100 @@ async function send(empresaId, numero, mensagem) {
 }
 
 // ============================================
-// GERAR MENSAGEM DE CONFIRMAÇÃO - COM LINK CLICÁVEL
+// GERAR E ENVIAR MENSAGENS ESPECÍFICAS
 // ============================================
+
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink) {
-    let valor = 0;
-    if (servico && servico.valor !== undefined && servico.valor !== null) {
-        valor = parseFloat(servico.valor) || 0;
-    }
+    let valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
-
-    const telefoneDono = empresa?.telefone_dono || '';
-    const telefoneDonoFormatado = formatarTelefone(telefoneDono);
-    const endereco = empresa?.endereco || '';
-
     const nomeEmpresa = empresa?.nome || 'nossa empresa';
-    const nomeCliente = cliente?.nome || 'Cliente';
 
-    // 🔥 SE NÃO TIVER LINK, CRIA UM
+    // Link padrão se não fornecido
     if (!chatbotLink) {
         const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-        const slugEmpresa = nomeEmpresa
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-|-$/g, '');
-        const identificador = slugEmpresa || empresa?.id || '1';
-        chatbotLink = `${baseUrl}/chatbot.html?empresa=${identificador}`;
+        const slug = (nomeEmpresa || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+        chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
     }
 
-    let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
-        `Olá *${nomeCliente}*! Seu agendamento foi confirmado com sucesso! ✅\n\n` +
-        `📋 *DETALHES DO AGENDAMENTO:*\n` +
-        `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
-        `📅 Data: *${formatarDataBr(data)}*\n` +
-        `⏰ Hora: *${hora}*\n` +
-        `💰 Valor: *R$ ${valorFormatado}*\n\n`;
+    let msg = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n`;
+    msg += `Olá *${cliente?.nome || 'Cliente'}*! Seu agendamento foi confirmado! ✅\n\n`;
+    msg += `📋 *DETALHES:*\n`;
+    msg += `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n`;
+    msg += `📅 Data: *${formatarDataBr(data)}*\n`;
+    msg += `⏰ Hora: *${hora}*\n`;
+    msg += `💰 Valor: *R$ ${valorFormatado}*\n\n`;
 
-    if (profissional?.nome) {
-        mensagem += `👤 Profissional: *${profissional.nome}*\n\n`;
-    }
+    if (profissional?.nome) msg += `👤 Profissional: *${profissional.nome}*\n\n`;
+    if (empresa?.endereco) msg += `📍 *Endereço:* ${empresa.endereco}\n\n`;
+    if (empresa?.telefone_dono) msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n\n`;
 
-    if (endereco && endereco.trim() !== '') {
-        mensagem += `📍 *Endereço:* ${endereco}\n\n`;
-    }
-
-    if (telefoneDonoFormatado) {
-        mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
-    }
-
-    mensagem += `💡 *Dicas:*\n` +
-        `• Chegue com 10 minutos de antecedência\n` +
-        `• Em caso de imprevisto, entre em contato\n\n` +
-        `🔗 *Agende seu próximo horário:*\n${chatbotLink}\n\n` + // ← LINK EM LINHA SEPARADA
-        `🙏 Agradecemos por ter escolhido a *${nomeEmpresa}*!\n` +
-        `_Esta é uma mensagem automática do See&Agende._`;
-
-    return mensagem;
+    msg += `🔗 *Agende novamente:*\n${chatbotLink}\n\n`;
+    msg += `_Mensagem automática See&Agende._`;
+    return msg;
 }
 
-// ============================================
-// 🔥 ENVIAR CONFIRMAÇÃO - COM LINK PERSONALIZADO
-// ============================================
 async function enviarConfirmacao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
+    if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    if (!cliente?.telefone) {
-        console.log(`[WHATSAPP] ⚠️ Cliente sem telefone, não enviando mensagem`);
-        return { success: false, error: 'Cliente sem telefone' };
-    }
-
-    const servicoComValor = {
-        ...servico,
-        valor: parseFloat(servico?.valor) || 0
-    };
-
-    // ✅ NOME DA EMPRESA PARA PERSONALIZAÇÃO
-    const nomeEmpresa = empresa?.nome || 'nossa empresa';
-
-    // 🔥 CRIA O LINK PERSONALIZADO
     const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-    const slugEmpresa = nomeEmpresa
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-    const identificador = slugEmpresa || empresa?.id || '1';
-    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${identificador}`;
+    const slug = (empresa?.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
 
-    const mensagem = gerarMensagemConfirmacao(cliente, servicoComValor, data, hora, profissional, empresa, chatbotLink);
-
-    console.log(`📱 WhatsApp - Dados recebidos:`, {
-        empresa_id: empresa?.id,
-        empresa_nome: empresa?.nome,
-        cliente: cliente?.nome,
-        servico: servico?.nome
-    });
-
+    const mensagem = gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink);
     return await send(empresa?.id, cliente.telefone, mensagem);
 }
 
-// ============================================
-// 🔥 ENVIAR NOTIFICAÇÃO PROFISSIONAL
-// ============================================
 async function enviarNovoAgendamentoProfissional(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
-
-    if (!profissional?.telefone) {
-        console.log(`[WHATSAPP] ⚠️ Profissional sem telefone, não enviando mensagem`);
-        return { success: false, error: 'Profissional sem telefone' };
-    }
+    if (!profissional?.telefone) return { success: false, error: 'Profissional sem telefone' };
 
     const valor = parseFloat(servico?.valor) || 0;
-    const valorFormatado = valor.toFixed(2).replace('.', ',');
+    let msg = `📢 *Novo Agendamento!*\n\n`;
+    msg += `Olá *${profissional.nome}*!\n`;
+    msg += `👤 Cliente: *${cliente?.nome}*\n`;
+    msg += `✂️ Serviço: *${servico?.nome}*\n`;
+    msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n`;
+    msg += `💰 Valor: *R$ ${valor.toFixed(2).replace('.', ',')}*\n`;
+    if (empresa?.telefone_dono) msg += `📞 Contato: ${formatarTelefone(empresa.telefone_dono)}`;
 
-    const telefoneDono = empresa?.telefone_dono || '';
-    const telefoneDonoFormatado = formatarTelefone(telefoneDono);
-
-    const mensagem = `📢 *Novo Agendamento!*\n\n` +
-        `Olá *${profissional.nome}*! Você tem um novo agendamento:\n\n` +
-        `👤 Cliente: *${cliente?.nome || 'Cliente'}*\n` +
-        `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
-        `💰 Valor: *R$ ${valorFormatado}*\n` +
-        `📅 Data: *${formatarDataBr(data)}*\n` +
-        `⏰ Hora: *${hora}*\n` +
-        (telefoneDonoFormatado ? `📞 Contato: ${telefoneDonoFormatado}\n` : '') +
-        `\n🙏 Prepare-se para atender!`;
-
-    return await send(empresa?.id, profissional.telefone, mensagem);
+    return await send(empresa?.id, profissional.telefone, msg);
 }
 
-// ============================================
-// 🔥 ENVIAR CANCELAMENTO
-// ============================================
 async function enviarCancelamento(dados) {
     const { cliente, servico, data, hora, empresa } = dados;
+    if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    if (!cliente?.telefone) {
-        console.log(`[WHATSAPP] ⚠️ Cliente sem telefone, não enviando cancelamento`);
-        return { success: false, error: 'Cliente sem telefone' };
-    }
+    let msg = `⚠️ *Agendamento Cancelado*\n\n`;
+    msg += `Olá *${cliente?.nome}*!\n`;
+    msg += `✂️ Serviço: *${servico?.nome}*\n`;
+    msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n\n`;
+    msg += `Estamos à disposição para remarcar! 😊`;
 
-    const mensagem = `⚠️ *Agendamento Cancelado*\n\n` +
-        `Olá *${cliente?.nome || 'Cliente'}*! Seu agendamento foi cancelado:\n\n` +
-        `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n` +
-        `📅 Data: *${formatarDataBr(data)}*\n` +
-        `⏰ Hora: *${hora}*\n\n` +
-        (empresa?.nome ? `🏢 ${empresa.nome}\n` : '') +
-        (empresa?.telefone_dono ? `📞 Contato: ${formatarTelefone(empresa.telefone_dono)}\n\n` : '') +
-        `Estamos à disposição para um novo agendamento! 😊\n` +
-        `_Esta é uma mensagem automática do See&Agende._`;
-
-    return await send(empresa?.id, cliente.telefone, mensagem);
+    return await send(empresa?.id, cliente.telefone, msg);
 }
 
-// ============================================
-// 🔥 ENVIAR CONCLUSÃO - COM LINK CLICÁVEL
-// ============================================
 async function enviarConclusao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
+    if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    if (!cliente?.telefone) {
-        console.log(`[WHATSAPP] ⚠️ Cliente sem telefone, não enviando conclusão`);
-        return { success: false, error: 'Cliente sem telefone' };
-    }
-
-    const nomeCliente = cliente?.nome || 'Cliente';
-    const servicoNome = servico?.nome || 'Serviço';
-    const telefoneDono = empresa?.telefone_dono || '';
-    const telefoneDonoFormatado = formatarTelefone(telefoneDono);
-
-    const nomeEmpresa = empresa?.nome || 'nossa empresa';
-
-    // 🔥 CRIA O LINK PERSONALIZADO
     const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-    const slugEmpresa = nomeEmpresa
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-    const identificador = slugEmpresa || empresa?.id || '1';
-    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${identificador}`;
-
+    const slug = (empresa?.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
     const valor = parseFloat(servico?.valor) || 0;
-    const valorFormatado = valor.toFixed(2).replace('.', ',');
 
-    // ✅ MENSAGEM COM LINK CLICÁVEL (em linha separada)
-    let mensagem = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n` +
-        `✅ *Atendimento Concluído!*\n\n` +
-        `Olá *${nomeCliente}*! Seu atendimento foi concluído com sucesso. 😊\n\n` +
-        `📋 *Resumo do Atendimento:*\n` +
-        `✂️ Serviço: *${servicoNome}*\n` +
-        `📅 Data: *${formatarDataBr(data)}*\n` +
-        `⏰ Hora: *${hora}*\n` +
-        `💰 Valor: *R$ ${valorFormatado}*\n\n`;
+    let msg = `✅ *Atendimento Concluído!*\n\n`;
+    msg += `Olá *${cliente?.nome}*! Obrigado por escolher a *${empresa?.nome}*.\n\n`;
+    msg += `📋 Resumo:\n`;
+    msg += `✂️ ${servico?.nome} - R$ ${valor.toFixed(2).replace('.', ',')}\n`;
+    msg += `📅 ${formatarDataBr(data)} às ${hora}\n\n`;
+    msg += `🔗 *Agende seu próximo horário:*\n${chatbotLink}`;
 
-    if (telefoneDonoFormatado) {
-        mensagem += `📞 *Dúvidas? Entre em contato:* ${telefoneDonoFormatado}\n\n`;
-    }
-
-    mensagem += `🌟 *Já pensou em agendar seu próximo atendimento?*\n` +
-        `Agende pelo nosso chatbot! 🤖\n\n` +
-        `🔗 *Link do Chatbot:*\n${chatbotLink}\n\n` + // ← LINK EM LINHA SEPARADA
-        `🙏 Agradecemos por ter escolhido a *${nomeEmpresa}*!\n` +
-        `_Esta é uma mensagem automática do See&Agende._`;
-
-    return await send(empresa?.id, cliente.telefone, mensagem);
+    return await send(empresa?.id, cliente.telefone, msg);
 }
 
 // ============================================
-// EXPORTAR FUNÇÕES
+// EXPORTAR
 // ============================================
 module.exports = {
     send,
