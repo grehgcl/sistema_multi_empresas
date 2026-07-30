@@ -1,4 +1,4 @@
-// scripts/migrate-vps.js - CORRIGIDO (sem ID no INSERT)
+// scripts/migrate-vps.js - CORRIGIDO (sem ON CONFLICT)
 
 const { Pool } = require('pg');
 const sqlite3 = require('sqlite3').verbose();
@@ -49,7 +49,7 @@ async function migrateVPS() {
 
     console.log('🔄 Iniciando migração...');
 
-    // 🔥 CORREÇÃO: Inserir SEM o campo id (SERIAL auto-incrementa)
+    // 🔥 CORREÇÃO: Inserir SEM o id (SERIAL auto-incrementa) e SEM ON CONFLICT
     let inseridos = 0;
     for (const ag of agendamentos) {
         try {
@@ -62,15 +62,16 @@ async function migrateVPS() {
                  RETURNING id`,
                 [
                     ag.cliente_id, ag.data, ag.hora, ag.servico, ag.valor,
-                    ag.status, ag.empresa_id, ag.comissao, ag.profissional_id,
-                    ag.servico_id, ag.lembrete_enviado || 0, ag.duracao || 30,
+                    ag.status, ag.empresa_id, ag.comissao || 0,
+                    ag.profissional_id, ag.servico_id,
+                    ag.lembrete_enviado || 0, ag.duracao || 30,
                     ag.servicos_extras || '[]', ag.valor_extras || 0, ag.valor_total || ag.valor || 0
                 ]
             );
             inseridos++;
-            console.log(`  ✅ Inserido agendamento ${result.rows[0].id}`);
+            console.log(`  ✅ Inserido ID ${result.rows[0].id} (original: ${ag.id})`);
         } catch (err) {
-            console.error(`❌ Erro ao inserir:`, err.message);
+            console.error(`  ❌ Erro ao inserir (original ID ${ag.id}):`, err.message);
         }
     }
 
