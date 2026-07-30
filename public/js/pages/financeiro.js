@@ -1599,18 +1599,10 @@ function fecharModalDespesa() {
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        if (typeof dataStr === 'string') {
-            const match = dataStr.match(/(\d{4})-(\d{2})-(\d{2})/);
-            if (match) {
-                const ano = parseInt(match[1]);
-                const mes = parseInt(match[2]) - 1;
-                const dia = parseInt(match[3]);
-                const data = new Date(Date.UTC(ano, mes, dia));
-                return data.toLocaleDateString('pt-BR');
-            }
-            const data = new Date(dataStr);
-            if (!isNaN(data.getTime())) {
-                return data.toLocaleDateString('pt-BR');
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                return partes[2] + '/' + partes[1] + '/' + partes[0];
             }
         }
         return dataStr;
