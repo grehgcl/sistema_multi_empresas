@@ -59,7 +59,7 @@ const config = {
 console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
 
 // ============================================
-// 🔥 BUSCAR INSTÂNCIA DA EMPRESA - VERSÃO SEM BLOQUEIO
+// 🔥 BUSCAR INSTÂNCIA DA EMPRESA - CORRIGIDO
 // ============================================
 function getInstanciaEmpresa(empresaId) {
     return new Promise((resolve) => {
@@ -89,7 +89,7 @@ function getInstanciaEmpresa(empresaId) {
 
                 const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
 
-                // Se tem instância própria, usa ela (mesmo que não esteja conectada)
+                // Se tem instância própria, usa ela
                 if (habilitado && temInstancia) {
                     console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance}`);
                     return resolve({
