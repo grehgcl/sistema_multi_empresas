@@ -27,7 +27,7 @@ if (isProduction) {
 
     const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }
+        ssl: false  // ← MUDE PARA false
     });
 
     function convertPlaceholders(sql) {

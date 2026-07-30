@@ -7147,15 +7147,18 @@ app.get('/api/agendamentos/periodo', auth, (req, res) => {
 const EvolutionInstances = require('./server/services/evolution-instances');
 
 // ============================================
-// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN (VERSÃO FINAL E ROBUSTA)
+// 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN (VERSÃO FINAL BLINDADA)
 // ============================================
 
-// Função auxiliar para transformar db.run em Promise (resolve o erro "is not a function")
+// ✅ CORREÇÃO CRÍTICA: Importar axios no topo do arquivo server.js ou aqui antes das rotas
+const axios = require('axios');
+
+// Função auxiliar para transformar db.run em Promise
 const runQuery = (sql, params) => {
     return new Promise((resolve, reject) => {
         db.run(sql, params, function (err) {
             if (err) reject(err);
-            else resolve(this); // 'this' contém lastID e changes
+            else resolve(this);
         });
     });
 };
@@ -7173,13 +7176,14 @@ app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, a
             : 'UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?';
 
         const valor = isProduction ? habilitado : (habilitado ? 1 : 0);
-
         await runQuery(sqlUpdate, [valor, id]);
         console.log(`✅ [SUPERADMIN] Banco atualizado.`);
 
         // 2. Se estiver HABILITANDO, gerencia a instância na Evolution
         if (habilitado === true || habilitado === 1 || habilitado === 'true') {
             const nomeInstancia = `emp-${id}`;
+            const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+            const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
             // Verifica o que tem no banco
             const empresaCheck = await new Promise((resolve, reject) => {
@@ -7192,15 +7196,10 @@ app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, a
             // Cenário A: Não tem nada salvo no banco -> CRIA NOVA
             if (!empresaCheck || !empresaCheck.whatsapp_instance) {
                 console.log(`🚀 [SUPERADMIN] Criando nova instância ${nomeInstancia} na VPS...`);
-
                 try {
-                    const axios = require('axios');
-                    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
-                    const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
-
-                    const response = await axios.post(`${evolutionUrl}/instance/create`, {
+                    await axios.post(`${evolutionUrl}/instance/create`, {
                         instanceName: nomeInstancia,
-                        qrcode: true,
+                        qrCode: true, // ✅ CamelCase correto
                         integration: 'WHATSAPP-BAILEYS'
                     }, {
                         headers: { 'Content-Type': 'application/json', 'apikey': apiKey }
@@ -7218,31 +7217,24 @@ app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, a
                     console.error(`❌ [SUPERADMIN] Erro ao criar na VPS:`, err.message);
                 }
             }
-            // Cenário B: Já tem nome salvo, mas vamos garantir que existe na VPS (Recriação de Emergência)
+            // Cenário B: Já tem nome salvo, verifica se existe na VPS (Recriação de Emergência)
             else {
                 console.log(`ℹ️ [SUPERADMIN] Instância ${empresaCheck.whatsapp_instance} já consta no banco. Verificando na VPS...`);
-
                 try {
-                    const axios = require('axios');
-                    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
-                    const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
-
                     // Tenta pegar o status. Se der 404, significa que sumiu da VPS.
                     await axios.get(`${evolutionUrl}/instance/connectionState/${empresaCheck.whatsapp_instance}`, {
                         headers: { 'apikey': apiKey }
                     });
-
                     console.log(`✅ [SUPERADMIN] Instância confirmada ativa na VPS.`);
 
                 } catch (err) {
                     // Se der erro (especialmente 404), recriamos a instância
                     if (err.response && err.response.status === 404) {
                         console.log(`⚠️ [SUPERADMIN] Instância NÃO encontrada na VPS (404). Recriando agora...`);
-
                         try {
                             await axios.post(`${evolutionUrl}/instance/create`, {
                                 instanceName: empresaCheck.whatsapp_instance,
-                                qrcode: true,
+                                qrCode: true,
                                 integration: 'WHATSAPP-BAILEYS'
                             }, {
                                 headers: { 'Content-Type': 'application/json', 'apikey': apiKey }
@@ -7268,6 +7260,8 @@ app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, a
         res.status(500).json({ success: false, message: err.message });
     }
 });
+
+// ... (Mantenha as outras rotas get/post/listar exatamente como estavam, pois elas já usam a classe EvolutionInstances corretamente)
 
 // 🔹 Listar status do WhatsApp de todas as empresas (para o Super Admin)
 app.get('/api/admin/empresas/whatsapp-status', auth, verificarSuperAdmin, (req, res) => {
