@@ -61,61 +61,37 @@ console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
 // ============================================
 // 🔥 BUSCAR INSTÂNCIA DA EMPRESA - CORRIGIDO
 // ============================================
+// Em server/services/whatsapp.js
 function getInstanciaEmpresa(empresaId) {
     return new Promise((resolve) => {
         try {
             const isPg = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
             const sql = isPg
                 ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
                 : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
 
             db.get(sql, [empresaId], (err, empresa) => {
-                // 🔥 SEMPRE RETORNA SUCESSO - NUNCA BLOQUEIA
                 if (err || !empresa) {
-                    console.log('[WHATSAPP] Empresa não encontrada ou erro, usando padrão');
-                    return resolve({
-                        success: true,
-                        instanceName: 'seeagende',
-                        isOwn: false,
-                        fallback: true
-                    });
+                    // Fallback seguro
+                    return resolve({ success: true, instanceName: 'seeagende', isOwn: false });
                 }
 
-                // Verifica se tem instância própria habilitada
-                const habilitado = empresa.whatsapp_proprio_habilitado === true ||
-                    empresa.whatsapp_proprio_habilitado === 1 ||
-                    empresa.whatsapp_proprio_habilitado === 't';
+                const habilitado = empresa.whatsapp_proprio_habilitado === true || empresa.whatsapp_proprio_habilitado === 1;
+                const conectado = empresa.whatsapp_connected === true || empresa.whatsapp_connected === 1;
 
-                const temInstancia = empresa.whatsapp_instance && empresa.whatsapp_instance !== '';
-
-                // Se tem instância própria, usa ela
-                if (habilitado && temInstancia) {
+                // Se estiver habilitado E conectado, usa a própria
+                if (habilitado && conectado && empresa.whatsapp_instance) {
                     console.log(`[WHATSAPP] 📱 Usando instância própria: ${empresa.whatsapp_instance}`);
-                    return resolve({
-                        success: true,
-                        instanceName: empresa.whatsapp_instance,
-                        isOwn: true
-                    });
+                    return resolve({ success: true, instanceName: empresa.whatsapp_instance, isOwn: true });
                 }
 
-                // Fallback para instância padrão
+                // Caso contrário, usa a padrão
                 console.log('[WHATSAPP] 📱 Usando instância padrão seeagende');
-                return resolve({
-                    success: true,
-                    instanceName: 'seeagende',
-                    isOwn: false,
-                    fallback: true
-                });
+                return resolve({ success: true, instanceName: 'seeagende', isOwn: false });
             });
         } catch (error) {
             console.error('[WHATSAPP] Erro crítico:', error);
-            return resolve({
-                success: true,
-                instanceName: 'seeagende',
-                isOwn: false,
-                fallback: true
-            });
+            resolve({ success: true, instanceName: 'seeagende', isOwn: false });
         }
     });
 }
