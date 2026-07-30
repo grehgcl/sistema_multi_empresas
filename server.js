@@ -3469,9 +3469,13 @@ app.get('/api/agendamentos', auth, (req, res) => {
     const empresa_id = req.usuario.empresa_id;
     const isProduction = process.env.RENDER === 'true' || process.env.DATABASE_URL?.includes('postgres');
 
-    // 🔥 Buscar a data como texto, sem conversão
+    // 🔥 CORREÇÃO: Buscar a data como texto, sem conversão
     const sql = isProduction
-        ? `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
+        ? `SELECT a.*, 
+            TO_CHAR(a.data, 'YYYY-MM-DD') as data_formatada,
+            c.nome as cliente_nome, 
+            p.nome as profissional_nome, 
+            s.nome as servico_nome
            FROM agendamentos a
            LEFT JOIN clientes c ON a.cliente_id = c.id
            LEFT JOIN profissionais p ON a.profissional_id = p.id
@@ -3492,11 +3496,29 @@ app.get('/api/agendamentos', auth, (req, res) => {
             return res.json({ success: false, message: err.message });
         }
 
-        // 🔥 CORREÇÃO: Manter a data como está
-        const dados = rows.map(row => ({
-            ...row,
-            data: row.data // ← Não converter!
-        }));
+        // 🔥 CORREÇÃO: Garantir que a data seja string pura
+        const dados = rows.map(row => {
+            let data = row.data;
+            // Se for PostgreSQL, usar a data_formatada
+            if (isProduction && row.data_formatada) {
+                data = row.data_formatada;
+            }
+            // Se for um objeto Date, converter
+            if (data instanceof Date) {
+                const ano = data.getFullYear();
+                const mes = String(data.getMonth() + 1).padStart(2, '0');
+                const dia = String(data.getDate()).padStart(2, '0');
+                data = `${ano}-${mes}-${dia}`;
+            }
+            // Se for string com T (ISO), pegar só a data
+            if (typeof data === 'string' && data.includes('T')) {
+                data = data.split('T')[0];
+            }
+            return {
+                ...row,
+                data: data // ← Data como string pura YYYY-MM-DD
+            };
+        });
 
         res.json({ success: true, data: dados });
     });

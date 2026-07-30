@@ -276,6 +276,29 @@ window.addEventListener('storage', function (e) {
 });
 
 // ============================================
+// FORMATAR DATA - CORRIGIDO (SEM TIMEZONE)
+// ============================================
+
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        // Se for string com T (formato ISO), pegar só a data
+        let dataLimpa = dataStr;
+        if (typeof dataStr === 'string' && dataStr.includes('T')) {
+            dataLimpa = dataStr.split('T')[0];
+        }
+
+        if (typeof dataLimpa === 'string' && dataLimpa.includes('-')) {
+            const partes = dataLimpa.split('-');
+            if (partes.length === 3) {
+                return partes[2] + '/' + partes[1] + '/' + partes[0];
+            }
+        }
+        return dataLimpa;
+    } catch {
+        return dataStr;
+    }
+}// ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 window.showToast = showToast;
