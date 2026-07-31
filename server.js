@@ -7151,9 +7151,6 @@ const EvolutionInstances = require('./server/services/evolution-instances');
 // 🔥 WHATSAPP PRÓPRIO - CONTROLE DO SUPER ADMIN (VERSÃO FINAL BLINDADA)
 // ============================================
 
-// ✅ CORREÇÃO CRÍTICA: Importar axios no topo do arquivo server.js ou aqui antes das rotas
-const axios = require('axios');
-
 // Função auxiliar para transformar db.run em Promise
 const runQuery = (sql, params) => {
     return new Promise((resolve, reject) => {
