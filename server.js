@@ -17,8 +17,62 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
-const axios = require('axios');  // ← ADICIONE ESTA LINHA
+const axios = require('axios');
 const jwt = require('jsonwebtoken');
+
+// ============================================
+// 🔥 COMPATIBILIDADE SQLite + PostgreSQL
+// ============================================
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+function formatDate(coluna) {
+    return isProduction ? `TO_CHAR(${coluna}, 'YYYY-MM-DD')` : `date(${coluna})`;
+}
+
+function formatDateTime(coluna) {
+    return isProduction ? `TO_CHAR(${coluna}, 'YYYY-MM-DD HH24:MI')` : `datetime(${coluna})`;
+}
+
+function formatMonthYear(coluna) {
+    return isProduction ? `TO_CHAR(${coluna}, 'YYYY-MM')` : `strftime('%Y-%m', ${coluna})`;
+}
+
+function extractMonth(coluna) {
+    return isProduction ? `EXTRACT(MONTH FROM ${coluna})` : `strftime('%m', ${coluna})`;
+}
+
+function extractYear(coluna) {
+    return isProduction ? `EXTRACT(YEAR FROM ${coluna})` : `strftime('%Y', ${coluna})`;
+}
+
+function extractDay(coluna) {
+    return isProduction ? `EXTRACT(DAY FROM ${coluna})` : `strftime('%d', ${coluna})`;
+}
+
+function extractHour(coluna) {
+    return isProduction ? `EXTRACT(HOUR FROM ${coluna})` : `strftime('%H', ${coluna})`;
+}
+
+function extractMinute(coluna) {
+    return isProduction ? `EXTRACT(MINUTE FROM ${coluna})` : `strftime('%M', ${coluna})`;
+}
+
+function coalesce(valor, padrao = 0) {
+    return isProduction ? `COALESCE(${valor}, ${padrao})` : `IFNULL(${valor}, ${padrao})`;
+}
+
+function coalesceSum(valor) {
+    return isProduction ? `COALESCE(SUM(${valor}), 0)` : `IFNULL(SUM(${valor}), 0)`;
+}
+
+function lower(coluna) {
+    return `LOWER(${coluna})`;
+}
+
+function dateInterval(intervalo) {
+    return isProduction ? `CURRENT_DATE - INTERVAL '${intervalo}'` : `date('now', '-${intervalo}')`;
+}
+
 // ============================================================
 // MERCADO PAGO
 // ============================================================
@@ -479,8 +533,6 @@ setTimeout(() => {
         });
     });
 }, 17000);
-
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================================
 // 1. CRIAR/ATUALIZAR SUPER ADMIN (SEM FOR�AR ID)
@@ -1663,70 +1715,75 @@ app.get('/api/admin/profissionais/:id', auth, verificarSuperAdmin, (req, res) =>
     });
 });
 // ============================================
-// 1. ESTAT�STICAS GERAIS (MELHORADA)
+// ROTA: /api/admin/stats (CORRIGIDA)
 // ============================================
 app.get('/api/admin/stats', auth, verificarSuperAdmin, (req, res) => {
-    console.log('?? Super Admin - Buscando estat�sticas gerais...');
+    console.log('🔍 Super Admin - Buscando estatísticas gerais...');
 
     // Total de empresas
     db.get(`SELECT COUNT(*) as total FROM empresas`, (err, empresas) => {
         if (err) {
-            console.error('? Erro ao contar empresas:', err);
+            console.error('❌ Erro ao contar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
 
         // Total de donos
         db.get(`SELECT COUNT(*) as total FROM usuarios WHERE role = 'dono'`, (err2, donos) => {
             if (err2) {
-                console.error('? Erro ao contar donos:', err2);
+                console.error('❌ Erro ao contar donos:', err2);
                 return res.json({ success: false, message: err2.message });
             }
 
             // Total de profissionais
             db.get(`SELECT COUNT(*) as total FROM usuarios WHERE role = 'profissional'`, (err3, profissionais) => {
                 if (err3) {
-                    console.error('? Erro ao contar profissionais:', err3);
+                    console.error('❌ Erro ao contar profissionais:', err3);
                     return res.json({ success: false, message: err3.message });
                 }
 
                 // Total de clientes
                 db.get(`SELECT COUNT(*) as total FROM clientes`, (err4, clientes) => {
                     if (err4) {
-                        console.error('? Erro ao contar clientes:', err4);
+                        console.error('❌ Erro ao contar clientes:', err4);
                         return res.json({ success: false, message: err4.message });
                     }
 
                     // Total de agendamentos
                     db.get(`SELECT COUNT(*) as total FROM agendamentos`, (err5, agendamentos) => {
                         if (err5) {
-                            console.error('? Erro ao contar agendamentos:', err5);
+                            console.error('❌ Erro ao contar agendamentos:', err5);
                             return res.json({ success: false, message: err5.message });
                         }
 
-                        // Agendamentos do m�s
+                        // Agendamentos do mês
                         const mesAtual = new Date().toISOString().slice(0, 7);
-                        const sqlMes = isProduction
-                            ? `SELECT COUNT(*) as total FROM agendamentos WHERE TO_CHAR(data, 'YYYY-MM') = $1`
-                            : `SELECT COUNT(*) as total FROM agendamentos WHERE strftime('%Y-%m', data) = ?`;
+                        const sqlMes = `
+                            SELECT COUNT(*) as total 
+                            FROM agendamentos 
+                            WHERE ${isProduction ? "TO_CHAR(data, 'YYYY-MM') = ?" : "strftime('%Y-%m', data) = ?"}
+                        `;
 
                         db.get(sqlMes, [mesAtual], (err6, agendamentosMes) => {
                             if (err6) {
-                                console.error('? Erro ao contar agendamentos do m�s:', err6);
+                                console.error('❌ Erro ao contar agendamentos do mês:', err6);
                                 return res.json({ success: false, message: err6.message });
                             }
 
-                            // Faturamento do m�s
-                            const sqlFaturamento = isProduction
-                                ? `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND TO_CHAR(data, 'YYYY-MM') = $1`
-                                : `SELECT SUM(valor) as total FROM agendamentos WHERE status = 'concluido' AND strftime('%Y-%m', data) = ?`;
+                            // Faturamento do mês
+                            const sqlFaturamento = `
+                                SELECT ${coalesceSum('valor')} as total 
+                                FROM agendamentos 
+                                WHERE status = 'concluido' 
+                                AND ${isProduction ? "TO_CHAR(data, 'YYYY-MM') = ?" : "strftime('%Y-%m', data) = ?"}
+                            `;
 
                             db.get(sqlFaturamento, [mesAtual], (err7, faturamento) => {
                                 if (err7) {
-                                    console.error('? Erro ao calcular faturamento:', err7);
+                                    console.error('❌ Erro ao calcular faturamento:', err7);
                                     return res.json({ success: false, message: err7.message });
                                 }
 
-                                console.log('? Estat�sticas carregadas com sucesso!');
+                                console.log('✅ Estatísticas carregadas com sucesso!');
                                 res.json({
                                     success: true,
                                     data: {
@@ -1887,28 +1944,19 @@ app.get('/api/admin/usuarios', auth, verificarSuperAdmin, (req, res) => {
     });
 });
 // ============================================
-// ROTAS DO SUPER ADMIN - MÉTRICAS
+// ROTA: /api/admin/faturamento-mensal (CORRIGIDA)
 // ============================================
-
-// GET /api/admin/faturamento-mensal - Faturamento mensal dos últimos 6 meses
 app.get('/api/admin/faturamento-mensal', auth, verificarSuperAdmin, (req, res) => {
-    const sql = isProduction
-        ? `SELECT 
-            TO_CHAR(data, 'YYYY-MM') as mes,
-            COALESCE(SUM(valor), 0) as total
-           FROM agendamentos
-           WHERE status = 'concluido'
-           AND data >= CURRENT_DATE - INTERVAL '6 months'
-           GROUP BY TO_CHAR(data, 'YYYY-MM')
-           ORDER BY mes ASC`
-        : `SELECT 
-            strftime('%Y-%m', data) as mes,
-            COALESCE(SUM(valor), 0) as total
-           FROM agendamentos
-           WHERE status = 'concluido'
-           AND data >= date('now', '-6 months')
-           GROUP BY strftime('%Y-%m', data)
-           ORDER BY mes ASC`;
+    const sql = `
+        SELECT 
+            ${formatMonthYear('data')} as mes,
+            ${coalesceSum('valor')} as total
+        FROM agendamentos
+        WHERE status = 'concluido'
+            AND data >= ${dateInterval('6 months')}
+        GROUP BY ${formatMonthYear('data')}
+        ORDER BY mes ASC
+    `;
 
     db.all(sql, [], (err, rows) => {
         if (err) {
@@ -1919,23 +1967,19 @@ app.get('/api/admin/faturamento-mensal', auth, verificarSuperAdmin, (req, res) =
     });
 });
 
-// GET /api/admin/crescimento-empresas - Crescimento de empresas por mês
+// ============================================
+// ROTA: /api/admin/crescimento-empresas (CORRIGIDA)
+// ============================================
 app.get('/api/admin/crescimento-empresas', auth, verificarSuperAdmin, (req, res) => {
-    const sql = isProduction
-        ? `SELECT 
-            TO_CHAR(created_at, 'YYYY-MM') as mes,
+    const sql = `
+        SELECT 
+            ${formatMonthYear('created_at')} as mes,
             COUNT(*) as total
-           FROM empresas
-           WHERE created_at >= CURRENT_DATE - INTERVAL '6 months'
-           GROUP BY TO_CHAR(created_at, 'YYYY-MM')
-           ORDER BY mes ASC`
-        : `SELECT 
-            strftime('%Y-%m', created_at) as mes,
-            COUNT(*) as total
-           FROM empresas
-           WHERE created_at >= date('now', '-6 months')
-           GROUP BY strftime('%Y-%m', created_at)
-           ORDER BY mes ASC`;
+        FROM empresas
+        WHERE created_at >= ${dateInterval('6 months')}
+        GROUP BY ${formatMonthYear('created_at')}
+        ORDER BY mes ASC
+    `;
 
     db.all(sql, [], (err, rows) => {
         if (err) {
@@ -2260,41 +2304,30 @@ app.get('/api/admin/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res
 });
 
 // ============================================
-// 7. AGENDAMENTOS DE UMA EMPRESA
+// ROTA: /api/admin/empresas/:id/agendamentos (CORRIGIDA)
 // ============================================
 app.get('/api/admin/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`?? Super Admin - Buscando agendamentos da empresa ${id}...`);
+    console.log(`🔍 Super Admin - Buscando agendamentos da empresa ${id}...`);
 
-    const sql = isProduction
-        ? `SELECT a.*, 
-           c.nome as cliente_nome,
-           p.nome as profissional_nome,
-           s.nome as servico_nome,
-           to_char(a.data, 'YYYY-MM-DD') as data_formatada
-           FROM agendamentos a
-           LEFT JOIN clientes c ON a.cliente_id = c.id
-           LEFT JOIN profissionais p ON a.profissional_id = p.id
-           LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = $1 
-           ORDER BY a.data DESC, a.hora DESC
-           LIMIT 50`
-        : `SELECT a.*, 
-           c.nome as cliente_nome,
-           p.nome as profissional_nome,
-           s.nome as servico_nome,
-           date(a.data) as data_formatada
-           FROM agendamentos a
-           LEFT JOIN clientes c ON a.cliente_id = c.id
-           LEFT JOIN profissionais p ON a.profissional_id = p.id
-           LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = ? 
-           ORDER BY a.data DESC, a.hora DESC
-           LIMIT 50`;
+    const sql = `
+        SELECT a.*, 
+               c.nome as cliente_nome,
+               p.nome as profissional_nome,
+               s.nome as servico_nome,
+               ${formatDate('a.data')} as data_formatada
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN profissionais p ON a.profissional_id = p.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.empresa_id = ${isProduction ? '$1' : '?'}
+        ORDER BY a.data DESC, a.hora DESC
+        LIMIT 50
+    `;
 
     db.all(sql, [id], (err, agendamentos) => {
         if (err) {
-            console.error('? Erro ao buscar agendamentos:', err);
+            console.error('❌ Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -3473,23 +3506,23 @@ app.get('/api/agendamentos', auth, (req, res) => {
     // 🔥 CORREÇÃO: Buscar a data como texto, sem conversão
     const sql = isProduction
         ? `SELECT a.*, 
-            TO_CHAR(a.data, 'YYYY-MM-DD') as data_formatada,
-            c.nome as cliente_nome, 
-            p.nome as profissional_nome, 
-            s.nome as servico_nome
-           FROM agendamentos a
-           LEFT JOIN clientes c ON a.cliente_id = c.id
-           LEFT JOIN profissionais p ON a.profissional_id = p.id
-           LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = $1
-           ORDER BY a.data DESC, a.hora DESC`
+        ${formatDate('a.data')} as data_formatada,
+        c.nome as cliente_nome, 
+        p.nome as profissional_nome, 
+        s.nome as servico_nome
+       FROM agendamentos a
+       LEFT JOIN clientes c ON a.cliente_id = c.id
+       LEFT JOIN profissionais p ON a.profissional_id = p.id
+       LEFT JOIN servicos s ON a.servico_id = s.id
+       WHERE a.empresa_id = $1
+       ORDER BY a.data DESC, a.hora DESC`
         : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome
-           FROM agendamentos a
-           LEFT JOIN clientes c ON a.cliente_id = c.id
-           LEFT JOIN profissionais p ON a.profissional_id = p.id
-           LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.empresa_id = ?
-           ORDER BY a.data DESC, a.hora DESC`;
+       FROM agendamentos a
+       LEFT JOIN clientes c ON a.cliente_id = c.id
+       LEFT JOIN profissionais p ON a.profissional_id = p.id
+       LEFT JOIN servicos s ON a.servico_id = s.id
+       WHERE a.empresa_id = ?
+       ORDER BY a.data DESC, a.hora DESC`;
 
     db.all(sql, [empresa_id], (err, rows) => {
         if (err) {
@@ -4842,45 +4875,42 @@ app.get('/api/financeiro', auth, (req, res) => {
         let sql, params;
 
         if (isProduction) {
-            // POSTGRESQL
             sql = `
-                SELECT 
-                    a.*,
-                    to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-                    c.nome as cliente_nome,
-                    s.nome as servico_nome
-                FROM agendamentos a
-                LEFT JOIN clientes c ON a.cliente_id = c.id
-                LEFT JOIN servicos s ON a.servico_id = s.id
-                WHERE a.profissional_id = $1
-                    AND a.empresa_id = $2
-                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
-                    AND EXTRACT(MONTH FROM a.data) = $3
-                    AND EXTRACT(YEAR FROM a.data) = $4
-                ORDER BY a.data DESC
-            `;
+            SELECT 
+                a.*,
+                ${formatDate('a.data')} as data_formatada,
+                c.nome as cliente_nome,
+                s.nome as servico_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.profissional_id = $1
+                AND a.empresa_id = $2
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                AND ${extractMonth('a.data')} = $3
+                AND ${extractYear('a.data')} = $4
+            ORDER BY a.data DESC
+        `;
             params = [profissional_id, empresa_id, parseInt(mesAtual), parseInt(anoAtual)];
         } else {
-            // SQLITE
             sql = `
-                SELECT 
-                    a.*,
-                    date(a.data) as data_formatada,
-                    c.nome as cliente_nome,
-                    s.nome as servico_nome
-                FROM agendamentos a
-                LEFT JOIN clientes c ON a.cliente_id = c.id
-                LEFT JOIN servicos s ON a.servico_id = s.id
-                WHERE a.profissional_id = ?
-                    AND a.empresa_id = ?
-                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
-                    AND strftime('%m', a.data) = ?
-                    AND strftime('%Y', a.data) = ?
-                ORDER BY a.data DESC
-            `;
+            SELECT 
+                a.*,
+                ${formatDate('a.data')} as data_formatada,
+                c.nome as cliente_nome,
+                s.nome as servico_nome
+            FROM agendamentos a
+            LEFT JOIN clientes c ON a.cliente_id = c.id
+            LEFT JOIN servicos s ON a.servico_id = s.id
+            WHERE a.profissional_id = ?
+                AND a.empresa_id = ?
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                AND ${extractMonth('a.data')} = ?
+                AND ${extractYear('a.data')} = ?
+            ORDER BY a.data DESC
+        `;
             params = [profissional_id, empresa_id, mesAtual.padStart(2, '0'), String(anoAtual)];
         }
-
         console.log('📊 SQL Profissional:', sql);
         console.log('📊 Params:', params);
 
@@ -5057,11 +5087,11 @@ app.get('/api/financeiro', auth, (req, res) => {
     res.status(403).json({ success: false, message: 'Acesso negado' });
 });
 
-// 2. RECEITAS (LISTA DE SERVIÇOS CONCLUÍDOS)
+// ROTA: /api/financeiro/receitas (CORRIGIDA)
+// ============================================
 app.get('/api/financeiro/receitas', auth, (req, res) => {
     const { mes, ano } = req.query;
     const empresaId = req.usuario.empresa_id;
-    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
 
     if (!mes || !ano) {
         return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
@@ -5072,8 +5102,8 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
         sql = `
             SELECT 
                 a.id,
-                to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-                COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                ${formatDate('a.data')} as data_formatada,
+                ${coalesce('a.valor_total', 0)} as valor_total,
                 a.valor,
                 a.comissao,
                 a.servico,
@@ -5087,9 +5117,9 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
             LEFT JOIN servicos s ON a.servico_id = s.id
             LEFT JOIN profissionais p ON a.profissional_id = p.id
             WHERE a.empresa_id = $1
-                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
-                AND EXTRACT(MONTH FROM a.data) = $2
-                AND EXTRACT(YEAR FROM a.data) = $3
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                AND ${extractMonth('a.data')} = $2
+                AND ${extractYear('a.data')} = $3
             ORDER BY a.data DESC
         `;
         params = [empresaId, parseInt(mes), parseInt(ano)];
@@ -5097,8 +5127,8 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
         sql = `
             SELECT 
                 a.id,
-                date(a.data) as data_formatada,
-                COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                ${formatDate('a.data')} as data_formatada,
+                ${coalesce('a.valor_total', 0)} as valor_total,
                 a.valor,
                 a.comissao,
                 a.servico,
@@ -5112,9 +5142,9 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
             LEFT JOIN servicos s ON a.servico_id = s.id
             LEFT JOIN profissionais p ON a.profissional_id = p.id
             WHERE a.empresa_id = ?
-                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
-                AND strftime('%m', a.data) = ?
-                AND strftime('%Y', a.data) = ?
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                AND ${extractMonth('a.data')} = ?
+                AND ${extractYear('a.data')} = ?
             ORDER BY a.data DESC
         `;
         params = [empresaId, mes.padStart(2, '0'), ano];
@@ -5151,11 +5181,12 @@ app.get('/api/financeiro/receitas', auth, (req, res) => {
     });
 });
 
-// 3. COMPARATIVO MENSAL - VERSÃO QUE FUNCIONA EM AMBOS
+// ============================================
+// ROTA: /api/financeiro/comparativo (CORRIGIDA)
+// ============================================
 app.get('/api/financeiro/comparativo', auth, (req, res) => {
     const { mes_atual, ano_atual, mes_anterior, ano_anterior } = req.query;
     const empresaId = req.usuario.empresa_id;
-    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
 
     console.log('📊 Comparativo - Parâmetros:', { mes_atual, ano_atual, mes_anterior, ano_anterior, empresaId });
 
@@ -5168,30 +5199,27 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
             let sql, params;
 
             if (isProduction) {
-                // POSTGRESQL
                 sql = `
-                    SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) as total
+                    SELECT ${coalesceSum('COALESCE(valor_total, valor, 0)')} as total
                     FROM agendamentos
                     WHERE empresa_id = $1
-                        AND LOWER(status) IN ('concluido', 'finalizado', 'concluído')
-                        AND EXTRACT(MONTH FROM data) = $2
-                        AND EXTRACT(YEAR FROM data) = $3
+                        AND ${lower('status')} IN ('concluido', 'finalizado', 'concluído')
+                        AND ${extractMonth('data')} = $2
+                        AND ${extractYear('data')} = $3
                 `;
                 params = [empresaId, parseInt(mes), parseInt(ano)];
             } else {
-                // SQLITE
                 sql = `
-                    SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) as total
+                    SELECT ${coalesceSum('COALESCE(valor_total, valor, 0)')} as total
                     FROM agendamentos
                     WHERE empresa_id = ?
                         AND status IN ('concluido', 'finalizado', 'Concluído', 'Finalizado')
-                        AND strftime('%m', data) = ?
-                        AND strftime('%Y', data) = ?
+                        AND ${extractMonth('data')} = ?
+                        AND ${extractYear('data')} = ?
                 `;
                 params = [empresaId, mes.padStart(2, '0'), ano];
             }
 
-            // 🔥 USAR db.get PARA AMBOS
             db.get(sql, params, (err, row) => {
                 if (err) {
                     console.error('❌ Erro faturamento:', err);
@@ -5205,20 +5233,20 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
                 let sqlDesp, paramsDesp;
                 if (isProduction) {
                     sqlDesp = `
-                        SELECT COALESCE(SUM(valor), 0) as total
+                        SELECT ${coalesceSum('valor')} as total
                         FROM despesas
                         WHERE empresa_id = $1
-                            AND EXTRACT(MONTH FROM data) = $2
-                            AND EXTRACT(YEAR FROM data) = $3
+                            AND ${extractMonth('data')} = $2
+                            AND ${extractYear('data')} = $3
                     `;
                     paramsDesp = [empresaId, parseInt(mes), parseInt(ano)];
                 } else {
                     sqlDesp = `
-                        SELECT COALESCE(SUM(valor), 0) as total
+                        SELECT ${coalesceSum('valor')} as total
                         FROM despesas
                         WHERE empresa_id = ?
-                            AND strftime('%m', data) = ?
-                            AND strftime('%Y', data) = ?
+                            AND ${extractMonth('data')} = ?
+                            AND ${extractYear('data')} = ?
                     `;
                     paramsDesp = [empresaId, mes.padStart(2, '0'), ano];
                 }
@@ -5236,7 +5264,6 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
             });
         });
     }
-
     Promise.all([
         getDados(mes_atual, ano_atual),
         getDados(mes_anterior, ano_anterior)
@@ -5257,12 +5284,11 @@ app.get('/api/financeiro/comparativo', auth, (req, res) => {
         });
 });
 
-// ============================================================
-// ANÁLISE DIÁRIA - CORRIGIDA (VALOR FORÇADO)
-// ============================================================
+// ============================================
+// ROTA: /api/financeiro/analise-diaria (CORRIGIDA)
+// ============================================
 app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
-    const isProduction = process.env.RENDER === 'true' || process.env.NODE_ENV === 'production';
     const hoje = new Date();
     const mes = req.query.mes || String(hoje.getMonth() + 1).padStart(2, '0');
     const ano = req.query.ano || hoje.getFullYear();
@@ -5272,54 +5298,45 @@ app.get('/api/financeiro/analise-diaria', auth, (req, res) => {
     let sql, params;
 
     if (isProduction) {
-        // POSTGRESQL
         sql = `
             SELECT 
-                EXTRACT(DAY FROM a.data) as dia,
+                ${extractDay('a.data')} as dia,
                 COUNT(*) as qtd_servicos,
-                COALESCE(
-                    SUM(
-                        COALESCE(
-                            CASE WHEN a.valor > 0 THEN a.valor END,
-                            CASE WHEN a.valor_total > 0 THEN a.valor_total END,
-                            s.valor,
-                            0
-                        )
-                    ),
-                    0
-                ) as faturamento
+                ${coalesceSum(
+            'CASE ' +
+            'WHEN a.valor > 0 THEN a.valor ' +
+            'WHEN a.valor_total > 0 THEN a.valor_total ' +
+            'ELSE (SELECT valor FROM servicos WHERE id = a.servico_id) ' +
+            'END'
+        )} as faturamento
             FROM agendamentos a
             LEFT JOIN servicos s ON a.servico_id = s.id
             WHERE a.empresa_id = $1
-                AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído', 'pendente')
-                AND EXTRACT(MONTH FROM a.data) = $2
-                AND EXTRACT(YEAR FROM a.data) = $3
-            GROUP BY EXTRACT(DAY FROM a.data)
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído', 'pendente')
+                AND ${extractMonth('a.data')} = $2
+                AND ${extractYear('a.data')} = $3
+            GROUP BY ${extractDay('a.data')}
             ORDER BY dia ASC
         `;
         params = [empresaId, parseInt(mes), parseInt(ano)];
     } else {
-        // SQLITE - 🔥 CORRIGIDO
         sql = `
             SELECT 
-                CAST(strftime('%d', a.data) AS INTEGER) as dia,
+                ${extractDay('a.data')} as dia,
                 COUNT(*) as qtd_servicos,
-                COALESCE(
-                    SUM(
-                        CASE 
-                            WHEN a.valor > 0 THEN a.valor
-                            WHEN a.valor_total > 0 THEN a.valor_total
-                            ELSE (SELECT valor FROM servicos WHERE id = a.servico_id)
-                        END
-                    ),
-                    0
-                ) as faturamento
+                ${coalesceSum(
+            'CASE ' +
+            'WHEN a.valor > 0 THEN a.valor ' +
+            'WHEN a.valor_total > 0 THEN a.valor_total ' +
+            'ELSE (SELECT valor FROM servicos WHERE id = a.servico_id) ' +
+            'END'
+        )} as faturamento
             FROM agendamentos a
             WHERE a.empresa_id = ?
                 AND a.status IN ('concluido', 'finalizado', 'Concluído', 'Finalizado', 'pendente')
-                AND strftime('%m', a.data) = ?
-                AND strftime('%Y', a.data) = ?
-            GROUP BY CAST(strftime('%d', a.data) AS INTEGER)
+                AND ${extractMonth('a.data')} = ?
+                AND ${extractYear('a.data')} = ?
+            GROUP BY ${extractDay('a.data')}
             ORDER BY dia ASC
         `;
         params = [empresaId, mes.padStart(2, '0'), ano];
@@ -5475,7 +5492,7 @@ function processarAnaliseDiaria(rows, mes, ano, res) {
 }
 
 // ============================================
-// GET /api/despesas - LISTAR DESPESAS (CORRIGIDO)
+// ROTA: /api/despesas (CORRIGIDA)
 // ============================================
 app.get('/api/despesas', auth, (req, res) => {
     const usuario = req.usuario;
@@ -5492,22 +5509,20 @@ app.get('/api/despesas', auth, (req, res) => {
 
     const empresaId = usuario.empresa_id;
     const { mes, ano, categoria, pago } = req.query;
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     let params = [];
     let sql = `
         SELECT d.*
         FROM despesas d
-        WHERE d.empresa_id = $1
+        WHERE d.empresa_id = ${isProduction ? '$1' : '?'}
     `;
     params.push(empresaId);
 
     if (isProduction) {
-        // PostgreSQL - usar placeholders com contador
         let counter = 2;
 
         if (mes && ano) {
-            sql += ` AND EXTRACT(MONTH FROM d.data) = $${counter}::int AND EXTRACT(YEAR FROM d.data) = $${counter + 1}::int`;
+            sql += ` AND ${extractMonth('d.data')} = $${counter}::int AND ${extractYear('d.data')} = $${counter + 1}::int`;
             params.push(parseInt(mes), parseInt(ano));
             counter += 2;
         }
@@ -5525,17 +5540,9 @@ app.get('/api/despesas', auth, (req, res) => {
             counter++;
         }
     } else {
-        // SQLite
         if (mes && ano) {
-            if (isProduction) {
-                // PostgreSQL - usar placeholders com contador
-                sql += ` AND EXTRACT(MONTH FROM d.data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM d.data) = $${params.length + 2}::int`;
-                params.push(parseInt(mes), parseInt(ano));
-            } else {
-                // SQLite
-                sql += ` AND strftime('%m', d.data) = ? AND strftime('%Y', d.data) = ?`;
-                params.push(mes.padStart(2, '0'), ano);
-            }
+            sql += ` AND ${extractMonth('d.data')} = ? AND ${extractYear('d.data')} = ?`;
+            params.push(mes.padStart(2, '0'), ano);
         }
 
         if (categoria) {
@@ -5814,7 +5821,7 @@ app.delete('/api/despesas/:id', auth, (req, res) => {
 });
 
 // ============================================
-// GET /api/despesas/resumo - RESUMO DO M�S (CORRIGIDO PARA POSTGRESQL)
+// ROTA: /api/despesas/resumo (CORRIGIDA)
 // ============================================
 app.get('/api/despesas/resumo', auth, (req, res) => {
     const usuario = req.usuario;
@@ -5836,79 +5843,74 @@ app.get('/api/despesas/resumo', auth, (req, res) => {
     const mes = String(hoje.getMonth() + 1).padStart(2, '0');
     const ano = String(hoje.getFullYear());
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
     let sql;
-    let params = [empresaId, mes, ano];
+    let params = [empresaId];
 
     if (isProduction) {
-        // PostgreSQL
-        let counter = 2; // usar TRUE / FALSE e EXTRACT
         sql = `
             SELECT 
-                COALESCE(SUM(CASE WHEN pago = true THEN valor ELSE 0 END), 0) as total_pago,
-                COALESCE(SUM(CASE WHEN pago = false THEN valor ELSE 0 END), 0) as total_pendente,
-                COALESCE(SUM(valor), 0) as total_despesas,
+                ${coalesceSum('CASE WHEN pago = true THEN valor ELSE 0 END')} as total_pago,
+                ${coalesceSum('CASE WHEN pago = false THEN valor ELSE 0 END')} as total_pendente,
+                ${coalesceSum('valor')} as total_despesas,
                 COUNT(*) as total_quantidade
             FROM despesas
             WHERE empresa_id = $1
-            AND EXTRACT(MONTH FROM data) = $2::int
-            AND EXTRACT(YEAR FROM data) = $3::int
+            AND ${extractMonth('data')} = $2::int
+            AND ${extractYear('data')} = $3::int
         `;
+        params.push(parseInt(mes), parseInt(ano));
     } else {
-        // SQLite
         sql = `
             SELECT 
-                COALESCE(SUM(CASE WHEN pago = 1 THEN valor ELSE 0 END), 0) as total_pago,
-                COALESCE(SUM(CASE WHEN pago = 0 THEN valor ELSE 0 END), 0) as total_pendente,
-                COALESCE(SUM(valor), 0) as total_despesas,
+                ${coalesceSum('CASE WHEN pago = 1 THEN valor ELSE 0 END')} as total_pago,
+                ${coalesceSum('CASE WHEN pago = 0 THEN valor ELSE 0 END')} as total_pendente,
+                ${coalesceSum('valor')} as total_despesas,
                 COUNT(*) as total_quantidade
             FROM despesas
             WHERE empresa_id = ?
-                        ${isProduction
-                ? `AND EXTRACT(MONTH FROM data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM data) = $${params.length + 2}::int`
-                : `AND strftime('%m', data) = ? AND strftime('%Y', data) = ?`
-            }
+            AND ${extractMonth('data')} = ?
+            AND ${extractYear('data')} = ?
         `;
+        params.push(mes.padStart(2, '0'), ano);
     }
 
     db.get(sql, params, (err, resumo) => {
         if (err) {
-            console.error('? Erro ao buscar resumo:', err);
+            console.error('❌ Erro ao buscar resumo:', err);
             return res.status(500).json({ success: false, message: err.message });
         }
 
         // Buscar por categoria
         let catSql;
-        let catParams = [empresaId, mes, ano];
+        let catParams = [empresaId];
 
         if (isProduction) {
             catSql = `
-                SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
+                SELECT categoria, COUNT(*) as total, ${coalesceSum('valor')} as total_valor
                 FROM despesas
                 WHERE empresa_id = $1
-                AND EXTRACT(MONTH FROM data) = $2::int
-                AND EXTRACT(YEAR FROM data) = $3::int
+                AND ${extractMonth('data')} = $2::int
+                AND ${extractYear('data')} = $3::int
                 GROUP BY categoria
                 ORDER BY total_valor DESC
             `;
+            catParams.push(parseInt(mes), parseInt(ano));
         } else {
             catSql = `
-                SELECT categoria, COUNT(*) as total, SUM(valor) as total_valor
+                SELECT categoria, COUNT(*) as total, ${coalesceSum('valor')} as total_valor
                 FROM despesas
                 WHERE empresa_id = ?
-                                ${isProduction
-                    ? `AND EXTRACT(MONTH FROM data) = $${params.length + 1}::int AND EXTRACT(YEAR FROM data) = $${params.length + 2}::int`
-                    : `AND strftime('%m', data) = ? AND strftime('%Y', data) = ?`
-                }
+                AND ${extractMonth('data')} = ?
+                AND ${extractYear('data')} = ?
                 GROUP BY categoria
                 ORDER BY total_valor DESC
             `;
+            catParams.push(mes.padStart(2, '0'), ano);
         }
 
         db.all(catSql, catParams, (err, categorias) => {
             if (err) {
-                console.error('? Erro ao buscar categorias:', err);
+                console.error('❌ Erro ao buscar categorias:', err);
                 return res.status(500).json({ success: false, message: err.message });
             }
 
