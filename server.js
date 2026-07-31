@@ -3685,13 +3685,16 @@ app.post('/api/agendamentos',
             // ============================================
             // 📱 ENVIAR WHATSAPP - CORRIGIDO (USANDO db.get)
             // ============================================
+            // ============================================
+            // 📱 ENVIAR WHATSAPP - USANDO O SERVIÇO CORRETO
+            // ============================================
             try {
                 console.log('📱 Tentando enviar WhatsApp...');
 
                 // Importar o serviço WhatsApp
                 const whatsapp = require('./server/services/whatsapp');
 
-                // Buscar dados do cliente usando db.get
+                // Buscar dados do cliente
                 const cliente = await new Promise((resolve) => {
                     db.get(
                         'SELECT nome, telefone FROM clientes WHERE id = ? AND empresa_id = ?',
@@ -3707,10 +3710,10 @@ app.post('/api/agendamentos',
                     );
                 });
 
-                // Buscar dados da empresa usando db.get
+                // Buscar dados da empresa
                 const empresa = await new Promise((resolve) => {
                     db.get(
-                        'SELECT nome, endereco FROM empresas WHERE id = ?',
+                        'SELECT nome, endereco, telefone_dono FROM empresas WHERE id = ?',
                         [empresa_id],
                         (err, row) => {
                             if (err) {
@@ -3728,25 +3731,24 @@ app.post('/api/agendamentos',
                     console.log(`📱 Empresa: ${empresa.nome}`);
 
                     if (cliente.telefone) {
-                        const mensagem = `✅ *Agendamento Confirmado!*\n\n` +
+                        // Usar a função send do whatsapp
+                        const resultado = await whatsapp.send(
+                            empresa_id,
+                            cliente.telefone,
+                            `✅ *Agendamento Confirmado!*\n\n` +
                             `Olá ${cliente.nome}! Seu agendamento foi confirmado:\n\n` +
                             `📅 *Data:* ${formatarDataBr(data)}\n` +
                             `⏰ *Hora:* ${hora}\n` +
                             `💇 *Serviço:* ${nomeServico}\n` +
                             `🏢 *Empresa:* ${empresa.nome}\n\n` +
                             `📍 ${empresa.endereco || 'Endereço não informado'}\n\n` +
-                            `Nos vemos lá! 😊`;
-
-                        const resultado = await whatsapp.enviarMensagem(
-                            empresa_id,
-                            cliente.telefone,
-                            mensagem
+                            `Nos vemos lá! 😊`
                         );
 
                         if (resultado.success) {
                             console.log(`✅ WhatsApp enviado para ${cliente.telefone}`);
                         } else {
-                            console.log(`⚠️ WhatsApp não enviado: ${resultado.message}`);
+                            console.log(`⚠️ WhatsApp não enviado: ${resultado.error || resultado.message}`);
                         }
                     } else {
                         console.log(`⚠️ Cliente ${cliente.nome} não tem telefone cadastrado`);
