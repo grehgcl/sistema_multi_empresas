@@ -8076,6 +8076,8 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
         const { numero, mensagem, empresa_id } = req.body;
         let empresaId = empresa_id || req.usuario.empresa_id;
 
+        console.log(`📱 Enviando mensagem para ${numero} (empresa ${empresaId})`);
+
         if (!numero || !mensagem) {
             return res.status(400).json({
                 success: false,
@@ -8091,40 +8093,56 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
-        console.log(`📱 Enviando mensagem para ${numeroLimpo} (empresa ${empresaId})`);
+        // Importar o serviço
+        const EvolutionInstances = require('./server/services/evolution-instances');
 
-        if (process.env.WHATSAPP_ENABLED !== 'true') {
-            console.log(`📱 [MODO LOG] Mensagem para ${numeroLimpo}: ${mensagem}`);
-            return res.json({
-                success: true,
-                message: 'Mensagem registrada (modo log)',
-                modo_log: true
-            });
-        }
-
+        // Se não tem empresa, usar instância padrão
         if (!empresaId) {
-            const EvolutionInstances = require('./server/services/evolution-instances');
-            const envio = await EvolutionInstances.enviarMensagem(null, numeroLimpo, mensagem, null);
+            const envio = await EvolutionInstances.enviarMensagem(
+                null,
+                numeroLimpo,
+                mensagem,
+                null
+            );
+
             if (envio.success) {
-                return res.json({ success: true, message: 'Mensagem enviada pela instância padrão!', data: envio });
+                return res.json({
+                    success: true,
+                    message: 'Mensagem enviada pela instância padrão!',
+                    data: envio
+                });
             } else {
-                return res.status(500).json({ success: false, message: envio.message });
+                return res.status(500).json({
+                    success: false,
+                    message: envio.message || 'Erro ao enviar mensagem'
+                });
             }
         }
 
-        const result = await db.query(
-            'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado, telefone_dono FROM empresas WHERE id = $1',
+        // Buscar empresa usando o pool
+        const result = await pool.query(
+            'SELECT id, nome, whatsapp_instance, whatsapp_proprio_habilitado FROM empresas WHERE id = $1',
             [empresaId]
         );
 
         if (result.rows.length === 0) {
-            return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
         }
 
         const empresa = result.rows[0];
-        const EvolutionInstances = require('./server/services/evolution-instances');
+        console.log(`🏢 Empresa: ${empresa.nome}`);
+        console.log(`📱 Instância: ${empresa.whatsapp_instance || 'Nenhuma'}`);
 
-        const envio = await EvolutionInstances.enviarMensagem(empresaId, numeroLimpo, mensagem, empresa.nome);
+        // Enviar mensagem
+        const envio = await EvolutionInstances.enviarMensagem(
+            empresaId,
+            numeroLimpo,
+            mensagem,
+            empresa.nome
+        );
 
         if (envio.success) {
             return res.json({
@@ -8137,12 +8155,18 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
                 }
             });
         } else {
-            return res.status(500).json({ success: false, message: envio.message });
+            return res.status(500).json({
+                success: false,
+                message: envio.message || 'Erro ao enviar mensagem'
+            });
         }
 
     } catch (error) {
         console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro interno ao enviar mensagem'
+        });
     }
 });
 // ============================================
