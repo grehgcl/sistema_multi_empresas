@@ -265,4 +265,6 @@ module.exports = {
     formatarDataBr,
     formatarTelefone,
     gerarMensagemConfirmacao,
+    // Adicionar alias para compatibilidade
+    enviarMensagem: send
 };

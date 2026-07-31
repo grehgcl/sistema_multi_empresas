@@ -3683,10 +3683,7 @@ app.post('/api/agendamentos',
             });
 
             // ============================================
-            // 📱 ENVIAR WHATSAPP - CORRIGIDO (USANDO db.get)
-            // ============================================
-            // ============================================
-            // 📱 ENVIAR WHATSAPP - USANDO O SERVIÇO CORRETO
+            // 📱 ENVIAR WHATSAPP - CORRIGIDO
             // ============================================
             try {
                 console.log('📱 Tentando enviar WhatsApp...');
@@ -3731,8 +3728,8 @@ app.post('/api/agendamentos',
                     console.log(`📱 Empresa: ${empresa.nome}`);
 
                     if (cliente.telefone) {
-                        // Usar a função send do whatsapp
-                        const resultado = await whatsapp.send(
+                        // Usar enviarMensagem (que é um alias para send)
+                        const resultado = await whatsapp.enviarMensagem(
                             empresa_id,
                             cliente.telefone,
                             `✅ *Agendamento Confirmado!*\n\n` +
