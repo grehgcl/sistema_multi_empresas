@@ -3683,7 +3683,7 @@ app.post('/api/agendamentos',
             });
 
             // ============================================
-            // 📱 ENVIAR WHATSAPP - CORRIGIDO
+            // 📱 ENVIAR WHATSAPP - CORRIGIDO (USANDO db.get)
             // ============================================
             try {
                 console.log('📱 Tentando enviar WhatsApp...');
@@ -3694,7 +3694,7 @@ app.post('/api/agendamentos',
                 // Buscar dados do cliente usando db.get
                 const cliente = await new Promise((resolve) => {
                     db.get(
-                        'SELECT nome, telefone FROM clientes WHERE id = $1 AND empresa_id = $2',
+                        'SELECT nome, telefone FROM clientes WHERE id = ? AND empresa_id = ?',
                         [cliente_id, empresa_id],
                         (err, row) => {
                             if (err) {
@@ -3710,7 +3710,7 @@ app.post('/api/agendamentos',
                 // Buscar dados da empresa usando db.get
                 const empresa = await new Promise((resolve) => {
                     db.get(
-                        'SELECT nome, endereco FROM empresas WHERE id = $1',
+                        'SELECT nome, endereco FROM empresas WHERE id = ?',
                         [empresa_id],
                         (err, row) => {
                             if (err) {
