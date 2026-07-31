@@ -3683,7 +3683,7 @@ app.post('/api/agendamentos',
             });
 
             // ============================================
-            // 📱 ENVIAR WHATSAPP - NOVO!
+            // 📱 ENVIAR WHATSAPP - CORRIGIDO
             // ============================================
             try {
                 console.log('📱 Tentando enviar WhatsApp...');
@@ -3691,26 +3691,42 @@ app.post('/api/agendamentos',
                 // Importar o serviço WhatsApp
                 const whatsapp = require('./server/services/whatsapp');
 
-                // Buscar dados do cliente
-                const clienteResult = await pool.query(
-                    'SELECT nome, telefone FROM clientes WHERE id = $1 AND empresa_id = $2',
-                    [cliente_id, empresa_id]
-                );
+                // Buscar dados do cliente usando db.get
+                const cliente = await new Promise((resolve) => {
+                    db.get(
+                        'SELECT nome, telefone FROM clientes WHERE id = $1 AND empresa_id = $2',
+                        [cliente_id, empresa_id],
+                        (err, row) => {
+                            if (err) {
+                                console.error('❌ Erro ao buscar cliente:', err);
+                                resolve(null);
+                            } else {
+                                resolve(row);
+                            }
+                        }
+                    );
+                });
 
-                // Buscar dados da empresa
-                const empresaResult = await pool.query(
-                    'SELECT nome, endereco FROM empresas WHERE id = $1',
-                    [empresa_id]
-                );
+                // Buscar dados da empresa usando db.get
+                const empresa = await new Promise((resolve) => {
+                    db.get(
+                        'SELECT nome, endereco FROM empresas WHERE id = $1',
+                        [empresa_id],
+                        (err, row) => {
+                            if (err) {
+                                console.error('❌ Erro ao buscar empresa:', err);
+                                resolve(null);
+                            } else {
+                                resolve(row);
+                            }
+                        }
+                    );
+                });
 
-                if (clienteResult.rows.length > 0 && empresaResult.rows.length > 0) {
-                    const cliente = clienteResult.rows[0];
-                    const empresa = empresaResult.rows[0];
-
+                if (cliente && empresa) {
                     console.log(`📱 Cliente: ${cliente.nome}, Telefone: ${cliente.telefone}`);
                     console.log(`📱 Empresa: ${empresa.nome}`);
 
-                    // Verificar se o cliente tem telefone
                     if (cliente.telefone) {
                         const mensagem = `✅ *Agendamento Confirmado!*\n\n` +
                             `Olá ${cliente.nome}! Seu agendamento foi confirmado:\n\n` +
@@ -3740,7 +3756,6 @@ app.post('/api/agendamentos',
                 }
             } catch (whatsappError) {
                 console.error('❌ Erro ao enviar WhatsApp:', whatsappError.message);
-                // Não interrompe o fluxo principal
             }
             // ============================================
             // FIM DO WHATSAPP
