@@ -7356,73 +7356,114 @@ app.get('/api/empresa/whatsapp/info', auth, (req, res) => {
     });
 });
 
-// 🔹 Criar instância
+// ============================================
+// ROTA: CRIAR INSTÂNCIA WHATSAPP (CORRIGIDA)
+// ============================================
 app.post('/api/empresa/whatsapp/criar-instancia', auth, async (req, res) => {
-    const empresaId = req.usuario.empresa_id;
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const { telefone } = req.body;
 
-    const sqlSelect = isProduction
-        ? 'SELECT nome, whatsapp_instance FROM empresas WHERE id = $1'
-        : 'SELECT nome, whatsapp_instance FROM empresas WHERE id = ?';
+        console.log(`📱 Criando instância para empresa ${empresaId}`);
 
-    db.get(sqlSelect, [empresaId], async (err, empresa) => {
-        if (err || !empresa) {
-            return res.status(400).json({ success: false, message: 'Empresa não encontrada' });
+        // Buscar nome da empresa
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? 'SELECT nome FROM empresas WHERE id = $1'
+                : 'SELECT nome FROM empresas WHERE id = ?';
+            db.get(sql, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
         }
 
-        // 🔥 Nome simples baseado no ID
-        const nomeInstancia = `emp-${empresaId}`;
+        // 🔥 GERAR NOME CORRETO (COM ID + NOME)
+        const nomeLimpo = empresa.nome
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+            .replace(/[^a-z0-9]/g, '-')      // Substitui caracteres especiais
+            .replace(/-+/g, '-')             // Remove múltiplos hífens
+            .replace(/^-|-$/g, '');          // Remove hífens no início/fim
 
-        // Se já tem instância no banco, usar ela
-        if (empresa.whatsapp_instance) {
-            // Verificar se existe na Evolution
-            const status = await EvolutionInstances.getStatus(empresa.whatsapp_instance);
-            if (status.success && status.state !== 'not_found') {
+        const instanceName = `emp-${empresaId}-${nomeLimpo}`;
+
+        console.log(`📱 Nome da instância: ${instanceName}`);
+
+        // URL da Evolution
+        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+        const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+
+        // Verificar se a instância já existe
+        try {
+            const checkResponse = await axios.get(
+                `${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`,
+                { headers: { 'apikey': EVOLUTION_API_KEY } }
+            );
+
+            if (checkResponse.data?.instance?.state === 'open') {
                 return res.json({
                     success: true,
-                    message: 'Instância já existe',
-                    instanceName: empresa.whatsapp_instance
+                    message: 'Instância já existe e está conectada!',
+                    instanceName: instanceName,
+                    alreadyExists: true
                 });
             }
+        } catch (e) {
+            // Instância não existe, continuar
+            console.log('📱 Instância não encontrada, criando nova...');
         }
 
-        // 🔥 TENTAR CRIAR A INSTÂNCIA
-        const resultado = await EvolutionInstances.criarInstancia(nomeInstancia);
-
-        // Se falhou por já existir, tenta usar a existente
-        if (!resultado.success && resultado.message && resultado.message.includes('already exists')) {
-            return res.json({
-                success: true,
-                message: 'Instância já existe na Evolution',
-                instanceName: nomeInstancia
-            });
-        }
-
-        if (!resultado.success) {
-            console.error('❌ Erro ao criar instância:', resultado.message);
-            return res.status(400).json({
-                success: false,
-                message: resultado.message || 'Erro ao criar instância. Tente novamente.'
-            });
-        }
+        // Criar instância na Evolution
+        const response = await axios.post(
+            `${EVOLUTION_API_URL}/instance/create`,
+            {
+                instanceName: instanceName,
+                number: telefone?.replace(/\D/g, '') || '',
+                qrcode: true,
+                integration: "WHATSAPP-BAILEYS"
+            },
+            {
+                headers: {
+                    'apikey': EVOLUTION_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
 
         // Salvar no banco
         const sqlUpdate = isProduction
-            ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
-            : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
+            ? 'UPDATE empresas SET whatsapp_instance = $1, whatsapp_proprio_habilitado = true WHERE id = $2'
+            : 'UPDATE empresas SET whatsapp_instance = ?, whatsapp_proprio_habilitado = 1 WHERE id = ?';
 
-        db.run(sqlUpdate, [nomeInstancia, empresaId], (err) => {
-            if (err) {
-                console.error('❌ Erro ao salvar instância:', err);
-                return res.status(500).json({ success: false, message: 'Erro ao salvar' });
-            }
-
-            res.json({
-                success: true,
-                instanceName: nomeInstancia,
-                message: 'Instância criada!'
+        await new Promise((resolve, reject) => {
+            db.run(sqlUpdate, [instanceName, empresaId], (err) => {
+                if (err) reject(err);
+                else resolve();
             });
         });
-    });
+
+        res.json({
+            success: true,
+            message: 'Instância criada com sucesso!',
+            instanceName: instanceName,
+            data: response.data
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao criar instância:', error.message);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro ao criar instância'
+        });
+    }
 });
 
 // 🔹 Buscar QR Code (COM CRIAÇÃO AUTOMÁTICA SE NÃO EXISTIR)
