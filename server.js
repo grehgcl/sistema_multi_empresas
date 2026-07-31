@@ -16,8 +16,9 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const axios = require('axios');  // ← ADICIONE ESTA LINHA
+const jwt = require('jsonwebtoken');
 // ============================================================
 // MERCADO PAGO
 // ============================================================
@@ -8070,12 +8071,15 @@ app.get('/api/whatsapp/webhook', (req, res) => {
 
 // 🔥 CACHE DE ENVIOS NO BACKEND (evita duplicatas)
 const enviosCache = new Map();
+// ============================================
+// ROTA WHATSAPP ENVIAR - COM INSTÂNCIA PRÓPRIA
+// ============================================
 app.post('/api/whatsapp/enviar', auth, async (req, res) => {
+    console.log('📱 ROTA WHATSAPP ENVIAR CHAMADA!');
+    console.log('Body:', req.body);
+
     try {
         const { numero, mensagem, empresa_id } = req.body;
-        let empresaId = empresa_id || req.usuario.empresa_id;
-
-        console.log(`📱 Enviando mensagem para ${numero} (empresa ${empresaId})`);
 
         if (!numero || !mensagem) {
             return res.status(400).json({
@@ -8085,71 +8089,58 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
         }
 
         const numeroLimpo = numero.replace(/\D/g, '');
-        if (!numeroLimpo) {
-            return res.status(400).json({
-                success: false,
-                message: 'Número inválido'
-            });
+        console.log(`📱 Número: ${numeroLimpo}`);
+        console.log(`📱 Empresa ID: ${empresa_id}`);
+
+        // URL da Evolution
+        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+        const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+
+        // Determinar qual instância usar
+        let instanceName = 'seeagende'; // padrão
+
+        // Se for empresa 14, usar a instância dela
+        if (empresa_id == 14) {
+            instanceName = 'emp-14-salao-da-sandra-';
+            console.log(`📱 Usando instância da empresa: ${instanceName}`);
         }
 
-        // Importar o serviço
-        const EvolutionInstances = require('./server/services/evolution-instances');
-
-        // Se não tem empresa, usar instância padrão
-        if (!empresaId) {
-            const envio = await EvolutionInstances.enviarMensagem(
-                null,
-                numeroLimpo,
-                mensagem,
-                null
-            );
-
-            return res.json({
-                success: envio.success,
-                message: envio.success ? 'Mensagem enviada pela instância padrão!' : envio.message,
-                data: envio
-            });
-        }
-
-        // Buscar empresa usando o db.get (que já existe no server.js)
-        const empresa = await new Promise((resolve, reject) => {
-            const sql = `SELECT id, nome, whatsapp_instance, whatsapp_proprio_habilitado 
-                        FROM empresas WHERE id = $1`;
-            db.get(sql, [empresaId], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
-
-        if (!empresa) {
-            return res.status(404).json({
-                success: false,
-                message: 'Empresa não encontrada'
-            });
-        }
-
-        console.log(`🏢 Empresa: ${empresa.nome}`);
-        console.log(`📱 Instância: ${empresa.whatsapp_instance || 'Nenhuma'}`);
-
-        // Enviar mensagem
-        const envio = await EvolutionInstances.enviarMensagem(
-            empresaId,
-            numeroLimpo,
-            mensagem,
-            empresa.nome
+        // Chamar a Evolution
+        const response = await axios.post(
+            `${EVOLUTION_API_URL}/message/sendText/${instanceName}`,
+            {
+                number: numeroLimpo,
+                text: mensagem,
+                delay: 1200
+            },
+            {
+                headers: {
+                    'apikey': EVOLUTION_API_KEY,
+                    'Content-Type': 'application/json'
+                }
+            }
         );
 
+        console.log(`✅ Mensagem enviada via ${instanceName}`);
+
         return res.json({
-            success: envio.success,
-            message: envio.success ? 'Mensagem enviada com sucesso!' : envio.message,
-            data: envio
+            success: true,
+            message: `Mensagem enviada com sucesso via ${instanceName}!`,
+            data: {
+                instanceName: instanceName,
+                usadoInstanciaPropria: instanceName !== 'seeagende',
+                evolutionResponse: response.data
+            }
         });
 
     } catch (error) {
-        console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
-        res.status(500).json({
+        console.error('❌ ERRO:', error.message);
+        if (error.response) {
+            console.error('❌ Response da Evolution:', error.response.data);
+        }
+        return res.status(500).json({
             success: false,
-            message: error.message || 'Erro interno ao enviar mensagem'
+            message: error.message || 'Erro ao enviar mensagem'
         });
     }
 });
