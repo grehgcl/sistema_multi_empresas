@@ -1,6 +1,17 @@
 ﻿// ============================================
-// UI FUNCTIONS - SEE&AGENDE v6.0
+// UI FUNCTIONS - SEE&AGENDE v7.0
 // ============================================
+
+// ============================================
+// CARREGAR CSS DA PÁGINA
+// ============================================
+function carregarCSS(pagina) {
+    const link = document.getElementById('page-css');
+    if (link) {
+        link.href = `/css/pages/${pagina}.css?v=${Date.now()}`;
+        console.log(`🎨 CSS carregado: ${pagina}.css`);
+    }
+}
 
 // ============================================
 // TOAST NOTIFICATION
@@ -117,7 +128,6 @@ function initResponsiveSidebar() {
         document.body.style.overflow = '';
     }
 
-    // Fechar ao clicar em qualquer botão do sidebar (mobile)
     sidebar.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('click', function () {
             if (window.innerWidth <= 768) {
@@ -126,7 +136,6 @@ function initResponsiveSidebar() {
         });
     });
 
-    // Swipe para fechar
     sidebar.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
     });
@@ -138,7 +147,6 @@ function initResponsiveSidebar() {
         }
     });
 
-    // Botão hambúrguer
     menuBtn.onclick = function (e) {
         e.stopPropagation();
         if (sidebar.classList.contains('open')) {
@@ -148,12 +156,10 @@ function initResponsiveSidebar() {
         }
     };
 
-    // Overlay
     if (overlay) {
         overlay.onclick = closeSidebar;
     }
 
-    // Fechar ao redimensionar para desktop
     window.addEventListener('resize', function () {
         if (window.innerWidth > 768) {
             closeSidebar();
@@ -164,7 +170,6 @@ function initResponsiveSidebar() {
 // ============================================
 // FECHAR SIDEBAR MOBILE
 // ============================================
-
 function fecharSidebarMobile() {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
@@ -183,15 +188,9 @@ function fecharSidebarMobile() {
 // ============================================
 // EXECUTAR AÇÃO E FECHAR SIDEBAR
 // ============================================
-
 function executarAcao(funcao, id) {
-    // Fechar sidebar primeiro (mobile)
     fecharSidebarMobile();
-
-    // Ativar botão
     ativarBotao(id);
-
-    // Executar a função
     if (typeof window[funcao] === 'function') {
         window[funcao]();
     } else {
@@ -200,16 +199,14 @@ function executarAcao(funcao, id) {
 }
 
 // ============================================
-// CONTROLAR MENU - MOSTRAR SÓ QUANDO LOGADO
+// CONTROLAR MENU
 // ============================================
-
 function controlarMenu() {
     const token = localStorage.getItem('token');
     const menuBtn = document.getElementById('menuMobileBtn');
     const overlay = document.getElementById('sidebarOverlay');
     const landingContainer = document.getElementById('landingContainer');
 
-    // Verificar se está na landing page
     const isLandingPage = landingContainer && landingContainer.style.display !== 'none';
 
     if (menuBtn) {
@@ -234,7 +231,6 @@ function controlarMenu() {
 // ============================================
 // FORÇAR CORES DO HEADER
 // ============================================
-
 function forcarCoresHeader() {
     const userNameEl = document.getElementById('userName');
     const userBadgeEl = document.getElementById('userBadge');
@@ -259,35 +255,15 @@ function forcarCoresHeader() {
 }
 
 // ============================================
-// INICIAR UI
+// FORMATAR DATA (CORRIGIDO)
 // ============================================
-document.addEventListener('DOMContentLoaded', function () {
-    initResponsiveSidebar();
-    controlarMenu();
-    setTimeout(forcarCoresHeader, 500);
-});
-
-// Chamar quando o token mudar (login/logout)
-window.addEventListener('storage', function (e) {
-    if (e.key === 'token' || e.key === 'usuario') {
-        controlarMenu();
-        setTimeout(forcarCoresHeader, 500);
-    }
-});
-
-// ============================================
-// FORMATAR DATA - CORRIGIDO (SEM TIMEZONE)
-// ============================================
-
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        // Se for string com T (formato ISO), pegar só a data
         let dataLimpa = dataStr;
         if (typeof dataStr === 'string' && dataStr.includes('T')) {
             dataLimpa = dataStr.split('T')[0];
         }
-
         if (typeof dataLimpa === 'string' && dataLimpa.includes('-')) {
             const partes = dataLimpa.split('-');
             if (partes.length === 3) {
@@ -298,9 +274,74 @@ function formatarDataBr(dataStr) {
     } catch {
         return dataStr;
     }
-}// ============================================
+}
+
+// ============================================
+// MOSTRAR LANDING PAGE (COM CSS)
+// ============================================
+function mostrarLanding() {
+    const landing = document.getElementById('landingContainer');
+    const app = document.getElementById('app');
+
+    if (landing) landing.style.display = 'flex';
+    if (app) app.style.display = 'none';
+
+    // 🔥 CARREGAR CSS DA LANDING
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('landing');
+    }
+}
+
+// ============================================
+// MOSTRAR LOGIN
+// ============================================
+function mostrarLogin() {
+    const login = document.getElementById('loginContainer');
+    const cadastro = document.getElementById('cadastroContainer');
+    const loginMsg = document.getElementById('loginMessage');
+    const cadastroMsg = document.getElementById('cadastroMessage');
+
+    if (login) login.style.display = 'block';
+    if (cadastro) cadastro.style.display = 'none';
+    if (loginMsg) loginMsg.style.display = 'none';
+    if (cadastroMsg) cadastroMsg.style.display = 'none';
+}
+
+// ============================================
+// MOSTRAR CADASTRO
+// ============================================
+function mostrarCadastro() {
+    const login = document.getElementById('loginContainer');
+    const cadastro = document.getElementById('cadastroContainer');
+    const loginMsg = document.getElementById('loginMessage');
+    const cadastroMsg = document.getElementById('cadastroMessage');
+
+    if (login) login.style.display = 'none';
+    if (cadastro) cadastro.style.display = 'block';
+    if (loginMsg) loginMsg.style.display = 'none';
+    if (cadastroMsg) cadastroMsg.style.display = 'none';
+}
+
+// ============================================
+// INICIAR UI
+// ============================================
+document.addEventListener('DOMContentLoaded', function () {
+    initResponsiveSidebar();
+    controlarMenu();
+    setTimeout(forcarCoresHeader, 500);
+});
+
+window.addEventListener('storage', function (e) {
+    if (e.key === 'token' || e.key === 'usuario') {
+        controlarMenu();
+        setTimeout(forcarCoresHeader, 500);
+    }
+});
+
+// ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
+window.carregarCSS = carregarCSS;
 window.showToast = showToast;
 window.showLoading = showLoading;
 window.hideLoading = hideLoading;
@@ -310,5 +351,9 @@ window.controlarMenu = controlarMenu;
 window.forcarCoresHeader = forcarCoresHeader;
 window.fecharSidebarMobile = fecharSidebarMobile;
 window.executarAcao = executarAcao;
+window.formatarDataBr = formatarDataBr;
+window.mostrarLanding = mostrarLanding;
+window.mostrarLogin = mostrarLogin;
+window.mostrarCadastro = mostrarCadastro;
 
-console.log('✅ UI.js carregado com sucesso - v6.0');
+console.log('✅ UI.js carregado com sucesso - v7.0');

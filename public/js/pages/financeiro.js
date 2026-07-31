@@ -48,6 +48,9 @@ let despesaEditandoId = null;
 // ============================================
 
 async function carregarFinanceiro() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('financeiro');
+    }
     ativarBotao('financeiro');
     showLoading();
 

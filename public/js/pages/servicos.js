@@ -2,6 +2,10 @@
 let listaServicosGlobal = [];
 
 async function carregarServicos() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('servicos');
+        console.log('🎨 CSS carregado: servicos.css');
+    }
     ativarBotao('servicos');
 
     const usuario = JSON.parse(localStorage.getItem('usuario'));

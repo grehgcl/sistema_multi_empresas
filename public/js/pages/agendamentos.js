@@ -7,6 +7,10 @@ let clientesList = [];
 let servicosList = [];
 
 async function carregarAgendamentos() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('agendamentos');
+        console.log('🎨 CSS carregado: agendamentos.css');
+    }
     ativarBotao("agendamentos");
     showLoading();
     const token = localStorage.getItem("token");

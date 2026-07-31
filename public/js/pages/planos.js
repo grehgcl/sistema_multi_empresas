@@ -136,6 +136,9 @@ const PLANOS_CONFIG = {
 // ============================================
 
 async function carregarPlanos() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('planos');
+    }
     console.log('🔄 Carregando planos...');
     showLoading();
     const token = localStorage.getItem('token');

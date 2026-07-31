@@ -1,0 +1,59 @@
+/* ============================================
+    - ESTILOS ESPEC�FICOS
+   ULTIMA ATUALIZACAO: 31/07/2026
+   ============================================ */
+
+/* Estilos da p�gina */
+/* ============================================
+   PROFISSIONAIS.CSS - ESTILOS ESPECÍFICOS
+   ULTIMA ATUALIZACAO: 31/07/2026
+   ============================================ */
+
+.profissional-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 8px;
+}
+
+.profissional-item .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--gradient-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 16px;
+}
+
+.profissional-item .info .nome {
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.profissional-item .info .email {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.profissional-item .info .comissao {
+    font-size: 12px;
+    color: #f59e0b;
+}
+
+.status-ativo {
+    color: #22c55e;
+    font-weight: 600;
+}
+
+.status-inativo {
+    color: #ef4444;
+    font-weight: 600;
+}

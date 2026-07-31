@@ -1,0 +1,267 @@
+/* ============================================
+   SERVICOS.CSS - ESTILOS COMPLETOS
+   ULTIMA ATUALIZACAO: 31/07/2026
+   ============================================ */
+
+/* ----- HEADER E TÍTULOS ----- */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-title i {
+    color: var(--primary);
+}
+
+.page-subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+/* ----- STATS ----- */
+.servico-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.stat-mini {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.stat-mini-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+}
+
+.stat-mini-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ----- LISTA DE SERVIÇOS ----- */
+.servicos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+}
+
+/* ----- TABELA ----- */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 13px;
+}
+
+.data-table thead {
+    background: var(--gradient);
+}
+
+.data-table th {
+    padding: 10px 16px;
+    text-align: left;
+    color: white;
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.data-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-hover);
+}
+
+.data-table .valor {
+    font-weight: 700;
+    color: #22c55e;
+}
+
+/* ----- STATUS ----- */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-badge.ativo {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+.status-badge.ativo .dot {
+    background: #22c55e;
+}
+
+.status-badge.inativo {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.status-badge.inativo .dot {
+    background: #ef4444;
+}
+
+/* ----- AÇÕES ----- */
+.actions-cell {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px 10px;
+    border-radius: 50%;
+    transition: var(--transition);
+    font-size: 15px;
+    color: var(--text-muted);
+}
+
+.btn-icon:hover {
+    background: var(--bg-hover);
+    transform: scale(1.1);
+}
+
+.btn-edit:hover {
+    background: rgba(102, 126, 234, 0.1);
+    color: var(--primary);
+}
+
+.btn-toggle-on:hover {
+    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+}
+
+.btn-toggle-off:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* ----- MOBILE ----- */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 20px;
+    }
+
+    .servico-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .stat-mini-value {
+        font-size: 16px;
+    }
+
+    .data-table thead {
+        display: none;
+    }
+
+    .data-table tbody tr {
+        display: block;
+        margin-bottom: 12px;
+        background: var(--bg-card);
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        padding: 14px 16px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+
+    .data-table tbody tr:hover {
+        background: var(--bg-card);
+    }
+
+    .data-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        padding: 6px 0 !important;
+        border-bottom: 1px solid var(--border-color);
+        background: transparent !important;
+    }
+
+    .data-table tbody td:last-child {
+        border-bottom: none;
+    }
+
+    .data-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .data-table tbody td .valor {
+        font-size: 14px;
+    }
+
+    .actions-cell {
+        justify-content: flex-end;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .servico-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .data-table tbody tr {
+        padding: 12px;
+    }
+}

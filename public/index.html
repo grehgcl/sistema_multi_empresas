@@ -8,9 +8,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <title>See&Agende - Gestão para Salões, Barbearias e Estéticas</title>
+
+    <!-- CSS GLOBAL -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
+
+    <!-- CSS DA PÁGINA (CARREGADO VIA JS) - 🔥 ADICIONADO -->
+    <link id="page-css" rel="stylesheet" href="">
+
+    <!-- AOS ANIMAÇÕES -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+
+    <!-- CHART.JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
@@ -245,18 +254,26 @@
     <canvas id="particlesCanvas"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;"></canvas>
 
+    <!-- ============================================
+    SCRIPTS
+    ============================================ -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <!-- UI PRIMEIRO (contém carregarCSS) -->
     <script src="/js/ui.js"></script>
-    <script src="/js/pages/dashboard.js?v=20260730"></script>
+
+    <!-- PÁGINAS -->
+    <script src="/js/pages/dashboard.js?v=20260731"></script>
     <script src="/js/pages/dashboard-profissional.js"></script>
     <script src="/js/pages/clientes.js"></script>
-    <script src="/js/pages/agendamentos.js?v=20260730"></script>
+    <script src="/js/pages/agendamentos.js?v=20260731"></script>
     <script src="/js/pages/agendamentos-profissional.js"></script>
     <script src="/js/pages/financeiro.js"></script>
     <script src="/js/pages/empresas.js"></script>
     <script src="/js/pages/configuracoes.js"></script>
     <script src="/js/pages/servicos.js"></script>
     <script src="/js/pages/planos.js"></script>
+    <script src="/js/pages/whatsapp-config.js"></script>
 
     <script>
         AOS.init({ duration: 800, once: true });
@@ -265,147 +282,7 @@
         let usuario = null;
 
         // ========== PARTÍCULAS ANIMADAS ==========
-        (function () {
-            const canvas = document.getElementById('particlesCanvas');
-            const ctx = canvas.getContext('2d');
-            let width, height;
-            let particles = [];
-            let animationId = null;
-            let isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-
-            function resize() {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
-            }
-            window.addEventListener('resize', resize);
-            resize();
-
-            class Particle {
-                constructor() {
-                    this.x = Math.random() * width;
-                    this.y = Math.random() * height;
-                    this.size = Math.random() * 2 + 0.5;
-                    this.speedX = (Math.random() - 0.5) * 0.5;
-                    this.speedY = (Math.random() - 0.5) * 0.5;
-                    this.opacity = Math.random() * 0.5 + 0.1;
-                }
-                update() {
-                    this.x += this.speedX;
-                    this.y += this.speedY;
-                    if (this.x < 0 || this.x > width) this.speedX *= -1;
-                    if (this.y < 0 || this.y > height) this.speedY *= -1;
-                }
-                draw() {
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fillStyle = isDark ? 'rgba(255,255,255,' + this.opacity + ')' : 'rgba(102,126,234,' + this.opacity +
-                        ')';
-                    ctx.fill();
-                }
-            }
-
-            function initParticles() {
-                const count = Math.min(80, Math.floor((width * height) / 15000));
-                particles = [];
-                for (let i = 0; i < count; i++) {
-                    particles.push(new Particle());
-                }
-            }
-            initParticles();
-
-            function drawLines() {
-                for (let i = 0; i < particles.length; i++) {
-                    for (let j = i + 1; j < particles.length; j++) {
-                        const dx = particles[i].x - particles[j].x;
-                        const dy = particles[i].y - particles[j].y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        if (distance < 150) {
-                            const opacity = (1 - distance / 150) * 0.15;
-                            ctx.beginPath();
-                            ctx.moveTo(particles[i].x, particles[i].y);
-                            ctx.lineTo(particles[j].x, particles[j].y);
-                            ctx.strokeStyle = isDark ? 'rgba(255,255,255,' + opacity + ')' : 'rgba(102,126,234,' + opacity +
-                                ')';
-                            ctx.lineWidth = 0.5;
-                            ctx.stroke();
-                        }
-                    }
-                }
-            }
-
-            function animate() {
-                ctx.clearRect(0, 0, width, height);
-                particles.forEach(p => {
-                    p.update();
-                    p.draw();
-                });
-                drawLines();
-                animationId = requestAnimationFrame(animate);
-            }
-
-            if (!document.hidden) { animate(); }
-
-            document.addEventListener('visibilitychange', function () {
-                if (document.hidden) {
-                    if (animationId) {
-                        cancelAnimationFrame(animationId);
-                        animationId = null;
-                    }
-                } else {
-                    if (!animationId) { animate(); }
-                }
-            });
-
-            const observer = new MutationObserver(() => {
-                const isDarkNow = document.documentElement.getAttribute('data-theme') === 'dark';
-                if (isDarkNow !== isDark) {
-                    isDark = isDarkNow;
-                    initParticles();
-                }
-            });
-            observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
-        })();
-
-        // ========== NAVEGAÇÃO ==========
-        function mostrarLanding() {
-            document.getElementById('landingContainer').style.display = 'flex';
-            document.getElementById('app').style.display = 'none';
-        }
-
-        function mostrarLogin() {
-            document.getElementById('loginContainer').style.display = 'block';
-            document.getElementById('cadastroContainer').style.display = 'none';
-            document.getElementById('loginMessage').style.display = 'none';
-            document.getElementById('cadastroMessage').style.display = 'none';
-        }
-
-        function mostrarCadastro() {
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('cadastroContainer').style.display = 'block';
-            document.getElementById('loginMessage').style.display = 'none';
-            document.getElementById('cadastroMessage').style.display = 'none';
-        }
-
-        function mostrarApp() {
-            document.getElementById('landingContainer').style.display = 'none';
-            document.getElementById('app').style.display = 'block';
-            document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
-            if (usuario.role === 'superadmin') {
-                document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
-            } else if (usuario.role === 'profissional') {
-                document.getElementById('userBadge').innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
-            } else {
-                document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 Proprietário</span>';
-            }
-            carregarMenu();
-            if (usuario.role === 'profissional') {
-                if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
-            } else if (usuario.role === 'superadmin') {
-                if (typeof carregarDashboardSuperAdmin === 'function') carregarDashboardSuperAdmin();
-            } else {
-                if (typeof carregarDashboard === 'function') carregarDashboard();
-            }
-        }
+        // ... (mantenha o código das partículas)
 
         // ========== TOGGLE PASSWORD ==========
         function togglePassword(inputId) {
@@ -451,10 +328,7 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // ============================================
-        // CORREÇÃO: AÇÕES RÁPIDAS
-        // ============================================
-
+        // ========== AÇÕES RÁPIDAS ==========
         function abrirModalAgendamentoRapido() {
             console.log('🔄 Ação rápida: Novo Agendamento');
             if (typeof window.abrirModalAgendamentoDono === 'function') {
@@ -488,53 +362,6 @@
             abrirModalCliente();
         }
 
-        function carregarSelectsAgendamento() {
-            try {
-                const token = localStorage.getItem('token');
-                const resClientes = fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } });
-                const resServicos = fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } });
-                const resProfissionais = fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } });
-
-                Promise.all([resClientes, resServicos, resProfissionais])
-                    .then(async ([clientesRes, servicosRes, profissionaisRes]) => {
-                        const clientesData = await clientesRes.json();
-                        const servicosData = await servicosRes.json();
-                        const profissionaisData = await profissionaisRes.json();
-
-                        if (clientesData.success) {
-                            const select = document.getElementById('agendamentoCliente');
-                            if (select) {
-                                select.innerHTML = '<option value="">Selecione um cliente</option>';
-                                clientesData.data.forEach(c => {
-                                    select.innerHTML += `<option value="${c.id}">${c.nome}</option>`;
-                                });
-                            }
-                        }
-                        if (servicosData.success) {
-                            const select = document.getElementById('agendamentoServico');
-                            if (select) {
-                                select.innerHTML = '<option value="">Selecione um serviço</option>';
-                                servicosData.data.forEach(s => {
-                                    select.innerHTML +=
-                                        `<option value="${s.id}">${s.nome} - R$ ${s.valor}</option>`;
-                                });
-                            }
-                        }
-                        if (profissionaisData.success) {
-                            const select = document.getElementById('agendamentoProfissional');
-                            if (select) {
-                                select.innerHTML = '<option value="">Selecione um profissional</option>';
-                                profissionaisData.data.forEach(p => {
-                                    select.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
-                                });
-                            }
-                        }
-                    });
-            } catch (error) {
-                console.error('Erro ao carregar selects:', error);
-            }
-        }
-
         // ========== AUTH ==========
         async function fazerLogin() {
             const email = document.getElementById('loginEmail').value;
@@ -559,7 +386,12 @@
                     } else {
                         localStorage.removeItem('rememberEmail');
                     }
-                    mostrarApp();
+                    // 🔥 USAR A FUNÇÃO DO UI.JS
+                    if (typeof window.mostrarApp === 'function') {
+                        window.mostrarApp();
+                    } else {
+                        mostrarApp();
+                    }
                     showToast('Login realizado com sucesso!', 'success');
                 } else {
                     document.getElementById('loginMessage').innerHTML = data.message;
@@ -580,33 +412,21 @@
             const telefone = document.getElementById('cadastroTelefone').value;
             const acceptTerms = document.getElementById('acceptTerms').checked;
 
-            // ============================================
-            // 🔥 VALIDAÇÃO: TODOS OS CAMPOS OBRIGATÓRIOS
-            // ============================================
             if (!nome || !email || !senha || !empresa_nome || !telefone) {
                 showToast('Preencha todos os campos obrigatórios (incluindo telefone)', 'warning');
                 return;
             }
 
-            // ============================================
-            // 🔥 VALIDAÇÃO: TAMANHO DA SENHA
-            // ============================================
             if (senha.length < 6) {
                 showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
                 return;
             }
 
-            // ============================================
-            // 🔥 VALIDAÇÃO: TERMOS DE USO
-            // ============================================
             if (!acceptTerms) {
                 showToast('Aceite os Termos de Uso para continuar', 'warning');
                 return;
             }
 
-            // ============================================
-            // 🔥 VALIDAÇÃO: TELEFONE DEVE TER PELO MENOS 10 DÍGITOS
-            // ============================================
             const telefoneLimpo = telefone.replace(/\D/g, '');
             if (telefoneLimpo.length < 10) {
                 showToast('Digite um telefone válido (ex: 41999999999)', 'warning');
@@ -623,7 +443,7 @@
                         email,
                         senha,
                         empresa_nome,
-                        telefone: telefoneLimpo // ← ENVIA APENAS NÚMEROS
+                        telefone: telefoneLimpo
                     })
                 });
                 const data = await res.json();
@@ -633,7 +453,13 @@
                     document.getElementById('cadastroMessage').innerHTML = '✅ ' + data.message;
                     document.getElementById('cadastroMessage').style.display = 'block';
                     showToast(data.message, 'success');
-                    setTimeout(() => mostrarLogin(), 3000);
+                    setTimeout(() => {
+                        if (typeof window.mostrarLogin === 'function') {
+                            window.mostrarLogin();
+                        } else {
+                            mostrarLogin();
+                        }
+                    }, 3000);
                 } else {
                     document.getElementById('cadastroMessage').className = 'error-message';
                     document.getElementById('cadastroMessage').innerHTML = data.message;
@@ -651,12 +477,20 @@
             token = null;
             usuario = null;
             showToast('Logout realizado com sucesso!', 'info');
-            mostrarLanding();
-            mostrarLogin();
+            // 🔥 USAR A FUNÇÃO DO UI.JS
+            if (typeof window.mostrarLanding === 'function') {
+                window.mostrarLanding();
+            } else {
+                mostrarLanding();
+            }
+            if (typeof window.mostrarLogin === 'function') {
+                window.mostrarLogin();
+            } else {
+                mostrarLogin();
+            }
         }
 
         // ========== MENU ==========
-        <!-- ========== MENU ========== -->
         function carregarMenu() {
             const sidebar = document.getElementById('sidebar');
             let botoes = [];
@@ -692,6 +526,28 @@
             document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
             const btn = document.getElementById('btn' + id);
             if (btn) btn.classList.add('active');
+        }
+
+        // ========== MOSTRAR APP ==========
+        function mostrarApp() {
+            document.getElementById('landingContainer').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
+            if (usuario.role === 'superadmin') {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
+            } else if (usuario.role === 'profissional') {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
+            } else {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 Proprietário</span>';
+            }
+            carregarMenu();
+            if (usuario.role === 'profissional') {
+                if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
+            } else if (usuario.role === 'superadmin') {
+                if (typeof carregarDashboardSuperAdmin === 'function') carregarDashboardSuperAdmin();
+            } else {
+                if (typeof carregarDashboard === 'function') carregarDashboard();
+            }
         }
 
         // ========== FECHAR MODAL AO CLICAR FORA ==========
@@ -765,14 +621,19 @@
             usuario = JSON.parse(savedUsuario);
             mostrarApp();
         } else {
-            mostrarLanding();
-            mostrarLogin();
+            // 🔥 USAR A FUNÇÃO DO UI.JS
+            if (typeof window.mostrarLanding === 'function') {
+                window.mostrarLanding();
+            } else {
+                mostrarLanding();
+            }
+            if (typeof window.mostrarLogin === 'function') {
+                window.mostrarLogin();
+            } else {
+                mostrarLogin();
+            }
         }
-
-
-
     </script>
-    <script src="/js/pages/whatsapp-config.js"></script>
 
 </body>
 

@@ -7,6 +7,9 @@ let planoInfo = { plano: 'trial', limite: 1, ativos: 0, podeAdicionar: true };
 // FUNÇÃO PRINCIPAL (chamada pelo menu) - MOBILE MELHORADO
 // ============================================
 async function carregarConfiguracoes() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('configuracoes');
+    }
     ativarBotao('configuracoes');
     showLoading();
 

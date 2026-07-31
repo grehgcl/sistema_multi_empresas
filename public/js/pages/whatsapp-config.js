@@ -3,6 +3,9 @@
 // ============================================
 
 async function carregarConfigWhatsApp() {
+  if (typeof window.carregarCSS === 'function') {
+    window.carregarCSS('empresas');
+  }
   ativarBotao('whatsapp');
   showLoading();
 
