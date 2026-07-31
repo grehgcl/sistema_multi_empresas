@@ -1,6 +1,6 @@
 // ============================================
 // EVOLUTION-INSTANCES.JS - GESTÃO DE INSTÂNCIAS WHATSAPP
-// CORRIGIDO - 30/07/2026
+// CORRIGIDO - 31/07/2026
 // ============================================
 
 const axios = require('axios');
@@ -26,46 +26,151 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // CRIAR INSTÂNCIA
+    // LISTAR TODAS AS INSTÂNCIAS
     // ============================================
 
-    static async criarInstancia(instanceName) {
+    static async listarInstancias() {
         try {
             const api = this.getApiClient();
+            const response = await api.get('/instance/fetchInstances');
+            return response.data || [];
+        } catch (error) {
+            console.error('❌ Erro ao listar instâncias:', error.message);
+            return [];
+        }
+    }
 
-            // Primeiro verifica se a instância já existe
-            const status = await this.getStatus(instanceName);
-            if (status.connected) {
+    // ============================================
+    // BUSCAR INSTÂNCIA POR NOME DA EMPRESA
+    // ============================================
+
+    static async buscarInstanciaPorEmpresa(empresaId, nomeEmpresa) {
+        try {
+            // Gerar possíveis nomes de instância
+            const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+            const possibleNames = [
+                `emp-${empresaId}-${nomeLimpo}`,
+                `emp-${empresaId}`,
+                nomeLimpo ? `emp-${nomeLimpo}` : null
+            ].filter(Boolean);
+
+            const instances = await this.listarInstancias();
+
+            // Procurar por correspondência exata
+            for (const name of possibleNames) {
+                const found = instances.find(inst => inst.name === name);
+                if (found) {
+                    console.log(`✅ Instância encontrada: ${found.name} (${found.connectionStatus})`);
+                    return {
+                        success: true,
+                        instance: found,
+                        instanceName: found.name,
+                        connected: found.connectionStatus === 'open'
+                    };
+                }
+            }
+
+            // Tentar busca por nome parcial (caso o nome seja diferente)
+            const nomeBusca = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+            if (nomeBusca) {
+                for (const inst of instances) {
+                    const instName = inst.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    if (instName.includes(nomeBusca) && instName.includes('emp')) {
+                        console.log(`✅ Instância encontrada por nome parcial: ${inst.name}`);
+                        return {
+                            success: true,
+                            instance: inst,
+                            instanceName: inst.name,
+                            connected: inst.connectionStatus === 'open'
+                        };
+                    }
+                }
+            }
+
+            return {
+                success: false,
+                message: 'Nenhuma instância encontrada para esta empresa'
+            };
+
+        } catch (error) {
+            console.error('❌ Erro ao buscar instância:', error.message);
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+
+    // ============================================
+    // CRIAR INSTÂNCIA COM NOME DA EMPRESA
+    // ============================================
+
+    static async criarInstancia(empresaId, nomeEmpresa, telefone) {
+        try {
+            // Gerar nome único baseado no ID e nome da empresa
+            const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+            const instanceName = `emp-${empresaId}-${nomeLimpo}`;
+
+            const api = this.getApiClient();
+
+            // Verificar se já existe
+            const existing = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+            if (existing.success && existing.connected) {
                 return {
                     success: true,
                     alreadyExists: true,
+                    instanceName: existing.instanceName,
+                    connected: true,
                     message: 'Instância já existe e está conectada'
                 };
             }
 
+            // Se existe mas não está conectada, retornar para reconectar
+            if (existing.success) {
+                return {
+                    success: true,
+                    alreadyExists: true,
+                    instanceName: existing.instanceName,
+                    connected: false,
+                    message: 'Instância existe mas está desconectada. Reconecte.'
+                };
+            }
+
             // Criar nova instância
+            console.log(`📱 Criando instância: ${instanceName}`);
+
             const response = await api.post('/instance/create', {
                 instanceName: instanceName,
                 qrCode: true,
-                number: '',
+                number: telefone?.replace(/\D/g, '') || '',
                 integration: 'WHATSAPP-BAILEYS'
             });
 
+            console.log(`✅ Instância ${instanceName} criada com sucesso`);
+
             return {
                 success: true,
+                instanceName: instanceName,
+                alreadyExists: false,
                 data: response.data
             };
 
         } catch (error) {
             console.error('❌ Erro ao criar instância:', error.message);
-            // Se já existe, retorna sucesso
+
+            // Se já existe, tentar encontrar
             if (error.response && error.response.status === 400) {
-                return {
-                    success: true,
-                    alreadyExists: true,
-                    message: 'Instância já existe'
-                };
+                const existing = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+                if (existing.success) {
+                    return {
+                        success: true,
+                        alreadyExists: true,
+                        instanceName: existing.instanceName,
+                        connected: existing.connected
+                    };
+                }
             }
+
             return {
                 success: false,
                 message: error.message || 'Erro ao criar instância'
@@ -125,7 +230,6 @@ class EvolutionInstances {
         } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error.message);
 
-            // Se for 404, a instância pode não existir
             if (error.response && error.response.status === 404) {
                 return {
                     success: false,
@@ -165,7 +269,6 @@ class EvolutionInstances {
         } catch (error) {
             console.error('❌ Erro ao verificar status:', error.message);
 
-            // Se for 404, consideramos como desconectado mas não falha crítica
             if (error.response && error.response.status === 404) {
                 return {
                     success: true,
@@ -175,9 +278,8 @@ class EvolutionInstances {
                 };
             }
 
-            // Para outros erros, também retornamos desconectado para não travar o fluxo
             return {
-                success: true, // ✅ MUDANÇA: Sucesso true para não quebrar o promise.all nas promoções
+                success: true,
                 state: 'error',
                 connected: false,
                 message: error.message || 'Erro ao verificar status'
@@ -186,16 +288,57 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // ENVIAR MENSAGEM - CORRIGIDO (SEM VERIFICAÇÃO)
+    // VERIFICAR STATUS DA INSTÂNCIA DA EMPRESA
     // ============================================
 
-    static async enviarMensagem(instanceName, numero, mensagem) {
+    static async getStatusPorEmpresa(empresaId, nomeEmpresa) {
+        const instancia = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+
+        if (!instancia.success) {
+            return {
+                success: true,
+                state: 'not_found',
+                connected: false,
+                message: 'Instância não encontrada'
+            };
+        }
+
+        return {
+            success: true,
+            state: instancia.instance?.connectionStatus || 'disconnected',
+            connected: instancia.connected || false,
+            instanceName: instancia.instanceName,
+            data: instancia.instance
+        };
+    }
+
+    // ============================================
+    // ENVIAR MENSAGEM - CORRIGIDO COM BUSCA POR EMPRESA
+    // ============================================
+
+    static async enviarMensagem(empresaId, numero, mensagem, nomeEmpresa) {
         try {
             const api = this.getApiClient();
+            let instanceName = 'seeagende'; // Fallback para padrão
+            let instanciaInfo = null;
 
-            // 🔥 CORREÇÃO: REMOVER VERIFICAÇÃO DE STATUS
-            // Simplesmente tentar enviar a mensagem
-            // Se não estiver conectada, a Evolution retornará erro
+            // Se tem empresa, tentar encontrar a instância própria
+            if (empresaId) {
+                const instancia = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+                if (instancia.success && instancia.instanceName) {
+                    instanceName = instancia.instanceName;
+                    instanciaInfo = instancia;
+                    console.log(`📱 Usando instância própria: ${instanceName} (conectada: ${instancia.connected})`);
+
+                    // Se não está conectada, usar fallback
+                    if (!instancia.connected) {
+                        console.log(`⚠️ Instância ${instanceName} não está conectada, usando fallback`);
+                        instanceName = 'seeagende';
+                    }
+                } else {
+                    console.log(`📱 Usando instância padrão (fallback) - instância própria não encontrada`);
+                }
+            }
 
             // Limpar número
             let numeroLimpo = numero.replace(/\D/g, '');
@@ -215,13 +358,15 @@ class EvolutionInstances {
 
             return {
                 success: true,
+                instanceName: instanceName,
+                usadoInstanciaPropria: instanceName !== 'seeagende' && empresaId,
                 data: response.data
             };
 
         } catch (error) {
             console.error('❌ Erro ao enviar mensagem:', error.message);
 
-            // Se der erro, tentar com a instância padrão como fallback
+            // Se falhou e não era fallback, tentar com a padrão
             if (instanceName !== 'seeagende') {
                 console.log(`🔄 Tentando enviar pela instância padrão seeagende...`);
                 try {
@@ -234,8 +379,10 @@ class EvolutionInstances {
                     });
                     return {
                         success: true,
-                        data: response.data,
-                        fallback: true
+                        instanceName: 'seeagende (fallback)',
+                        usadoInstanciaPropria: false,
+                        fallback: true,
+                        data: response.data
                     };
                 } catch (fallbackError) {
                     console.error('❌ Fallback também falhou:', fallbackError.message);
@@ -250,14 +397,81 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // DESCONECTAR INSTÂNCIA (CORRIGIDO PARA EVOLUTION V2)
+    // ENVIAR MENSAGEM COM MIDIA (IMAGEM)
+    // ============================================
+
+    static async enviarImagem(empresaId, numero, imagemBase64, legenda = '', nomeEmpresa) {
+        try {
+            const api = this.getApiClient();
+            let instanceName = 'seeagende';
+
+            // Se tem empresa, tentar encontrar a instância própria
+            if (empresaId) {
+                const instancia = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+                if (instancia.success && instancia.instanceName && instancia.connected) {
+                    instanceName = instancia.instanceName;
+                    console.log(`📱 Usando instância própria para imagem: ${instanceName}`);
+                }
+            }
+
+            let numeroLimpo = numero.replace(/\D/g, '');
+            if (!numeroLimpo.startsWith('55')) {
+                numeroLimpo = '55' + numeroLimpo;
+            }
+
+            const response = await api.post(`/message/sendMedia/${instanceName}`, {
+                number: numeroLimpo,
+                media: imagemBase64,
+                caption: legenda,
+                mediatype: 'image'
+            });
+
+            return {
+                success: true,
+                instanceName: instanceName,
+                data: response.data
+            };
+
+        } catch (error) {
+            console.error('❌ Erro ao enviar imagem:', error.message);
+
+            // Tentar fallback
+            if (instanceName !== 'seeagende') {
+                try {
+                    const api = this.getApiClient();
+                    const numeroLimpo = numero.replace(/\D/g, '');
+                    const response = await api.post(`/message/sendMedia/seeagende`, {
+                        number: numeroLimpo,
+                        media: imagemBase64,
+                        caption: legenda,
+                        mediatype: 'image'
+                    });
+                    return {
+                        success: true,
+                        instanceName: 'seeagende (fallback)',
+                        fallback: true,
+                        data: response.data
+                    };
+                } catch (fallbackError) {
+                    console.error('❌ Fallback imagem falhou:', fallbackError.message);
+                }
+            }
+
+            return {
+                success: false,
+                message: error.message || 'Erro ao enviar imagem'
+            };
+        }
+    }
+
+    // ============================================
+    // DESCONECTAR INSTÂNCIA
     // ============================================
 
     static async desconectar(instanceName) {
         try {
             const api = this.getApiClient();
 
-            // ✅ CORREÇÃO CRÍTICA: Evolution V2 usa POST para logout, não DELETE
             console.log(`🔌 Solicitando logout via POST /instance/logout/${instanceName}`);
             const response = await api.post(`/instance/logout/${instanceName}`);
 
@@ -271,7 +485,6 @@ class EvolutionInstances {
         } catch (error) {
             console.error('❌ Erro ao desconectar:', error.message);
 
-            // Se for 404 ou instância já desconectada, consideramos sucesso
             if (error.response && (error.response.status === 404 || error.response.status === 400)) {
                 return {
                     success: true,
@@ -311,7 +524,33 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // BUSCAR CONTATOS DO WHATSAPP (VIA CHATS)
+    // DELETAR INSTÂNCIA POR EMPRESA
+    // ============================================
+
+    static async deletarInstanciaPorEmpresa(empresaId, nomeEmpresa) {
+        try {
+            const instancia = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+
+            if (!instancia.success || !instancia.instanceName) {
+                return {
+                    success: false,
+                    message: 'Instância não encontrada para esta empresa'
+                };
+            }
+
+            return await this.deletarInstancia(instancia.instanceName);
+
+        } catch (error) {
+            console.error('❌ Erro ao deletar instância da empresa:', error.message);
+            return {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+
+    // ============================================
+    // BUSCAR CONTATOS DO WHATSAPP
     // ============================================
 
     static async getContatos(instanceName) {
@@ -320,17 +559,14 @@ class EvolutionInstances {
 
             console.log(`📱 Buscando contatos da instância: ${instanceName}`);
 
-            // 🔥 VERIFICAR STATUS PRIMEIRO
             const status = await this.getStatus(instanceName);
             if (!status.connected) {
                 console.log(`⚠️ Instância ${instanceName} não está conectada`);
                 return [];
             }
 
-            // 🔥 MÉTODO CONFIÁVEL: Buscar chats e extrair contatos
             let response;
             try {
-                // Tentativa 1: /chat/fetchAllChats (MAIS CONFIÁVEL)
                 response = await api.get(`/chat/fetchAllChats/${instanceName}`);
             } catch (error) {
                 console.log(`⚠️ Erro ao buscar chats:`, error.message);
@@ -342,7 +578,6 @@ class EvolutionInstances {
                 return [];
             }
 
-            // Processar resposta - pode vir em diferentes formatos
             let chats = [];
             if (Array.isArray(response.data)) {
                 chats = response.data;
@@ -351,7 +586,6 @@ class EvolutionInstances {
             } else if (response.data.data) {
                 chats = response.data.data;
             } else {
-                // Tentar extrair o que veio
                 chats = Object.values(response.data).filter(item =>
                     typeof item === 'object' && item !== null && (item.id || item.phone || item.number)
                 );
@@ -364,31 +598,23 @@ class EvolutionInstances {
 
             console.log(`📊 ${chats.length} chats encontrados`);
 
-            // Extrair contatos dos chats (filtrar grupos)
             const contatosMap = new Map();
 
             for (let chat of chats) {
-                // Pular grupos
                 if (chat.isGroup === true) continue;
 
-                // Extrair número
                 let number = chat.id || chat.phone || chat.number || chat.remoteJid || '';
-
-                // Limpar número (remover @s.whatsapp.net, @g.us, etc)
                 number = number.replace(/@.*$/, '');
                 number = number.replace(/\D/g, '');
 
                 if (!number || number.length < 10) continue;
 
-                // Extrair nome
                 let name = chat.name || chat.pushname || chat.displayName || chat.shortName || chat.subject || 'Sem nome';
 
-                // Se não tem nome, tentar pegar do contato
                 if (name === 'Sem nome' && chat.contact) {
                     name = chat.contact.name || chat.contact.pushname || 'Sem nome';
                 }
 
-                // Evitar duplicatas
                 if (!contatosMap.has(number)) {
                     contatosMap.set(number, {
                         number: number,
@@ -402,11 +628,9 @@ class EvolutionInstances {
             }
 
             const contatos = Array.from(contatosMap.values());
-
-            // Filtrar o próprio número
             const filtrados = contatos.filter(c => !c.isMe);
 
-            console.log(`✅ ${filtrados.length} contatos encontrados (${contatos.length - filtrados.length} removidos)`);
+            console.log(`✅ ${filtrados.length} contatos encontrados`);
 
             return filtrados;
 
@@ -417,45 +641,18 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // ENVIAR MENSAGEM COM MIDIA (IMAGEM)
+    // BUSCAR CONTATOS POR EMPRESA
     // ============================================
 
-    static async enviarImagem(instanceName, numero, imagemBase64, legenda = '') {
-        try {
-            const api = this.getApiClient();
+    static async getContatosPorEmpresa(empresaId, nomeEmpresa) {
+        const instancia = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
 
-            const status = await this.getStatus(instanceName);
-            if (!status.connected) {
-                return {
-                    success: false,
-                    message: 'WhatsApp não está conectado'
-                };
-            }
-
-            let numeroLimpo = numero.replace(/\D/g, '');
-            if (!numeroLimpo.startsWith('55')) {
-                numeroLimpo = '55' + numeroLimpo;
-            }
-
-            const response = await api.post(`/message/sendMedia/${instanceName}`, {
-                number: numeroLimpo,
-                media: imagemBase64,
-                caption: legenda,
-                mediatype: 'image'
-            });
-
-            return {
-                success: true,
-                data: response.data
-            };
-
-        } catch (error) {
-            console.error('❌ Erro ao enviar imagem:', error.message);
-            return {
-                success: false,
-                message: error.message || 'Erro ao enviar imagem'
-            };
+        if (!instancia.success || !instancia.instanceName) {
+            console.log(`⚠️ Nenhuma instância encontrada para empresa ${empresaId}`);
+            return [];
         }
+
+        return await this.getContatos(instancia.instanceName);
     }
 }
 
