@@ -7229,42 +7229,75 @@ const runQuery = (sql, params) => {
 app.put('/api/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
-    const instanceName = `emp-${id}`;
     const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
     const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
     try {
+        // 🔥 BUSCAR O NOME DA EMPRESA PRIMEIRO
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? 'SELECT nome FROM empresas WHERE id = $1'
+                : 'SELECT nome FROM empresas WHERE id = ?';
+            db.get(sql, [id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
         // Atualiza o banco
         await db.run('UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?', [habilitado ? 1 : 0, id]);
 
         if (habilitado) {
-            // Tenta criar ou garantir que existe na Evolution
+            // 🔥 GERAR NOME CORRETO (COM ID + NOME)
+            const nomeLimpo = empresa?.nome
+                ? empresa.nome
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/[^a-z0-9]/g, '-')
+                    .replace(/-+/g, '-')
+                    .replace(/^-|-$/g, '')
+                : 'empresa';
+
+            const instanceName = `emp-${id}-${nomeLimpo}`;
+
+            console.log(`📱 Criando instância: ${instanceName}`);
+
             try {
                 // Verifica se já existe
-                await axios.get(`${evolutionUrl}/instance/connectionState/${instanceName}`, { headers: { 'apikey': apiKey } });
+                await axios.get(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
+                    headers: { 'apikey': apiKey }
+                });
                 console.log(`✅ Instância ${instanceName} já existe na Evolution.`);
             } catch (err) {
-                // Se der 404, cria
                 if (err.response && err.response.status === 404) {
                     console.log(`🚀 Criando instância ${instanceName} na Evolution...`);
                     await axios.post(`${evolutionUrl}/instance/create`, {
                         instanceName: instanceName,
                         qrCode: true,
                         integration: 'WHATSAPP-BAILEYS'
-                    }, { headers: { 'Content-Type': 'application/json', 'apikey': apiKey } });
+                    }, {
+                        headers: { 'Content-Type': 'application/json', 'apikey': apiKey }
+                    });
 
-                    // Salva o nome no banco se ainda não tiver
                     await db.run('UPDATE empresas SET whatsapp_instance = ? WHERE id = ?', [instanceName, id]);
                 }
             }
+
+            res.json({
+                success: true,
+                message: 'WhatsApp próprio habilitado!',
+                instanceName: instanceName
+            });
         } else {
-            // Se desabilitou, podemos opcionalmente desconectar, mas vamos manter simples
-            console.log(`ℹ️ WhatsApp próprio desabilitado para empresa ${id}.`);
+            res.json({
+                success: true,
+                message: 'WhatsApp próprio desabilitado!'
+            });
         }
 
-        res.json({ success: true, message: 'Configuração salva!' });
     } catch (error) {
-        console.error('❌ Erro Super Admin WhatsApp:', error.message);
+        console.error('❌ Erro:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
