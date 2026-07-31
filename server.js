@@ -8072,7 +8072,7 @@ app.get('/api/whatsapp/webhook', (req, res) => {
 // 🔥 CACHE DE ENVIOS NO BACKEND (evita duplicatas)
 const enviosCache = new Map();
 // ============================================
-// ROTA WHATSAPP ENVIAR - COM INSTÂNCIA PRÓPRIA
+// ROTA WHATSAPP ENVIAR - VERSÃO FINAL
 // ============================================
 app.post('/api/whatsapp/enviar', auth, async (req, res) => {
     console.log('📱 ROTA WHATSAPP ENVIAR CHAMADA!');
@@ -8103,6 +8103,8 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
         if (empresa_id == 14) {
             instanceName = 'emp-14-salao-da-sandra-';
             console.log(`📱 Usando instância da empresa: ${instanceName}`);
+        } else {
+            console.log(`📱 Usando instância padrão: ${instanceName}`);
         }
 
         // Chamar a Evolution
