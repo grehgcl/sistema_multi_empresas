@@ -2981,7 +2981,7 @@ function normalizarNumero(telefone) {
 }
 
 // ============================================
-// ENVIAR PROMOÇÃO
+// ENVIAR PROMOÇÃO - CORRIGIDO
 // ============================================
 
 async function enviarPromocao() {
@@ -3052,6 +3052,10 @@ async function enviarPromocao() {
     const progressoStatus = document.getElementById('progressoStatus');
 
     const token = localStorage.getItem('token');
+    // 🔥 PEGAR O ID DA EMPRESA DO USUÁRIO
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const empresaId = usuario.empresa_id;
+
     let enviados = 0;
     let erros = 0;
     let duplicados = 0;
@@ -3110,8 +3114,11 @@ async function enviarPromocao() {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-            console.log(`📤 Enviando para ${cliente.nome} (${telefone})`);
+            console.log(`📤 Enviando para ${cliente.nome} (${telefone}) - Empresa: ${empresaId}`);
 
+            // ============================================
+            // 🔥 CORREÇÃO: ENVIAR EMPRESA_ID
+            // ============================================
             const response = await fetch('/api/whatsapp/enviar', {
                 method: 'POST',
                 headers: {
@@ -3119,6 +3126,7 @@ async function enviarPromocao() {
                     'Authorization': 'Bearer ' + token
                 },
                 body: JSON.stringify({
+                    empresa_id: empresaId,   // ← 🔥 ADICIONADO!
                     numero: telefone,
                     mensagem: mensagemFinal
                 }),
@@ -3132,7 +3140,7 @@ async function enviarPromocao() {
                 enviados++;
                 enviadosCache.add(chaveLocal);
                 progressoStatus.textContent = `✅ ${cliente.nome} - Enviado!`;
-                console.log(`✅ Enviado: ${cliente.nome} (${telefone})`);
+                console.log(`✅ Enviado: ${cliente.nome} (${telefone}) via ${result.data?.instanceName || 'instância'}`);
             } else {
                 erros++;
                 progressoStatus.textContent = `❌ ${cliente.nome} - Erro: ${result.message || 'Falha'}`;
