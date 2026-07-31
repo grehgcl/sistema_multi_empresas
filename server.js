@@ -3526,7 +3526,7 @@ app.get('/api/agendamentos', auth, (req, res) => {
 });
 
 // ============================================
-// ROTA: CRIAR AGENDAMENTO - CORRIGIDO (DATA SEM TIMEZONE)
+// ROTA: CRIAR AGENDAMENTO COM WHATSAPP
 // ============================================
 app.post('/api/agendamentos',
     auth,
@@ -3546,9 +3546,7 @@ app.post('/api/agendamentos',
             return res.json({ success: false, message: 'Horário é obrigatório' });
         }
 
-        // ============================================
-        // ✅ VALIDAÇÃO: DATA/HORA NÃO PODE SER NO PASSADO
-        // ============================================
+        // Validação: data/hora não pode ser no passado
         const agora = new Date();
         const [ano, mes, dia] = data.split('-').map(Number);
         const [horaStr, minutoStr] = hora.split(':').map(Number);
@@ -3561,15 +3559,10 @@ app.post('/api/agendamentos',
             });
         }
 
-        // ============================================
-        // 🔥 CORREÇÃO: DATA COMO STRING (NÃO CONVERTER)
-        // ============================================
         console.log(`📅 Data recebida: ${data}`);
         console.log(`📅 Data a salvar: ${data}`);
 
-        // ============================================
-        // ✅ VERIFICAR SE CLIENTE JÁ TEM AGENDAMENTO NESTE DIA
-        // ============================================
+        // Verificar se cliente já tem agendamento neste dia
         const sqlAgendamentoHoje = isProduction
             ? `SELECT id FROM agendamentos 
                WHERE cliente_id = $1 
@@ -3602,9 +3595,7 @@ app.post('/api/agendamentos',
             });
         }
 
-        // ============================================
-        // ✅ BUSCAR DURAÇÃO DO SERVIÇO
-        // ============================================
+        // Buscar duração do serviço
         let duracaoServico = 30;
         let nomeServico = '';
         let valorServico = 0;
@@ -3636,9 +3627,7 @@ app.post('/api/agendamentos',
             duracaoServico = 30;
         }
 
-        // ============================================
-        // ✅ VERIFICAR PROFISSIONAL
-        // ============================================
+        // Verificar profissional
         let profissionalIdFinal = null;
         if (profissional_id && profissional_id !== '' && profissional_id !== 'null') {
             profissionalIdFinal = parseInt(profissional_id);
@@ -3657,9 +3646,7 @@ app.post('/api/agendamentos',
             }
         }
 
-        // ============================================
-        // 🔥 INSERIR AGENDAMENTO - DATA COMO TEXTO
-        // ============================================
+        // Inserir agendamento
         const sqlInsert = isProduction
             ? `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, valor_total, duracao, status, empresa_id, profissional_id) 
                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pendente', $9, $10) RETURNING id`
@@ -3669,7 +3656,7 @@ app.post('/api/agendamentos',
         const valor = parseFloat(valorServico) || 0;
         const params = [
             parseInt(cliente_id),
-            data,  // 🔥 DATA ORIGINAL SEM CONVERSÃO
+            data,
             hora,
             servico_id || null,
             nomeServico || '',
@@ -3694,6 +3681,70 @@ app.post('/api/agendamentos',
             incrementarContadorAgendamentos(empresa_id, (err) => {
                 if (err) console.error('⚠️ Erro ao incrementar contador:', err);
             });
+
+            // ============================================
+            // 📱 ENVIAR WHATSAPP - NOVO!
+            // ============================================
+            try {
+                console.log('📱 Tentando enviar WhatsApp...');
+
+                // Importar o serviço WhatsApp
+                const whatsapp = require('./server/services/whatsapp');
+
+                // Buscar dados do cliente
+                const clienteResult = await pool.query(
+                    'SELECT nome, telefone FROM clientes WHERE id = $1 AND empresa_id = $2',
+                    [cliente_id, empresa_id]
+                );
+
+                // Buscar dados da empresa
+                const empresaResult = await pool.query(
+                    'SELECT nome, endereco FROM empresas WHERE id = $1',
+                    [empresa_id]
+                );
+
+                if (clienteResult.rows.length > 0 && empresaResult.rows.length > 0) {
+                    const cliente = clienteResult.rows[0];
+                    const empresa = empresaResult.rows[0];
+
+                    console.log(`📱 Cliente: ${cliente.nome}, Telefone: ${cliente.telefone}`);
+                    console.log(`📱 Empresa: ${empresa.nome}`);
+
+                    // Verificar se o cliente tem telefone
+                    if (cliente.telefone) {
+                        const mensagem = `✅ *Agendamento Confirmado!*\n\n` +
+                            `Olá ${cliente.nome}! Seu agendamento foi confirmado:\n\n` +
+                            `📅 *Data:* ${formatarDataBr(data)}\n` +
+                            `⏰ *Hora:* ${hora}\n` +
+                            `💇 *Serviço:* ${nomeServico}\n` +
+                            `🏢 *Empresa:* ${empresa.nome}\n\n` +
+                            `📍 ${empresa.endereco || 'Endereço não informado'}\n\n` +
+                            `Nos vemos lá! 😊`;
+
+                        const resultado = await whatsapp.enviarMensagem(
+                            empresa_id,
+                            cliente.telefone,
+                            mensagem
+                        );
+
+                        if (resultado.success) {
+                            console.log(`✅ WhatsApp enviado para ${cliente.telefone}`);
+                        } else {
+                            console.log(`⚠️ WhatsApp não enviado: ${resultado.message}`);
+                        }
+                    } else {
+                        console.log(`⚠️ Cliente ${cliente.nome} não tem telefone cadastrado`);
+                    }
+                } else {
+                    console.log('⚠️ Dados do cliente ou empresa não encontrados');
+                }
+            } catch (whatsappError) {
+                console.error('❌ Erro ao enviar WhatsApp:', whatsappError.message);
+                // Não interrompe o fluxo principal
+            }
+            // ============================================
+            // FIM DO WHATSAPP
+            // ============================================
 
             res.json({
                 success: true,
