@@ -8070,7 +8070,6 @@ app.get('/api/whatsapp/webhook', (req, res) => {
 
 // 🔥 CACHE DE ENVIOS NO BACKEND (evita duplicatas)
 const enviosCache = new Map();
-
 app.post('/api/whatsapp/enviar', auth, async (req, res) => {
     try {
         const { numero, mensagem, empresa_id } = req.body;
@@ -8105,34 +8104,30 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
                 null
             );
 
-            if (envio.success) {
-                return res.json({
-                    success: true,
-                    message: 'Mensagem enviada pela instância padrão!',
-                    data: envio
-                });
-            } else {
-                return res.status(500).json({
-                    success: false,
-                    message: envio.message || 'Erro ao enviar mensagem'
-                });
-            }
+            return res.json({
+                success: envio.success,
+                message: envio.success ? 'Mensagem enviada pela instância padrão!' : envio.message,
+                data: envio
+            });
         }
 
-        // Buscar empresa usando o pool
-        const result = await pool.query(
-            'SELECT id, nome, whatsapp_instance, whatsapp_proprio_habilitado FROM empresas WHERE id = $1',
-            [empresaId]
-        );
+        // Buscar empresa usando o db.get (que já existe no server.js)
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = `SELECT id, nome, whatsapp_instance, whatsapp_proprio_habilitado 
+                        FROM empresas WHERE id = $1`;
+            db.get(sql, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
 
-        if (result.rows.length === 0) {
+        if (!empresa) {
             return res.status(404).json({
                 success: false,
                 message: 'Empresa não encontrada'
             });
         }
 
-        const empresa = result.rows[0];
         console.log(`🏢 Empresa: ${empresa.nome}`);
         console.log(`📱 Instância: ${empresa.whatsapp_instance || 'Nenhuma'}`);
 
@@ -8144,22 +8139,11 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             empresa.nome
         );
 
-        if (envio.success) {
-            return res.json({
-                success: true,
-                message: 'Mensagem enviada com sucesso!',
-                data: {
-                    instance: envio.instanceName,
-                    usadoInstanciaPropria: envio.usadoInstanciaPropria || false,
-                    fallback: envio.fallback || false
-                }
-            });
-        } else {
-            return res.status(500).json({
-                success: false,
-                message: envio.message || 'Erro ao enviar mensagem'
-            });
-        }
+        return res.json({
+            success: envio.success,
+            message: envio.success ? 'Mensagem enviada com sucesso!' : envio.message,
+            data: envio
+        });
 
     } catch (error) {
         console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
