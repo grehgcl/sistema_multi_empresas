@@ -15,3 +15,5 @@ scp public/index.html ubuntu@163.176.218.131:~/seeagende/public/
 
 skynetchat
 338697895505
+
+ssh -i ~/1_5048649986758149869.key ubuntu@163.176.218.131

@@ -1,6 +1,6 @@
 ﻿=========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 30/07/2026
+ULTIMA ATUALIZACAO: 31/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -21,6 +21,25 @@ USUARIOS:
 -----------------------------------------
 Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
+
+=========================================
+✅ IMPLEMENTADO (31/07/2026) - CORREÇÃO WHATSAPP PRÓPRIO E INSTÂNCIAS
+=========================================
+1. CORREÇÃO DO NOME DAS INSTÂNCIAS 🚀
+- Instâncias agora são criadas com formato: `emp-{ID}-{NOME-DA-EMPRESA}`
+- Exemplo: `emp-14-salao-da-sandra-` em vez de `emp-14`
+- Garante que cada empresa tenha uma instância única e identificável
+- Facilita a identificação e troubleshooting
+
+2. CORREÇÃO DA ROTA DO SUPER ADMIN 🛠️
+- Rota `app.put('/api/admin/empresas/:id/whatsapp-proprio')` corrigida
+- Agora busca o nome da empresa e cria instância com ID + NOME
+- Resolve o problema de instâncias com nomes genéricos
+
+3. CORREÇÃO DO ENVIO DE WHATSAPP NO AGENDAMENTO 📱
+- Substituído `pool.query` por `db.get` para compatibilidade
+- Agora funciona corretamente no SQLite e PostgreSQL
+- Mensagens de confirmação chegam no cliente
 
 =========================================
 ✅ IMPLEMENTADO (30/07/2026) - AUTOMAÇÃO WHATSAPP SUPER ADMIN & CORREÇÕES VPS
@@ -179,6 +198,8 @@ ssh ubuntu@163.176.218.131 "pm2 restart seeagende --update-env"
 - .toFixed() no PostgreSQL: Uso de parseFloat() antes da formatação.
 - Placeholders PostgreSQL: Uso de counter para $1, $2...
 - Preservação de Horário: Horário é mantido ao selecionar serviço na agenda.
+- Nome das Instâncias: Agora usa formato `emp-{ID}-{NOME-DA-EMPRESA}`.
+- Envio WhatsApp no Agendamento: Usa `db.get` em vez de `pool.query`.
 
 =========================================
 🗄️ ESTRUTURA DOS ARQUIVOS (Principais)
@@ -226,6 +247,15 @@ pm2 restart seeagende --update-env
 # Ver logs em tempo real
 pm2 logs seeagende --lines 30
 
+# Ver instâncias na Evolution
+curl -X GET 'http://localhost:8080/instance/fetchInstances' -H 'apikey: seeagende2024'
+
+# Deletar instância
+curl -X DELETE 'http://localhost:8080/instance/delete/emp-X' -H 'apikey: seeagende2024'
+
+# Criar instância com nome correto
+curl -X POST 'http://localhost:8080/instance/create' -H 'apikey: seeagende2024' -H 'Content-Type: application/json' -d '{"instanceName":"emp-X-nome-empresa","qrcode":true,"integration":"WHATSAPP-BAILEYS"}'
+
 # Enviar arquivo para VPS
 scp arquivo.js ubuntu@163.176.218.131:~/seeagende/pasta/
 
@@ -233,7 +263,7 @@ scp arquivo.js ubuntu@163.176.218.131:~/seeagende/pasta/
 scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
 
 =========================================
-✅ STATUS ATUAL (30/07/2026)
+✅ STATUS ATUAL (31/07/2026)
 =========================================
 Tudo funcionando em AMBOS os bancos!
 ✅ SQLite (desenvolvimento local)
@@ -245,8 +275,10 @@ Tudo funcionando em AMBOS os bancos!
 ✅ Dono com WhatsApp exclusivo e fallback inteligente
 ✅ Grupos de clientes com filtro e promoção
 ✅ Busca mobile otimizada
-✅ ÍNDICE A-Z PARA CLIENTES (NOVO!)
-✅ Lupa removida no mobile (NOVO!)
-✅ Filtro de letra com localStorage (NOVO!)
-✅ Criação Automática de Instâncias pelo Super Admin (NOVO!)
-✅ Correção de Query Booleana no Chatbot (NOVO!)
+✅ ÍNDICE A-Z PARA CLIENTES
+✅ Lupa removida no mobile
+✅ Filtro de letra com localStorage
+✅ Criação Automática de Instâncias pelo Super Admin
+✅ Correção de Query Booleana no Chatbot
+✅ INSTÂNCIAS COM NOME CORRETO (emp-ID-nome-empresa) ⭐
+✅ ENVIO DE WHATSAPP NO AGENDAMENTO FUNCIONANDO ⭐

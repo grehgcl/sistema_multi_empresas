@@ -1,6 +1,6 @@
 ﻿﻿=========================================
 ESTRUTURA.md - SEE&AGENDE
-ULTIMA ATUALIZACAO: 30/07/2026
+ULTIMA ATUALIZACAO: 31/07/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -70,6 +70,22 @@ Acesse: http://localhost:3000
 ├── atualizar.sh             # Script de atualização blindado da VPS ⭐
 ├── server.js                # Backend completo + rotas
 └── package.json             # Dependências e scripts
+
+=========================================
+🔥 NOVIDADES (31/07/2026) - CORREÇÃO WHATSAPP PRÓPRIO E INSTÂNCIAS
+=========================================
+CORREÇÃO DO NOME DAS INSTÂNCIAS 🚀
+- Instâncias agora são criadas com formato: `emp-{ID}-{NOME-DA-EMPRESA}`
+- Exemplo: `emp-14-salao-da-sandra-` em vez de `emp-14`
+- Garante que cada empresa tenha uma instância única e identificável
+
+CORREÇÃO DA ROTA DO SUPER ADMIN 🛠️
+- Rota `app.put('/api/admin/empresas/:id/whatsapp-proprio')` corrigida
+- Agora busca o nome da empresa e cria instância com ID + NOME
+
+CORREÇÃO DO ENVIO DE WHATSAPP NO AGENDAMENTO 📱
+- Substituído `pool.query` por `db.get` para compatibilidade
+- Agora funciona corretamente no SQLite e PostgreSQL
 
 =========================================
 🔥 NOVIDADES (30/07/2026) - AUTOMAÇÃO WHATSAPP SUPER ADMIN
@@ -148,21 +164,6 @@ Roda `npm install --omit=dev` e migração
 
 LÓGICA DE FALLBACK CONFIRMADA ✅
 Se a instância própria NÃO estiver conectada, usa a instância padrão
-
-=========================================
-🔥 NOVIDADES (13/07/2026) - FINANCEIRO COMPLETO
-=========================================
-Financeiro com abas: Resumo, Receitas, Despesas, Comissões
-Comparativo mensal com variação percentual
-Novas rotas: GET /api/financeiro/receitas, GET /api/financeiro/comparativo
-
-=========================================
-🔥 NOVIDADES (10/07/2026) - WHATSAPP MULTI-INSTÂNCIA
-=========================================
-Provedor: Evolution API
-Instância Padrão: seeagende
-Instância Própria: Empresas Business/Enterprise
-Confirmação, Lembrete 24h, Cancelamento e Conclusão automáticos
 
 =========================================
 🗄️ TABELAS DO BANCO
@@ -252,11 +253,13 @@ Script de Atualização Blindado     ✅       ✅           OK
 Grupos de Clientes                 ✅       ✅           OK
 Promoções com Grupos               ✅       ✅           OK
 Busca Mobile Otimizada             ✅       ✅           OK
-Índice A-Z para Clientes           ✅       ✅           NOVO! ⭐
-Lupa removida no mobile            ✅       ✅           NOVO! ⭐
-Filtro de letra com localStorage   ✅       ✅           NOVO! ⭐
-Criação Auto. Instância (SA)       ✅       ✅           NOVO! ⭐
-Correção Query Booleana (VPS)      ✅       ✅           NOVO! ⭐
+Índice A-Z para Clientes           ✅       ✅           OK
+Lupa removida no mobile            ✅       ✅           OK
+Filtro de letra com localStorage   ✅       ✅           OK
+Criação Auto. Instância (SA)       ✅       ✅           OK
+Correção Query Booleana (VPS)      ✅       ✅           OK
+WhatsApp Próprio com Nome Correto  ✅       ✅           NOVO! ⭐
+Envio WhatsApp no Agendamento      ✅       ✅           NOVO! ⭐
 
 =========================================
-ULTIMA ATUALIZACAO: 30/07/2026
+ULTIMA ATUALIZACAO: 31/07/2026
