@@ -8073,8 +8073,8 @@ const enviosCache = new Map();
 
 app.post('/api/whatsapp/enviar', auth, async (req, res) => {
     try {
-        const { numero, mensagem } = req.body;
-        const empresaId = req.usuario.empresa_id;
+        const { numero, mensagem, empresa_id } = req.body;
+        let empresaId = empresa_id || req.usuario.empresa_id;
 
         if (!numero || !mensagem) {
             return res.status(400).json({
@@ -8083,7 +8083,6 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
-        // Limpar número
         const numeroLimpo = numero.replace(/\D/g, '');
         if (!numeroLimpo) {
             return res.status(400).json({
@@ -8092,24 +8091,10 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
-        // 🔥 VERIFICA DUPLICATA NO BACKEND (últimos 10 segundos)
-        const chaveCache = `${numeroLimpo}_${mensagem.substring(0, 30)}`;
-        const ultimoEnvio = enviosCache.get(chaveCache);
-        if (ultimoEnvio && (Date.now() - ultimoEnvio < 10000)) {
-            console.log(`⏭️ Backend: Duplicada evitada para ${numeroLimpo}`);
-            return res.json({
-                success: true,
-                message: 'Mensagem ignorada (duplicada)',
-                duplicada: true
-            });
-        }
-
         console.log(`📱 Enviando mensagem para ${numeroLimpo} (empresa ${empresaId})`);
 
-        // Verificar se o WhatsApp está ativo
         if (process.env.WHATSAPP_ENABLED !== 'true') {
             console.log(`📱 [MODO LOG] Mensagem para ${numeroLimpo}: ${mensagem}`);
-            enviosCache.set(chaveCache, Date.now());
             return res.json({
                 success: true,
                 message: 'Mensagem registrada (modo log)',
@@ -8117,98 +8102,47 @@ app.post('/api/whatsapp/enviar', auth, async (req, res) => {
             });
         }
 
-        // Buscar dados da empresa
-        const empresa = await new Promise((resolve, reject) => {
-            const sql = isProduction
-                ? `SELECT id, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado 
-                   FROM empresas WHERE id = $1`
-                : `SELECT id, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado 
-                   FROM empresas WHERE id = ?`;
-
-            db.get(sql, [empresaId], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
-
-        if (!empresa) {
-            return res.status(404).json({
-                success: false,
-                message: 'Empresa não encontrada'
-            });
-        }
-
-        // LÓGICA DE FALLBACK
-        let instanceName = 'seeagende';
-
-        const proprioHabilitado = empresa.whatsapp_proprio_habilitado === true ||
-            empresa.whatsapp_proprio_habilitado === 1 ||
-            empresa.whatsapp_proprio_habilitado === 't';
-
-        if (proprioHabilitado && empresa.whatsapp_instance) {
-            const conectado = empresa.whatsapp_connected === true ||
-                empresa.whatsapp_connected === 1 ||
-                empresa.whatsapp_connected === 't';
-
-            if (conectado) {
-                instanceName = empresa.whatsapp_instance;
-                console.log(`📱 Usando instância própria: ${instanceName}`);
-            } else {
-                console.log(`⚠️ Instância própria não conectada, usando padrão`);
-                instanceName = 'seeagende';
-            }
-        } else {
-            console.log(`📱 Usando instância padrão: ${instanceName}`);
-        }
-
-        // Enviar via Evolution API
-        try {
+        if (!empresaId) {
             const EvolutionInstances = require('./server/services/evolution-instances');
-
-            // 🔥 DELAY ALEATÓRIO NO BACKEND (2-5 segundos)
-            const delayBackend = 2000 + Math.random() * 3000;
-            await new Promise(resolve => setTimeout(resolve, delayBackend));
-
-            const resultado = await EvolutionInstances.enviarMensagem(instanceName, numeroLimpo, mensagem);
-
-            if (resultado.success) {
-                // 🔥 ATUALIZA O CACHE
-                enviosCache.set(chaveCache, Date.now());
-
-                // 🔥 LIMPA CACHE ANTIGO (mais de 1 hora)
-                const agora = Date.now();
-                for (const [key, time] of enviosCache) {
-                    if (agora - time > 3600000) {
-                        enviosCache.delete(key);
-                    }
-                }
-
-                console.log(`✅ Mensagem enviada para ${numeroLimpo} via ${instanceName}`);
-                res.json({
-                    success: true,
-                    message: 'Mensagem enviada com sucesso!'
-                });
+            const envio = await EvolutionInstances.enviarMensagem(null, numeroLimpo, mensagem, null);
+            if (envio.success) {
+                return res.json({ success: true, message: 'Mensagem enviada pela instância padrão!', data: envio });
             } else {
-                console.error(`❌ Erro ao enviar: ${resultado.message}`);
-                res.status(500).json({
-                    success: false,
-                    message: resultado.message || 'Erro ao enviar mensagem'
-                });
+                return res.status(500).json({ success: false, message: envio.message });
             }
-        } catch (error) {
-            console.error('❌ Erro ao enviar via Evolution:', error);
-            res.status(500).json({
-                success: false,
-                message: error.message || 'Erro ao enviar mensagem'
+        }
+
+        const result = await db.query(
+            'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado, telefone_dono FROM empresas WHERE id = $1',
+            [empresaId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
+        }
+
+        const empresa = result.rows[0];
+        const EvolutionInstances = require('./server/services/evolution-instances');
+
+        const envio = await EvolutionInstances.enviarMensagem(empresaId, numeroLimpo, mensagem, empresa.nome);
+
+        if (envio.success) {
+            return res.json({
+                success: true,
+                message: 'Mensagem enviada com sucesso!',
+                data: {
+                    instance: envio.instanceName,
+                    usadoInstanciaPropria: envio.usadoInstanciaPropria || false,
+                    fallback: envio.fallback || false
+                }
             });
+        } else {
+            return res.status(500).json({ success: false, message: envio.message });
         }
 
     } catch (error) {
-        console.error('❌ Erro ao enviar mensagem:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Erro interno ao enviar mensagem'
-        });
+        console.error('❌ Erro ao enviar mensagem WhatsApp:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 });
 // ============================================
