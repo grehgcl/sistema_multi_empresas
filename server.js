@@ -4205,68 +4205,175 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
+    // 🔥 VERIFICAR SE O AGENDAMENTO EXISTE
     const sqlSelect = isProduction
         ? `SELECT * FROM agendamentos WHERE id = $1 AND empresa_id = $2`
         : `SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?`;
 
     db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {
-            return res.json({ success: false, message: 'Agendamento n�o encontrado' });
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Agendamento não encontrado' 
+            });
         }
 
-        if (agendamento.status === 'concluido') {
-            return res.json({ success: false, message: 'Agendamentos conclu�dos n�o podem ser editados' });
+        // Impedir edição de concluídos
+        if (agendamento.status === 'concluido' || agendamento.status === 'cancelado') {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Agendamentos concluídos ou cancelados não podem ser editados' 
+            });
         }
 
-        let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
-        let params = [];
-        params.push(empresaId);
-        let updates = [];
-        let counter = 1;
-
-        if (cliente_id !== undefined) {
-            updates.push(isProduction ? `cliente_id = $${counter++}` : `cliente_id = ?`);
-            params.push(cliente_id);
-        }
-        if (data !== undefined) {
-            updates.push(isProduction ? `data = $${counter++}` : `data = ?`);
-            params.push(data);
-        }
-        if (hora !== undefined) {
-            updates.push(isProduction ? `hora = $${counter++}` : `hora = ?`);
-            params.push(hora);
-        }
-        if (servico_id !== undefined) {
-            updates.push(isProduction ? `servico_id = $${counter++}` : `servico_id = ?`);
-            params.push(servico_id || null);
-        }
-        if (servico !== undefined) {
-            updates.push(isProduction ? `servico = $${counter++}` : `servico = ?`);
-            params.push(servico);
-        }
-        if (valor !== undefined) {
-            updates.push(isProduction ? `valor = $${counter++}` : `valor = ?`);
-            params.push(valor);
-        }
-        if (profissional_id !== undefined) {
-            updates.push(isProduction ? `profissional_id = $${counter++}` : `profissional_id = ?`);
-            params.push(profissional_id || null);
-        }
-
-        if (updates.length === 0) {
-            return res.json({ success: false, message: 'Nenhum campo para atualizar' });
-        }
-
-        query += updates.join(', ');
-        query += isProduction ? ` WHERE id = $${counter++} AND empresa_id = $${counter++}` : ` WHERE id = ? AND empresa_id = ?`;
-        params.push(id, empresa_id);
-
-        db.run(query, params, function (err) {
-            if (err) {
-                return res.json({ success: false, message: err.message });
+        // 🔥 VALIDAR SE A DATA/HORA NÃO ESTÁ NO PASSADO (quando mudar)
+        if (data && data !== agendamento.data) {
+            const agora = new Date();
+            const [ano, mes, dia] = data.split('-').map(Number);
+            const dataSelecionada = new Date(ano, mes - 1, dia);
+            
+            // Se a data for hoje, validar horário também
+            if (dataSelecionada < agora) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Não é possível agendar em datas que já passaram!'
+                });
             }
-            res.json({ success: true, message: 'Agendamento atualizado com sucesso' });
-        });
+
+            // Se for hoje e tiver hora, validar hora
+            if (data === hojeStr && hora) {
+                const [horaNum, minutoNum] = hora.split(':').map(Number);
+                const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
+                if (dataHoraSelecionada < agora) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Não é possível agendar em horários que já passaram!'
+                    });
+                }
+            }
+        }
+
+        // 🔥 VALIDAR SE O CLIENTE EXISTE
+        if (cliente_id) {
+            db.get(
+                isProduction ? `SELECT id FROM clientes WHERE id = $1 AND empresa_id = $2` : `SELECT id FROM clientes WHERE id = ? AND empresa_id = ?`,
+                [cliente_id, empresa_id],
+                (err, cliente) => {
+                    if (err || !cliente) {
+                        return res.status(404).json({
+                            success: false,
+                            message: 'Cliente não encontrado'
+                        });
+                    }
+                    continuarUpdate();
+                }
+            );
+        } else {
+            continuarUpdate();
+        }
+
+        function continuarUpdate() {
+            // 🔥 MONTA A QUERY DINAMICAMENTE (CORRIGIDO)
+            let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
+            let params = [];
+            let updates = [];
+            let counter = 1;
+
+            if (cliente_id !== undefined) {
+                updates.push(isProduction ? `cliente_id = $${counter++}` : `cliente_id = ?`);
+                params.push(cliente_id);
+            }
+            if (data !== undefined) {
+                updates.push(isProduction ? `data = $${counter++}` : `data = ?`);
+                params.push(data);
+            }
+            if (hora !== undefined) {
+                updates.push(isProduction ? `hora = $${counter++}` : `hora = ?`);
+                params.push(hora);
+            }
+            if (servico_id !== undefined) {
+                updates.push(isProduction ? `servico_id = $${counter++}` : `servico_id = ?`);
+                params.push(servico_id || null);
+            }
+            if (servico !== undefined) {
+                updates.push(isProduction ? `servico = $${counter++}` : `servico = ?`);
+                params.push(servico);
+            }
+            if (valor !== undefined) {
+                updates.push(isProduction ? `valor = $${counter++}` : `valor = ?`);
+                params.push(valor);
+            }
+            if (profissional_id !== undefined) {
+                updates.push(isProduction ? `profissional_id = $${counter++}` : `profissional_id = ?`);
+                params.push(profissional_id || null);
+            }
+
+            // 🔥 CORREÇÃO: Se não houver campos para atualizar
+            if (updates.length === 0) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Nenhum campo para atualizar' 
+                });
+            }
+
+            query += updates.join(', ');
+            query += isProduction 
+                ? ` WHERE id = $${counter++} AND empresa_id = $${counter++}` 
+                : ` WHERE id = ? AND empresa_id = ?`;
+            params.push(id);
+            params.push(empresa_id); // 🔥 CORRIGIDO: usar empresa_id, não empresaId
+
+            console.log('📝 Atualizando agendamento:', query, params);
+
+            db.run(query, params, function (err) {
+                if (err) {
+                    console.error('❌ Erro ao atualizar:', err);
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: err.message 
+                    });
+                }
+
+                if (this.changes === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Agendamento não encontrado ou não alterado'
+                    });
+                }
+
+                // 🔥 BUSCAR AGENDAMENTO ATUALIZADO PARA RETORNAR
+                const sqlSelect2 = isProduction
+                    ? `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome 
+                       FROM agendamentos a
+                       LEFT JOIN clientes c ON a.cliente_id = c.id
+                       LEFT JOIN profissionais p ON a.profissional_id = p.id
+                       LEFT JOIN servicos s ON a.servico_id = s.id
+                       WHERE a.id = $1 AND a.empresa_id = $2`
+                    : `SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome 
+                       FROM agendamentos a
+                       LEFT JOIN clientes c ON a.cliente_id = c.id
+                       LEFT JOIN profissionais p ON a.profissional_id = p.id
+                       LEFT JOIN servicos s ON a.servico_id = s.id
+                       WHERE a.id = ? AND a.empresa_id = ?`;
+
+                db.get(sqlSelect2, [id, empresa_id], (err, agendamentoAtualizado) => {
+                    if (err) {
+                        console.error('❌ Erro ao buscar agendamento atualizado:', err);
+                        return res.json({
+                            success: true,
+                            message: 'Agendamento atualizado com sucesso'
+                        });
+                    }
+
+                    console.log(`✅ Agendamento ${id} atualizado com sucesso`);
+                    res.json({
+                        success: true,
+                        message: 'Agendamento atualizado com sucesso',
+                        data: agendamentoAtualizado
+                    });
+                });
+            });
+        }
     });
 });
 

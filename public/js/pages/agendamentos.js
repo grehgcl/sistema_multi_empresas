@@ -517,14 +517,13 @@ async function carregarListaAgendamentosComFiltro() {
 // FORMATAR DATA BR - CORRIGIDO (SEM TIMEZONE)
 // ============================================
 
+// Substituir a função formatarDataBr por:
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
         if (typeof dataStr === 'string' && dataStr.includes('-')) {
-            const partes = dataStr.split('-');
-            if (partes.length === 3) {
-                return partes[2] + '/' + partes[1] + '/' + partes[0];
-            }
+            const p = dataStr.split('-');
+            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
         }
         return dataStr;
     } catch {
@@ -792,7 +791,7 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
         }
 
         const hoje = new Date();
-        const hojeStr = hoje.toISOString().split('T')[0];
+const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
         if (data < hojeStr) {
             horaSelect.innerHTML = '<option value="">⚠️ Data passou</option>';
@@ -901,405 +900,152 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
 }
 
 // ============================================
-// ABRIR MODAL NOVO AGENDAMENTO - COM BUSCA DE CLIENTES
+// FUNÇÃO: ABRIR MODAL NOVO AGENDAMENTO - CORRIGIDO
 // ============================================
-
-async function abrirModalAgendamentoDono(horarioPreDefinido = null) {
+async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida = null, profissionalIdPreDefinido = null) {
     const token = localStorage.getItem('token');
 
-    // 🔥 CARREGA CLIENTES, SERVIÇOS E PROFISSIONAIS SE NÃO TIVER
     if (!clientesList || clientesList.length === 0) {
-        try {
-            const res = await fetch('/api/clientes', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (data.success) {
-                clientesList = data.data || [];
-                console.log(`✅ ${clientesList.length} clientes carregados`);
-            }
-        } catch (error) {
-            console.error('❌ Erro ao carregar clientes:', error);
-        }
+        try { const res = await fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) clientesList = data.data || []; } catch {}
     }
-
     if (!servicosList || servicosList.length === 0) {
-        try {
-            const res = await fetch('/api/servicos', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (data.success) {
-                servicosList = data.data || [];
-                console.log(`✅ ${servicosList.length} serviços carregados`);
-            }
-        } catch (error) {
-            console.error('❌ Erro ao carregar serviços:', error);
-        }
+        try { const res = await fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) servicosList = data.data || []; } catch {}
     }
-
     if (!profissionaisList || profissionaisList.length === 0) {
-        try {
-            const res = await fetch('/api/profissionais', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (data.success) {
-                profissionaisList = data.data || [];
-                console.log(`✅ ${profissionaisList.length} profissionais carregados`);
-            }
-        } catch (error) {
-            console.error('❌ Erro ao carregar profissionais:', error);
-        }
+        try { const res = await fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) profissionaisList = data.data || []; } catch {}
     }
 
-    const clientes = Array.isArray(clientesList) ? clientesList : [];
-    const servicos = Array.isArray(servicosList) ? servicosList : [];
-    const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
+    const clientes = Array.isArray(clientesList)? clientesList : [];
+    const servicos = Array.isArray(servicosList)? servicosList : [];
+    const profissionais = Array.isArray(profissionaisList)? profissionaisList : [];
     const isMobile = window.innerWidth < 768;
-
-    // Ordenar clientes por nome
     const clientesOrdenados = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome));
 
     let servicosOptions = '<option value="">Selecione</option>';
-    if (servicos.length > 0) {
-        for (let s of servicos) {
-            if ((s.ativo == 1 || s.ativo == true)) {
-                servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`;
-            }
-        }
-    } else {
-        servicosOptions += `<option value="" disabled>⚠️ Nenhum serviço cadastrado</option>`;
-    }
-
+    for (let s of servicos) { if ((s.ativo == 1 || s.ativo == true)) { servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`; } }
     let profissionaisOptions = '<option value="">Não atribuir</option>';
-    if (profissionais.length > 0) {
-        for (let p of profissionais) {
-            if ((p.ativo == 1 || p.ativo == true)) {
-                profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`;
-            }
-        }
-    } else {
-        profissionaisOptions += `<option value="" disabled>⚠️ Nenhum profissional cadastrado</option>`;
-    }
+    for (let p of profissionais) { if ((p.ativo == 1 || p.ativo == true)) { profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`; } }
 
-    // Gerar lista de clientes para o datalist
-    let clientesDatalist = '';
-    for (let c of clientesOrdenados) {
-        clientesDatalist += `<option value="${escapeHtml(c.nome)}" data-id="${c.id}" data-telefone="${escapeHtml(c.telefone || '')}"></option>`;
-    }
+    // DATA PADRÃO
+    let dataInicial = dataPreDefinida;
+if (!dataInicial) {
+    const hoje = new Date();
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+    const ano = amanha.getFullYear();
+    const mes = String(amanha.getMonth() + 1).padStart(2, '0');
+    const dia = String(amanha.getDate()).padStart(2, '0');
+    dataInicial = `${ano}-${mes}-${dia}`;
+}
 
     const modalHtml = `
-        <div id="modalAgendamentoDono" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; padding: ${isMobile ? '8px' : '20px'};">
-            <div class="modal-content" style="
-                max-width: ${isMobile ? '100%' : '500px'}; 
-                width: ${isMobile ? '100%' : '90%'}; 
-                max-height: ${isMobile ? '98vh' : '90vh'}; 
-                overflow-y: auto; 
-                background: var(--bg-card); 
-                border-radius: ${isMobile ? '12px' : '16px'}; 
-                padding: ${isMobile ? '16px' : '24px'}; 
-                box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-                margin: ${isMobile ? '0' : 'auto'};
-            ">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: ${isMobile ? '12px' : '16px'};">
-                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px;">
-                        <i class="fas fa-calendar-plus" style="font-size: ${isMobile ? '14px' : '18px'};"></i> 
-                        ${isMobile ? 'Novo' : 'Novo Agendamento'}
-                    </h3>
-                    <button onclick="fecharModalAgendamentoDono()" style="
-                        background: transparent; 
-                        border: none; 
-                        font-size: ${isMobile ? '20px' : '24px'}; 
-                        cursor: pointer; 
-                        color: var(--text-muted);
-                        padding: ${isMobile ? '4px' : '8px'};
-                        line-height: 1;
-                    ">✕</button>
+        <div id="modalAgendamentoDono" class="modal" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:${isMobile?'8px':'20px'};">
+            <div class="modal-content" style="max-width:${isMobile?'100%':'500px'};width:${isMobile?'100%':'90%'};max-height:${isMobile?'98vh':'90vh'};overflow-y:auto;background:var(--bg-card);border-radius:${isMobile?'12px':'16px'};padding:${isMobile?'16px':'24px'};box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="margin:0;font-size:${isMobile?'16px':'20px'};"><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
+                    <button onclick="fecharModalAgendamentoDono()" style="background:transparent;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);">✕</button>
                 </div>
-
-                <!-- 🔍 CLIENTE COM BUSCA -->
-                <div style="margin-bottom: ${isMobile ? '10px' : '14px'};">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary);">
-                            👤 Cliente <span style="color: #ef4444;">*</span>
-                        </label>
-                        <button type="button" onclick="abrirModalNovoCliente()" style="
-                            padding: ${isMobile ? '3px 10px' : '4px 14px'}; 
-                            font-size: ${isMobile ? '10px' : '11px'}; 
-                            border-radius: ${isMobile ? '6px' : '8px'}; 
-                            border: none; 
-                            background: linear-gradient(135deg, #22c55e, #16a34a); 
-                            color: white; 
-                            font-weight: 600; 
-                            cursor: pointer;
-                            display: flex;
-                            align-items: center;
-                            gap: ${isMobile ? '3px' : '4px'};
-                        ">
-                            <i class="fas fa-plus" style="font-size: ${isMobile ? '8px' : '10px'};"></i> ${isMobile ? 'Novo' : 'Novo Cliente'}
-                        </button>
+                ${horaPreDefinida?`<div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:10px 14px;border-radius:10px;margin-bottom:14px;text-align:center;font-weight:700;"><i class="fas fa-clock"></i> ${formatarDataBr(dataInicial)} às ${horaPreDefinida} ${profissionalIdPreDefinido?`• ${profissionais.find(p=>String(p.id)===String(profissionalIdPreDefinido))?.nome||''}`:''}</div>`:''}
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <label style="font-size:13px;font-weight:600;">👤 Cliente <span style="color:#ef4444;">*</span></label>
+                        <button type="button" onclick="abrirModalNovoCliente()" style="padding:4px 10px;font-size:11px;border-radius:8px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;font-weight:600;cursor:pointer;">+ Novo</button>
                     </div>
-                    
-                    <!-- 🔍 CAMPO DE BUSCA COM AUTOCOMPLETE -->
-                    <div style="position: relative;">
-                        <div style="display: flex; align-items: center; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: ${isMobile ? '6px' : '8px'}; padding: 0 10px;">
-                            <i class="fas fa-search" style="color: var(--text-muted); font-size: ${isMobile ? '12px' : '14px'};"></i>
-                            <input type="text" 
-                                   id="buscaClienteDono" 
-                                   class="form-control" 
-                                   placeholder="${isMobile ? 'Digite o nome...' : 'Digite o nome do cliente...'}" 
-                                   style="
-                                       border: none; 
-                                       background: transparent; 
-                                       padding: ${isMobile ? '8px 8px' : '10px 8px'}; 
-                                       font-size: ${isMobile ? '13px' : '14px'}; 
-                                       width: 100%;
-                                       outline: none;
-                                       color: var(--text-primary);
-                                   "
-                                   autocomplete="off"
-                                   oninput="filtrarClientesDono(this.value)"
-                                   onfocus="this.select()"
-                            >
-                        </div>
-                        
-                        <!-- LISTA DE SUGESTÕES -->
-                        <div id="listaSugestoesClientes" style="
-                            position: absolute;
-                            top: 100%;
-                            left: 0;
-                            right: 0;
-                            background: var(--bg-card);
-                            border: 1px solid var(--border-color);
-                            border-radius: ${isMobile ? '6px' : '8px'};
-                            max-height: 200px;
-                            overflow-y: auto;
-                            z-index: 9999;
-                            display: none;
-                            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-                            margin-top: 2px;
-                        ">
-                            <!-- Preenchido via JavaScript -->
-                        </div>
-                    </div>
-                    
-                    <!-- CLIENTE SELECIONADO (HIDDEN) -->
-                    <input type="hidden" id="clienteIdDono" value="">
-                    <input type="hidden" id="clienteTelefoneDono" value="">
-                    
-                    <!-- NOME DO CLIENTE SELECIONADO -->
-                    <div id="clienteSelecionadoInfo" style="
-                        display: none;
-                        margin-top: 6px;
-                        padding: ${isMobile ? '6px 10px' : '8px 12px'};
-                        background: rgba(34,197,94,0.08);
-                        border: 1px solid rgba(34,197,94,0.2);
-                        border-radius: ${isMobile ? '6px' : '8px'};
-                        font-size: ${isMobile ? '12px' : '13px'};
-                        color: var(--text-secondary);
-                    ">
-                        <i class="fas fa-check-circle" style="color: #22c55e;"></i>
-                        Cliente selecionado: <strong id="clienteSelecionadoNome">-</strong>
-                        <span id="clienteSelecionadoTelefone" style="color: var(--text-muted); font-size: 11px;"></span>
-                        <button onclick="limparClienteSelecionado()" style="
-                            background: none;
-                            border: none;
-                            color: #ef4444;
-                            cursor: pointer;
-                            font-size: 12px;
-                            margin-left: 8px;
-                        ">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+                    <div style="position:relative;"><div style="display:flex;align-items:center;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:0 10px;"><i class="fas fa-search" style="color:var(--text-muted);"></i><input type="text" id="buscaClienteDono" class="form-control" placeholder="Digite o nome..." style="border:none;background:transparent;padding:10px 8px;font-size:14px;width:100%;outline:none;" autocomplete="off" oninput="filtrarClientesDono(this.value)"></div><div id="listaSugestoesClientes" style="position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;max-height:200px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.2);margin-top:2px;"></div></div>
+                    <input type="hidden" id="clienteIdDono"><input type="hidden" id="clienteTelefoneDono"><div id="clienteSelecionadoInfo" style="display:none;margin-top:6px;padding:8px 12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;font-size:13px;"><i class="fas fa-check-circle" style="color:#22c55e;"></i> <strong id="clienteSelecionadoNome">-</strong> <span id="clienteSelecionadoTelefone" style="color:var(--text-muted);font-size:11px;"></span><button onclick="limparClienteSelecionado()" style="background:none;border:none;color:#ef4444;cursor:pointer;margin-left:8px;"><i class="fas fa-times"></i></button></div>
                 </div>
-
-                <!-- Data + Horário -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '10px' : '14px'};">
-                    <div>
-                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
-                            📅 Data <span style="color: #ef4444;">*</span>
-                        </label>
-                        <input type="date" id="dataAgendamentoDono" class="form-control" onchange="carregarHorariosDisponiveisDono()" style="
-                            width: 100%; 
-                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
-                            border-radius: ${isMobile ? '6px' : '8px'}; 
-                            border: 1px solid var(--border-color); 
-                            background: var(--bg-input); 
-                            color: var(--text-primary); 
-                            font-size: ${isMobile ? '13px' : '14px'};
-                        ">
-                    </div>
-                    <div>
-                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
-                            ⏰ Horário <span style="color: #ef4444;">*</span>
-                        </label>
-                        <select id="horaAgendamentoDono" class="form-control" style="
-                            width: 100%; 
-                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
-                            border-radius: ${isMobile ? '6px' : '8px'}; 
-                            border: 1px solid var(--border-color); 
-                            background: var(--bg-input); 
-                            color: var(--text-primary); 
-                            font-size: ${isMobile ? '13px' : '14px'};
-                            -webkit-appearance: none;
-                            appearance: none;
-                        ">
-                            <option value="">Selecione</option>
-                        </select>
-                    </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">📅 Data *</label><input type="date" id="dataAgendamentoDono" class="form-control" value="${dataInicial}" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"></div>
+                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">⏰ Horário *</label><select id="horaAgendamentoDono" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"><option value="">Carregando...</option></select><input type="hidden" id="horaFixadaDono" value="${horaPreDefinida||''}"></div>
                 </div>
-
-                <!-- Serviço + Valor -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: ${isMobile ? '8px' : '12px'}; margin-bottom: ${isMobile ? '10px' : '14px'};">
-                    <div>
-                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
-                            ✂️ Serviço
-                        </label>
-                        <select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()" style="
-                            width: 100%; 
-                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
-                            border-radius: ${isMobile ? '6px' : '8px'}; 
-                            border: 1px solid var(--border-color); 
-                            background: var(--bg-input); 
-                            color: var(--text-primary); 
-                            font-size: ${isMobile ? '13px' : '14px'};
-                            -webkit-appearance: none;
-                            appearance: none;
-                        ">
-                            ${servicosOptions}
-                        </select>
-                        <input type="text" id="servicoDescricaoDono" class="form-control" style="
-                            width: 100%; 
-                            margin-top: 4px; 
-                            padding: ${isMobile ? '6px 8px' : '8px 10px'}; 
-                            border-radius: ${isMobile ? '4px' : '6px'}; 
-                            border: 1px solid var(--border-color); 
-                            background: var(--bg-input); 
-                            color: var(--text-primary); 
-                            font-size: ${isMobile ? '11px' : '12px'};
-                        " placeholder="${isMobile ? 'Manual...' : 'Ou digite manualmente'}">
-                    </div>
-                    <div>
-                        <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
-                            💰 Valor
-                        </label>
-                        <input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00" style="
-                            width: 100%; 
-                            padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
-                            border-radius: ${isMobile ? '6px' : '8px'}; 
-                            border: 1px solid var(--border-color); 
-                            background: var(--bg-input); 
-                            color: var(--text-primary); 
-                            font-size: ${isMobile ? '14px' : '14px'};
-                            font-weight: 600;
-                        ">
-                    </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">✂ Serviço</label><select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">${servicosOptions}</select><input type="text" id="servicoDescricaoDono" class="form-control" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input);font-size:12px;" placeholder="Ou digite manualmente"></div>
+                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">💰 Valor</label><input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);font-weight:600;"></div>
                 </div>
-
-                <!-- Profissional -->
-                <div style="margin-bottom: ${isMobile ? '12px' : '16px'};">
-                    <label style="font-size: ${isMobile ? '11px' : '13px'}; font-weight: 600; color: var(--text-secondary); display: block; margin-bottom: 3px;">
-                        👨‍💼 Profissional
-                    </label>
-                    <select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono()" style="
-                        width: 100%; 
-                        padding: ${isMobile ? '8px 10px' : '10px 12px'}; 
-                        border-radius: ${isMobile ? '6px' : '8px'}; 
-                        border: 1px solid var(--border-color); 
-                        background: var(--bg-input); 
-                        color: var(--text-primary); 
-                        font-size: ${isMobile ? '13px' : '14px'};
-                        -webkit-appearance: none;
-                        appearance: none;
-                    ">
-                        ${profissionaisOptions}
-                    </select>
-                </div>
-
-                <!-- Duração -->
-                <div style="
-                    background: rgba(102,126,234,0.06); 
-                    border-radius: ${isMobile ? '4px' : '8px'}; 
-                    padding: ${isMobile ? '4px 8px' : '8px 12px'}; 
-                    margin-bottom: ${isMobile ? '10px' : '14px'}; 
-                    border: 1px solid rgba(102,126,234,0.1);
-                    display: flex;
-                    align-items: center;
-                    gap: ${isMobile ? '4px' : '8px'};
-                    font-size: ${isMobile ? '9px' : '12px'};
-                    color: var(--text-muted);
-                ">
-                    <i class="fas fa-clock" style="font-size: ${isMobile ? '10px' : '14px'};"></i>
-                    <span id="infoDuracaoHorario">⏱️ 30min</span>
-                </div>
-
-                <!-- Botões -->
-                <div style="display: flex; gap: ${isMobile ? '6px' : '10px'}; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: ${isMobile ? '12px' : '16px'};">
-                    <button type="button" onclick="fecharModalAgendamentoDono()" style="
-                        padding: ${isMobile ? '6px 14px' : '10px 24px'}; 
-                        border-radius: ${isMobile ? '6px' : '8px'}; 
-                        border: 1px solid var(--border-color); 
-                        background: transparent; 
-                        color: var(--text-secondary); 
-                        font-size: ${isMobile ? '12px' : '14px'}; 
-                        cursor: pointer;
-                        font-weight: 500;
-                    ">
-                        ${isMobile ? '✕' : 'Cancelar'}
-                    </button>
-                    <button type="button" onclick="salvarAgendamentoDono()" style="
-                        padding: ${isMobile ? '6px 16px' : '10px 28px'}; 
-                        border-radius: ${isMobile ? '6px' : '8px'}; 
-                        border: none; 
-                        background: linear-gradient(135deg, #667eea, #764ba2); 
-                        color: white; 
-                        font-size: ${isMobile ? '12px' : '14px'}; 
-                        font-weight: 600; 
-                        cursor: pointer;
-                        box-shadow: 0 2px 12px rgba(102,126,234,0.3);
-                        display: flex;
-                        align-items: center;
-                        gap: 4px;
-                    ">
-                        <i class="fas fa-save" style="font-size: ${isMobile ? '10px' : '12px'};"></i> 
-                        ${isMobile ? 'Salvar' : 'Salvar Agendamento'}
-                    </button>
-                </div>
+                <div style="margin-bottom:14px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">👨💼 Profissional</label><select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">${profissionaisOptions}</select></div>
+                <div style="background:rgba(102,126,234,0.06);border-radius:8px;padding:8px 12px;margin-bottom:14px;border:1px solid rgba(102,126,234,0.1);font-size:12px;color:var(--text-muted);"><i class="fas fa-clock"></i> <span id="infoDuracaoHorario">⏱ 30min</span></div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;"><button type="button" onclick="fecharModalAgendamentoDono()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;">Cancelar</button><button type="button" onclick="salvarAgendamentoDono()" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;"><i class="fas fa-save"></i> Salvar</button></div>
             </div>
         </div>
     `;
-
-    const existingModal = document.getElementById("modalAgendamentoDono");
-    if (existingModal) existingModal.remove();
-
+    const old = document.getElementById("modalAgendamentoDono"); if(old) old.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Configurar data padrão
-    const dataInput = document.getElementById('dataAgendamentoDono');
-    if (dataInput) {
-        const hoje = new Date();
-        const amanha = new Date(hoje);
-        amanha.setDate(amanha.getDate() + 1);
-        dataInput.value = amanha.toISOString().split('T')[0];
-        setTimeout(() => carregarHorariosDisponiveisDono(), 100);
+    // PRE-SELECIONAR PROFISSIONAL SE VEIO DA AGENDA
+    if (profissionalIdPreDefinido) {
+        const sel = document.getElementById('profissionalIdDono');
+        if (sel) { sel.value = profissionalIdPreDefinido; }
     }
 
-    // Adicionar event listener para Enter na busca
-    const buscaInput = document.getElementById('buscaClienteDono');
-    if (buscaInput) {
-        buscaInput.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const sugestoes = document.getElementById('listaSugestoesClientes');
-                const primeiroItem = sugestoes?.querySelector('.sugestao-item');
-                if (primeiroItem) {
-                    primeiroItem.click();
-                }
+    // CARREGAR HORÁRIOS RESPEITANDO O CLICADO
+    setTimeout(() => {
+        carregarHorariosDisponiveisDono(false, horaPreDefinida, true);
+    }, 100);
+}
+
+async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null, forcarManterClicado = false) {
+    try {
+        const dataEl = document.getElementById("dataAgendamentoDono");
+        const horaSelect = document.getElementById("horaAgendamentoDono");
+        const profEl = document.getElementById("profissionalIdDono");
+        const horaFixadaEl = document.getElementById("horaFixadaDono");
+        const servicoSelect = document.getElementById("servicoIdDono");
+
+        if (!dataEl ||!horaSelect) return;
+        const data = dataEl.value;
+        const profissional_id = profEl?.value;
+        const servicoId = servicoSelect?.value;
+
+        // HORÁRIO QUE TEM QUE SER RESPEITADO
+        let horarioObrigatorio = horarioParaRestaurar || horaFixadaEl?.value || (manterHorario? horaSelect.value : null);
+        if (forcarManterClicado && horaFixadaEl?.value) horarioObrigatorio = horaFixadaEl.value;
+
+        let duracao = 30;
+        if (servicoId) { const s = servicosList.find(x => x.id == servicoId); if (s) duracao = s.duracao || 30; }
+        const infoDur = document.getElementById('infoDuracaoHorario'); if(infoDur) infoDur.textContent = `⏱ ${duracao}min`;
+
+        if (!data) return;
+
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const empresaId = payload.empresa_id;
+            const response = await fetch("/api/chatbot/horarios-disponiveis", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
+                body: JSON.stringify({ empresaId, profissionalId: profissional_id || null, data, duracao })
+            });
+            const result = await response.json();
+            let horarios = result.success? (result.horarios || result.data || []) : [];
+
+            const hoje = new Date(); const hojeStr = hoje.toISOString().split('T')[0];
+            if (data === hojeStr) {
+                const hAtual = hoje.getHours(); const mAtual = hoje.getMinutes();
+                horarios = horarios.filter(h => { const [hh,mm]=h.split(':').map(Number); return hh>hAtual || (hh===hAtual && mm>mAtual); });
             }
-        });
-    }
+
+            // 🔥 GARANTE QUE O HORÁRIO CLICADO SEMPRE EXISTE NA LISTA
+            if (horarioObrigatorio &&!horarios.includes(horarioObrigatorio)) {
+                horarios.push(horarioObrigatorio);
+                horarios.sort();
+            }
+
+            if (horarios.length > 0) {
+                let options = '<option value="">Selecione</option>';
+                for (let h of horarios) {
+                    const isFixado = h === horarioObrigatorio;
+                    const sel = isFixado? 'selected' : '';
+                    options += `<option value="${h}" ${sel} ${isFixado?'style="font-weight:800;background:rgba(102,126,234,0.15);"':''}>${h} ${isFixado?'⭐':''}</option>`;
+                }
+                horaSelect.innerHTML = options;
+                if (horarioObrigatorio) horaSelect.value = horarioObrigatorio;
+            } else {
+                horaSelect.innerHTML = `<option value="${horarioObrigatorio||''}" selected>${horarioObrigatorio||'Indisponível'}</option>`;
+            }
+        } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); }
 }
 
 // ============================================
