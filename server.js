@@ -3753,7 +3753,7 @@ app.post('/api/agendamentos',
             });
 
             // ============================================
-            // 📱 ENVIAR WHATSAPP - CORRIGIDO
+            // 🔥 ENVIAR WHATSAPP - CONFIRMAÇÃO (NOVO TEMPLATE)
             // ============================================
             try {
                 console.log('📱 Tentando enviar WhatsApp...');
@@ -3777,10 +3777,10 @@ app.post('/api/agendamentos',
                     );
                 });
 
-                // Buscar dados da empresa
+                // Buscar dados da empresa completa
                 const empresa = await new Promise((resolve) => {
                     db.get(
-                        'SELECT nome, endereco, telefone_dono FROM empresas WHERE id = ?',
+                        'SELECT id, nome, endereco, telefone_dono FROM empresas WHERE id = ?',
                         [empresa_id],
                         (err, row) => {
                             if (err) {
@@ -3793,30 +3793,52 @@ app.post('/api/agendamentos',
                     );
                 });
 
+                // Buscar dados do profissional se existir
+                let profissionalData = null;
+                if (profissionalIdFinal) {
+                    profissionalData = await new Promise((resolve) => {
+                        db.get(
+                            'SELECT nome FROM profissionais WHERE id = ?',
+                            [profissionalIdFinal],
+                            (err, row) => {
+                                if (err) {
+                                    console.error('❌ Erro ao buscar profissional:', err);
+                                    resolve(null);
+                                } else {
+                                    resolve(row);
+                                }
+                            }
+                        );
+                    });
+                }
+
                 if (cliente && empresa) {
                     console.log(`📱 Cliente: ${cliente.nome}, Telefone: ${cliente.telefone}`);
                     console.log(`📱 Empresa: ${empresa.nome}`);
 
                     if (cliente.telefone) {
-                        // Usar enviarMensagem (que é um alias para send)
-                        const resultado = await whatsapp.enviarMensagem(
-                            empresa_id,
-                            cliente.telefone,
-                            `✅ *Agendamento Confirmado!*\n\n` +
-                            `Olá ${cliente.nome}! Seu agendamento foi confirmado:\n\n` +
-                            `📅 *Data:* ${formatarDataBr(data)}\n` +
-                            `⏰ *Hora:* ${hora}\n` +
-                            `💇 *Serviço:* ${nomeServico}\n` +
-                            `🏢 *Empresa:* ${empresa.nome}\n\n` +
-                            `📍 ${empresa.endereco || 'Endereço não informado'}\n\n` +
-                            `Nos vemos lá! 😊`
-                        );
+                        // 🔥 USAR A NOVA FUNÇÃO enviarConfirmacao
+                        await whatsapp.enviarConfirmacao({
+                            cliente: {
+                                nome: cliente.nome,
+                                telefone: cliente.telefone
+                            },
+                            servico: {
+                                nome: nomeServico || 'Serviço',
+                                valor: valorServico || 0
+                            },
+                            data: data,
+                            hora: hora,
+                            profissional: profissionalData ? { nome: profissionalData.nome } : null,
+                            empresa: {
+                                id: empresa_id,
+                                nome: empresa.nome,
+                                endereco: empresa.endereco || '',
+                                telefone_dono: empresa.telefone_dono || ''
+                            }
+                        });
 
-                        if (resultado.success) {
-                            console.log(`✅ WhatsApp enviado para ${cliente.telefone}`);
-                        } else {
-                            console.log(`⚠️ WhatsApp não enviado: ${resultado.error || resultado.message}`);
-                        }
+                        console.log(`✅ WhatsApp: Confirmação enviada para ${cliente.telefone}`);
                     } else {
                         console.log(`⚠️ Cliente ${cliente.nome} não tem telefone cadastrado`);
                     }
