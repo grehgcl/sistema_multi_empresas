@@ -4097,7 +4097,7 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
     const empresaId = req.usuario.empresa_id;
 
     db.get(
-        `SELECT a.*, p.comissao_percent, p.nome as profissional_nome, c.nome as cliente_nome, c.telefone, s.nome as servico_nome
+        `SELECT a.*, p.comissao_percent, p.nome as profissional_nome, c.nome as cliente_nome, c.telefone, s.nome as servico_nome, s.valor as servico_valor
          FROM agendamentos a
          LEFT JOIN profissionais p ON a.profissional_id = p.id
          LEFT JOIN clientes c ON a.cliente_id = c.id
@@ -4135,10 +4135,22 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
                         try {
                             // Buscar dados da empresa para o link
                             const empresa = await new Promise((resolve) => {
-                                db.get('SELECT id, nome, telefone_dono FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                                db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
                                     resolve(row || {});
                                 });
                             });
+
+                            // 🔥 PEGAR O VALOR CORRETO
+                            let valorServico = 0;
+                            if (agendamento.valor_total && parseFloat(agendamento.valor_total) > 0) {
+                                valorServico = parseFloat(agendamento.valor_total);
+                            } else if (agendamento.valor && parseFloat(agendamento.valor) > 0) {
+                                valorServico = parseFloat(agendamento.valor);
+                            } else if (agendamento.servico_valor && parseFloat(agendamento.servico_valor) > 0) {
+                                valorServico = parseFloat(agendamento.servico_valor);
+                            }
+
+                            console.log(`[WHATSAPP] 💰 Valor do serviço: R$ ${valorServico}`);
 
                             const dadosConclusao = {
                                 cliente: {
@@ -4146,16 +4158,28 @@ app.put('/api/agendamentos/:id/concluir', auth, verificarDono, async (req, res) 
                                     telefone: agendamento.telefone
                                 },
                                 servico: {
-                                    nome: agendamento.servico_nome || agendamento.servico || 'Serviço'
+                                    nome: agendamento.servico_nome || agendamento.servico || 'Serviço',
+                                    valor: valorServico
                                 },
                                 data: agendamento.data,
                                 hora: agendamento.hora,
+                                profissional: {
+                                    nome: agendamento.profissional_nome || ''
+                                },
                                 empresa: {
                                     id: empresaId,
                                     nome: empresa?.nome || 'Barbearia',
-                                    telefone_dono: empresa?.telefone_dono || ''
-                                }
+                                    telefone_dono: empresa?.telefone_dono || '',
+                                    endereco: empresa?.endereco || ''
+                                },
+                                agendamento_id: parseInt(id) // 🔥 ADICIONAR O ID DO AGENDAMENTO
                             };
+
+                            console.log('[WHATSAPP] 📝 Dados enviados para conclusão:', {
+                                servico: dadosConclusao.servico.nome,
+                                valor: dadosConclusao.servico.valor,
+                                agendamento_id: dadosConclusao.agendamento_id
+                            });
 
                             // Usar a nova função enviarConclusao
                             await whatsappService.enviarConclusao(dadosConclusao);
