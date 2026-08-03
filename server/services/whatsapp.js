@@ -20,8 +20,8 @@ const config = {
     }
 };
 
-// 🔥 BASE URL PARA LINKS (prioriza a URL da VPS)
-const BASE_URL = process.env.BASE_URL || process.env.APP_URL || 'https://seeagende.com.br';
+// 🔥 BASE_URL - usa a URL da VPS ou .env
+const BASE_URL = process.env.BASE_URL || 'https://seeagende.com.br';
 
 console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
 console.log(`[WHATSAPP] 🌐 BASE_URL: ${BASE_URL}`);
@@ -172,18 +172,26 @@ async function send(empresaId, numero, mensagem) {
 }
 
 // ============================================
-// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO (COM MAPS E COMO CHEGAR)
+// 🔥 GERAR LINK DO CHATBOT (USANDO BASE_URL)
+// ============================================
+function gerarLinkChatbot(empresa) {
+    const nomeEmpresa = empresa?.nome || '';
+    const slug = gerarSlug(nomeEmpresa);
+    const id = empresa?.id || '1';
+    // 🔥 USA O BASE_URL DEFINIDO NO INÍCIO
+    return `${BASE_URL}/chatbot.html?empresa=${slug || id}`;
+}
+
+// ============================================
+// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO
 // ============================================
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink) {
-    // 🔥 PEGAR O VALOR CORRETO
     let valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
     const nomeEmpresa = empresa?.nome || 'nossa empresa';
 
-    // 🔥 LINK DO CHATBOT (usa BASE_URL)
     if (!chatbotLink) {
-        const slug = gerarSlug(nomeEmpresa);
-        chatbotLink = `${BASE_URL}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
+        chatbotLink = gerarLinkChatbot(empresa);
     }
 
     // 🔥 GERAR LINK DO GOOGLE MAPS
@@ -196,7 +204,6 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
         wazeLink = `https://waze.com/ul?q=${enderecoEncoded}&navigate=yes`;
     }
 
-    // 🔥 GERAR LINK DO WHATSAPP DO DONO
     let whatsappLink = '';
     if (empresa?.telefone_dono) {
         const telLimpo = empresa.telefone_dono.replace(/\D/g, '');
@@ -213,25 +220,17 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
 
     if (profissional?.nome) msg += `👤 Profissional: *${profissional.nome}*\n\n`;
 
-    // 🔥 ENDEREÇO COM "COMO CHEGAR"
     if (empresa?.endereco) {
         msg += `📍 *Endereço:* ${empresa.endereco}\n\n`;
         msg += `🚗 *COMO CHEGAR:*\n`;
-        if (mapsLink) {
-            msg += `🗺️ *Abrir no Google Maps:* ${mapsLink}\n`;
-        }
-        if (wazeLink) {
-            msg += `🚗 *Abrir no Waze:* ${wazeLink}\n`;
-        }
+        if (mapsLink) msg += `🗺️ *Google Maps:* ${mapsLink}\n`;
+        if (wazeLink) msg += `🚗 *Waze:* ${wazeLink}\n`;
         msg += `\n`;
     }
 
-    // 🔥 CONTATO
     if (empresa?.telefone_dono) {
         msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
-        if (whatsappLink) {
-            msg += `💬 *Falar no WhatsApp:* ${whatsappLink}\n`;
-        }
+        if (whatsappLink) msg += `💬 *WhatsApp:* ${whatsappLink}\n`;
         msg += `\n`;
     }
 
@@ -249,9 +248,7 @@ async function enviarConfirmacao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    const slug = gerarSlug(empresa?.nome);
-    const chatbotLink = `${BASE_URL}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
-
+    const chatbotLink = gerarLinkChatbot(empresa);
     const mensagem = gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink);
     return await send(empresa?.id, cliente.telefone, mensagem);
 }
@@ -292,26 +289,40 @@ async function enviarCancelamento(dados) {
 }
 
 // ============================================
-// 🔥 ENVIAR CONCLUSÃO (COM VALOR CORRETO E LINK)
+// 🔥 ENVIAR CONCLUSÃO (CORRIGIDO)
 // ============================================
 async function enviarConclusao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
+
+    console.log('[WHATSAPP] 📝 Dados recebidos para conclusão:', {
+        cliente: cliente?.nome,
+        servico: servico?.nome,
+        valor_servico: servico?.valor,
+        valor_dados: dados?.valor,
+        valor_total: dados?.valor_total,
+        data,
+        hora
+    });
+
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    // 🔥 VALOR CORRETO (prioriza valor_total, depois valor, depois valor do serviço)
+    // 🔥 PEGAR O VALOR CORRETO
     let valor = 0;
-    if (dados.valor_total && parseFloat(dados.valor_total) > 0) {
+    if (dados?.valor_total && parseFloat(dados.valor_total) > 0) {
         valor = parseFloat(dados.valor_total);
-    } else if (dados.valor && parseFloat(dados.valor) > 0) {
+    } else if (dados?.valor && parseFloat(dados.valor) > 0) {
         valor = parseFloat(dados.valor);
     } else if (servico?.valor && parseFloat(servico.valor) > 0) {
         valor = parseFloat(servico.valor);
+    } else if (dados?.servico?.valor && parseFloat(dados.servico.valor) > 0) {
+        valor = parseFloat(dados.servico.valor);
     }
-    const valorFormatado = valor.toFixed(2).replace('.', ',');
 
-    // 🔥 LINK DO CHATBOT (usa BASE_URL)
-    const slug = gerarSlug(empresa?.nome);
-    const chatbotLink = `${BASE_URL}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+    console.log(`[WHATSAPP] 💰 Valor final: R$ ${valorFormatado}`);
+
+    // 🔥 LINK DO CHATBOT (USA BASE_URL)
+    const chatbotLink = gerarLinkChatbot(empresa);
 
     // 🔥 GERAR LINK DO GOOGLE MAPS
     const enderecoCompleto = empresa?.endereco || '';
@@ -321,7 +332,6 @@ async function enviarConclusao(dados) {
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${enderecoEncoded}`;
     }
 
-    // 🔥 WHATSAPP DO DONO
     let whatsappLink = '';
     if (empresa?.telefone_dono) {
         const telLimpo = empresa.telefone_dono.replace(/\D/g, '');
@@ -332,7 +342,7 @@ async function enviarConclusao(dados) {
     msg += `Olá *${cliente?.nome}*!\n`;
     msg += `Obrigado por escolher a *${empresa?.nome || 'nossa empresa'}*!\n\n`;
     msg += `📋 *RESUMO DO SERVIÇO:*\n`;
-    msg += `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n`;
+    msg += `✂️ Serviço: *${servico?.nome || dados?.servico?.nome || 'Serviço'}*\n`;
     msg += `💰 Valor: *R$ ${valorFormatado}*\n`;
     msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n\n`;
 
@@ -340,21 +350,15 @@ async function enviarConclusao(dados) {
         msg += `👤 Profissional: *${profissional.nome}*\n\n`;
     }
 
-    // 🔥 ENDEREÇO
     if (empresa?.endereco) {
         msg += `📍 *Endereço:* ${empresa.endereco}\n`;
-        if (mapsLink) {
-            msg += `🗺️ *Como chegar:* ${mapsLink}\n`;
-        }
+        if (mapsLink) msg += `🗺️ *Como chegar:* ${mapsLink}\n`;
         msg += `\n`;
     }
 
-    // 🔥 CONTATO
     if (empresa?.telefone_dono) {
         msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
-        if (whatsappLink) {
-            msg += `💬 *WhatsApp:* ${whatsappLink}\n`;
-        }
+        if (whatsappLink) msg += `💬 *WhatsApp:* ${whatsappLink}\n`;
         msg += `\n`;
     }
 
