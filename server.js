@@ -1231,6 +1231,43 @@ app.get('/api/empresa/dados', auth, async (req, res) => {
     }
 });
 // ============================================================
+// 🔥 ROTA: ATUALIZAR DADOS DA EMPRESA (NOME, TELEFONE, ENDERECO)
+// ============================================================
+app.put('/api/empresa/dados', auth, verificarDono, (req, res) => {
+    const { nome, telefone_dono, endereco } = req.body;
+    const empresaId = req.usuario.empresa_id;
+
+    console.log('📝 Atualizando dados da empresa:', { empresaId, nome, telefone_dono, endereco });
+
+    // Validar campos obrigatórios
+    if (!nome || !telefone_dono) {
+        return res.status(400).json({
+            success: false,
+            message: 'Nome e telefone são obrigatórios'
+        });
+    }
+
+    const sql = isProduction
+        ? `UPDATE empresas SET nome = $1, telefone_dono = $2, endereco = $3 WHERE id = $4`
+        : `UPDATE empresas SET nome = ?, telefone_dono = ?, endereco = ? WHERE id = ?`;
+
+    db.run(sql, [nome.trim(), telefone_dono.trim(), endereco ? endereco.trim() : '', empresaId], function (err) {
+        if (err) {
+            console.error('❌ Erro ao atualizar empresa:', err.message);
+            return res.status(500).json({
+                success: false,
+                message: err.message || 'Erro ao salvar dados da empresa'
+            });
+        }
+
+        console.log(`✅ Empresa ${empresaId} atualizada com sucesso!`);
+        res.json({
+            success: true,
+            message: '✅ Dados do estabelecimento atualizados com sucesso!'
+        });
+    });
+});
+// ============================================================
 // ?? ROTA: ATUALIZAR ENDERECO DA EMPRESA
 // ============================================================
 app.put('/api/empresa/endereco', auth, verificarDono, (req, res) => {
@@ -4212,17 +4249,17 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
     db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Agendamento não encontrado' 
+            return res.status(404).json({
+                success: false,
+                message: 'Agendamento não encontrado'
             });
         }
 
         // Impedir edição de concluídos
         if (agendamento.status === 'concluido' || agendamento.status === 'cancelado') {
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Agendamentos concluídos ou cancelados não podem ser editados' 
+            return res.status(400).json({
+                success: false,
+                message: 'Agendamentos concluídos ou cancelados não podem ser editados'
             });
         }
 
@@ -4231,7 +4268,7 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
             const agora = new Date();
             const [ano, mes, dia] = data.split('-').map(Number);
             const dataSelecionada = new Date(ano, mes - 1, dia);
-            
+
             // Se a data for hoje, validar horário também
             if (dataSelecionada < agora) {
                 return res.status(400).json({
@@ -4310,15 +4347,15 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
 
             // 🔥 CORREÇÃO: Se não houver campos para atualizar
             if (updates.length === 0) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Nenhum campo para atualizar' 
+                return res.status(400).json({
+                    success: false,
+                    message: 'Nenhum campo para atualizar'
                 });
             }
 
             query += updates.join(', ');
-            query += isProduction 
-                ? ` WHERE id = $${counter++} AND empresa_id = $${counter++}` 
+            query += isProduction
+                ? ` WHERE id = $${counter++} AND empresa_id = $${counter++}`
                 : ` WHERE id = ? AND empresa_id = ?`;
             params.push(id);
             params.push(empresa_id); // 🔥 CORRIGIDO: usar empresa_id, não empresaId
@@ -4328,9 +4365,9 @@ app.put('/api/agendamentos/:id', auth, verificarDono, (req, res) => {
             db.run(query, params, function (err) {
                 if (err) {
                     console.error('❌ Erro ao atualizar:', err);
-                    return res.status(500).json({ 
-                        success: false, 
-                        message: err.message 
+                    return res.status(500).json({
+                        success: false,
+                        message: err.message
                     });
                 }
 

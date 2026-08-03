@@ -1,4 +1,4 @@
-﻿// Configurações Unificadas - Profissionais + Horários + Chatbot + Tema + BLOQUEIO GERAL
+﻿// Configurações Unificadas - Profissionais + Horários + Chatbot + Tema + BLOQUEIO GERAL + DADOS DA EMPRESA
 
 let profissionaisData = [];
 let planoInfo = { plano: 'trial', limite: 1, ativos: 0, podeAdicionar: true };
@@ -166,6 +166,24 @@ async function carregarConfiguracoes() {
                     ">
                         <i class="fas fa-${temaSalvo === 'dark' ? 'moon' : 'sun'}" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Tema' : 'Tema'}
                     </button>
+                    <button class="config-tab" onclick="switchConfigTab('empresa')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-building" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Empresa' : 'Empresa'}
+                    </button>
                 </div>
                 
                 <div id="configContent">
@@ -202,7 +220,7 @@ function switchConfigTab(tab) {
     });
 
     const tabs = document.querySelectorAll('.config-tab');
-    const index = ['profissionais', 'horarios', 'bloqueio', 'chatbot', 'tema'].indexOf(tab);
+    const index = ['profissionais', 'horarios', 'bloqueio', 'chatbot', 'tema', 'empresa'].indexOf(tab);
     if (tabs[index]) {
         tabs[index].classList.add('active');
         tabs[index].style.background = 'var(--gradient)';
@@ -228,8 +246,191 @@ function switchConfigTab(tab) {
             const temaAtual = localStorage.getItem('theme') || 'light';
             document.getElementById('configContent').innerHTML = renderTema(temaAtual);
             break;
+        case 'empresa':
+            carregarDadosEmpresa();
+            break;
         default:
             break;
+    }
+}
+
+// ============================================
+// CARREGAR DADOS DA EMPRESA
+// ============================================
+async function carregarDadosEmpresa() {
+    showLoading();
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/empresa/dados', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.success && data.data) {
+            document.getElementById('configContent').innerHTML = renderDadosEmpresa(data.data);
+        } else {
+            showToast('Erro ao carregar dados da empresa', 'error');
+            document.getElementById('configContent').innerHTML = '<div class="card"><p class="text-muted">Erro ao carregar dados</p></div>';
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showToast('Erro ao carregar dados da empresa', 'error');
+        document.getElementById('configContent').innerHTML = '<div class="card"><p class="text-muted">Erro ao carregar dados</p></div>';
+    }
+    hideLoading();
+}
+
+// ============================================
+// RENDER DADOS DA EMPRESA
+// ============================================
+function renderDadosEmpresa(empresa) {
+    const isMobile = window.innerWidth < 768;
+
+    return `
+        <div class="card" style="padding: ${isMobile ? '14px' : '24px'};">
+            <div class="card-header">
+                <h3 style="font-size: ${isMobile ? '16px' : '18px'}; margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-building" style="color: var(--primary);"></i> Dados do Estabelecimento
+                </h3>
+            </div>
+            <p class="text-muted" style="font-size: ${isMobile ? '13px' : '14px'}; margin-top: 4px;">Essas informações aparecem nas mensagens enviadas para os clientes.</p>
+            
+            <form id="formEmpresa" onsubmit="salvarDadosEmpresa(event)">
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">
+                        <i class="fas fa-store"></i> Nome do Estabelecimento *
+                    </label>
+                    <input type="text" id="emp-nome" class="form-control" 
+                           value="${escapeHtml(empresa.nome || '')}" 
+                           placeholder="Nome da sua empresa"
+                           required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">
+                        <i class="fas fa-phone"></i> Telefone do Dono *
+                    </label>
+                    <input type="text" id="emp-telefone" class="form-control" 
+                           value="${escapeHtml(empresa.telefone_dono || '')}" 
+                           placeholder="(00) 00000-0000"
+                           required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">
+                        <i class="fas fa-map-marker-alt"></i> Endereço
+                    </label>
+                    <textarea id="emp-endereco" class="form-control" 
+                              placeholder="Rua, número, bairro, cidade - UF"
+                              rows="2" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); font-family: 'Inter', sans-serif;">${escapeHtml(empresa.endereco || '')}</textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button type="submit" style="
+                        padding: ${isMobile ? '10px 24px' : '12px 28px'};
+                        background: var(--gradient);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        font-weight: 600;
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        ${isMobile ? 'width: 100%; justify-content: center;' : ''}
+                    ">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <button type="button" onclick="carregarDadosEmpresa()" style="
+                        padding: ${isMobile ? '10px 24px' : '12px 28px'};
+                        background: var(--bg-hover);
+                        color: var(--text-primary);
+                        border: 1px solid var(--border-color);
+                        border-radius: 10px;
+                        font-weight: 600;
+                        font-size: ${isMobile ? '13px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        ${isMobile ? 'width: 100%; justify-content: center;' : ''}
+                    ">
+                        <i class="fas fa-undo"></i> Recarregar
+                    </button>
+                </div>
+            </form>
+            
+            <div style="margin-top: 16px; padding: ${isMobile ? '14px' : '16px'}; background: var(--bg-hover); border-radius: 10px;">
+                <h4 style="margin: 0 0 8px 0; color: var(--text-primary); font-size: ${isMobile ? '14px' : '16px'};">
+                    <i class="fas fa-info-circle" style="color: var(--primary);"></i> Onde essas informações são usadas?
+                </h4>
+                <ul style="margin: 0; padding-left: 20px; line-height: ${isMobile ? '2' : '2'}; color: var(--text-secondary); font-size: ${isMobile ? '13px' : '14px'};">
+                    <li>📱 <strong>Mensagens de confirmação</strong> enviadas aos clientes</li>
+                    <li>📱 <strong>Mensagens de conclusão</strong> após o serviço</li>
+                    <li>📍 <strong>Endereço</strong> aparece para orientar os clientes</li>
+                    <li>📞 <strong>Telefone</strong> para contato direto com o estabelecimento</li>
+                </ul>
+            </div>
+        </div>
+    `;
+}
+
+// ============================================
+// SALVAR DADOS DA EMPRESA
+// ============================================
+async function salvarDadosEmpresa(event) {
+    event.preventDefault();
+
+    const nome = document.getElementById('emp-nome')?.value;
+    const telefone = document.getElementById('emp-telefone')?.value;
+    const endereco = document.getElementById('emp-endereco')?.value;
+
+    if (!nome || !telefone) {
+        showToast('Preencha o nome e telefone do estabelecimento', 'warning');
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch('/api/empresa/dados', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                nome: nome.trim(),
+                telefone_dono: telefone.trim(),
+                endereco: endereco ? endereco.trim() : ''
+            })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('✅ Dados do estabelecimento atualizados com sucesso!', 'success');
+
+            // Atualizar o nome da empresa no localStorage se mudou
+            const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+            if (usuario.empresa_nome !== nome) {
+                usuario.empresa_nome = nome;
+                localStorage.setItem('usuario', JSON.stringify(usuario));
+            }
+
+            carregarDadosEmpresa();
+        } else {
+            showToast(data.message || 'Erro ao atualizar dados', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Erro:', error);
+        showToast('Erro ao salvar dados da empresa', 'error');
     }
 }
 
@@ -742,8 +943,8 @@ function renderProfissionaisList() {
                 <button class="btn-icon btn-edit" onclick="editarProfissional(${prof.id})">✏️</button>
                 <button class="btn-icon btn-key" onclick="resetarSenhaProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🔑</button>
                 <button class="btn-icon btn-toggle" onclick="alternarStatusProfissional(${prof.id}, ${(prof.ativo === true || prof.ativo === 1) ? 'false' : 'true'})" title="${(prof.ativo === true || prof.ativo === 1) ? 'Desativar' : 'Ativar'}">
-    ${(prof.ativo === true || prof.ativo === 1) ? '🔴' : '🟢'}
-</button>
+                    ${(prof.ativo === true || prof.ativo === 1) ? '🔴' : '🟢'}
+                </button>
                 <button class="btn-icon btn-delete" onclick="excluirProfissional(${prof.id}, '${escapeHtml(prof.nome)}')">🗑️</button>
             </td>
         </tr>
@@ -1235,6 +1436,7 @@ async function salvarHorario(dia, dados) {
         console.error('Erro:', error);
     }
 }
+
 // ============================================
 // HANDLERS PARA MOBILE (CARDS)
 // ============================================
@@ -1265,7 +1467,6 @@ function handleHorarioChangeMobile(e) {
     const valor = campo === 'intervalo_minutos' ? parseInt(e.target.value) : e.target.value;
     salvarHorario(dia, { [campo]: valor });
 }
-
 
 // ============================================
 // FUNÇÕES DO CHATBOT
@@ -1600,6 +1801,7 @@ function carregarPlanos() {
         }, 300);
     }
 }
+
 // ============================================
 // FECHAR MODAL PERSONALIZADO
 // ============================================
@@ -1611,6 +1813,7 @@ function fecharModalPersonalizado() {
     const modal = document.querySelector('.modal');
     if (modal) modal.remove();
 }
+
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -1630,7 +1833,7 @@ window.fecharModalPersonalizado = fecharModalPersonalizado;
 window.copiarLinkChatbot = copiarLinkChatbot;
 window.carregarLinkChatbot = carregarLinkChatbot;
 window.toggleTheme = toggleTheme;
-window.fecharModalPersonalizado = fecharModalPersonalizado;
-//window.carregarPlanos = carregarPlanos;
+window.carregarDadosEmpresa = carregarDadosEmpresa;
+window.salvarDadosEmpresa = salvarDadosEmpresa;
 
-console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL!');
+console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL e DADOS DA EMPRESA!');
