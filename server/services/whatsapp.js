@@ -20,7 +20,11 @@ const config = {
     }
 };
 
+// 🔥 BASE URL PARA LINKS (prioriza a URL da VPS)
+const BASE_URL = process.env.BASE_URL || process.env.APP_URL || 'https://seeagende.com.br';
+
 console.log(`[WHATSAPP] 📱 Provedor configurado: ${config.geral.provider}`);
+console.log(`[WHATSAPP] 🌐 BASE_URL: ${BASE_URL}`);
 
 // ============================================
 // FUNÇÕES AUXILIARES
@@ -59,7 +63,19 @@ function formatNumber(number) {
 }
 
 // ============================================
-// 🔥 BUSCAR INSTÂNCIA DA EMPRESA (LÓGICA INTELIGENTE)
+// 🔥 GERAR SLUG DA EMPRESA
+// ============================================
+function gerarSlug(nome) {
+    if (!nome) return '';
+    return nome.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+}
+
+// ============================================
+// 🔥 BUSCAR INSTÂNCIA DA EMPRESA
 // ============================================
 async function getInstanciaEmpresa(empresaId) {
     let instanceName = config.evolution.defaultInstance;
@@ -156,19 +172,18 @@ async function send(empresaId, numero, mensagem) {
 }
 
 // ============================================
-// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO (COM VALOR E MAPS)
+// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO (COM MAPS E COMO CHEGAR)
 // ============================================
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink) {
-    // 🔥 PEGAR O VALOR CORRETO (prioriza valor do serviço, depois valor do agendamento)
+    // 🔥 PEGAR O VALOR CORRETO
     let valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
     const nomeEmpresa = empresa?.nome || 'nossa empresa';
 
-    // Link padrão se não fornecido
+    // 🔥 LINK DO CHATBOT (usa BASE_URL)
     if (!chatbotLink) {
-        const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-        const slug = (nomeEmpresa || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-        chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
+        const slug = gerarSlug(nomeEmpresa);
+        chatbotLink = `${BASE_URL}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
     }
 
     // 🔥 GERAR LINK DO GOOGLE MAPS
@@ -198,14 +213,15 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
 
     if (profissional?.nome) msg += `👤 Profissional: *${profissional.nome}*\n\n`;
 
-    // 🔥 ENDEREÇO COM LINKS
+    // 🔥 ENDEREÇO COM "COMO CHEGAR"
     if (empresa?.endereco) {
-        msg += `📍 *Endereço:* ${empresa.endereco}\n`;
+        msg += `📍 *Endereço:* ${empresa.endereco}\n\n`;
+        msg += `🚗 *COMO CHEGAR:*\n`;
         if (mapsLink) {
-            msg += `🗺️ *Google Maps:* ${mapsLink}\n`;
+            msg += `🗺️ *Abrir no Google Maps:* ${mapsLink}\n`;
         }
         if (wazeLink) {
-            msg += `🚗 *Waze:* ${wazeLink}\n`;
+            msg += `🚗 *Abrir no Waze:* ${wazeLink}\n`;
         }
         msg += `\n`;
     }
@@ -214,7 +230,7 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
     if (empresa?.telefone_dono) {
         msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
         if (whatsappLink) {
-            msg += `💬 *WhatsApp:* ${whatsappLink}\n`;
+            msg += `💬 *Falar no WhatsApp:* ${whatsappLink}\n`;
         }
         msg += `\n`;
     }
@@ -233,9 +249,8 @@ async function enviarConfirmacao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-    const slug = (empresa?.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
+    const slug = gerarSlug(empresa?.nome);
+    const chatbotLink = `${BASE_URL}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
 
     const mensagem = gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink);
     return await send(empresa?.id, cliente.telefone, mensagem);
@@ -277,16 +292,26 @@ async function enviarCancelamento(dados) {
 }
 
 // ============================================
-// 🔥 ENVIAR CONCLUSÃO (COM VALOR E LINK)
+// 🔥 ENVIAR CONCLUSÃO (COM VALOR CORRETO E LINK)
 // ============================================
 async function enviarConclusao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
-    const slug = (empresa?.nome || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    const chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
-    const valor = parseFloat(servico?.valor) || 0;
+    // 🔥 VALOR CORRETO (prioriza valor_total, depois valor, depois valor do serviço)
+    let valor = 0;
+    if (dados.valor_total && parseFloat(dados.valor_total) > 0) {
+        valor = parseFloat(dados.valor_total);
+    } else if (dados.valor && parseFloat(dados.valor) > 0) {
+        valor = parseFloat(dados.valor);
+    } else if (servico?.valor && parseFloat(servico.valor) > 0) {
+        valor = parseFloat(servico.valor);
+    }
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+
+    // 🔥 LINK DO CHATBOT (usa BASE_URL)
+    const slug = gerarSlug(empresa?.nome);
+    const chatbotLink = `${BASE_URL}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
 
     // 🔥 GERAR LINK DO GOOGLE MAPS
     const enderecoCompleto = empresa?.endereco || '';
@@ -296,34 +321,44 @@ async function enviarConclusao(dados) {
         mapsLink = `https://www.google.com/maps/search/?api=1&query=${enderecoEncoded}`;
     }
 
+    // 🔥 WHATSAPP DO DONO
+    let whatsappLink = '';
+    if (empresa?.telefone_dono) {
+        const telLimpo = empresa.telefone_dono.replace(/\D/g, '');
+        whatsappLink = `https://wa.me/55${telLimpo}`;
+    }
+
     let msg = `✅ *Atendimento Concluído!* 🎉\n\n`;
     msg += `Olá *${cliente?.nome}*!\n`;
     msg += `Obrigado por escolher a *${empresa?.nome || 'nossa empresa'}*!\n\n`;
     msg += `📋 *RESUMO DO SERVIÇO:*\n`;
-    msg += `✂️ Serviço: *${servico?.nome}*\n`;
-    msg += `💰 Valor: *R$ ${valor.toFixed(2).replace('.', ',')}*\n`;
+    msg += `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n`;
+    msg += `💰 Valor: *R$ ${valorFormatado}*\n`;
     msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n\n`;
 
     if (profissional?.nome) {
         msg += `👤 Profissional: *${profissional.nome}*\n\n`;
     }
 
-    // 🔥 ENDEREÇO COM LINK
+    // 🔥 ENDEREÇO
     if (empresa?.endereco) {
         msg += `📍 *Endereço:* ${empresa.endereco}\n`;
         if (mapsLink) {
-            msg += `🗺️ *Google Maps:* ${mapsLink}\n\n`;
+            msg += `🗺️ *Como chegar:* ${mapsLink}\n`;
         }
+        msg += `\n`;
     }
 
-    // 🔥 WHATSAPP DO DONO
+    // 🔥 CONTATO
     if (empresa?.telefone_dono) {
-        const telLimpo = empresa.telefone_dono.replace(/\D/g, '');
         msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
-        msg += `💬 *WhatsApp:* https://wa.me/55${telLimpo}\n\n`;
+        if (whatsappLink) {
+            msg += `💬 *WhatsApp:* ${whatsappLink}\n`;
+        }
+        msg += `\n`;
     }
 
-    msg += `⭐ *Gostou do atendimento? Avalie-nos!* ⭐\n\n`;
+    msg += `⭐ *Gostou do atendimento?* ⭐\n\n`;
     msg += `🔗 *Agende seu próximo horário:*\n${chatbotLink}\n\n`;
     msg += `---\n_Mensagem automática do See&Agende_`;
 
