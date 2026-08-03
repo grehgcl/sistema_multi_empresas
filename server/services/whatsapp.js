@@ -62,7 +62,6 @@ function formatNumber(number) {
 // 🔥 BUSCAR INSTÂNCIA DA EMPRESA (LÓGICA INTELIGENTE)
 // ============================================
 async function getInstanciaEmpresa(empresaId) {
-    // Padrão inicial
     let instanceName = config.evolution.defaultInstance;
     let isOwn = false;
 
@@ -80,20 +79,17 @@ async function getInstanciaEmpresa(empresaId) {
         });
 
         if (empresa && empresa.whatsapp_proprio_habilitado && empresa.whatsapp_instance) {
-            // Verifica se a instância realmente existe/responde na Evolution antes de usar
             try {
                 await axios.get(`${config.evolution.apiUrl}/instance/connectionState/${empresa.whatsapp_instance}`, {
                     headers: { 'apikey': config.evolution.apiKey },
                     timeout: 5000
                 });
 
-                // Se chegou aqui, a instância existe na API
                 instanceName = empresa.whatsapp_instance;
                 isOwn = true;
                 console.log(`[WHATSAPP] 📱 Usando instância própria: ${instanceName}`);
             } catch (e) {
-                // Se der erro (404 ou timeout), usa a padrão silenciosamente
-                console.log(`[WHATSAPP] ⚠️ Instância própria ${empresa.whatsapp_instance} indisponível na Evolution. Usando fallback.`);
+                console.log(`[WHATSAPP] ⚠️ Instância própria ${empresa.whatsapp_instance} indisponível. Usando fallback.`);
             }
         }
     } catch (err) {
@@ -127,10 +123,9 @@ async function enviarEvolution(empresaId, numero, mensagem) {
     } catch (error) {
         console.error(`❌ Erro ao enviar WhatsApp (${instanceName}):`, error.response?.status || error.message);
 
-        // Fallback de última hora: Se falhou na própria e não era a padrão, tenta na padrão
         if (isOwn && instanceName !== config.evolution.defaultInstance) {
             console.log(`🔄 Tentando fallback urgente para instância padrão ${config.evolution.defaultInstance}...`);
-            return enviarEvolution(null, numero, mensagem); // Chama recursivamente usando a padrão
+            return enviarEvolution(null, numero, mensagem);
         }
 
         return { success: false, error: error.message };
@@ -161,10 +156,10 @@ async function send(empresaId, numero, mensagem) {
 }
 
 // ============================================
-// GERAR E ENVIAR MENSAGENS ESPECÍFICAS
+// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO (COM VALOR E MAPS)
 // ============================================
-
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink) {
+    // 🔥 PEGAR O VALOR CORRETO (prioriza valor do serviço, depois valor do agendamento)
     let valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
     const nomeEmpresa = empresa?.nome || 'nossa empresa';
@@ -176,23 +171,64 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
         chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
     }
 
-    let msg = `🌟 *See&Agende - Sua Agenda Inteligente*\n\n`;
+    // 🔥 GERAR LINK DO GOOGLE MAPS
+    const enderecoCompleto = empresa?.endereco || '';
+    let mapsLink = '';
+    let wazeLink = '';
+    if (enderecoCompleto) {
+        const enderecoEncoded = encodeURIComponent(enderecoCompleto);
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${enderecoEncoded}`;
+        wazeLink = `https://waze.com/ul?q=${enderecoEncoded}&navigate=yes`;
+    }
+
+    // 🔥 GERAR LINK DO WHATSAPP DO DONO
+    let whatsappLink = '';
+    if (empresa?.telefone_dono) {
+        const telLimpo = empresa.telefone_dono.replace(/\D/g, '');
+        whatsappLink = `https://wa.me/55${telLimpo}`;
+    }
+
+    let msg = `🌟 *${nomeEmpresa.toUpperCase()}* 🌟\n\n`;
     msg += `Olá *${cliente?.nome || 'Cliente'}*! Seu agendamento foi confirmado! ✅\n\n`;
-    msg += `📋 *DETALHES:*\n`;
+    msg += `📋 *DETALHES DO AGENDAMENTO:*\n`;
     msg += `✂️ Serviço: *${servico?.nome || 'Serviço'}*\n`;
     msg += `📅 Data: *${formatarDataBr(data)}*\n`;
     msg += `⏰ Hora: *${hora}*\n`;
     msg += `💰 Valor: *R$ ${valorFormatado}*\n\n`;
 
     if (profissional?.nome) msg += `👤 Profissional: *${profissional.nome}*\n\n`;
-    if (empresa?.endereco) msg += `📍 *Endereço:* ${empresa.endereco}\n\n`;
-    if (empresa?.telefone_dono) msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n\n`;
 
+    // 🔥 ENDEREÇO COM LINKS
+    if (empresa?.endereco) {
+        msg += `📍 *Endereço:* ${empresa.endereco}\n`;
+        if (mapsLink) {
+            msg += `🗺️ *Google Maps:* ${mapsLink}\n`;
+        }
+        if (wazeLink) {
+            msg += `🚗 *Waze:* ${wazeLink}\n`;
+        }
+        msg += `\n`;
+    }
+
+    // 🔥 CONTATO
+    if (empresa?.telefone_dono) {
+        msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
+        if (whatsappLink) {
+            msg += `💬 *WhatsApp:* ${whatsappLink}\n`;
+        }
+        msg += `\n`;
+    }
+
+    msg += `💡 *Dica:* Chegue 10 minutos antes!\n\n`;
     msg += `🔗 *Agende novamente:*\n${chatbotLink}\n\n`;
-    msg += `_Mensagem automática See&Agende._`;
+    msg += `---\n_Mensagem automática do See&Agende_`;
+
     return msg;
 }
 
+// ============================================
+// 🔥 ENVIAR CONFIRMAÇÃO
+// ============================================
 async function enviarConfirmacao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
@@ -205,6 +241,9 @@ async function enviarConfirmacao(dados) {
     return await send(empresa?.id, cliente.telefone, mensagem);
 }
 
+// ============================================
+// 🔥 ENVIAR NOVO AGENDAMENTO PARA PROFISSIONAL
+// ============================================
 async function enviarNovoAgendamentoProfissional(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
     if (!profissional?.telefone) return { success: false, error: 'Profissional sem telefone' };
@@ -221,6 +260,9 @@ async function enviarNovoAgendamentoProfissional(dados) {
     return await send(empresa?.id, profissional.telefone, msg);
 }
 
+// ============================================
+// 🔥 ENVIAR CANCELAMENTO
+// ============================================
 async function enviarCancelamento(dados) {
     const { cliente, servico, data, hora, empresa } = dados;
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
@@ -234,6 +276,9 @@ async function enviarCancelamento(dados) {
     return await send(empresa?.id, cliente.telefone, msg);
 }
 
+// ============================================
+// 🔥 ENVIAR CONCLUSÃO (COM VALOR E LINK)
+// ============================================
 async function enviarConclusao(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
@@ -243,12 +288,44 @@ async function enviarConclusao(dados) {
     const chatbotLink = `${baseUrl}/chatbot.html?empresa=${slug || empresa?.id || '1'}`;
     const valor = parseFloat(servico?.valor) || 0;
 
-    let msg = `✅ *Atendimento Concluído!*\n\n`;
-    msg += `Olá *${cliente?.nome}*! Obrigado por escolher a *${empresa?.nome}*.\n\n`;
-    msg += `📋 Resumo:\n`;
-    msg += `✂️ ${servico?.nome} - R$ ${valor.toFixed(2).replace('.', ',')}\n`;
-    msg += `📅 ${formatarDataBr(data)} às ${hora}\n\n`;
-    msg += `🔗 *Agende seu próximo horário:*\n${chatbotLink}`;
+    // 🔥 GERAR LINK DO GOOGLE MAPS
+    const enderecoCompleto = empresa?.endereco || '';
+    let mapsLink = '';
+    if (enderecoCompleto) {
+        const enderecoEncoded = encodeURIComponent(enderecoCompleto);
+        mapsLink = `https://www.google.com/maps/search/?api=1&query=${enderecoEncoded}`;
+    }
+
+    let msg = `✅ *Atendimento Concluído!* 🎉\n\n`;
+    msg += `Olá *${cliente?.nome}*!\n`;
+    msg += `Obrigado por escolher a *${empresa?.nome || 'nossa empresa'}*!\n\n`;
+    msg += `📋 *RESUMO DO SERVIÇO:*\n`;
+    msg += `✂️ Serviço: *${servico?.nome}*\n`;
+    msg += `💰 Valor: *R$ ${valor.toFixed(2).replace('.', ',')}*\n`;
+    msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n\n`;
+
+    if (profissional?.nome) {
+        msg += `👤 Profissional: *${profissional.nome}*\n\n`;
+    }
+
+    // 🔥 ENDEREÇO COM LINK
+    if (empresa?.endereco) {
+        msg += `📍 *Endereço:* ${empresa.endereco}\n`;
+        if (mapsLink) {
+            msg += `🗺️ *Google Maps:* ${mapsLink}\n\n`;
+        }
+    }
+
+    // 🔥 WHATSAPP DO DONO
+    if (empresa?.telefone_dono) {
+        const telLimpo = empresa.telefone_dono.replace(/\D/g, '');
+        msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
+        msg += `💬 *WhatsApp:* https://wa.me/55${telLimpo}\n\n`;
+    }
+
+    msg += `⭐ *Gostou do atendimento? Avalie-nos!* ⭐\n\n`;
+    msg += `🔗 *Agende seu próximo horário:*\n${chatbotLink}\n\n`;
+    msg += `---\n_Mensagem automática do See&Agende_`;
 
     return await send(empresa?.id, cliente.telefone, msg);
 }
@@ -265,6 +342,5 @@ module.exports = {
     formatarDataBr,
     formatarTelefone,
     gerarMensagemConfirmacao,
-    // Adicionar alias para compatibilidade
     enviarMensagem: send
 };
