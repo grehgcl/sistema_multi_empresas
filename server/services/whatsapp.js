@@ -63,18 +63,6 @@ function formatNumber(number) {
 }
 
 // ============================================
-// 🔥 GERAR SLUG DA EMPRESA
-// ============================================
-function gerarSlug(nome) {
-    if (!nome) return '';
-    return nome.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-}
-
-// ============================================
 // 🔥 BUSCAR INSTÂNCIA DA EMPRESA
 // ============================================
 async function getInstanciaEmpresa(empresaId) {
@@ -172,18 +160,16 @@ async function send(empresaId, numero, mensagem) {
 }
 
 // ============================================
-// 🔥 GERAR LINK DO CHATBOT (USANDO BASE_URL)
+// 🔥 GERAR LINK DO CHATBOT (USA O ID DA EMPRESA)
 // ============================================
 function gerarLinkChatbot(empresa) {
-    const nomeEmpresa = empresa?.nome || '';
-    const slug = gerarSlug(nomeEmpresa);
     const id = empresa?.id || '1';
-    // 🔥 USA O BASE_URL DEFINIDO NO INÍCIO
-    return `${BASE_URL}/chatbot.html?empresa=${slug || id}`;
+    // 🔥 USA O ID EM VEZ DO SLUG
+    return `${BASE_URL}/chatbot.html?empresa=${id}`;
 }
 
 // ============================================
-// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO
+// 🔥 GERAR MENSAGEM DE CONFIRMAÇÃO (COM "COMO CHEGAR")
 // ============================================
 function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, empresa, chatbotLink) {
     let valor = parseFloat(servico?.valor) || 0;
@@ -220,6 +206,7 @@ function gerarMensagemConfirmacao(cliente, servico, data, hora, profissional, em
 
     if (profissional?.nome) msg += `👤 Profissional: *${profissional.nome}*\n\n`;
 
+    // 🔥 "COMO CHEGAR" NA CONFIRMAÇÃO
     if (empresa?.endereco) {
         msg += `📍 *Endereço:* ${empresa.endereco}\n\n`;
         msg += `🚗 *COMO CHEGAR:*\n`;
@@ -289,42 +276,67 @@ async function enviarCancelamento(dados) {
 }
 
 // ============================================
-// 🔥 ENVIAR CONCLUSÃO (CORRIGIDO)
+// 🔥 ENVIAR CONCLUSÃO
 // ============================================
 async function enviarConclusao(dados) {
-    const { cliente, servico, data, hora, profissional, empresa } = dados;
+    const { cliente, servico, data, hora, profissional, empresa, agendamento_id } = dados;
 
     console.log('[WHATSAPP] 📝 Dados recebidos para conclusão:', {
         cliente: cliente?.nome,
         servico: servico?.nome,
         valor_servico: servico?.valor,
-        valor_dados: dados?.valor,
-        valor_total: dados?.valor_total,
-        data,
-        hora
+        agendamento_id: agendamento_id
     });
 
     if (!cliente?.telefone) return { success: false, error: 'Sem telefone' };
 
-    // 🔥 PEGAR O VALOR CORRETO
+    // 🔥 BUSCAR VALOR DO BANCO se não veio nos dados
     let valor = 0;
-    if (dados?.valor_total && parseFloat(dados.valor_total) > 0) {
-        valor = parseFloat(dados.valor_total);
-    } else if (dados?.valor && parseFloat(dados.valor) > 0) {
-        valor = parseFloat(dados.valor);
-    } else if (servico?.valor && parseFloat(servico.valor) > 0) {
+    let servicoNome = servico?.nome || 'Serviço';
+
+    if (servico?.valor && parseFloat(servico.valor) > 0) {
         valor = parseFloat(servico.valor);
-    } else if (dados?.servico?.valor && parseFloat(dados.servico.valor) > 0) {
-        valor = parseFloat(dados.servico.valor);
+        console.log(`[WHATSAPP] 💰 Valor do serviço: R$ ${valor}`);
+    } else if (agendamento_id) {
+        try {
+            const sql = process.env.NODE_ENV === 'production'
+                ? `SELECT a.valor, a.valor_total, s.nome as servico_nome, s.valor as servico_valor
+                   FROM agendamentos a
+                   LEFT JOIN servicos s ON a.servico_id = s.id
+                   WHERE a.id = $1 AND a.empresa_id = $2`
+                : `SELECT a.valor, a.valor_total, s.nome as servico_nome, s.valor as servico_valor
+                   FROM agendamentos a
+                   LEFT JOIN servicos s ON a.servico_id = s.id
+                   WHERE a.id = ? AND a.empresa_id = ?`;
+
+            const row = await new Promise((resolve, reject) => {
+                db.get(sql, [agendamento_id, empresa?.id], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+            });
+
+            if (row) {
+                if (row.valor_total && parseFloat(row.valor_total) > 0) {
+                    valor = parseFloat(row.valor_total);
+                } else if (row.valor && parseFloat(row.valor) > 0) {
+                    valor = parseFloat(row.valor);
+                } else if (row.servico_valor && parseFloat(row.servico_valor) > 0) {
+                    valor = parseFloat(row.servico_valor);
+                }
+                if (row.servico_nome) servicoNome = row.servico_nome;
+                console.log(`[WHATSAPP] 💰 Valor do banco: R$ ${valor}`);
+            }
+        } catch (err) {
+            console.error('[WHATSAPP] ❌ Erro ao buscar valor do banco:', err.message);
+        }
     }
 
     const valorFormatado = valor.toFixed(2).replace('.', ',');
     console.log(`[WHATSAPP] 💰 Valor final: R$ ${valorFormatado}`);
 
-    // 🔥 LINK DO CHATBOT (USA BASE_URL)
     const chatbotLink = gerarLinkChatbot(empresa);
 
-    // 🔥 GERAR LINK DO GOOGLE MAPS
     const enderecoCompleto = empresa?.endereco || '';
     let mapsLink = '';
     if (enderecoCompleto) {
@@ -342,7 +354,7 @@ async function enviarConclusao(dados) {
     msg += `Olá *${cliente?.nome}*!\n`;
     msg += `Obrigado por escolher a *${empresa?.nome || 'nossa empresa'}*!\n\n`;
     msg += `📋 *RESUMO DO SERVIÇO:*\n`;
-    msg += `✂️ Serviço: *${servico?.nome || dados?.servico?.nome || 'Serviço'}*\n`;
+    msg += `✂️ Serviço: *${servicoNome}*\n`;
     msg += `💰 Valor: *R$ ${valorFormatado}*\n`;
     msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n\n`;
 
