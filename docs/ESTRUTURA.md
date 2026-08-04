@@ -263,3 +263,106 @@ Envio WhatsApp no Agendamento      ✅       ✅           NOVO! ⭐
 
 =========================================
 ULTIMA ATUALIZACAO: 31/07/2026
+
+=========================================
+ESTRUTURA.md - SEE&AGENDE
+ULTIMA ATUALIZACAO: 04/08/2026
+=========================================
+
+🚀 COMO EXECUTAR O PROJETO
+Modo Local (SQLite - Desenvolvimento)
+node -r dotenv/config server.js dotenv_config_path=.env.dev
+
+Modo com WhatsApp Evolution (Envia mensagens reais!)
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+📁 ESTRUTURA DE PASTAS (ATUALIZADA)
+├── database/
+│   └── barbearia.db          # SQLite (desenvolvimento local)
+├── public/
+│   ├── index.html            # Landing Page + Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
+│   ├── css/
+│   │   ├── style.css         # Estilos premium com tema escuro
+│   │   └── chatbot.css       # Estilos específicos do chatbot
+│   └── js/
+│       ├── ui.js             # UI Global (toasts, loading, modal)
+│       └── pages/
+│           ├── dashboard.js              # Dashboard com Agenda Inteligente
+│           ├── dashboard-profissional.js # Dashboard Profissional
+│           ├── clientes.js               # CRUD Clientes + GRUPOS + PROMOÇÕES + ÍNDICE A-Z
+│           ├── agendamentos.js           # CRUD Agendamentos
+│           ├── agendamentos-profissional.js # Agendamentos (Profissional)
+│           ├── servicos.js               # CRUD Servicos
+│           ├── financeiro.js             # FINANCEIRO COMPLETO COM TABS
+│           ├── empresas.js               # Gestao empresas (Super Admin)
+│           ├── configuracoes.js          # Configuracoes + Tema + Chatbot + DADOS EMPRESA
+│           ├── planos.js                 # Página de Planos e Upgrade
+│           └── whatsapp-config.js        # Configuração WhatsApp (Dono)
+├── docs/                    # Documentacao
+│   ├── DEV_GUIDE.md
+│   ├── ESTRUTURA.md
+│   ├── IA_CONTEXT.md
+│   └── PARA_NOVA_IA.txt
+├── server/
+│   ├── config/
+│   │   ├── database.js       # Conexão com banco + criação das tabelas
+│   │   └── whatsapp.js       # Configuração do WhatsApp
+│   ├── middlewares/
+│   │   └── auth.js           # Middlewares de autenticação
+│   ├── routes/               # 🔥 NOVO - ROTAS EXTRAÍDAS
+│   │   ├── index.js          # Centralizador de rotas
+│   │   ├── auth.routes.js    # ✅ Login/Cadastro
+│   │   ├── empresas.routes.js # ✅ Dados da empresa
+│   │   ├── servicos.routes.js # ✅ CRUD Serviços
+│   │   ├── horarios.routes.js # ✅ Horários de funcionamento
+│   │   ├── profissionais.routes.js # ✅ CRUD Profissionais
+│   │   ├── clientes.routes.js # ✅ CRUD Clientes + Grupos
+│   │   └── despesas.routes.js # ✅ CRUD Despesas
+│   ├── services/
+│   │   ├── whatsapp.js       # Serviço de notificações WhatsApp (CORRIGIDO)
+│   │   ├── evolution-instances.js # Gestão de instâncias WhatsApp (CORRIGIDO v2)
+│   │   └── mercadopago.js    # Integração com MercadoPago
+│   ├── jobs/
+│   │   ├── lembretes.js      # Job automático de lembretes (09:00)
+│   │   └── reset-contador.js # Job de reset de contadores
+│   └── utils/
+│       ├── constants.js      # Constantes (PLANOS, JWT_SECRET)
+│       └── helpers.js        # Funções auxiliares
+├── scripts/
+│   ├── migrate.js            # Migração do banco
+│   ├── seed.js               # População com dados iniciais
+│   ├── migrate-vps.js        # Script principal de migração segura (VPS)
+│   ├── migrate-whatsapp.js   # Migração WhatsApp (SQLite)
+│   └── migrate-whatsapp-pg.js # Migração WhatsApp (PostgreSQL)
+├── .env.dev                  # SQLite (desenvolvimento)
+├── .env.local                # PostgreSQL (teste com dados reais)
+├── atualizar.sh              # Script de atualização blindado da VPS
+├── server.js                 # Backend (EM REFATORAÇÃO)
+└── package.json              # Dependências e scripts
+
+=========================================
+🔥 PROGRESSO DA REFATORAÇÃO (04/08/2026)
+=========================================
+
+### Rotas Extraídas (7 de 13 concluídas - 60%)
+
+| Rota | Status | Arquivo |
+|------|--------|---------|
+| Auth | ✅ | auth.routes.js |
+| Empresa | ✅ | empresas.routes.js |
+| Serviços | ✅ | servicos.routes.js |
+| Horários | ✅ | horarios.routes.js |
+| Profissionais | ✅ | profissionais.routes.js |
+| Clientes | ✅ | clientes.routes.js |
+| Despesas | ✅ | despesas.routes.js |
+| Agendamentos | ⬜ | agendamentos.routes.js |
+| Financeiro | ⬜ | financeiro.routes.js |
+| Admin | ⬜ | admin.routes.js |
+| WhatsApp | ⬜ | whatsapp.routes.js |
+| Chatbot | ⬜ | chatbot.routes.js |
+| Pagamentos | ⬜ | pagamento.routes.js |
+
+=========================================
+ULTIMA ATUALIZACAO: 04/08/2026
+
