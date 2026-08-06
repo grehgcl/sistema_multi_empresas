@@ -5,6 +5,23 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
+// server/routes/agendamentos.routes.js - No início do arquivo
+
+// ============================================
+// FUNÇÃO AUXILIAR PARA FORMATAR DATA
+// ============================================
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        const partes = dataStr.split('-');
+        if (partes.length === 3) {
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        return dataStr;
+    } catch {
+        return dataStr;
+    }
+}
 
 // ✅ IMPORTAR FUNÇÕES DO HELPERS
 const {
@@ -15,6 +32,8 @@ const {
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
+// server/routes/agendamentos.routes.js - GET /api/agendamentos
+
 // ============================================
 // GET /api/agendamentos
 // ============================================
@@ -22,6 +41,7 @@ router.get('/', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { data, status, cliente_id, profissional_id, mes, ano } = req.query;
 
+    // 🔥 CORREÇÃO: Usar DATE(data) para comparação sem timezone
     let sql = isProduction
         ? "SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome FROM agendamentos a LEFT JOIN clientes c ON a.cliente_id = c.id LEFT JOIN profissionais p ON a.profissional_id = p.id LEFT JOIN servicos s ON a.servico_id = s.id WHERE a.empresa_id = $1"
         : "SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome FROM agendamentos a LEFT JOIN clientes c ON a.cliente_id = c.id LEFT JOIN profissionais p ON a.profissional_id = p.id LEFT JOIN servicos s ON a.servico_id = s.id WHERE a.empresa_id = ?";
@@ -29,7 +49,9 @@ router.get('/', auth, (req, res) => {
     let counter = 2;
 
     if (data) {
-        sql += isProduction ? ` AND a.data = $${counter}` : " AND a.data = ?";
+        sql += isProduction
+            ? ` AND DATE(a.data) = DATE($${counter})`
+            : " AND date(a.data) = date(?)";
         params.push(data);
         counter++;
     }
@@ -54,16 +76,17 @@ router.get('/', auth, (req, res) => {
 
     if (mes && ano) {
         sql += isProduction
-            ? ` AND strftime('%m', a.data) = $${counter} AND strftime('%Y', a.data) = $${counter + 1}`
+            ? ` AND EXTRACT(MONTH FROM a.data) = $${counter} AND EXTRACT(YEAR FROM a.data) = $${counter + 1}`
             : " AND strftime('%m', a.data) = ? AND strftime('%Y', a.data) = ?";
         params.push(mes, ano);
+        counter += 2;
     }
 
     sql += isProduction ? " ORDER BY a.data DESC, a.hora ASC" : " ORDER BY a.data DESC, a.hora ASC";
 
     db.all(sql, params, (err, agendamentos) => {
         if (err) {
-            console.error("Erro ao buscar agendamentos:", err);
+            console.error("❌ Erro ao buscar agendamentos:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
@@ -78,7 +101,7 @@ router.get('/', auth, (req, res) => {
 });
 
 // ============================================
-// POST /api/agendamentos (CRIAR)
+// POST /api/agendamentos (CRIAR) - CORRIGIDO
 // ============================================
 router.post('/', auth, async (req, res) => {
     const { cliente_id, data, hora, servico_id, profissional_id } = req.body;
@@ -109,17 +132,17 @@ router.post('/', auth, async (req, res) => {
     console.log(`📅 Data recebida: ${data}`);
     console.log(`📅 Data a salvar: ${data}`);
 
-    // Verificar se cliente já tem agendamento no mesmo dia
+    // 🔥 CORREÇÃO: Verificar agendamento do cliente no mesmo dia usando DATE()
     const sqlAgendamentoHoje = isProduction
         ? `SELECT id FROM agendamentos 
            WHERE cliente_id = $1 
-           AND data = $2 
+           AND DATE(data) = DATE($2)
            AND empresa_id = $3 
            AND status != 'cancelado'
            LIMIT 1`
         : `SELECT id FROM agendamentos 
            WHERE cliente_id = ? 
-           AND data = ? 
+           AND date(data) = date(?)
            AND empresa_id = ? 
            AND status != 'cancelado'
            LIMIT 1`;
@@ -136,9 +159,32 @@ router.post('/', auth, async (req, res) => {
     });
 
     if (agendamentoHoje) {
+        // Buscar o agendamento existente para mostrar detalhes
+        const sqlExistente = isProduction
+            ? `SELECT id, data, hora FROM agendamentos WHERE id = $1`
+            : `SELECT id, data, hora FROM agendamentos WHERE id = ?`;
+
+        const existente = await new Promise((resolve) => {
+            db.get(sqlExistente, [agendamentoHoje.id], (err, row) => {
+                if (err) {
+                    console.error('❌ Erro ao buscar agendamento existente:', err);
+                    resolve(null);
+                } else {
+                    resolve(row);
+                }
+            });
+        });
+
+        const dataFormatada = formatarDataBr(data);
+        const msg = existente
+            ? `Você já possui um agendamento para o dia ${dataFormatada} às ${existente.hora}. Cada cliente só pode fazer UM agendamento por dia.`
+            : `Você já possui um agendamento para o dia ${dataFormatada}. Cada cliente só pode fazer UM agendamento por dia.`;
+
+        console.log(`⚠️ Cliente ${cliente_id} já tem agendamento no dia ${data}:`, existente);
+
         return res.json({
             success: false,
-            message: `Você já possui um agendamento para o dia ${formatarDataBr(data)}. Cada cliente só pode fazer UM agendamento por dia.`
+            message: msg
         });
     }
 
