@@ -21,19 +21,27 @@ const PLANOS = {
 // server/routes/pagamento.routes.js
 
 // ============================================
-// FUNÇÃO PARA OBTER MODO DE PAGAMENTO (COM CRIAÇÃO AUTOMÁTICA)
+// FUNÇÃO PARA OBTER MODO DE PAGAMENTO (CORRIGIDA PARA POSTGRESQL)
 // ============================================
 function getPaymentMode(callback) {
-    // Primeiro, tentar criar a tabela se não existir
-    const createTableSQL = `
-        CREATE TABLE IF NOT EXISTS configuracoes (
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+    // 🔥 PostgreSQL: SERIAL em vez de AUTOINCREMENT
+    const createTableSQL = isProduction
+        ? `CREATE TABLE IF NOT EXISTS configuracoes (
+            id SERIAL PRIMARY KEY,
+            chave TEXT UNIQUE NOT NULL,
+            valor TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+        : `CREATE TABLE IF NOT EXISTS configuracoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             chave TEXT UNIQUE NOT NULL,
             valor TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `;
+        )`;
 
     db.run(createTableSQL, [], (err) => {
         if (err) {
@@ -54,7 +62,13 @@ function getPaymentMode(callback) {
             }
 
             // Se não existir, criar com padrão
-            const sqlInsert = 'INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ("payment_mode", "simulation")';
+            const sqlInsert = isProduction
+                ? `INSERT INTO configuracoes (chave, valor) 
+                   VALUES ('payment_mode', 'simulation') 
+                   ON CONFLICT (chave) DO NOTHING`
+                : `INSERT OR IGNORE INTO configuracoes (chave, valor) 
+                   VALUES ('payment_mode', 'simulation')`;
+
             db.run(sqlInsert, [], () => {
                 callback('simulation');
             });
