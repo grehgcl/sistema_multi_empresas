@@ -7,21 +7,6 @@ const { db } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 // server/routes/agendamentos.routes.js - No início do arquivo
 
-// ============================================
-// FUNÇÃO AUXILIAR PARA FORMATAR DATA
-// ============================================
-function formatarDataBr(dataStr) {
-    if (!dataStr) return '-';
-    try {
-        const partes = dataStr.split('-');
-        if (partes.length === 3) {
-            return `${partes[2]}/${partes[1]}/${partes[0]}`;
-        }
-        return dataStr;
-    } catch {
-        return dataStr;
-    }
-}
 
 // ✅ IMPORTAR FUNÇÕES DO HELPERS
 const {
