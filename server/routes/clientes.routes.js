@@ -6,6 +6,8 @@ const { auth, verificarDono } = require('../middlewares/auth');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
+// server/routes/clientes.routes.js
+
 // ============================================
 // GET /api/clientes
 // ============================================
@@ -15,35 +17,44 @@ router.get('/', auth, (req, res) => {
 
     console.log(`📊 Buscando clientes para empresa ${empresaId}`);
 
+    // 🔥 CORREÇÃO: Remover vírgula extra antes de ORDER BY
     let sql = isProduction
         ? "SELECT * FROM clientes WHERE empresa_id = $1"
         : "SELECT * FROM clientes WHERE empresa_id = ?";
     let params = [empresaId];
+    let counter = 2;
 
     if (search) {
         const searchTerm = `%${search}%`;
         sql += isProduction
-            ? " AND (nome LIKE $2 OR telefone LIKE $2 OR email LIKE $2)"
+            ? ` AND (nome LIKE $${counter} OR telefone LIKE $${counter} OR email LIKE $${counter})`
             : " AND (nome LIKE ? OR telefone LIKE ? OR email LIKE ?)";
         params.push(searchTerm, searchTerm, searchTerm);
+        counter += 3;
     }
 
     if (grupo && grupo !== '') {
         sql += isProduction
-            ? " AND (grupos IS NOT NULL AND grupos != '[]' AND json_extract(grupos, '$') LIKE $2)"
+            ? ` AND (grupos IS NOT NULL AND grupos != '[]' AND json_extract(grupos, '$') LIKE $${counter})`
             : " AND (grupos IS NOT NULL AND grupos != '[]' AND grupos LIKE ?)";
         const grupoSearch = `%${grupo}%`;
         params.push(grupoSearch);
+        counter++;
     }
 
     if (letra && letra !== '') {
         sql += isProduction
-            ? " AND nome LIKE $2"
+            ? ` AND nome LIKE $${counter}`
             : " AND nome LIKE ?";
         params.push(`${letra}%`);
+        counter++;
     }
 
+    // 🔥 CORREÇÃO: Garantir que ORDER BY está correto
     sql += isProduction ? " ORDER BY nome" : " ORDER BY nome";
+
+    console.log('📝 SQL:', sql);
+    console.log('📝 Params:', params);
 
     db.all(sql, params, (err, clientes) => {
         if (err) {
@@ -68,7 +79,6 @@ router.get('/', auth, (req, res) => {
         });
 
         console.log(`✅ ${clientesComGrupos.length} clientes encontrados`);
-
         res.json({
             success: true,
             data: clientesComGrupos || []

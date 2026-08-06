@@ -9,25 +9,49 @@ const bcrypt = require('bcryptjs');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
+// server/routes/profissionais.routes.js
+
 // ============================================
 // GET /api/profissionais
 // ============================================
 router.get('/', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
+    const { ativo } = req.query;
 
-    const sql = isProduction
-        ? "SELECT * FROM profissionais WHERE empresa_id =  ORDER BY nome"
-        : "SELECT * FROM profissionais WHERE empresa_id = ? ORDER BY nome";
+    console.log(`📊 Buscando profissionais para empresa ${empresaId}`);
 
-    db.all(sql, [empresaId], (err, profissionais) => {
+    // 🔥 CORREÇÃO: Remover vírgula extra antes de ORDER BY
+    let sql = isProduction
+        ? "SELECT * FROM profissionais WHERE empresa_id = $1"
+        : "SELECT * FROM profissionais WHERE empresa_id = ?";
+    let params = [empresaId];
+    let counter = 2;
+
+    if (ativo !== undefined && ativo !== '') {
+        const ativoValue = ativo === 'true' || ativo === '1' ? 1 : 0;
+        sql += isProduction
+            ? ` AND ativo = $${counter}`
+            : " AND ativo = ?";
+        params.push(ativoValue);
+        counter++;
+    }
+
+    // 🔥 CORREÇÃO: Garantir que ORDER BY está correto
+    sql += isProduction ? " ORDER BY nome" : " ORDER BY nome";
+
+    console.log('📝 SQL:', sql);
+    console.log('📝 Params:', params);
+
+    db.all(sql, params, (err, profissionais) => {
         if (err) {
-            console.error("Erro ao buscar profissionais:", err);
+            console.error("❌ Erro ao buscar profissionais:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
             });
         }
 
+        console.log(`✅ ${profissionais.length} profissionais encontrados`);
         res.json({
             success: true,
             data: profissionais || []
