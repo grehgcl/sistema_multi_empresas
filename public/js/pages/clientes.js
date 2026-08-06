@@ -287,24 +287,33 @@ function excluirGrupoCliente(grupo) {
     showToast(`Grupo "${grupo}" removido deste cliente`, 'info');
 }
 
+// public/js/pages/clientes.js
+
 // ============================================
-// TOGGLE GRUPO CLIENTE
+// TOGGLE GRUPO CLIENTE - CORRIGIDO
 // ============================================
 
-async function toggleGrupoCliente(grupo) {
+function toggleGrupoCliente(grupo) {
     const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
-    if (!btn) return;
+    if (!btn) {
+        console.warn(`⚠️ Botão não encontrado para: ${grupo}`);
+        return;
+    }
 
     const isSelected = btn.textContent.includes('✅');
+    console.log(`🔄 Toggle grupo: ${grupo} → ${isSelected ? 'removendo' : 'adicionando'}`);
 
     if (isSelected) {
+        // Remover grupo
         btn.textContent = `☐ ${grupo}`;
         btn.style.background = 'var(--bg-hover)';
         btn.style.color = 'var(--text-secondary)';
         btn.style.borderColor = 'var(--border-color)';
         btn.style.fontWeight = '500';
         gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
+        console.log(`❌ Grupo removido: ${grupo}`, gruposSelecionadosTemp);
     } else {
+        // Adicionar grupo
         btn.textContent = `✅ ${grupo}`;
         btn.style.background = 'rgba(139,92,246,0.15)';
         btn.style.color = '#8b5cf6';
@@ -313,6 +322,12 @@ async function toggleGrupoCliente(grupo) {
         if (!gruposSelecionadosTemp.includes(grupo)) {
             gruposSelecionadosTemp.push(grupo);
         }
+        console.log(`✅ Grupo adicionado: ${grupo}`, gruposSelecionadosTemp);
+    }
+
+    // 🔥 ATUALIZAR A LISTA DE GRUPOS ATUAIS
+    if (clienteEditandoGrupos) {
+        atualizarGruposAtuais(clienteEditandoGrupos);
     }
 }
 
@@ -425,57 +440,72 @@ function atualizarGruposAtuais(clienteId) {
 // SALVAR GRUPOS DO CLIENTE
 // ============================================
 
+// public/js/pages/clientes.js
+
+// ============================================
+// SALVAR GRUPOS DO CLIENTE - CORRIGIDO
+// ============================================
+
 async function salvarGruposCliente() {
-    if (!clienteEditandoGrupos) return;
+    if (!clienteEditandoGrupos) {
+        showToast('❌ Nenhum cliente selecionado', 'error');
+        return;
+    }
+
+    // 🔥 VERIFICAR SE TEM GRUPOS SELECIONADOS
+    console.log('📝 Salvando grupos para cliente:', clienteEditandoGrupos);
+    console.log('📝 Grupos selecionados:', gruposSelecionadosTemp);
 
     showLoading();
     const token = localStorage.getItem('token');
 
     try {
+        // 🔥 CORREÇÃO: Enviar os grupos como array
         const res = await fetch(`/api/clientes/${clienteEditandoGrupos}/grupos`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify({ grupos: gruposSelecionadosTemp })
+            body: JSON.stringify({
+                grupos: gruposSelecionadosTemp // ← Array de grupos
+            })
         });
 
         const data = await res.json();
         hideLoading();
 
         if (data.success) {
-            showToast('Grupos atualizados com sucesso!', 'success');
-            fecharModalGrupos();
+            showToast('✅ Grupos atualizados com sucesso!', 'success');
 
+            // 🔥 ATUALIZAR O CLIENTE LOCALMENTE
             const clienteIndex = clientesCompletos.findIndex(c => c.id === clienteEditandoGrupos);
             if (clienteIndex !== -1) {
                 clientesCompletos[clienteIndex].grupos = [...gruposSelecionadosTemp];
                 console.log(`✅ Cliente atualizado: ${clientesCompletos[clienteIndex].nome} → Grupos:`, gruposSelecionadosTemp);
             }
 
-            renderizarListaClientes();
+            // 🔥 FECHAR MODAL E RECARREGAR
+            fecharModalGrupos();
 
+            // 🔥 RECARREGAR A LISTA PARA MOSTRAR AS MUDANÇAS
+            await carregarClientes();
+
+            // 🔥 SE TIVER FILTRO DE GRUPO ATIVO, REAPLICAR
             if (filtroGrupo !== 'todos') {
                 setTimeout(() => {
-                    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
-                    for (let btn of botoes) {
-                        const onclick = btn.getAttribute('onclick');
-                        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
-                            btn.click();
-                            break;
-                        }
-                    }
-                }, 200);
+                    setFiltroGrupo(filtroGrupo);
+                }, 300);
             }
 
         } else {
-            showToast(data.message || 'Erro ao salvar grupos', 'error');
+            showToast(data.message || '❌ Erro ao salvar grupos', 'error');
+            console.error('❌ Erro no backend:', data);
         }
     } catch (error) {
         console.error('❌ Erro ao salvar grupos:', error);
         hideLoading();
-        showToast('Erro ao salvar grupos', 'error');
+        showToast('❌ Erro ao conectar com o servidor', 'error');
     }
 }
 

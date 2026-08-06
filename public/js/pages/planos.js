@@ -1,71 +1,36 @@
-// public/js/pages/planos.js - Versão COMPLETA com todas as melhorias
+// ============================================
+// PLANOS.JS - VERSÃO COMPLETA E CORRIGIDA
+// ============================================
 
 let currentPaymentId = null;
 let modoSimulacao = true;
 let periodoSelecionado = 'mensal';
 let planoSelecionado = null;
-
-
-// ============================================
-// MODO DE PAGAMENTO
-// ============================================
-
 let modoPagamento = 'simulation';
 
-async function carregarModoPagamento() {
-    const token = localStorage.getItem('token');
-    try {
-        const res = await fetch('/api/payment/config', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (data.success) {
-            modoPagamento = data.data.mode;
-            console.log(`💳 Modo de pagamento: ${modoPagamento}`);
-        }
-    } catch (error) {
-        console.error('Erro ao carregar modo de pagamento:', error);
-    }
-}
 // ============================================
 // CONFIGURAÇÕES DOS PLANOS
 // ============================================
 
 const PLANOS_CONFIG = {
-    // teste: {  // ← COMENTE OU REMOVA ESTE BLOCO
-    //     id: 'teste',
-    //     nome: 'Teste R$ 1,00',
-    //     valor_mensal: 1.00,
-    //     valor_anual: 12.00,
-    //     profs: 1,
-    //     popular: false,
-    //     cor: '#10b981',
-    //     recursos: [
-    //         '✅ Teste de pagamento real',
-    //         '✅ Apenas R$ 1,00',
-    //         '✅ Plano Starter por 1 mês'
-    //     ],
-    //     limitacoes: []
-    // },
-    starter: {
-        id: 'starter',
-        nome: 'Starter',
-        valor_mensal: 29.90,
-        valor_anual: 287.04, // 20% desconto
+    // 🔥 PLANO DE TESTE - R$ 1,00 (ADICIONAR PRIMEIRO)
+    teste: {
+        id: 'teste',
+        nome: 'Teste R$ 1,00',
+        valor_mensal: 1.00,
+        valor_anual: 12.00,
         profs: 1,
         popular: false,
-        cor: '#667eea',
+        cor: '#10b981',
         recursos: [
-            '✅ Chatbot Inteligente',
-            '✅ Gestão de Agendamentos',
-            '✅ Até 100 agendamentos/mês',
-            '✅ 1 Profissional',
-            '✅ Suporte por Email'
+            '✅ Teste de pagamento real',
+            '✅ Apenas R$ 1,00',
+            '✅ Plano Starter por 1 mês',
+            '✅ Perfeito para validar integração'
         ],
         limitacoes: [
-            '❌ Sem WhatsApp Business',
-            '❌ Sem Relatórios Avançados',
-            '❌ Sem API'
+            '❌ Apenas 1 profissional',
+            '❌ Válido por 1 dia'
         ]
     },
     pro: {
@@ -130,9 +95,34 @@ const PLANOS_CONFIG = {
         limitacoes: []
     }
 };
+// public/js/pages/planos.js - ADICIONAR NO INÍCIO
 
 // ============================================
-// FUNÇÃO PRINCIPAL - CARREGAR PLANOS (MOBILE MELHORADO)
+// BUSCAR MODO DE PAGAMENTO ATUAL
+// ============================================
+async function buscarModoPagamento() {
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/pagamento/config', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+                modoPagamento = data.data.mode;
+                console.log(`💳 Modo de pagamento atual: ${modoPagamento}`);
+                return modoPagamento;
+            }
+        }
+        return 'simulation';
+    } catch (error) {
+        console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
+        return 'simulation';
+    }
+}
+// ============================================
+// CARREGAR PLANOS - CORRIGIDO (COM MODO DE PAGAMENTO)
 // ============================================
 
 async function carregarPlanos() {
@@ -141,30 +131,31 @@ async function carregarPlanos() {
     }
     console.log('🔄 Carregando planos...');
     showLoading();
+
     const token = localStorage.getItem('token');
     const isMobile = window.innerWidth < 768;
 
     try {
-        // 🔥 Carregar modo de pagamento
-        let modoPagamento = 'simulation';
-        let modoLabel = '🟡 Modo Simulação';
+        // 🔥 BUSCAR MODO DE PAGAMENTO PRIMEIRO
+        let modoAtual = 'simulation';
         try {
-            const resModo = await fetch('/api/payment/config', {
+            const resModo = await fetch('/api/pagamento/config', {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
-            const dataModo = await resModo.json();
-            if (dataModo.success) {
-                modoPagamento = dataModo.data.mode;
-                modoLabel = dataModo.data.label;
+            if (resModo.ok) {
+                const dataModo = await resModo.json();
+                if (dataModo.success) {
+                    modoAtual = dataModo.data.mode;
+                    modoPagamento = modoAtual;
+                    console.log(`💳 Modo de pagamento: ${modoAtual === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`);
+                }
             }
         } catch (error) {
-            console.error('Erro ao carregar modo de pagamento:', error);
+            console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
         }
 
-        const isReal = modoPagamento === 'real';
-
-        // Buscar plano atual
-        const resPlano = await fetch('/api/empresa/plano', {
+        // 🔥 USAR /api/planos/empresa (rota que existe no planos.routes.js)
+        const resPlano = await fetch('/api/planos/empresa', {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         const planoData = await resPlano.json();
@@ -183,58 +174,69 @@ async function carregarPlanos() {
             isTrial = planoData.data.is_trial || (planoAtual === 'trial');
         }
 
-        // Gerar HTML - MOBILE MELHORADO
+        const isReal = modoAtual === 'real';
+        const modoLabel = isReal ? '🔴 Pagamentos Reais' : '🟡 Modo Simulação';
+        const modoCor = isReal ? '#ef4444' : '#f59e0b';
+        const modoBg = isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
+        const modoBorder = isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
+
+        // Gerar HTML
         let html = `
             <div class="fade-in">
-                <!-- Título -->
                 <div class="dashboard-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'flex-start' : 'center'}; gap: ${isMobile ? '8px' : '0'};">
                     <div>
                         <h2 class="page-title" style="font-size: ${isMobile ? '20px' : '24px'};">💎 Planos e Assinaturas</h2>
                         <p class="page-subtitle" style="font-size: ${isMobile ? '13px' : '14px'};">
-                            <i class="fas fa-rocket"></i> 
-                            Escolha o plano ideal para o seu negócio
+                            <i class="fas fa-rocket"></i> Escolha o plano ideal para o seu negócio
                         </p>
                     </div>
                 </div>
 
-                <!-- 🔥 MODO DE PAGAMENTO - INDICADOR -->
+                <!-- 🔥 CARD - MODO DE PAGAMENTO -->
                 <div style="
-                    margin-bottom: 20px; 
-                    padding: ${isMobile ? '10px 14px' : '12px 20px'}; 
-                    border-radius: 10px; 
-                    background: ${isReal ? '#dbeafe' : '#fef3c7'}; 
-                    border: 1px solid ${isReal ? '#93c5fd' : '#fcd34d'};
+                    background: ${modoBg}; 
+                    border: 1px solid ${modoBorder}; 
+                    border-radius: 12px; 
+                    padding: ${isMobile ? '12px 16px' : '14px 20px'}; 
+                    margin-bottom: 20px;
                     display: flex; 
                     justify-content: space-between; 
                     align-items: center; 
                     flex-wrap: wrap;
-                    gap: 8px;
+                    gap: 10px;
                 ">
-                    <div>
-                        <span style="font-weight: 600; font-size: ${isMobile ? '13px' : '14px'}; color: ${isReal ? '#1e40af' : '#92400e'};">
-                            💳 ${modoLabel}
-                        </span>
-                        <span style="font-size: ${isMobile ? '11px' : '12px'}; color: ${isReal ? '#1e40af' : '#92400e'}; opacity: 0.8; display: block; margin-top: 2px;">
-                            ${isReal ? 'Pagamentos reais com cobrança' : 'Teste sem pagamento real'}
-                        </span>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 24px;">${isReal ? '🔴' : '🟡'}</span>
+                        <div>
+                            <div style="font-size: ${isMobile ? '14px' : '16px'}; font-weight: 600; color: var(--text-primary);">
+                                💳 Modo de Pagamento: <span style="color: ${modoCor};">${modoLabel}</span>
+                            </div>
+                            <div style="font-size: ${isMobile ? '11px' : '13px'}; color: var(--text-muted); margin-top: 2px;">
+                                ${isReal ? '⚠️ Pagamentos REAIS estão ativos! Os clientes serão cobrados de verdade.' : '🔸 Modo SIMULAÇÃO ativo. Nenhum pagamento real é processado.'}
+                            </div>
+                        </div>
                     </div>
-                    ${usuario?.role === 'superadmin' ? `
-                        <button onclick="alternarModoPagamento()" style="
-                            padding: ${isMobile ? '6px 12px' : '8px 16px'}; 
-                            border: none; 
-                            border-radius: 8px; 
-                            background: ${isReal ? '#ef4444' : '#22c55e'}; 
-                            color: white; 
-                            font-weight: 600; 
-                            font-size: ${isMobile ? '11px' : '12px'}; 
+                    ${window.role === 'super_admin' || window.role === 'superadmin' ? `
+                        <button onclick="window.location.href='#empresas'; setTimeout(() => carregarDashboardSuperAdmin(), 300)" style="
+                            padding: ${isMobile ? '6px 14px' : '8px 18px'};
+                            border: none;
+                            border-radius: 8px;
+                            background: ${isReal ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
+                            color: ${isReal ? '#ef4444' : '#22c55e'};
+                            font-weight: 600;
+                            font-size: ${isMobile ? '12px' : '13px'};
                             cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 6px;
                         ">
-                            ${isReal ? '🔴 Desativar Pagamentos Reais' : '🟢 Ativar Pagamentos Reais'}
+                            <i class="fas fa-${isReal ? 'toggle-on' : 'toggle-off'}"></i>
+                            ${isReal ? 'Desativar' : 'Ativar'} Pagamentos Reais
                         </button>
                     ` : ''}
                 </div>
 
-                <!-- Plano Atual - MOBILE MELHORADO -->
+                <!-- Plano Atual -->
                 <div style="
                     background: linear-gradient(135deg, #667eea, #764ba2); 
                     border-radius: 16px; 
@@ -243,7 +245,7 @@ async function carregarPlanos() {
                     color: white;
                 ">
                     <div style="display: flex; flex-direction: ${isMobile ? 'column' : 'row'}; justify-content: space-between; align-items: ${isMobile ? 'center' : 'center'}; gap: ${isMobile ? '16px' : '20px'}; text-align: ${isMobile ? 'center' : 'left'};">
-                        <div style="${isMobile ? 'width: 100%;' : ''}">
+                        <div>
                             <h3 style="color: white; margin: 0 0 8px 0; font-size: ${isMobile ? '16px' : '18px'};">
                                 <i class="fas fa-crown"></i> Plano Atual
                             </h3>
@@ -269,13 +271,11 @@ async function carregarPlanos() {
                                 background: rgba(255,255,255,0.2); 
                                 padding: ${isMobile ? '16px 24px' : '20px 30px'}; 
                                 border-radius: 12px;
-                                ${isMobile ? 'width: 100%;' : ''}
                             ">
                                 <div style="font-size: ${isMobile ? '36px' : '48px'}; font-weight: bold;">${diasRestantes}</div>
                                 <div style="font-size: ${isMobile ? '12px' : '14px'}; opacity: 0.9;">dias restantes</div>
                             </div>
-                        ` : ''}
-                        ${!isTrial ? `
+                        ` : `
                             <button onclick="cancelarAssinatura()" style="
                                 background: rgba(255,255,255,0.2); 
                                 color: white; 
@@ -283,11 +283,10 @@ async function carregarPlanos() {
                                 padding: ${isMobile ? '10px 20px' : '10px 20px'}; 
                                 border-radius: 8px; 
                                 cursor: pointer;
-                                ${isMobile ? 'width: 100%;' : ''}
                             ">
                                 ❌ Cancelar Assinatura
                             </button>
-                        ` : ''}
+                        `}
                     </div>
                 </div>
         `;
@@ -304,7 +303,7 @@ async function carregarPlanos() {
             `;
         }
 
-        // Toggle Mensal/Anual - MOBILE MELHORADO
+        // Toggle Mensal/Anual
         html += `
             <div style="text-align: center; margin-bottom: 24px;">
                 <div style="display: inline-flex; gap: 8px; background: var(--bg-hover); padding: 4px; border-radius: 30px;">
@@ -340,10 +339,7 @@ async function carregarPlanos() {
                     </button>
                 </div>
             </div>
-        `;
 
-        // Cards dos Planos - MOBILE MELHORADO
-        html += `
             <div id="planosContainer" style="display: grid; grid-template-columns: ${isMobile ? '1fr' : 'repeat(auto-fit, minmax(280px, 1fr))'}; gap: ${isMobile ? '16px' : '24px'};">
         `;
 
@@ -351,8 +347,11 @@ async function carregarPlanos() {
             const isCurrent = planoAtual === key;
             const valor = periodoSelecionado === 'anual' ? plano.valor_anual : plano.valor_mensal;
             const periodoLabel = periodoSelecionado === 'anual' ? '/ano' : '/mês';
-            const economia = periodoSelecionado === 'anual' ?
-                Math.round(((plano.valor_mensal * 12 - plano.valor_anual) / (plano.valor_mensal * 12)) * 100) : 0;
+
+            // 🔥 INDICADOR DE MODO NO CARD
+            const modoBadge = isReal ?
+                '<span style="background:#ef4444;color:white;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:700;">🔴 REAL</span>' :
+                '<span style="background:#f59e0b;color:white;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:700;">🟡 SIMULAÇÃO</span>';
 
             html += `
                 <div class="plano-card" style="
@@ -413,12 +412,6 @@ async function carregarPlanos() {
                         <span style="font-size: ${isMobile ? '12px' : '14px'}; color: var(--text-muted); font-weight: normal;">${periodoLabel}</span>
                     </div>
                     
-                    ${periodoSelecionado === 'anual' && plano.valor_mensal ? `
-                        <div style="font-size: ${isMobile ? '11px' : '13px'}; color: #10b981; margin-bottom: 8px;">
-                            Economia de ${economia}%
-                        </div>
-                    ` : ''}
-                    
                     <div style="
                         font-size: ${isMobile ? '12px' : '14px'}; 
                         background: var(--bg-hover); 
@@ -436,11 +429,6 @@ async function carregarPlanos() {
                                 <span style="color: #10b981;">✅</span> ${r.replace('✅ ', '')}
                             </li>
                         `).join('')}
-                        ${plano.recursos.length > (isMobile ? 4 : 6) ? `
-                            <li style="padding: 4px 0; font-size: 12px; color: var(--text-muted); text-align: center;">
-                                + ${plano.recursos.length - (isMobile ? 4 : 6)} outros benefícios
-                            </li>
-                        ` : ''}
                     </ul>
                     
                     ${isCurrent ? `
@@ -460,7 +448,7 @@ async function carregarPlanos() {
                     ` : `
                         <button onclick="event.stopPropagation(); escolherPlano('${key}')" 
                             style="
-                                background: linear-gradient(135deg, ${plano.cor}, ${plano.cor}dd); 
+                                background: ${isReal ? 'linear-gradient(135deg, #ef4444, #dc2626)' : `linear-gradient(135deg, ${plano.cor}, ${plano.cor}dd)`}; 
                                 color: white; 
                                 padding: ${isMobile ? '10px 20px' : '12px 32px'}; 
                                 border: none; 
@@ -471,7 +459,8 @@ async function carregarPlanos() {
                                 transition: all 0.3s;
                                 font-size: ${isMobile ? '13px' : '14px'};
                             ">
-                            <i class="fas fa-rocket"></i> Escolher Plano
+                            <i class="fas ${isReal ? 'fa-credit-card' : 'fa-rocket'}"></i> 
+                            ${isReal ? 'Pagar Agora' : 'Escolher Plano'}
                         </button>
                     `}
                 </div>
@@ -480,22 +469,13 @@ async function carregarPlanos() {
 
         html += `
             </div>
+            ${gerarTabelaComparativa(isMobile)}
+            ${gerarFAQ(isMobile)}
+            ${gerarBeneficiosAdicionais(isMobile)}
+        </div>
         `;
 
-        // Tabela Comparativa - MOBILE MELHORADA (rolagem horizontal)
-        html += gerarTabelaComparativaMobile(isMobile);
-
-        // FAQ
-        html += gerarFAQMobile(isMobile);
-
-        // Benefícios Adicionais - MOBILE MELHORADO
-        html += gerarBeneficiosAdicionaisMobile(isMobile);
-
-        html += `</div>`;
-
         document.getElementById('content').innerHTML = html;
-
-        // Atualizar botão de toggle
         atualizarTogglePeriodo();
 
     } catch (error) {
@@ -551,10 +531,10 @@ function selecionarPlano(planoId) {
 }
 
 // ============================================
-// GERAR TABELA COMPARATIVA - MOBILE MELHORADA
+// GERAR TABELA COMPARATIVA
 // ============================================
 
-function gerarTabelaComparativaMobile(isMobile) {
+function gerarTabelaComparativa(isMobile) {
     const comparacao = [
         { recurso: 'Chatbot Inteligente', starter: '✅', pro: '✅', business: '✅', enterprise: '✅' },
         { recurso: 'Agendamentos/Mês', starter: '100', pro: '♾️', business: '♾️', enterprise: '♾️' },
@@ -584,9 +564,6 @@ function gerarTabelaComparativaMobile(isMobile) {
     const valores = periodoSelecionado === 'anual' ? valorAnual : valorMensal;
 
     if (isMobile) {
-        // ============================================
-        // VERSÃO MOBILE - CARDS COMPARATIVOS
-        // ============================================
         let cards = '';
         const planos = ['starter', 'pro', 'business', 'enterprise'];
         const planosNomes = {
@@ -610,26 +587,12 @@ function gerarTabelaComparativaMobile(isMobile) {
                     border-radius: 12px;
                     padding: 14px 16px;
                     border: ${isPro ? '2px solid #f59e0b' : '1px solid var(--border-color)'};
-                    ${isPro ? 'box-shadow: 0 4px 12px rgba(245,158,11,0.15);' : ''}
                 ">
-                    <div style="
-                        font-size: 14px;
-                        font-weight: 700;
-                        color: ${planosCores[p]};
-                        text-align: center;
-                        margin-bottom: 8px;
-                        ${isPro ? 'font-size: 16px;' : ''}
-                    ">
+                    <div style="font-size: 14px; font-weight: 700; color: ${planosCores[p]}; text-align: center; margin-bottom: 8px;">
                         ${planosNomes[p]}
                         ${isPro ? '<span style="display:block;font-size:10px;color:#f59e0b;">⭐ MAIS POPULAR</span>' : ''}
                     </div>
-                    <div style="
-                        font-size: 18px;
-                        font-weight: 700;
-                        color: var(--text-primary);
-                        text-align: center;
-                        margin-bottom: 10px;
-                    ">
+                    <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); text-align: center; margin-bottom: 10px;">
                         ${valores[p]}
                     </div>
                     <div style="display: flex; flex-direction: column; gap: 4px; font-size: 12px;">
@@ -666,16 +629,9 @@ function gerarTabelaComparativaMobile(isMobile) {
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     ${cards}
                 </div>
-                <div style="text-align: center; margin-top: 12px; font-size: 12px; color: var(--text-muted);">
-                    <i class="fas fa-info-circle"></i> 
-                    ${periodoSelecionado === 'anual' ? '💰 Plano anual com 20% de desconto!' : '📅 Planos mensais sem fidelidade'}
-                </div>
             </div>
         `;
     } else {
-        // ============================================
-        // VERSÃO DESKTOP - TABELA
-        // ============================================
         return `
             <div style="margin-top: 48px; background: var(--bg-card); border-radius: 16px; padding: 24px; border: 1px solid var(--border-color);">
                 <h3 style="text-align: center; margin-bottom: 20px;">
@@ -687,10 +643,7 @@ function gerarTabelaComparativaMobile(isMobile) {
                             <tr>
                                 <th style="min-width: 180px; text-align: left; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-primary);">Recurso</th>
                                 <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Starter</th>
-                                <th style="text-align: center; padding: 12px 16px; background: #1e293b; border-bottom: 2px solid #f59e0b; font-weight: 600; color: #f59e0b; position: relative;">
-                                    ⭐ Pro
-                                    <span style="display: block; font-size: 10px; color: #94a3b8; font-weight: 400;">MAIS POPULAR</span>
-                                </th>
+                                <th style="text-align: center; padding: 12px 16px; background: #1e293b; border-bottom: 2px solid #f59e0b; font-weight: 600; color: #f59e0b;">⭐ Pro</th>
                                 <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Business</th>
                                 <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Enterprise</th>
                             </tr>
@@ -708,7 +661,7 @@ function gerarTabelaComparativaMobile(isMobile) {
                             <tr style="font-weight: bold; background: var(--bg-hover);">
                                 <td style="padding: 12px 16px; color: var(--text-primary); border-top: 2px solid var(--border-color);">💰 Valor</td>
                                 <td style="text-align: center; padding: 12px 16px; color: #3b82f6; border-top: 2px solid var(--border-color);">${valores.starter}</td>
-                                <td style="text-align: center; padding: 12px 16px; background: #fbbf24; color: #1e293b; font-weight: 700; border-top: 2px solid #f59e0b; border-radius: 0 0 8px 8px;">
+                                <td style="text-align: center; padding: 12px 16px; background: #fbbf24; color: #1e293b; font-weight: 700; border-top: 2px solid #f59e0b;">
                                     ${valores.pro}
                                     <span style="display: block; font-size: 10px; font-weight: 400; color: #78350f;">⭐ Melhor custo-benefício</span>
                                 </td>
@@ -718,41 +671,22 @@ function gerarTabelaComparativaMobile(isMobile) {
                         </tbody>
                     </table>
                 </div>
-                <div style="text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted);">
-                    <i class="fas fa-info-circle"></i> 
-                    ${periodoSelecionado === 'anual' ? '💰 Plano anual com 20% de desconto!' : '📅 Planos mensais sem fidelidade'}
-                </div>
             </div>
         `;
     }
 }
 
 // ============================================
-// GERAR FAQ - MOBILE MELHORADA
+// GERAR FAQ
 // ============================================
 
-function gerarFAQMobile(isMobile) {
+function gerarFAQ(isMobile) {
     const faqs = [
-        {
-            q: 'Posso mudar de plano depois?',
-            a: 'Sim! Você pode fazer upgrade ou downgrade a qualquer momento. O valor é proporcional aos dias utilizados.'
-        },
-        {
-            q: 'O que acontece se meu plano expirar?',
-            a: 'Você volta para o plano Trial com 7 dias de acesso para regularizar sua assinatura. Seus dados são mantidos.'
-        },
-        {
-            q: 'Posso cancelar quando quiser?',
-            a: 'Sim! Você pode cancelar sua assinatura a qualquer momento sem multa ou fidelidade.'
-        },
-        {
-            q: 'Tem desconto para pagamento anual?',
-            a: 'Sim! Planos anuais têm 20% de desconto, o que equivale a 2 meses grátis no ano.'
-        },
-        {
-            q: 'O que é o período de teste?',
-            a: 'Você tem 45 dias de teste grátis com acesso a todas as funcionalidades do plano Starter.'
-        }
+        { q: 'Posso mudar de plano depois?', a: 'Sim! Você pode fazer upgrade ou downgrade a qualquer momento.' },
+        { q: 'O que acontece se meu plano expirar?', a: 'Você volta para o plano Trial com 7 dias de acesso para regularizar.' },
+        { q: 'Posso cancelar quando quiser?', a: 'Sim! Você pode cancelar a qualquer momento sem multa.' },
+        { q: 'Tem desconto para pagamento anual?', a: 'Sim! Planos anuais têm 20% de desconto.' },
+        { q: 'O que é o período de teste?', a: 'Você tem 45 dias de teste grátis com acesso a todas as funcionalidades.' }
     ];
 
     return `
@@ -774,16 +708,17 @@ function gerarFAQMobile(isMobile) {
         </div>
     `;
 }
+
 // ============================================
-// GERAR BENEFÍCIOS ADICIONAIS - MOBILE MELHORADO
+// GERAR BENEFÍCIOS ADICIONAIS
 // ============================================
 
-function gerarBeneficiosAdicionaisMobile(isMobile) {
+function gerarBeneficiosAdicionais(isMobile) {
     const beneficios = [
         { icon: '🔒', title: 'Segurança', desc: 'Dados criptografados e backups automáticos' },
-        { icon: '📱', title: 'Mobile Ready', desc: 'Acesso completo pelo celular ou tablet' },
+        { icon: '📱', title: 'Mobile Ready', desc: 'Acesso completo pelo celular' },
         { icon: '🔄', title: 'Atualizações', desc: 'Novas funcionalidades sempre incluídas' },
-        { icon: '💳', title: 'Pagamento Seguro', desc: 'Processado via Mercado Pago com criptografia' }
+        { icon: '💳', title: 'Pagamento Seguro', desc: 'Processado via Mercado Pago' }
     ];
 
     return `
@@ -799,835 +734,272 @@ function gerarBeneficiosAdicionaisMobile(isMobile) {
     `;
 }
 
+// public/js/pages/planos.js - SUBSTITUIR A FUNÇÃO escolherPlano
+
 // ============================================
-// FUNÇÃO DE ESCOLHER PLANO (COM TOGGLE REAL/SIMULAÇÃO)
+// ESCOLHER PLANO - CORRIGIDO (BUSCA MODO DO BACKEND)
 // ============================================
 
-async function escolherPlano(plano, valor) {
-    const planosNomes = {
-        'starter': 'Starter',
-        'pro': 'Pro',
-        'business': 'Business',
-        'enterprise': 'Enterprise'
-    };
+async function escolherPlano(planoId) {
+    const planoConfig = PLANOS_CONFIG[planoId];
+    if (!planoConfig) {
+        showToast('Plano não encontrado', 'error');
+        return;
+    }
 
-    const planoConfig = PLANOS_CONFIG[plano];
-    const valorFinal = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
+    const valor = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
     const periodoLabel = periodoSelecionado === 'anual' ? 'ano' : 'mês';
+    const nomePlano = planoConfig.nome;
 
-    // 🔥 PEGA O EMPRESA_ID DO USUÁRIO LOGADO
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
     const empresaId = usuario.empresa_id || usuario.empresaId;
 
     if (!empresaId) {
-        showToast('Erro: Empresa não identificada. Faça login novamente.', 'error');
+        showToast('Erro: Empresa não identificada.', 'error');
         return;
     }
 
-    console.log('🏢 empresaId:', empresaId);
-    console.log('📦 plano:', plano);
-
-    // 🔥 Buscar modo de pagamento atual
+    // 🔥 BUSCAR MODO DE PAGAMENTO ATUAL DO BACKEND
     let modoAtual = 'simulation';
     try {
         const token = localStorage.getItem('token');
-        const res = await fetch('/api/payment/config', {
+        const res = await fetch('/api/pagamento/config', {
             headers: { 'Authorization': 'Bearer ' + token }
         });
-        const data = await res.json();
-        if (data.success) {
-            modoAtual = data.data.mode;
+        if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+                modoAtual = data.data.mode;
+                modoPagamento = modoAtual; // Atualizar variável global
+            }
         }
     } catch (error) {
-        console.error('Erro ao buscar modo de pagamento:', error);
+        console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
     }
 
     const isReal = modoAtual === 'real';
+    const modoLabel = isReal ? '🔴 MODO REAL - Pagamentos com cobrança' : '🟡 MODO SIMULAÇÃO - Teste sem pagamento real';
+    const modoCor = isReal ? '#ef4444' : '#f59e0b';
+    const modoBg = isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
+    const modoBorder = isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
 
     const modalContent = `
-    <div style="padding: 10px;">
-        <p>Você está escolhendo o plano <strong>${planosNomes[plano]}</strong> por <strong>R$ ${valorFinal.toFixed(2)}/${periodoLabel}</strong>.</p>
-        ${periodoSelecionado === 'anual' ? `<p style="color: #10b981; font-size: 14px;">🎉 Economia de 20% no plano anual!</p>` : ''}
-        
-        <!-- 🔥 INDICADOR DO MODO DE PAGAMENTO -->
-        <div style="margin: 16px 0; padding: 12px; border-radius: 8px; background: ${isReal ? '#dbeafe' : '#fef3c7'}; border: 1px solid ${isReal ? '#93c5fd' : '#fcd34d'};">
-            <p style="margin: 0; font-size: 13px; color: ${isReal ? '#1e40af' : '#92400e'};">
-                <strong>${isReal ? '🔴 MODO REAL' : '🟡 MODO SIMULAÇÃO'}</strong>
-                ${isReal ? '- Pagamentos processados com cobrança real' : '- Teste sem pagamento real'}
-            </p>
-        </div>
-        
-        <div class="form-group" style="margin-top: 20px;">
-            <label style="font-weight: 500;">Forma de pagamento:</label>
-            <select id="metodo_pagamento" class="form-control" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd; font-size: 14px;">
-                <option value="checkout">💳 Checkout Mercado Pago (Recomendado)</option>
-                <option value="cartao">💳 Cartão de Crédito</option>
-                <option value="pix">📱 PIX</option>
-                <option value="boleto">📄 Boleto Bancário</option>
-            </select>
-        </div>
-        
-        <div id="cpfField" style="display: none; margin-top: 15px;">
-            <label style="font-weight: 500;">CPF (obrigatório para boleto):</label>
-            <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00" style="width: 100%; padding: 10px; margin-top: 8px; border-radius: 8px; border: 1px solid #ddd;">
-        </div>
-        
-        <div id="cardField" style="display: none; margin-top: 20px;">
-            <p style="color: #667eea; margin-bottom: 10px;">🔒 Você será redirecionado para o ambiente seguro do Mercado Pago</p>
-            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 13px;">✓ Aceitamos Visa, Mastercard, Elo, Hipercard e American Express</p>
-                <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Parcelamento em até 12x</p>
+        <div style="padding: 10px;">
+            <p>Você está escolhendo o plano <strong>${nomePlano}</strong> por <strong>R$ ${valor.toFixed(2)}/${periodoLabel}</strong>.</p>
+            ${periodoSelecionado === 'anual' ? `<p style="color: #10b981;">🎉 Economia de 20% no plano anual!</p>` : ''}
+            
+            <!-- 🔥 INDICADOR DO MODO ATUAL -->
+            <div style="margin: 16px 0; padding: 12px; border-radius: 8px; background: ${modoBg}; border: 1px solid ${modoBorder};">
+                <p style="margin: 0; font-size: 13px; color: ${modoCor};">
+                    <strong>${modoLabel}</strong>
+                    ${isReal ? ' - O pagamento será processado com cobrança real no cartão/PIX/boleto' : ' - Nenhum pagamento real é processado'}
+                </p>
             </div>
-        </div>
-        
-        <div id="pixField" style="display: none; margin-top: 20px;">
-            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 13px;">📱 Após confirmar, você receberá um QR Code PIX para pagamento</p>
-                <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Pagamento instantâneo</p>
-                <p style="margin: 0; font-size: 13px;">✓ Sem taxas adicionais</p>
-            </div>
-        </div>
-        
-        <div id="boletoField" style="display: none; margin-top: 20px;">
-            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px;">
-                <p style="margin: 0; font-size: 13px;">📄 O boleto será gerado e você poderá pagar em qualquer banco</p>
-                <p style="margin: 5px 0 0 0; font-size: 13px;">✓ Vencimento em 3 dias úteis</p>
-                <p style="margin: 0; font-size: 13px;">✓ Sem taxas adicionais</p>
-            </div>
-        </div>
-        
-        ${isReal ? `
-            <div style="margin-top: 16px; padding: 10px; background: #dbeafe; border-radius: 8px; border: 1px solid #93c5fd;">
-                <p style="margin: 0; font-size: 12px; color: #1e40af;">🔴 MODO REAL - Você será cobrado no cartão/PIX/boleto</p>
-            </div>
-        ` : `
-            <div style="margin-top: 16px; padding: 10px; background: #fef3c7; border-radius: 8px; border: 1px solid #fcd34d;">
-                <p style="margin: 0; font-size: 12px; color: #92400e;">🟡 MODO SIMULAÇÃO - Para teste sem pagamento real</p>
-            </div>
-        `}
-    </div>
-`;
-
-    showModal('Forma de Pagamento', modalContent, async () => {
-        const metodo = document.getElementById('metodo_pagamento').value;
-        const cpf = document.getElementById('cpf')?.value || '';
-        const token = localStorage.getItem('token');
-
-        showLoading();
-
-        try {
-            if (metodo === 'checkout' || metodo === 'cartao') {
-                if (!isReal) {
-                    // 🟡 MODO SIMULAÇÃO - Checkout Simulado
-                    const res = await fetch('/api/simulate-payment', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            plano: plano,
-                            empresaId: empresaId
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        showToast('✅ Pagamento simulado aprovado!', 'success');
-                        setTimeout(() => {
-                            recarregarUsuario();
-                            carregarPlanos();
-                            if (typeof carregarDashboard === 'function') carregarDashboard();
-                        }, 1500);
-                        fecharModal('modalUpgrade');
-                    } else {
-                        showToast('Erro no pagamento simulado', 'error');
-                    }
-                    hideLoading();
-                } else {
-                    // 🔴 MODO REAL - Checkout Mercado Pago
-                    console.log('📤 Enviando para /api/create-payment:', {
-                        plano_id: plano,
-                        plano_nome: planosNomes[plano],
-                        valor: valorFinal,
-                        metodo_pagamento: 'checkout',
-                        periodo: periodoSelecionado
-                    });
-
-                    const res = await fetch('/api/create-payment', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            plano_id: plano,
-                            plano_nome: planosNomes[plano],
-                            valor: valorFinal,
-                            metodo_pagamento: 'checkout',
-                            periodo: periodoSelecionado
-                        })
-                    });
-                    const data = await res.json();
-
-                    console.log('📥 Resposta do /api/create-payment:', data);
-
-                    if (data.success) {
-                        const url = data.sandbox_init_point || data.init_point;
-                        if (url) {
-                            window.open(url, '_blank');
-                            showToast('Redirecionando para pagamento...', 'info');
-                            setTimeout(() => verificarPagamento(), 5000);
-                        } else {
-                            showToast('URL de pagamento não gerada', 'error');
-                        }
-                        fecharModal('modalUpgrade');
-                    } else {
-                        showToast(data.message || 'Erro ao processar pagamento', 'error');
-                    }
-                    hideLoading();
-                }
-            } else if (metodo === 'pix') {
-                if (!isReal) {
-                    // 🟡 MODO SIMULAÇÃO - PIX Simulado
-                    const res = await fetch('/api/simulate-pix', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            plano_id: plano,
-                            plano_nome: planosNomes[plano],
-                            valor: valorFinal,
-                            periodo: periodoSelecionado
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        currentPaymentId = data.payment_id;
-                        mostrarPixQRCode(data.qr_code, data.qr_code_base64, data.payment_id);
-                    } else {
-                        showToast('Erro ao gerar PIX simulado', 'error');
-                    }
-                    hideLoading();
-                    fecharModal('modalUpgrade');
-                } else {
-                    // 🔴 MODO REAL - PIX Real
-                    const res = await fetch('/api/create-pix', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            plano_id: plano,
-                            plano_nome: planosNomes[plano],
-                            valor: valorFinal,
-                            periodo: periodoSelecionado
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        currentPaymentId = data.payment_id;
-                        mostrarPixQRCode(data.qr_code, data.qr_code_base64, data.payment_id);
-                    } else {
-                        showToast('Erro ao gerar PIX', 'error');
-                    }
-                    hideLoading();
-                    fecharModal('modalUpgrade');
-                }
-            } else if (metodo === 'boleto') {
-                if (!cpf || cpf.length < 11) {
-                    showToast('CPF é obrigatório para boleto', 'warning');
-                    hideLoading();
-                    return;
-                }
-
-                if (!isReal) {
-                    // 🟡 MODO SIMULAÇÃO - Boleto Simulado
-                    const res = await fetch('/api/simulate-boleto', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            plano_id: plano,
-                            plano_nome: planosNomes[plano],
-                            valor: valorFinal,
-                            cpf: cpf.replace(/\D/g, ''),
-                            periodo: periodoSelecionado
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        mostrarBoleto(data.boleto_url, data.payment_id);
-                    } else {
-                        showToast('Erro ao gerar boleto simulado', 'error');
-                    }
-                    hideLoading();
-                    fecharModal('modalUpgrade');
-                } else {
-                    // 🔴 MODO REAL - Boleto Real
-                    const res = await fetch('/api/create-boleto', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': 'Bearer ' + token
-                        },
-                        body: JSON.stringify({
-                            plano_id: plano,
-                            plano_nome: planosNomes[plano],
-                            valor: valorFinal,
-                            cpf: cpf.replace(/\D/g, ''),
-                            periodo: periodoSelecionado
-                        })
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        mostrarBoleto(data.boleto_url, data.payment_id);
-                    } else {
-                        showToast('Erro ao gerar boleto', 'error');
-                    }
-                    hideLoading();
-                    fecharModal('modalUpgrade');
-                }
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            showToast('Erro ao processar pagamento', 'error');
-            hideLoading();
-        }
-    });
-
-    setTimeout(() => {
-        const metodoSelect = document.getElementById('metodo_pagamento');
-        if (metodoSelect) {
-            metodoSelect.addEventListener('change', function () {
-                document.getElementById('cpfField').style.display = this.value === 'boleto' ? 'block' : 'none';
-                document.getElementById('cardField').style.display = (this.value === 'cartao' || this.value === 'checkout') ? 'block' : 'none';
-                document.getElementById('pixField').style.display = this.value === 'pix' ? 'block' : 'none';
-                document.getElementById('boletoField').style.display = this.value === 'boleto' ? 'block' : 'none';
-            });
-        }
-    }, 100);
-
-    // ============================================
-    // FUNÇÕES DE PAGAMENTO (MANTIDAS)
-    // ============================================
-
-    function mostrarFormularioCartaoSimulado(plano, valor, planosNomes) {
-        const modalContent = `
-        <div style="padding: 20px;">
-            <h3 style="margin-bottom: 20px;">💳 Pagamento com Cartão (SIMULAÇÃO)</h3>
-            <div style="background: #fef3c7; padding: 12px; border-radius: 8px; margin-bottom: 20px;">
-                <p style="margin: 0; font-size: 13px;">🔧 MODO DE TESTE</p>
-                <p style="margin: 5px 0 0 0; font-size: 12px;">Use qualquer número de cartão para testar</p>
-            </div>
-            <div style="margin-top: 20px;">
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Número do Cartão (teste: 4111 1111 1111 1111)</label>
-                    <input type="text" id="cardNumber" class="form-control" placeholder="4111 1111 1111 1111" value="4111111111111111" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                    <div>
-                        <label>Validade</label>
-                        <input type="text" id="cardExpiry" class="form-control" placeholder="12/28" value="12/28" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                    </div>
-                    <div>
-                        <label>CVV</label>
-                        <input type="text" id="cardCvv" class="form-control" placeholder="123" value="123" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                    </div>
-                </div>
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label>Nome no Cartão</label>
-                    <input type="text" id="cardName" class="form-control" placeholder="Nome do titular" value="Cliente Teste" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                </div>
-            </div>
-            <button onclick="processarPagamentoCartaoSimulado('${plano}', ${valor})" class="btn-primary" style="width: 100%; padding: 12px; margin-top: 20px;">
-                💳 Pagar (Simulação)
+            
+            <button onclick="confirmarUpgrade('${planoId}')" style="
+                width: 100%;
+                padding: 12px;
+                background: ${isReal ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #667eea, #764ba2)'};
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 16px;
+                cursor: pointer;
+                margin-top: 16px;
+            ">
+                ${isReal ? '🔴 Pagar Agora' : '✅ Confirmar Escolha'}
             </button>
         </div>
     `;
-        showModal('Pagamento com Cartão (Simulação)', modalContent, null);
-    }
 
-    async function processarPagamentoCartaoSimulado(plano, valor) {
+    showModal('Confirmar Plano', modalContent, null);
+}
+
+// public/js/pages/planos.js - SUBSTITUIR A FUNÇÃO confirmarUpgrade
+
+// ============================================
+// CONFIRMAR UPGRADE - COM VERIFICAÇÃO DO MODO
+// ============================================
+
+async function confirmarUpgrade(planoId) {
+    showLoading();
+    fecharModal('modalUpgrade');
+
+    try {
         const token = localStorage.getItem('token');
-        showLoading();
-        showToast('🔧 Modo simulação: Processando pagamento...', 'info');
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        const empresaId = usuario.empresa_id || usuario.empresaId;
 
-        try {
-            const res = await fetch('/api/simulate-card', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    plano_id: plano,
-                    plano_nome: plano === 'starter' ? 'Starter' : plano === 'pro' ? 'Pro' : plano === 'business' ? 'Business' : 'Enterprise',
-                    valor: valor,
-                    periodo: periodoSelecionado,
-                    card_data: { simulado: true }
-                })
-            });
-            const data = await res.json();
+        if (!empresaId) {
+            showToast('Erro: Empresa não identificada', 'error');
             hideLoading();
-
-            if (data.success && data.status === 'approved') {
-                showToast('✅ Pagamento aprovado! Seu plano foi ativado.', 'success');
-                fecharModal('modalUpgrade');
-                setTimeout(() => {
-                    recarregarUsuario();
-                    carregarPlanos();
-                    if (typeof carregarDashboard === 'function') carregarDashboard();
-                }, 1500);
-            } else {
-                showToast('Erro no pagamento simulado', 'error');
-            }
-        } catch (error) {
-            hideLoading();
-            showToast('Erro ao processar pagamento', 'error');
+            return;
         }
-    }
 
-    function mostrarPixQRCode(qrCode, qrCodeBase64, paymentId) {
-        // 🔥 VERIFICAR SE ESTÁ EM SANDBOX
-        const isSandbox = window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1';
-
-        // 🔥 FECHAR QUALQUER MODAL ABERTO
-        const modalExistente = document.querySelector('.modal-overlay');
-        if (modalExistente) modalExistente.remove();
-
-        // 🔥 CRIAR O MODAL MANUALMENTE (SEM BOTÕES AUTOMÁTICOS)
-        const overlay = document.createElement('div');
-        overlay.className = 'modal-overlay';
-        overlay.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.7);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        padding: 20px;
-        animation: fadeIn 0.3s ease;
-    `;
-
-        overlay.innerHTML = `
-        <div style="
-            background: var(--bg-card);
-            border-radius: 16px;
-            max-width: 420px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            position: relative;
-        ">
-            <button onclick="fecharModalPersonalizado()" style="
-                position: absolute;
-                top: 10px;
-                right: 16px;
-                background: none;
-                border: none;
-                font-size: 24px;
-                color: var(--text-muted);
-                cursor: pointer;
-            ">✕</button>
-            
-            <h3 style="text-align: center; margin-bottom: 16px;">📱 Pagamento via PIX</h3>
-            
-            <p style="text-align: center; font-size: 14px; color: var(--text-muted); margin-bottom: 16px;">
-                Escaneie o QR Code abaixo com seu banco:
-            </p>
-            
-            ${qrCodeBase64 ? `<img src="data:image/png;base64,${qrCodeBase64}" style="width: 180px; height: 180px; margin: 0 auto 16px; display: block; border-radius: 12px;">` : ''}
-            
-            <div style="background: var(--bg-hover); padding: 12px; border-radius: 8px; margin-bottom: 16px;">
-                <p style="font-size: 11px; margin: 0; color: var(--text-muted);">Código PIX:</p>
-                <p style="font-family: monospace; font-size: 11px; word-break: break-all; margin: 4px 0 0;">${qrCode}</p>
-                <button onclick="copiarPix('${qrCode}')" style="margin-top: 8px; padding: 6px 16px; font-size: 12px; background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; color: var(--text-primary);">
-                    📋 Copiar código
-                </button>
-            </div>
-            
-            <div id="statusPagamento" style="text-align: center; margin: 16px 0;">
-                <p style="font-size: 14px;">⏳ Aguardando pagamento...</p>
-                <div style="margin: 10px auto; width: 30px; height: 30px; border: 3px solid var(--border-color); border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            </div>
-            
-            ${isSandbox ? `
-                <button onclick="simularPagamentoPIX('${paymentId}')" style="
-                    background: #f59e0b;
-                    color: white;
-                    padding: 12px;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    width: 100%;
-                    font-size: 14px;
-                    margin-bottom: 10px;
-                ">
-                    🟡 Simular pagamento aprovado (TESTE)
-                </button>
-            ` : ''}
-            
-            <div style="display: flex; gap: 10px;">
-                <button onclick="verificarPagamentoPIX('${paymentId}')" style="
-                    flex: 1;
-                    padding: 10px;
-                    background: var(--gradient);
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    font-size: 14px;
-                ">
-                    🔄 Verificar
-                </button>
-                <button onclick="fecharModalPersonalizado()" style="
-                    flex: 1;
-                    padding: 10px;
-                    background: var(--bg-hover);
-                    color: var(--text-primary);
-                    border: 1px solid var(--border-color);
-                    border-radius: 8px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    font-size: 14px;
-                ">
-                    Fechar
-                </button>
-            </div>
-        </div>
-    `;
-
-        document.body.appendChild(overlay);
-
-        // 🔥 VERIFICAÇÃO AUTOMÁTICA (só em produção)
-        if (!isSandbox) {
-            const interval = setInterval(() => {
-                verificarPagamentoPIX(paymentId, interval);
-            }, 5000);
-        }
-    }
-    // ============================================
-    // SIMULAR PAGAMENTO PIX (APENAS PARA TESTE)
-    // ============================================
-    async function simularPagamentoPIX(paymentId) {
-        const token = localStorage.getItem('token');
-        showLoading();
-
+        // 🔥 VERIFICAR MODO DE PAGAMENTO ATUAL
+        let modoAtual = 'simulation';
         try {
-            const res = await fetch(`/api/confirm-simulated-payment/${paymentId}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({
-                    status: 'approved',
-                    //plano: 'teste'//
-                })
-            });
-            const data = await res.json();
-            hideLoading();
-
-            if (data.success) {
-                // 🔥 FECHAR MODAL
-                fecharModalPersonalizado();
-
-                showToast('✅ Pagamento aprovado! Plano ativado!', 'success');
-                await recarregarUsuario();
-                await carregarPlanos();
-
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
-                }
-
-                setTimeout(() => {
-                    if (window.location.hash !== '#dashboard') {
-                        window.location.hash = 'dashboard';
-                    }
-                }, 1500);
-            } else {
-                showToast('❌ Erro ao simular pagamento', 'error');
-            }
-        } catch (error) {
-            hideLoading();
-            console.error('Erro:', error);
-            showToast('❌ Erro ao simular pagamento', 'error');
-        }
-    }
-    function mostrarBoleto(boletoUrl, paymentId) {
-        const modalContent = `
-        <div style="text-align: center; padding: 20px;">
-            <h3>📄 Boleto Bancário</h3>
-            <p>Clique no botão abaixo para visualizar e pagar seu boleto:</p>
-            <a href="${boletoUrl}" target="_blank" class="btn-primary" style="display: inline-block; margin: 20px 0; text-decoration: none;">📄 Visualizar Boleto</a>
-            <div class="status-pagamento" id="statusPagamento">
-                <p>⏳ Aguardando confirmação de pagamento...</p>
-                <p style="font-size: 12px; color: #666;">O boleto pode levar até 2 dias úteis para ser compensado</p>
-            </div>
-            <button onclick="verificarPagamentoBoleto('${paymentId}')" class="btn-primary">🔄 Verificar pagamento</button>
-            <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Fechar</button>
-        </div>
-    `;
-        showModal('Boleto Bancário', modalContent, null);
-    }
-
-    async function verificarPagamentoPIX(paymentId, interval = null) {
-        const token = localStorage.getItem('token');
-
-        try {
-            const res = await fetch(`/api/check-payment/${paymentId}`, {
+            const res = await fetch('/api/pagamento/config', {
                 headers: { 'Authorization': 'Bearer ' + token }
             });
-            const data = await res.json();
-
-            if (data.success && data.status === 'approved') {
-                if (interval) clearInterval(interval);
-
-                // 🔥 FECHAR MODAL
-                fecharModalPersonalizado();
-
-                showToast('✅ Pagamento confirmado! Plano ativado!', 'success');
-                await recarregarUsuario();
-                await carregarPlanos();
-
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
-                }
-
-                setTimeout(() => {
-                    if (window.location.hash !== '#dashboard') {
-                        window.location.hash = 'dashboard';
-                    }
-                }, 1500);
-            }
-        } catch (error) {
-            console.error('Erro ao verificar:', error);
-        }
-    }
-    async function confirmarPagamentoSimulado(paymentId, interval) {
-        const token = localStorage.getItem('token');
-        showLoading();
-        try {
-            const res = await fetch(`/api/confirm-simulated-payment/${paymentId}`, {
-                method: 'POST',
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (data.success) {
-                if (interval) clearInterval(interval);
-                showToast('✅ Pagamento confirmado manualmente!', 'success');
-                setTimeout(() => {
-                    fecharModal('modalUpgrade');
-                    recarregarUsuario();
-                    carregarPlanos();
-                    if (typeof carregarDashboard === 'function') carregarDashboard();
-                }, 2000);
-            } else {
-                showToast('Erro ao confirmar pagamento', 'error');
-            }
-        } catch (error) {
-            showToast('Erro ao confirmar', 'error');
-        }
-        hideLoading();
-    }
-
-    async function verificarPagamentoBoleto(paymentId) {
-        const token = localStorage.getItem('token');
-        showLoading();
-        try {
-            const res = await fetch(`/api/check-payment/${paymentId}`, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (data.success && data.status === 'approved') {
-                // 🔥 FECHAR MODAL
-                fecharModal('modalUpgrade');
-                showToast('✅ Pagamento confirmado! Plano ativado!', 'success');
-                await recarregarUsuario();
-                await carregarPlanos();
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
-                }
-                setTimeout(() => {
-                    if (window.location.hash !== '#dashboard') {
-                        window.location.hash = 'dashboard';
-                    }
-                }, 2000);
-            } else {
-                showToast('Pagamento ainda não confirmado', 'info');
-            }
-        } catch (error) {
-            showToast('Erro ao verificar pagamento', 'error');
-        }
-        hideLoading();
-    }
-
-    function copiarPix(codigo) {
-        navigator.clipboard.writeText(codigo);
-        showToast('Código PIX copiado!', 'success');
-    }
-
-    async function verificarPagamento() {
-        setTimeout(async () => {
-            const token = localStorage.getItem('token');
-            try {
-                const res = await fetch('/api/empresa/plano', {
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
+            if (res.ok) {
                 const data = await res.json();
-                if (data.success && !data.data.is_trial) {
-                    // 🔥 FECHAR MODAL
-                    fecharModal('modalUpgrade');
-                    showToast('✅ Plano ativado com sucesso!', 'success');
-                    recarregarUsuario();
-                    carregarPlanos();
-                    if (typeof carregarDashboard === 'function') {
-                        carregarDashboard();
-                    }
-                    setTimeout(() => {
-                        if (window.location.hash !== '#dashboard') {
-                            window.location.hash = 'dashboard';
-                        }
-                    }, 2000);
+                if (data.success) {
+                    modoAtual = data.data.mode;
                 }
-            } catch (error) {
-                console.error('Erro ao verificar plano:', error);
             }
-        }, 10000);
-    }
+        } catch (error) {
+            console.warn('⚠️ Erro ao buscar modo:', error);
+        }
 
-    // ============================================
-    // CANCELAR ASSINATURA
-    // ============================================
+        const isReal = modoAtual === 'real';
 
-    async function cancelarAssinatura() {
-        const modalContent = `
-        <div style="padding: 20px;">
-            <h3 style="text-align: center;">❌ Cancelar Assinatura</h3>
-            <p>Tem certeza que deseja cancelar sua assinatura?</p>
-            <div style="background: #f3f4f6; padding: 12px; border-radius: 8px; margin: 15px 0;">
-                <p style="margin: 0; font-size: 13px;">📋 Ao cancelar:</p>
-                <ul style="margin: 5px 0 0 20px; font-size: 13px;">
-                    <li>✓ Você terá 7 dias de acesso ao plano Trial</li>
-                    <li>✓ Seus dados serão mantidos</li>
-                    <li>✓ Poderá reassinar qualquer plano a qualquer momento</li>
-                    <li>✓ Seu limite voltará para 1 profissional</li>
-                </ul>
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button onclick="fecharModal('modalUpgrade')" style="flex: 1; padding: 10px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer;">Voltar</button>
-                <button onclick="confirmarCancelamento()" style="flex: 1; padding: 10px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer;">Confirmar Cancelamento</button>
-            </div>
-        </div>
-    `;
-        showModal('Cancelar Assinatura', modalContent, null);
-    }
+        if (isReal) {
+            showToast('🔴 Redirecionando para pagamento...', 'info');
 
-    async function confirmarCancelamento() {
-        const token = localStorage.getItem('token');
-        showLoading();
+            const planoConfig = PLANOS_CONFIG[planoId];
+            const valor = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
 
-        try {
-            const res = await fetch('/api/cancel-subscription', {
+            const response = await fetch('/api/pagamento/create-payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
-                body: JSON.stringify({ motivo: 'Usuário cancelou manualmente' })
+                body: JSON.stringify({
+                    plano_id: planoId,
+                    plano_nome: planoConfig.nome,
+                    valor: valor,
+                    periodo: periodoSelecionado
+                })
             });
 
-            const data = await res.json();
+            const result = await response.json();
             hideLoading();
 
-            if (data.success) {
-                showToast(data.message, 'success');
-                fecharModal('modalUpgrade');
-                await recarregarUsuario();
-                await carregarPlanos();
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
+            if (result.success) {
+                // 🔥 USAR O LINK CORRETO
+                // Se for REAL, usar init_point
+                // Se for SANDBOX, usar sandbox_init_point
+                const url = result.link || result.init_point || result.sandbox_init_point;
+
+                if (url) {
+                    window.open(url, '_blank');
+                    showToast(result.isReal ? '🔴 Redirecionando para pagamento REAL...' : '🟡 Redirecionando para pagamento de teste...', 'info');
+                } else {
+                    showToast('❌ Erro ao gerar link de pagamento', 'error');
                 }
             } else {
-                showToast(data.message || 'Erro ao cancelar assinatura', 'error');
+                showToast(result.message || '❌ Erro ao criar pagamento', 'error');
             }
-        } catch (error) {
-            hideLoading();
-            console.error('Erro no cancelamento:', error);
-            showToast('Erro ao cancelar assinatura. Tente novamente.', 'error');
+            return;
         }
-    }
 
-    // ============================================
-    // RECARREGAR USUÁRIO
-    // ============================================
+        // 🟡 MODO SIMULAÇÃO - Ativar plano imediatamente
+        const response = await fetch('/api/planos/empresa', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                plano: planoId,
+                assinatura_ativa: true,
+                assinatura_valida_ate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
+            })
+        });
 
-    async function recarregarUsuario() {
-        const token = localStorage.getItem('token');
-        if (!token) return;
-        try {
-            const res = await fetch('/api/empresa/plano', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const data = await res.json();
-            if (data.success && data.data) {
-                const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-                usuario.plano = data.data.plano;
-                usuario.limite_profissionais = data.data.limite_profissionais;
-                usuario.is_trial = data.data.is_trial;
-                usuario.dias_restantes = data.data.dias_restantes;
+        const result = await response.json();
+
+        hideLoading();
+
+        if (result.success) {
+            showToast(`✅ Plano ${PLANOS_CONFIG[planoId]?.nome || planoId} ativado com sucesso!`, 'success');
+
+            if (usuario) {
+                usuario.plano = planoId;
                 localStorage.setItem('usuario', JSON.stringify(usuario));
             }
-        } catch (error) {
-            console.error('Erro ao recarregar usuário:', error);
+
+            setTimeout(() => {
+                carregarPlanos();
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
+            }, 500);
+        } else {
+            showToast('❌ ' + (result.message || 'Erro ao ativar plano'), 'error');
         }
+
+    } catch (error) {
+        console.error('❌ Erro ao confirmar upgrade:', error);
+        hideLoading();
+        showToast('❌ Erro ao processar upgrade', 'error');
     }
+}
 
-    // ============================================
-    // FECHAR MODAL PERSONALIZADO
-    // ============================================
-    function fecharModalPersonalizado() {
-        const overlay = document.querySelector('.modal-overlay');
-        if (overlay) overlay.remove();
-        const modal = document.querySelector('.modal');
-        if (modal) modal.remove();
-        const modals = document.querySelectorAll('.modal-overlay');
-        modals.forEach(m => m.remove());
+// ============================================
+// CANCELAR ASSINATURA
+// ============================================
+
+async function cancelarAssinatura() {
+    if (!confirm('Tem certeza que deseja cancelar sua assinatura?')) return;
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        // 🔥 USAR /api/planos/empresa (rota que existe)
+        const res = await fetch('/api/planos/empresa', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                plano: 'trial',
+                assinatura_ativa: false,
+                assinatura_valida_ate: null
+            })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('✅ Assinatura cancelada. Você está no plano Trial.', 'success');
+
+            const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+            usuario.plano = 'trial';
+            localStorage.setItem('usuario', JSON.stringify(usuario));
+
+            setTimeout(() => {
+                carregarPlanos();
+                if (typeof carregarDashboard === 'function') {
+                    carregarDashboard();
+                }
+            }, 500);
+        } else {
+            showToast(data.message || '❌ Erro ao cancelar', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Erro:', error);
+        showToast('❌ Erro ao cancelar assinatura', 'error');
     }
+}
 
-    // ============================================
-    // EXPORTAR FUNÇÕES
-    // ============================================
+// ============================================
+// EXPORTAR FUNÇÕES
+// ============================================
 
-    window.carregarPlanos = carregarPlanos;
-    window.escolherPlano = escolherPlano;
-    window.mostrarPixQRCode = mostrarPixQRCode;
-    window.mostrarBoleto = mostrarBoleto;
-    window.verificarPagamentoPIX = verificarPagamentoPIX;
-    window.verificarPagamentoBoleto = verificarPagamentoBoleto;
-    window.copiarPix = copiarPix;
-    window.recarregarUsuario = recarregarUsuario;
-    window.processarPagamentoCartaoSimulado = processarPagamentoCartaoSimulado;
-    window.cancelarAssinatura = cancelarAssinatura;
-    window.confirmarCancelamento = confirmarCancelamento;
-    window.togglePeriodo = togglePeriodo;
-    window.selecionarPlano = selecionarPlano;
-    window.simularPagamentoPIX = simularPagamentoPIX;
-    window.fecharModalPersonalizado = fecharModalPersonalizado;
+window.carregarPlanos = carregarPlanos;
+window.escolherPlano = escolherPlano;
+window.confirmarUpgrade = confirmarUpgrade;
+window.cancelarAssinatura = cancelarAssinatura;
+window.togglePeriodo = togglePeriodo;
+window.selecionarPlano = selecionarPlano;
 
-    console.log('✅ planos.js carregado - Modo simulação:', modoSimulacao);
-    console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));
-
-    // Fechamento final - GARANTA QUE TENHA ESTA CHAVE
-}  // ← Fecha a função principal se existir
+console.log('✅ planos.js carregado - Modo simulação');
+console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));

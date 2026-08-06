@@ -352,3 +352,114 @@ Refatoração Backend            🔄 60%
 Agendamentos                   ✅ OK
 Financeiro                     ✅ OK
 Super Admin                    ✅ OK
+
+
+---
+
+## 📄 **PARA_NOVA_IA.txt** (ATUALIZADO)
+
+```markdown
+=========================================
+GUIA PARA IA - SEE&AGENDE
+ULTIMA ATUALIZACAO: 04/08/2026
+=========================================
+
+🚀 COMO EXECUTAR O PROJETO
+-----------------------------------------
+Modo Local (SQLite - Desenvolvimento)
+node -r dotenv/config server.js dotenv_config_path=.env.dev
+
+Modo com PostgreSQL (Teste com dados reais / Produção)
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+USUARIOS:
+-----------------------------------------
+Super Admin: super@admin.com / super123
+Dono: admin@teste.com / 123456
+
+=========================================
+📋 STATUS DO PROJETO (04/08/2026)
+=========================================
+
+### ✅ REFATORAÇÃO COMPLETA (100%)
+
+Todas as rotas foram extraídas do server.js para arquivos separados:
+
+| Rota | Status |
+|------|--------|
+| Auth | ✅ |
+| Empresa | ✅ |
+| Serviços | ✅ |
+| Horários | ✅ |
+| Profissionais | ✅ |
+| Clientes | ✅ |
+| Despesas | ✅ |
+| Agendamentos | ✅ |
+| Financeiro | ✅ |
+| Admin | ✅ |
+| WhatsApp | ✅ |
+| Chatbot | ✅ |
+| Pagamentos | ✅ |
+| Planos | ✅ |
+
+### 📊 RESULTADO
+- server.js: ~8700 → ~350 linhas
+- 13 arquivos de rotas criados
+- Código 100% organizado
+
+### 🔧 CORREÇÕES REALIZADAS
+1. Mensagens WhatsApp com Maps/Waze
+2. Configurações da Empresa
+3. JWT_SECRET unificado
+4. Frontend com token no header
+5. Rotas de login atualizadas
+
+=========================================
+🔧 COMANDOS ÚTEIS
+=========================================
+# Rodar local
+node -r dotenv/config server.js dotenv_config_path=.env.dev
+
+# Atualizar VPS
+ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
+
+# Ver logs VPS
+ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 50"
+
+=========================================
+✅ STATUS DAS FUNCIONALIDADES
+=========================================
+WhatsApp (com Maps/Waze)      ✅ OK
+Configurações Empresa          ✅ OK
+Refatoração Backend            ✅ **100%**
+Agendamentos                   ✅ OK
+Financeiro                     ✅ OK
+Super Admin                    ✅ OK
+WhatsApp Multi-Instância       ✅ OK
+Grupos de Clientes             ✅ OK
+Busca Mobile Otimizada         ✅ OK
+Índice A-Z Clientes            ✅ OK
+Criação Auto. Instância (SA)   ✅ OK
+Envio WhatsApp no Agendamento  ✅ OK
+
+=========================================
+📋 PLANOS COMPLETOS
+=========================================
+Plano       Valor               Profissionais   WhatsApp Próprio
+Trial       Grátis (45 dias)    1                ❌
+Starter     R$ 29,90/mês        1                ❌
+Pro         R$ 59,90/mês        5                ❌
+Business    R$ 119,90/mês       15               ✅
+Enterprise  R$ 249,90/mês       Ilimitado        ✅
+
+=========================================
+🚀 COMO AJUDAR
+=========================================
+1. Manter o padrão de código já estabelecido
+2. Testar localmente antes de subir para VPS
+3. Usar `fetchWithAuth()` para requisições autenticadas
+4. Sempre filtrar por `empresa_id` nas queries
+
+=========================================
+ULTIMA ATUALIZACAO: 04/08/2026
+=========================================

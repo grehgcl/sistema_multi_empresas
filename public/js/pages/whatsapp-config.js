@@ -2,6 +2,7 @@
 // WHATSAPP CONFIG - COM SUPER ADMIN OVERRIDE E LÓGICA BINÁRIA CORRIGIDA
 // ============================================
 
+// public/js/pages/whatsapp-config.js
 async function carregarConfigWhatsApp() {
   if (typeof window.carregarCSS === 'function') {
     window.carregarCSS('empresas');
@@ -11,10 +12,22 @@ async function carregarConfigWhatsApp() {
 
   try {
     const token = localStorage.getItem('token');
-    const res = await fetch('/api/empresa/whatsapp/info', {
+    // ✅ CORREÇÃO: URL CORRETA
+    const res = await fetch('/api/whatsapp/info', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
-    const { data } = await res.json();
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
+    }
+
+    const result = await res.json();
+
+    if (!result.success) {
+      throw new Error(result.message || 'Erro ao carregar configuração');
+    }
+
+    const data = result.data;
 
     let html = `<div class="fade-in"><h2 class="page-title">📱 WhatsApp</h2>`;
 
@@ -65,7 +78,6 @@ async function carregarConfigWhatsApp() {
 
     // 🔥 CENÁRIO 3: Super Admin habilitou OU plano permite → PODE USAR!
     else {
-      // ✅ CORREÇÃO: Verifica estado REAL antes de renderizar qualquer botão
       const isConectado = data.connected || data.state === 'open' || data.state === 'connected';
 
       if (!data.instanceName) {
@@ -87,7 +99,7 @@ async function carregarConfigWhatsApp() {
                 `;
       }
       else if (!isConectado) {
-        // ✅ DESCONECTADO: Mostra QR Code e botões de conexão
+        // ✅ DESCONECTADO: Mostra QR Code e botões
         html += `
                     <div class="card fade-in" style="max-width: 600px; margin: 0 auto; text-align: center; padding: 30px 20px;">
                         <h3 style="color: var(--text-primary); margin-bottom: 8px;">Conecte seu WhatsApp</h3>
@@ -119,11 +131,10 @@ async function carregarConfigWhatsApp() {
                     </div>
                 `;
 
-        // Busca QR Code automaticamente apenas se não houver um salvo no data
         if (!data.qrCode) setTimeout(buscarQrCode, 500);
       }
       else {
-        // ✅ CONECTADO: Mostra APENAS info e botão de desconectar
+        // ✅ CONECTADO
         html += `
                     <div class="card fade-in" style="max-width: 600px; margin: 0 auto; text-align: center; padding: 40px 20px;">
                         <div style="width: 80px; height: 80px; background: rgba(37,211,102,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
@@ -146,8 +157,8 @@ async function carregarConfigWhatsApp() {
     document.getElementById('content').innerHTML = html;
 
   } catch (error) {
-    showToast('Erro ao carregar configuração', 'error');
-    console.error(error);
+    console.error('❌ Erro ao carregar config WhatsApp:', error);
+    showToast('Erro ao carregar configuração do WhatsApp: ' + error.message, 'error');
   }
 
   hideLoading();
@@ -161,7 +172,8 @@ async function criarInstancia() {
   const token = localStorage.getItem('token');
 
   try {
-    const res = await fetch('/api/empresa/whatsapp/criar-instancia', {
+    // ✅ CORRIGIDO: URL CORRETA
+    const res = await fetch('/api/whatsapp/criar-instancia', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token }
     });
@@ -187,7 +199,8 @@ async function buscarQrCode() {
   const token = localStorage.getItem('token');
 
   try {
-    const res = await fetch('/api/empresa/whatsapp/qrcode', {
+    // ✅ CORRIGIDO: URL CORRETA
+    const res = await fetch('/api/whatsapp/qrcode', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     const data = await res.json();
@@ -198,7 +211,6 @@ async function buscarQrCode() {
         container.innerHTML = `<img src="${data.qrCode}" style="width: 256px; height: 256px;">`;
       }
     } else if (data.alreadyConnected) {
-      // 🔥 Se já está conectado, atualiza a página
       const container = document.getElementById('qrcode-container');
       if (container) {
         container.innerHTML = `
@@ -239,7 +251,8 @@ async function verificarStatus() {
   const token = localStorage.getItem('token');
 
   try {
-    const res = await fetch('/api/empresa/whatsapp/status', {
+    // ✅ CORRIGIDO: URL CORRETA
+    const res = await fetch('/api/whatsapp/status', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     const data = await res.json();
@@ -273,7 +286,6 @@ async function desconectarWhatsApp() {
   showLoading();
   const token = localStorage.getItem('token');
 
-  // Tenta pegar o ID da empresa de múltiplas fontes
   let empresaId = window.empresaId;
   if (!empresaId && token) {
     try {
@@ -283,7 +295,8 @@ async function desconectarWhatsApp() {
   }
 
   try {
-    const res = await fetch('/api/empresa/whatsapp/disconnect', {
+    // ✅ CORRIGIDO: URL CORRETA
+    const res = await fetch('/api/whatsapp/disconnect', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -292,7 +305,6 @@ async function desconectarWhatsApp() {
       body: JSON.stringify({ empresa_id: empresaId })
     });
 
-    // ✅ Verifica se a resposta HTTP foi OK antes de parsear JSON
     if (!res.ok) {
       throw new Error(`Erro HTTP: ${res.status} ${res.statusText}`);
     }
@@ -301,8 +313,6 @@ async function desconectarWhatsApp() {
 
     if (data.success) {
       showToast(data.message || 'WhatsApp desconectado!', 'success');
-
-      // Recarrega a configuração APENAS se a função existir
       if (typeof carregarConfigWhatsApp === 'function') {
         await carregarConfigWhatsApp();
       } else {
@@ -323,10 +333,7 @@ async function desconectarWhatsApp() {
 // IR PARA PÁGINA DE PLANOS
 // ============================================
 function irParaPlanos() {
-  // Ativa o botão do menu
   ativarBotao('planos');
-
-  // Chama a função do arquivo planos.js
   if (typeof window.carregarPlanos === 'function') {
     window.carregarPlanos();
   } else {
@@ -336,17 +343,14 @@ function irParaPlanos() {
 }
 
 // ============================================
-// ALIASES PARA COMPATIBILIDADE COM O HTML (CORREÇÃO DO ERRO)
+// ALIASES PARA COMPATIBILIDADE
 // ============================================
-
-// O HTML chama gerarQrCode(), mas a função real é buscarQrCode()
 function gerarQrCode() {
   if (typeof buscarQrCode === 'function') {
     return buscarQrCode();
   }
 }
 
-// O HTML chama verificarConexao(), mas a função real é verificarStatus()
 function verificarConexao() {
   if (typeof verificarStatus === 'function') {
     return verificarStatus();
@@ -359,9 +363,9 @@ function verificarConexao() {
 window.carregarConfigWhatsApp = carregarConfigWhatsApp;
 window.criarInstancia = criarInstancia;
 window.buscarQrCode = buscarQrCode;
-window.gerarQrCode = gerarQrCode; // ✅ Adicionado
+window.gerarQrCode = gerarQrCode;
 window.verificarStatus = verificarStatus;
-window.verificarConexao = verificarConexao; // ✅ Adicionado
+window.verificarConexao = verificarConexao;
 window.confirmarConexao = confirmarConexao;
 window.desconectarWhatsApp = desconectarWhatsApp;
 window.irParaPlanos = irParaPlanos;

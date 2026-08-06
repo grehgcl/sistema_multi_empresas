@@ -3,7 +3,7 @@
 // ============================================
 
 const PLANOS = {
-        // 'teste': { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 }, nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 }, nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 },  // ← ADICIONE ESTA LINHA
+    // 'teste': { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 }, nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 }, nome: 'Teste R$ 1,00', limite: 1, valor: 1.00 },  // ← ADICIONE ESTA LINHA
     'starter': { nome: 'Starter', limite: 1, valor: 29.90 },
     'pro': { nome: 'Pro', limite: 5, valor: 59.90 },
     'business': { nome: 'Business', limite: 15, valor: 119.90 },
@@ -18,6 +18,6 @@ const PLANOS_NOMES = {
     'enterprise': 'Enterprise'
 };
 
-const JWT_SECRET = 'secret_key';
+const JWT_SECRET = process.env.JWT_SECRET || 'seeagende2024';
 
 module.exports = { PLANOS, PLANOS_NOMES, JWT_SECRET };

@@ -1,0 +1,105 @@
+/* ============================================
+    - ESTILOS ESPEC�FICOS
+   ULTIMA ATUALIZACAO: 31/07/2026
+   ============================================ */
+
+/* Estilos da p�gina */
+/* ============================================
+   FINANCEIRO.CSS - ESTILOS ESPECÍFICOS
+   ULTIMA ATUALIZACAO: 31/07/2026
+   ============================================ */
+
+/* ----- CARDS FINANCEIROS ----- */
+.card-faturamento {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(16, 185, 129, 0.05));
+    border: 1px solid rgba(34, 197, 94, 0.15);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.card-faturamento .value {
+    color: #22c55e;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.card-despesa {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.04));
+    border: 1px solid rgba(239, 68, 68, 0.12);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.card-despesa .value {
+    color: #ef4444;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.card-lucro {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    border-radius: 12px;
+    padding: 16px 20px;
+}
+
+.card-lucro .value {
+    color: #8b5cf6;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+/* ----- TABS ----- */
+.tabs-financeiro {
+    display: flex;
+    gap: 4px;
+    background: var(--bg-hover);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+    overflow-x: auto;
+}
+
+.tabs-financeiro .tab {
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.tabs-financeiro .tab:hover {
+    color: var(--text-primary);
+}
+
+.tabs-financeiro .tab.active {
+    background: var(--bg-card);
+    color: var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* ----- MOBILE ----- */
+@media (max-width: 768px) {
+
+    .card-faturamento,
+    .card-despesa,
+    .card-lucro {
+        padding: 10px 12px;
+    }
+
+    .card-faturamento .value,
+    .card-despesa .value,
+    .card-lucro .value {
+        font-size: 16px;
+    }
+
+    .tabs-financeiro .tab {
+        font-size: 11px;
+        padding: 6px 12px;
+    }
+}

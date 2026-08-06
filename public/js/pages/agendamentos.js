@@ -761,143 +761,188 @@ async function salvarNovoCliente(event) {
 }
 
 // ============================================
-// CARREGAR HORÁRIOS DISPONÍVEIS
+// CARREGAR HORÁRIOS DISPONÍVEIS - CORRIGIDO
 // ============================================
 
-async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null) {
+async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null, forcarManterClicado = false) {
     try {
-        const data = document.getElementById("dataAgendamentoDono")?.value;
-        const profissional_id = document.getElementById("profissionalIdDono")?.value;
-        const servicoSelect = document.getElementById("servicoIdDono");
-        const servicoId = servicoSelect ? servicoSelect.value : null;
+        const dataEl = document.getElementById("dataAgendamentoDono");
         const horaSelect = document.getElementById("horaAgendamentoDono");
+        const profEl = document.getElementById("profissionalIdDono");
+        const servicoSelect = document.getElementById("servicoIdDono");
+        const horaFixadaEl = document.getElementById("horaFixadaDono");
 
-        const horarioAtual = horaSelect ? horaSelect.value : null;
-        const horarioFinal = horarioParaRestaurar || (manterHorario ? horarioAtual : null);
+        if (!dataEl || !horaSelect) {
+            console.warn('⚠️ Elementos do formulário não encontrados');
+            return;
+        }
 
-        if (!data || !horaSelect) return;
+        const data = dataEl.value;
+        const profissional_id = profEl?.value;
+        const servicoId = servicoSelect?.value;
 
+        // 🔥 HORÁRIO QUE DEVE SER MANTIDO
+        let horarioObrigatorio = horarioParaRestaurar || horaFixadaEl?.value || (manterHorario ? horaSelect.value : null);
+        if (forcarManterClicado && horaFixadaEl?.value) {
+            horarioObrigatorio = horaFixadaEl.value;
+        }
+
+        // 🔥 DURAÇÃO DO SERVIÇO
         let duracao = 30;
-        if (servicoId && servicoId !== '') {
+        if (servicoId) {
             const servico = servicosList.find(s => s.id == servicoId);
             if (servico) {
                 duracao = servico.duracao || 30;
             }
         }
 
-        const infoDuracao = document.getElementById('infoDuracaoHorario');
-        if (infoDuracao) {
-            infoDuracao.textContent = `⏱️ ${duracao}min`;
+        const infoDur = document.getElementById('infoDuracaoHorario');
+        if (infoDur) {
+            infoDur.textContent = `⏱️ ${duracao}min`;
         }
 
-        const hoje = new Date();
-const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+        if (!data) {
+            horaSelect.innerHTML = '<option value="">Selecione uma data</option>';
+            return;
+        }
 
+        // 🔥 VERIFICAR SE A DATA NÃO É ANTERIOR
+        const hoje = new Date();
+        const hojeStr = hoje.toISOString().split('T')[0];
         if (data < hojeStr) {
             horaSelect.innerHTML = '<option value="">⚠️ Data passou</option>';
             return;
         }
 
-        horaSelect.innerHTML = '<option value="">⏳</option>';
-
-        const token = localStorage.getItem("token");
+        const token = localStorage.getItem('token');
         if (!token) {
-            horaSelect.innerHTML = '<option value="">❌</option>';
+            horaSelect.innerHTML = '<option value="">❌ Sessão expirada</option>';
             return;
         }
 
+        // 🔥 PEGAR EMPRESA_ID DO TOKEN
+        let empresaId = null;
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            const empresaId = payload.empresa_id;
-
-            const body = {
-                empresaId: empresaId,
-                profissionalId: profissional_id || null,
-                data: data,
-                duracao: duracao
-            };
-
-            const response = await fetch("/api/chatbot/horarios-disponiveis", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer " + token
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (!response.ok) {
-                horaSelect.innerHTML = `<option value="">⚠️ ${response.status}</option>`;
-                return;
-            }
-
-            const result = await response.json();
-
-            if (result.success) {
-                let horarios = [];
-                if (Array.isArray(result.horarios)) horarios = result.horarios;
-                else if (Array.isArray(result.data)) horarios = result.data;
-
-                const agora = new Date();
-                const hojeStr = agora.toISOString().split('T')[0];
-                let horariosFiltrados = horarios;
-
-                if (data === hojeStr) {
-                    const horaAtual = agora.getHours();
-                    const minutoAtual = agora.getMinutes();
-                    horariosFiltrados = horarios.filter(horaItem => {
-                        const [horaNum, minutoNum] = horaItem.split(':').map(Number);
-                        return horaNum > horaAtual || (horaNum === horaAtual && minutoNum > minutoAtual);
-                    });
-                }
-
-                if (horariosFiltrados.length > 0) {
-                    let options = '<option value="">Selecione</option>';
-                    for (let horaItem of horariosFiltrados) {
-                        const horaNum = parseInt(horaItem.split(':')[0]);
-                        const isAlmoco = horaNum >= 12 && horaNum < 13;
-                        const emoji = isAlmoco ? ' 🍽️' : '';
-                        options += `<option value="${horaItem}">${horaItem}${emoji}</option>`;
-                    }
-                    horaSelect.innerHTML = options;
-
-                    if (horarioFinal) {
-                        let encontrado = false;
-                        for (let opt of horaSelect.options) {
-                            if (opt.value === horarioFinal) {
-                                horaSelect.value = horarioFinal;
-                                encontrado = true;
-                                break;
-                            }
-                        }
-                        if (!encontrado && horaSelect.options.length > 1) {
-                            const proximo = Array.from(horaSelect.options)
-                                .map(o => o.value)
-                                .filter(v => v !== '')
-                                .find(h => h >= horarioFinal) || horaSelect.options[1]?.value;
-                            if (proximo) horaSelect.value = proximo;
-                        }
-                    } else if (horaSelect.options.length > 1 && !horaSelect.value) {
-                        horaSelect.value = horaSelect.options[1].value;
-                    }
-                } else {
-                    horaSelect.innerHTML = `<option value="">${data === hojeStr ? '⏰ Passou' : '📭 Indisponível'}</option>`;
-                }
-            } else {
-                horaSelect.innerHTML = `<option value="">⚠️ ${result.message || 'Erro'}</option>`;
-            }
-        } catch (tokenError) {
-            console.error('❌ Erro:', tokenError);
-            horaSelect.innerHTML = '<option value="">❌ Token</option>';
+            empresaId = payload.empresa_id;
+        } catch (e) {
+            console.error('❌ Erro ao decodificar token:', e);
+            horaSelect.innerHTML = '<option value="">❌ Token inválido</option>';
+            return;
         }
+
+        if (!empresaId) {
+            horaSelect.innerHTML = '<option value="">❌ Empresa não identificada</option>';
+            return;
+        }
+
+        // 🔥 CHAMAR A API
+        horaSelect.innerHTML = '<option value="">⏳ Carregando...</option>';
+
+        const body = {
+            empresaId: empresaId,
+            profissionalId: profissional_id || null,
+            data: data,
+            duracao: duracao
+        };
+
+        console.log('📤 Buscando horários:', body);
+
+        const response = await fetch("/api/chatbot/horarios-disponiveis", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(body)
+        });
+
+        // 🔥 VERIFICAR SE A RESPOSTA É JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const text = await response.text();
+            console.error('❌ Resposta não é JSON:', text.substring(0, 200));
+            throw new Error('Erro no servidor - resposta não é JSON');
+        }
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ HTTP Error:', response.status, errorText);
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Erro ao buscar horários');
+        }
+
+        // 🔥 PROCESSAR HORÁRIOS
+        let horarios = [];
+        if (Array.isArray(result.horarios)) {
+            horarios = result.horarios;
+        } else if (Array.isArray(result.data)) {
+            horarios = result.data;
+        }
+
+        console.log(`📋 ${horarios.length} horários disponíveis:`, horarios);
+
+        // 🔥 FILTRAR HORÁRIOS (remover horários que já passaram)
+        const agora = new Date();
+        const hojeStr2 = agora.toISOString().split('T')[0];
+        let horariosFiltrados = horarios;
+
+        if (data === hojeStr2) {
+            const horaAtual = agora.getHours();
+            const minutoAtual = agora.getMinutes();
+            horariosFiltrados = horarios.filter(horaItem => {
+                if (!horaItem) return false;
+                const [horaNum, minutoNum] = horaItem.split(':').map(Number);
+                return horaNum > horaAtual || (horaNum === horaAtual && minutoNum > minutoAtual);
+            });
+        }
+
+        // 🔥 MONTAR O SELECT
+        if (horariosFiltrados.length > 0) {
+            let options = '<option value="">Selecione</option>';
+
+            // 🔥 GARANTIR QUE O HORÁRIO OBRIGATÓRIO ESTEJA NA LISTA
+            if (horarioObrigatorio && !horariosFiltrados.includes(horarioObrigatorio)) {
+                horariosFiltrados.push(horarioObrigatorio);
+                horariosFiltrados.sort();
+            }
+
+            for (let horaItem of horariosFiltrados) {
+                if (!horaItem) continue;
+                const isFixado = horaItem === horarioObrigatorio;
+                const horaNum = parseInt(horaItem.split(':')[0]);
+                const isAlmoco = horaNum >= 12 && horaNum < 13;
+                const emoji = isAlmoco ? ' 🍽️' : '';
+                const sel = isFixado ? 'selected' : '';
+                options += `<option value="${horaItem}" ${sel} ${isFixado ? 'style="font-weight:800;background:rgba(102,126,234,0.15);"' : ''}>
+                    ${horaItem}${emoji}${isFixado ? ' ⭐' : ''}
+                </option>`;
+            }
+            horaSelect.innerHTML = options;
+
+            if (horarioObrigatorio) {
+                horaSelect.value = horarioObrigatorio;
+            }
+        } else {
+            horaSelect.innerHTML = `<option value="">${data === hojeStr2 ? '⏰ Passou' : '📭 Indisponível'}</option>`;
+        }
+
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('❌ Erro ao carregar horários:', error);
         const horaSelect = document.getElementById("horaAgendamentoDono");
         if (horaSelect) {
-            horaSelect.innerHTML = `<option value="">⚠️</option>`;
+            horaSelect.innerHTML = `<option value="">⚠️ ${error.message || 'Erro'}</option>`;
         }
+        showToast('Erro ao carregar horários disponíveis: ' + (error.message || ''), 'error');
     }
 }
+
+// public/js/pages/agendamentos.js
 
 // ============================================
 // FUNÇÃO: ABRIR MODAL NOVO AGENDAMENTO - CORRIGIDO
@@ -906,46 +951,61 @@ async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida
     const token = localStorage.getItem('token');
 
     if (!clientesList || clientesList.length === 0) {
-        try { const res = await fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) clientesList = data.data || []; } catch {}
+        try { const res = await fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) clientesList = data.data || []; } catch { }
     }
     if (!servicosList || servicosList.length === 0) {
-        try { const res = await fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) servicosList = data.data || []; } catch {}
+        try { const res = await fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) servicosList = data.data || []; } catch { }
     }
     if (!profissionaisList || profissionaisList.length === 0) {
-        try { const res = await fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) profissionaisList = data.data || []; } catch {}
+        try { const res = await fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) profissionaisList = data.data || []; } catch { }
     }
 
-    const clientes = Array.isArray(clientesList)? clientesList : [];
-    const servicos = Array.isArray(servicosList)? servicosList : [];
-    const profissionais = Array.isArray(profissionaisList)? profissionaisList : [];
+    const clientes = Array.isArray(clientesList) ? clientesList : [];
+    const servicos = Array.isArray(servicosList) ? servicosList : [];
+    const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
     const isMobile = window.innerWidth < 768;
     const clientesOrdenados = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome));
 
+    // ✅ CORRIGIDO: Mostrar TODOS os serviços, marcando os inativos
     let servicosOptions = '<option value="">Selecione</option>';
-    for (let s of servicos) { if ((s.ativo == 1 || s.ativo == true)) { servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}">${escapeHtml(s.nome)} - R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</option>`; } }
+    for (let s of servicos) {
+        const isAtivo = (s.ativo == 1 || s.ativo == true);
+        const nomeExibicao = isAtivo ? escapeHtml(s.nome) : `${escapeHtml(s.nome)} ⚠️(inativo)`;
+        const estilo = isAtivo ? '' : 'style="color:var(--text-muted);opacity:0.6;"';
+        const valorExibicao = (parseFloat(s.valor) || 0).toFixed(2);
+
+        servicosOptions += `<option value="${s.id}" data-valor="${s.valor}" data-nome="${s.nome}" data-duracao="${s.duracao || 30}" ${estilo}>
+            ${nomeExibicao} - R$ ${valorExibicao}
+        </option>`;
+    }
+
     let profissionaisOptions = '<option value="">Não atribuir</option>';
-    for (let p of profissionais) { if ((p.ativo == 1 || p.ativo == true)) { profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`; } }
+    for (let p of profissionais) {
+        if ((p.ativo == 1 || p.ativo == true)) {
+            profissionaisOptions += `<option value="${p.id}">${escapeHtml(p.nome)}</option>`;
+        }
+    }
 
     // DATA PADRÃO
     let dataInicial = dataPreDefinida;
-if (!dataInicial) {
-    const hoje = new Date();
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
-    const ano = amanha.getFullYear();
-    const mes = String(amanha.getMonth() + 1).padStart(2, '0');
-    const dia = String(amanha.getDate()).padStart(2, '0');
-    dataInicial = `${ano}-${mes}-${dia}`;
-}
+    if (!dataInicial) {
+        const hoje = new Date();
+        const amanha = new Date(hoje);
+        amanha.setDate(amanha.getDate() + 1);
+        const ano = amanha.getFullYear();
+        const mes = String(amanha.getMonth() + 1).padStart(2, '0');
+        const dia = String(amanha.getDate()).padStart(2, '0');
+        dataInicial = `${ano}-${mes}-${dia}`;
+    }
 
     const modalHtml = `
-        <div id="modalAgendamentoDono" class="modal" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:${isMobile?'8px':'20px'};">
-            <div class="modal-content" style="max-width:${isMobile?'100%':'500px'};width:${isMobile?'100%':'90%'};max-height:${isMobile?'98vh':'90vh'};overflow-y:auto;background:var(--bg-card);border-radius:${isMobile?'12px':'16px'};padding:${isMobile?'16px':'24px'};box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+        <div id="modalAgendamentoDono" class="modal" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:${isMobile ? '8px' : '20px'};">
+            <div class="modal-content" style="max-width:${isMobile ? '100%' : '500px'};width:${isMobile ? '100%' : '90%'};max-height:${isMobile ? '98vh' : '90vh'};overflow-y:auto;background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '16px' : '24px'};box-shadow:0 20px 60px rgba(0,0,0,0.4);">
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                    <h3 style="margin:0;font-size:${isMobile?'16px':'20px'};"><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
+                    <h3 style="margin:0;font-size:${isMobile ? '16px' : '20px'};"><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
                     <button onclick="fecharModalAgendamentoDono()" style="background:transparent;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);">✕</button>
                 </div>
-                ${horaPreDefinida?`<div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:10px 14px;border-radius:10px;margin-bottom:14px;text-align:center;font-weight:700;"><i class="fas fa-clock"></i> ${formatarDataBr(dataInicial)} às ${horaPreDefinida} ${profissionalIdPreDefinido?`• ${profissionais.find(p=>String(p.id)===String(profissionalIdPreDefinido))?.nome||''}`:''}</div>`:''}
+                ${horaPreDefinida ? `<div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:10px 14px;border-radius:10px;margin-bottom:14px;text-align:center;font-weight:700;"><i class="fas fa-clock"></i> ${formatarDataBr(dataInicial)} às ${horaPreDefinida} ${profissionalIdPreDefinido ? `• ${profissionais.find(p => String(p.id) === String(profissionalIdPreDefinido))?.nome || ''}` : ''}</div>` : ''}
                 <div style="margin-bottom:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                         <label style="font-size:13px;font-weight:600;">👤 Cliente <span style="color:#ef4444;">*</span></label>
@@ -956,7 +1016,7 @@ if (!dataInicial) {
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
                     <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">📅 Data *</label><input type="date" id="dataAgendamentoDono" class="form-control" value="${dataInicial}" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"></div>
-                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">⏰ Horário *</label><select id="horaAgendamentoDono" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"><option value="">Carregando...</option></select><input type="hidden" id="horaFixadaDono" value="${horaPreDefinida||''}"></div>
+                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">⏰ Horário *</label><select id="horaAgendamentoDono" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"><option value="">Carregando...</option></select><input type="hidden" id="horaFixadaDono" value="${horaPreDefinida || ''}"></div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
                     <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">✂ Serviço</label><select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">${servicosOptions}</select><input type="text" id="servicoDescricaoDono" class="form-control" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input);font-size:12px;" placeholder="Ou digite manualmente"></div>
@@ -968,7 +1028,7 @@ if (!dataInicial) {
             </div>
         </div>
     `;
-    const old = document.getElementById("modalAgendamentoDono"); if(old) old.remove();
+    const old = document.getElementById("modalAgendamentoDono"); if (old) old.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     // PRE-SELECIONAR PROFISSIONAL SE VEIO DA AGENDA
@@ -991,18 +1051,18 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
         const horaFixadaEl = document.getElementById("horaFixadaDono");
         const servicoSelect = document.getElementById("servicoIdDono");
 
-        if (!dataEl ||!horaSelect) return;
+        if (!dataEl || !horaSelect) return;
         const data = dataEl.value;
         const profissional_id = profEl?.value;
         const servicoId = servicoSelect?.value;
 
         // HORÁRIO QUE TEM QUE SER RESPEITADO
-        let horarioObrigatorio = horarioParaRestaurar || horaFixadaEl?.value || (manterHorario? horaSelect.value : null);
+        let horarioObrigatorio = horarioParaRestaurar || horaFixadaEl?.value || (manterHorario ? horaSelect.value : null);
         if (forcarManterClicado && horaFixadaEl?.value) horarioObrigatorio = horaFixadaEl.value;
 
         let duracao = 30;
         if (servicoId) { const s = servicosList.find(x => x.id == servicoId); if (s) duracao = s.duracao || 30; }
-        const infoDur = document.getElementById('infoDuracaoHorario'); if(infoDur) infoDur.textContent = `⏱ ${duracao}min`;
+        const infoDur = document.getElementById('infoDuracaoHorario'); if (infoDur) infoDur.textContent = `⏱ ${duracao}min`;
 
         if (!data) return;
 
@@ -1018,16 +1078,16 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
                 body: JSON.stringify({ empresaId, profissionalId: profissional_id || null, data, duracao })
             });
             const result = await response.json();
-            let horarios = result.success? (result.horarios || result.data || []) : [];
+            let horarios = result.success ? (result.horarios || result.data || []) : [];
 
             const hoje = new Date(); const hojeStr = hoje.toISOString().split('T')[0];
             if (data === hojeStr) {
                 const hAtual = hoje.getHours(); const mAtual = hoje.getMinutes();
-                horarios = horarios.filter(h => { const [hh,mm]=h.split(':').map(Number); return hh>hAtual || (hh===hAtual && mm>mAtual); });
+                horarios = horarios.filter(h => { const [hh, mm] = h.split(':').map(Number); return hh > hAtual || (hh === hAtual && mm > mAtual); });
             }
 
             // 🔥 GARANTE QUE O HORÁRIO CLICADO SEMPRE EXISTE NA LISTA
-            if (horarioObrigatorio &&!horarios.includes(horarioObrigatorio)) {
+            if (horarioObrigatorio && !horarios.includes(horarioObrigatorio)) {
                 horarios.push(horarioObrigatorio);
                 horarios.sort();
             }
@@ -1036,13 +1096,13 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
                 let options = '<option value="">Selecione</option>';
                 for (let h of horarios) {
                     const isFixado = h === horarioObrigatorio;
-                    const sel = isFixado? 'selected' : '';
-                    options += `<option value="${h}" ${sel} ${isFixado?'style="font-weight:800;background:rgba(102,126,234,0.15);"':''}>${h} ${isFixado?'⭐':''}</option>`;
+                    const sel = isFixado ? 'selected' : '';
+                    options += `<option value="${h}" ${sel} ${isFixado ? 'style="font-weight:800;background:rgba(102,126,234,0.15);"' : ''}>${h} ${isFixado ? '⭐' : ''}</option>`;
                 }
                 horaSelect.innerHTML = options;
                 if (horarioObrigatorio) horaSelect.value = horarioObrigatorio;
             } else {
-                horaSelect.innerHTML = `<option value="${horarioObrigatorio||''}" selected>${horarioObrigatorio||'Indisponível'}</option>`;
+                horaSelect.innerHTML = `<option value="${horarioObrigatorio || ''}" selected>${horarioObrigatorio || 'Indisponível'}</option>`;
             }
         } catch (e) { console.error(e); }
     } catch (e) { console.error(e); }

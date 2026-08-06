@@ -1,5 +1,5 @@
 ﻿// ============================================
-// UI FUNCTIONS - SEE&AGENDE v7.0
+// UI FUNCTIONS - SEE&AGENDE v7.1
 // ============================================
 
 // ============================================
@@ -229,28 +229,43 @@ function controlarMenu() {
 }
 
 // ============================================
-// FORÇAR CORES DO HEADER
+// FORÇAR CORES DO HEADER - VERSÃO SEGURA
 // ============================================
 function forcarCoresHeader() {
-    const userNameEl = document.getElementById('userName');
-    const userBadgeEl = document.getElementById('userBadge');
+    try {
+        const userNameEl = document.getElementById('userName');
+        const userBadgeEl = document.getElementById('userBadge');
 
-    if (userNameEl) {
-        userNameEl.style.color = '#ffffff';
-        userNameEl.style.fontWeight = '500';
-        userNameEl.style.fontSize = '14px';
-        userNameEl.style.textShadow = '0 1px 4px rgba(0,0,0,0.3)';
-    }
-
-    if (userBadgeEl) {
-        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-        if (usuario.role === 'superadmin') {
-            userBadgeEl.innerHTML = '<span style="color:#ef4444;background:rgba(239,68,68,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔴 SUPER ADMIN</span>';
-        } else if (usuario.role === 'profissional') {
-            userBadgeEl.innerHTML = '<span style="color:#667eea;background:rgba(102,126,234,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔵 PROFISSIONAL</span>';
-        } else {
-            userBadgeEl.innerHTML = '<span style="color:#f59e0b;background:rgba(245,158,11,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🟠 Proprietário</span>';
+        if (userNameEl) {
+            userNameEl.style.color = '#ffffff';
+            userNameEl.style.fontWeight = '500';
+            userNameEl.style.fontSize = '14px';
+            userNameEl.style.textShadow = '0 1px 4px rgba(0,0,0,0.3)';
         }
+
+        if (userBadgeEl) {
+            // 🔥 CORREÇÃO: Usar try/catch e fallback
+            let usuario = null;
+            try {
+                const usuarioStr = localStorage.getItem('usuario');
+                if (usuarioStr && usuarioStr !== 'undefined') {
+                    usuario = JSON.parse(usuarioStr);
+                }
+            } catch (e) {
+                console.warn('⚠️ Erro ao parsear usuário:', e);
+                localStorage.removeItem('usuario');
+            }
+
+            if (usuario && usuario.role === 'superadmin') {
+                userBadgeEl.innerHTML = '<span style="color:#ef4444;background:rgba(239,68,68,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔴 SUPER ADMIN</span>';
+            } else if (usuario && usuario.role === 'profissional') {
+                userBadgeEl.innerHTML = '<span style="color:#667eea;background:rgba(102,126,234,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔵 PROFISSIONAL</span>';
+            } else {
+                userBadgeEl.innerHTML = '<span style="color:#f59e0b;background:rgba(245,158,11,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🟠 Proprietário</span>';
+            }
+        }
+    } catch (error) {
+        console.warn('⚠️ Erro no forcarCoresHeader:', error);
     }
 }
 
@@ -286,7 +301,6 @@ function mostrarLanding() {
     if (landing) landing.style.display = 'flex';
     if (app) app.style.display = 'none';
 
-    // 🔥 CARREGAR CSS DA LANDING
     if (typeof window.carregarCSS === 'function') {
         window.carregarCSS('landing');
     }
@@ -356,4 +370,4 @@ window.mostrarLanding = mostrarLanding;
 window.mostrarLogin = mostrarLogin;
 window.mostrarCadastro = mostrarCadastro;
 
-console.log('✅ UI.js carregado com sucesso - v7.0');
+console.log('✅ UI.js carregado com sucesso - v7.1');

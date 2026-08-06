@@ -1708,16 +1708,27 @@ async function resetarSenhaProfissional(id, nome) {
     }
 }
 
+// public/js/pages/configuracoes.js
+
+// ============================================
+// ALTERNAR STATUS PROFISSIONAL - CORRIGIDO
+// ============================================
+
 async function alternarStatusProfissional(id, ativar) {
     const acao = ativar ? 'ativar' : 'desativar';
-    if (!confirm(`Tem certeza que deseja ${acao} este profissional?`)) return;
+
+    // 🔥 CONFIRMAÇÃO MAIS CLARA
+    if (!confirm(`⚠️ Tem certeza que deseja ${acao} este profissional?\n\n${ativar ? '✅ Ele poderá receber novos agendamentos.' : '❌ Ele NÃO poderá mais receber agendamentos.'}`)) {
+        return;
+    }
 
     showLoading();
     const token = localStorage.getItem('token');
 
     try {
+        // 🔥 ENVIAR APENAS O CAMPO ATIVO
         const body = { ativo: ativar ? 1 : 0 };
-        console.log(`📝 Alternando status do profissional ${id} para:`, body);
+        console.log(`📝 ${acao} profissional ${id}:`, body);
 
         const res = await fetch(`/api/profissionais/${id}`, {
             method: 'PUT',
@@ -1725,7 +1736,7 @@ async function alternarStatusProfissional(id, ativar) {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify(body)
+            body: JSON.stringify(body)  // ← 🔥 APENAS { ativo: 0/1 }
         });
 
         const data = await res.json();
@@ -1733,13 +1744,16 @@ async function alternarStatusProfissional(id, ativar) {
 
         if (data.success) {
             showToast(`✅ Profissional ${acao}do com sucesso!`, 'success');
-            carregarConfiguracoes();
+
+            // 🔥 RECARREGAR A PÁGINA DE CONFIGURAÇÕES
+            await carregarConfiguracoes();
         } else {
             showToast(`❌ Erro ao ${acao} profissional: ${data.message}`, 'error');
+            console.error('❌ Erro no backend:', data);
         }
     } catch (error) {
         hideLoading();
-        console.error('Erro ao alternar status:', error);
+        console.error('❌ Erro ao alternar status:', error);
         showToast(`❌ Erro ao ${acao} profissional`, 'error');
     }
 }

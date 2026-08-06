@@ -11,7 +11,7 @@ let agendaInteligenteProfissionais = [];
 let agendaInteligenteCores = {};
 let agendaInteligenteCarregando = false;
 let agendaModoCompleto = false;
-const coresPaleta = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7','#DDA0DD', '#FF9FF3', '#54A0FF', '#5F27CD', '#341F97','#00D2D3', '#1DD1A1', '#F368E0', '#FF9F43', '#EE5A24'];
+const coresPaleta = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF9FF3', '#54A0FF', '#5F27CD', '#341F97', '#00D2D3', '#1DD1A1', '#F368E0', '#FF9F43', '#EE5A24'];
 
 // ============================================
 // 🔥 FUNÇÕES DE DATA CORRIGIDAS (SEM UTC)
@@ -641,23 +641,47 @@ function salvarAgendamentoDoModal(dataOriginal) {
     });
 }
 
+// public/js / pages / dashboard.js
+
 // ============================================
-// CARREGAR DASHBOARD
+// CARREGAR DASHBOARD - CORRIGIDO PARA SUPER ADMIN
 // ============================================
 
 async function carregarDashboard() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('dashboard');
+    }
     ativarBotao('dashboard');
     showLoading();
+
+    const token = localStorage.getItem('token');
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+
     try {
-        const u = JSON.parse(localStorage.getItem('usuario') || '{}');
-        if (u && u.role === 'superadmin') await carregarDashboardSuperAdmin();
-        else if (u && u.role === 'profissional') await carregarDashboardProfissional();
-        else await carregarDashboardDono();
-    } catch (e) {
-        console.error(e);
-        showToast('Erro dashboard', 'error');
-        document.getElementById('content').innerHTML = `<div class="error-state"><p>Erro</p><button onclick="carregarDashboard()" class="btn btn-primary">Tentar</button></div>`;
+        if (isSuperAdmin) {
+            // 🔥 SUPER ADMIN - Carregar visão de administração
+            await carregarDashboardSuperAdmin();
+        } else {
+            // Dono ou Profissional - Carregar visão normal
+            await carregarDashboardDono();
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar dashboard:', error);
+        document.getElementById('content').innerHTML = `
+            <div class="card">
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Erro ao carregar dashboard</h4>
+                    <p>${error.message}</p>
+                    <button class="btn btn-primary btn-sm" onclick="carregarDashboard()">
+                        <i class="fas fa-sync"></i> Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        `;
     }
+
     hideLoading();
 }
 
@@ -669,14 +693,14 @@ async function carregarDashboardDono() {
         const er = await fetch('/api/empresa/dados', { headers: { 'Authorization': 'Bearer ' + token } });
         const ed = await er.json();
         if (ed.success) empresa = ed.data;
-    } catch {}
+    } catch { }
 
     let despesasHoje = 0;
     try {
         const dr = await fetch('/api/despesas/resumo', { headers: { 'Authorization': 'Bearer ' + token } });
         const dd = await dr.json();
         if (dd.success) despesasHoje = dd.data?.total_despesas || 0;
-    } catch {}
+    } catch { }
 
     const [agR, clR, fiR, prR] = await Promise.all([
         fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
@@ -752,10 +776,210 @@ async function carregarDashboardDono() {
     setTimeout(() => carregarAgendaInteligente(), 150);
 }
 
+// ============================================
+// CARREGAR DASHBOARD SUPER ADMIN
+// ============================================
+
 async function carregarDashboardSuperAdmin() {
-    console.log('🏢 Super Admin');
+    const token = localStorage.getItem('token');
+
+    try {
+        // Buscar dados do Super Admin
+        const [empresasRes, usuariosRes, estatisticasRes] = await Promise.all([
+            fetch('/api/admin/empresas', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }),
+            fetch('/api/admin/usuarios', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }),
+            fetch('/api/admin/estatisticas', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+        ]);
+
+        const empresasData = await empresasRes.json();
+        const usuariosData = await usuariosRes.json();
+        const estatisticasData = await estatisticasRes.json();
+
+        const empresas = empresasData.data || [];
+        const usuarios = usuariosData.data || [];
+        const estatisticas = estatisticasData.data || {};
+
+        renderizarDashboardSuperAdmin(empresas, usuarios, estatisticas);
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar dashboard Super Admin:', error);
+        throw error;
+    }
 }
 
+// ============================================
+// RENDERIZAR DASHBOARD SUPER ADMIN
+// ============================================
+
+function renderizarDashboardSuperAdmin(empresas, usuarios, estatisticas) {
+    const isMobile = window.innerWidth < 768;
+
+    // Calcular estatísticas
+    const totalEmpresas = empresas.length;
+    const totalUsuarios = usuarios.length;
+    const empresasAtivas = empresas.filter(e => e.assinatura_ativa || e.plano !== 'trial').length;
+    const empresasTrial = empresas.filter(e => e.plano === 'trial').length;
+
+    // Planos
+    const planosCount = {};
+    empresas.forEach(e => {
+        const plano = e.plano || 'trial';
+        planosCount[plano] = (planosCount[plano] || 0) + 1;
+    });
+
+    let html = `
+        <div class="fade-in">
+            <div class="dashboard-header" style="flex-direction:${isMobile ? 'column' : 'row'}; align-items:${isMobile ? 'flex-start' : 'center'}; gap:${isMobile ? '8px' : '0'};">
+                <div>
+                    <h2 class="page-title" style="font-size:${isMobile ? '20px' : '24px'};">👑 Dashboard Super Admin</h2>
+                    <p class="page-subtitle" style="font-size:${isMobile ? '13px' : '14px'};">
+                        <i class="fas fa-chart-line"></i> 
+                        Visão geral de todas as empresas e usuários
+                    </p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="carregarDashboard()">
+                        <i class="fas fa-sync"></i> Atualizar
+                    </button>
+                    <button class="btn btn-success btn-sm" onclick="executarAcao('empresas')">
+                        <i class="fas fa-building"></i> Gerenciar Empresas
+                    </button>
+                </div>
+            </div>
+
+            <!-- CARDS DE ESTATÍSTICAS -->
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:${isMobile ? '8px' : '12px'};margin-bottom:${isMobile ? '12px' : '16px'};">
+                <div style="background:linear-gradient(135deg, #667eea, #764ba2);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">🏢 Empresas</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${totalEmpresas}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${empresasAtivas} ativas • ${empresasTrial} em trial</div>
+                </div>
+                
+                <div style="background:linear-gradient(135deg, #22c55e, #16a34a);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(34,197,94,0.3);">
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">👤 Usuários</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${totalUsuarios}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">Donos e profissionais</div>
+                </div>
+                
+                <div style="background:linear-gradient(135deg, #f59e0b, #d97706);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(245,158,11,0.3);">
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">📊 Planos</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${Object.keys(planosCount).length}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${planosCount.pro || 0} Pro • ${planosCount.business || 0} Business</div>
+                </div>
+                
+                <div style="background:linear-gradient(135deg, #8b5cf6, #6d28d9);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(139,92,246,0.3);">
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">💰 Faturamento</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">R$ ${(estatisticas.faturamento_total || 0).toFixed(2)}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">Este mês</div>
+                </div>
+            </div>
+
+            <!-- LISTA DE EMPRESAS -->
+            <div class="card" style="padding:${isMobile ? '12px' : '16px'};">
+                <div class="card-header" style="flex-direction:${isMobile ? 'column' : 'row'};align-items:${isMobile ? 'flex-start' : 'center'};gap:${isMobile ? '8px' : '0'};">
+                    <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-building"></i> Empresas Cadastradas
+                        <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(${totalEmpresas})</span>
+                    </h3>
+                    <button class="btn btn-primary btn-sm" onclick="executarAcao('empresas')">
+                        <i class="fas fa-plus"></i> Gerenciar
+                    </button>
+                </div>
+                
+                ${isMobile ? `
+                    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
+                        ${empresas.slice(0, 10).map(e => `
+                            <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <div>
+                                        <div style="font-weight:600;font-size:14px;color:var(--text-primary);">${escapeHtml(e.nome || 'Sem nome')}</div>
+                                        <div style="font-size:11px;color:var(--text-muted);">
+                                            📅 ${e.created_at ? formatarDataBr(e.created_at.split('T')[0]) : '-'}
+                                            • 📋 ${e.plano || 'trial'}
+                                            • 👤 ${e.total_usuarios || 0}
+                                        </div>
+                                    </div>
+                                    <span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${e.assinatura_ativa ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${e.assinatura_ativa ? '#22c55e' : '#ef4444'};">
+                                        ${e.assinatura_ativa ? '✅ Ativo' : '⏳ Inativo'}
+                                    </span>
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${empresas.length > 10 ? `
+                            <div style="text-align:center;padding:8px;font-size:12px;color:var(--text-muted);">
+                                + ${empresas.length - 10} outras empresas
+                            </div>
+                        ` : ''}
+                    </div>
+                ` : `
+                    <div class="table-responsive" style="margin-top:12px;">
+                        <table class="data-table" style="font-size:13px;">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Empresa</th>
+                                    <th>Plano</th>
+                                    <th>Usuários</th>
+                                    <th>Status</th>
+                                    <th>Data</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${empresas.map(e => `
+                                    <tr>
+                                        <td>${e.id}</td>
+                                        <td><strong>${escapeHtml(e.nome || 'Sem nome')}</strong></td>
+                                        <td><span class="badge" style="background:${e.plano === 'pro' ? '#f59e0b' : e.plano === 'business' ? '#8b5cf6' : e.plano === 'enterprise' ? '#ec4899' : '#6b7280'};color:white;">${e.plano || 'trial'}</span></td>
+                                        <td>${e.total_usuarios || 0}</td>
+                                        <td>
+                                            <span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${e.assinatura_ativa ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${e.assinatura_ativa ? '#22c55e' : '#ef4444'};">
+                                                ${e.assinatura_ativa ? '✅ Ativo' : '⏳ Inativo'}
+                                            </span>
+                                        </td>
+                                        <td>${e.created_at ? formatarDataBr(e.created_at.split('T')[0]) : '-'}</td>
+                                        <td>
+                                            <button onclick="editarEmpresa(${e.id})" class="btn-icon btn-edit" style="padding:4px 8px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                                ${empresas.length === 0 ? `
+                                    <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">Nenhuma empresa cadastrada</td></tr>
+                                ` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+
+    document.getElementById('content').innerHTML = html;
+    console.log('✅ Dashboard Super Admin renderizado com sucesso!');
+}
+
+// ============================================
+// FUNÇÃO PARA EDITAR EMPRESA (Super Admin)
+// ============================================
+
+async function editarEmpresa(id) {
+    // Redirecionar para a página de empresas
+    executarAcao('empresas');
+    // Se a função carregarEmpresas existir, chamar com o ID para editar
+    if (typeof carregarEmpresas === 'function') {
+        setTimeout(() => {
+            carregarEmpresas(id);
+        }, 300);
+    }
+}
 async function carregarDashboardProfissional() {
     console.log('👤 Profissional');
 }
@@ -765,9 +989,9 @@ async function carregarDashboardProfissional() {
 // ============================================
 
 let agendaResizeTimeout = null;
-window.addEventListener('resize', function() {
+window.addEventListener('resize', function () {
     if (agendaResizeTimeout) clearTimeout(agendaResizeTimeout);
-    agendaResizeTimeout = setTimeout(function() {
+    agendaResizeTimeout = setTimeout(function () {
         const mobile = isMobileScreen();
         const novo = !mobile;
         if (agendaModoCompleto !== novo) {

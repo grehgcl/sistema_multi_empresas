@@ -24,26 +24,75 @@ function auth(req, res, next) {
     }
 }
 
+// server/middlewares/auth.js
+
 // ============================================
-// 2. VERIFICAR SUPER ADMIN
+// VERIFICAR SUPER ADMIN - CORRIGIDO
 // ============================================
 
 function verificarSuperAdmin(req, res, next) {
-    if (req.usuario.role !== 'superadmin') {
-        return res.status(403).json({ success: false, message: 'Acesso negado. Apenas Super Admin.' });
+    const usuario = req.usuario;
+
+    console.log('🔍 Verificando SuperAdmin:', usuario);
+
+    if (!usuario) {
+        return res.status(401).json({
+            success: false,
+            message: 'Usuário não autenticado'
+        });
     }
-    next();
+
+    // 🔥 CORREÇÃO: Verificar tanto 'super_admin' quanto 'superadmin'
+    const isSuperAdmin = usuario.role === 'super_admin' ||
+        usuario.role === 'superadmin' ||
+        usuario.role === 'SuperAdmin' ||
+        usuario.role === 'Super Admin';
+
+    if (isSuperAdmin) {
+        console.log('✅ SuperAdmin autorizado');
+        return next();
+    }
+
+    console.log('❌ Acesso negado - Role:', usuario.role);
+    return res.status(403).json({
+        success: false,
+        message: 'Acesso negado. Apenas Super Admin pode realizar esta ação.'
+    });
 }
 
 // ============================================
-// 3. VERIFICAR DONO
+// VERIFICAR DONO - CORRIGIDO
 // ============================================
 
 function verificarDono(req, res, next) {
-    if (req.usuario.role !== 'dono') {
-        return res.status(403).json({ success: false, message: 'Acesso negado. Apenas Dono.' });
+    const usuario = req.usuario;
+
+    if (!usuario) {
+        return res.status(401).json({
+            success: false,
+            message: 'Usuário não autenticado'
+        });
     }
-    next();
+
+    // SuperAdmin pode tudo
+    const isSuperAdmin = usuario.role === 'super_admin' ||
+        usuario.role === 'superadmin' ||
+        usuario.role === 'SuperAdmin';
+
+    if (isSuperAdmin) {
+        return next();
+    }
+
+    // Dono pode gerenciar sua própria empresa
+    if (usuario.role === 'dono' || usuario.role === 'Dono') {
+        return next();
+    }
+
+    // Profissional NÃO pode
+    return res.status(403).json({
+        success: false,
+        message: 'Acesso negado. Apenas donos podem realizar esta ação.'
+    });
 }
 
 // ============================================

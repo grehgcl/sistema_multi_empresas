@@ -366,3 +366,199 @@ node -r dotenv/config server.js dotenv_config_path=.env.local
 =========================================
 ULTIMA ATUALIZACAO: 04/08/2026
 
+---
+
+## 📄 **ESTRUTURA.md** (ATUALIZADO)
+
+```markdown
+=========================================
+ESTRUTURA.md - SEE&AGENDE
+ULTIMA ATUALIZACAO: 04/08/2026
+=========================================
+
+🚀 COMO EXECUTAR O PROJETO
+-----------------------------------------
+Modo Local (SQLite - Desenvolvimento)
+node -r dotenv/config server.js dotenv_config_path=.env.dev
+
+Modo com WhatsApp Evolution (Envia mensagens reais!)
+node -r dotenv/config server.js dotenv_config_path=.env.local
+
+📁 ESTRUTURA DE PASTAS (ATUALIZADA - 100% REFATORADO)
+=========================================
+├── database/
+│   └── barbearia.db          # SQLite (desenvolvimento local)
+├── docs/                     # Documentação
+│   ├── DEV_GUIDE.md
+│   ├── ESTRUTURA.md
+│   ├── IA_CONTEXT.md
+│   └── PARA_NOVA_IA.txt
+├── public/
+│   ├── index.html            # Landing Page + Frontend principal
+│   ├── chatbot.html          # Página do Chatbot Inteligente
+│   ├── css/
+│   │   ├── style.css         # Estilos premium com tema escuro
+│   │   └── chatbot.css       # Estilos específicos do chatbot
+│   └── js/
+│       ├── ui.js             # UI Global (toasts, loading, modal)
+│       └── pages/
+│           ├── dashboard.js              # Dashboard com Agenda Inteligente
+│           ├── dashboard-profissional.js # Dashboard Profissional
+│           ├── clientes.js               # CRUD Clientes + GRUPOS + PROMOÇÕES + ÍNDICE A-Z
+│           ├── agendamentos.js           # CRUD Agendamentos
+│           ├── agendamentos-profissional.js # Agendamentos (Profissional)
+│           ├── servicos.js               # CRUD Servicos
+│           ├── financeiro.js             # FINANCEIRO COMPLETO COM TABS
+│           ├── empresas.js               # Gestao empresas (Super Admin)
+│           ├── configuracoes.js          # Configuracoes + Tema + Chatbot + DADOS EMPRESA
+│           ├── planos.js                 # Página de Planos e Upgrade
+│           └── whatsapp-config.js        # Configuração WhatsApp (Dono)
+├── scripts/
+│   ├── migrate.js            # Migração do banco
+│   ├── seed.js               # População com dados iniciais
+│   ├── migrate-vps.js        # Script principal de migração segura (VPS)
+│   ├── migrate-whatsapp.js   # Migração WhatsApp (SQLite)
+│   └── migrate-whatsapp-pg.js # Migração WhatsApp (PostgreSQL)
+├── server/                   # 🔥 BACKEND ORGANIZADO
+│   ├── config/
+│   │   ├── database.js       # Conexão com banco + criação das tabelas
+│   │   └── whatsapp.js       # Configuração do WhatsApp
+│   ├── middlewares/
+│   │   └── auth.js           # Middlewares de autenticação
+│   ├── routes/               # 🔥 TODAS AS ROTAS EXTRAÍDAS (13 arquivos)
+│   │   ├── index.js          # Centralizador de rotas
+│   │   ├── auth.routes.js    # Login/Cadastro
+│   │   ├── empresas.routes.js # Dados da empresa
+│   │   ├── servicos.routes.js # CRUD Serviços
+│   │   ├── horarios.routes.js # Horários de funcionamento
+│   │   ├── profissionais.routes.js # CRUD Profissionais
+│   │   ├── clientes.routes.js # CRUD Clientes + Grupos
+│   │   ├── despesas.routes.js # CRUD Despesas
+│   │   ├── agendamentos.routes.js # CRUD Agendamentos
+│   │   ├── financeiro.routes.js # Financeiro
+│   │   ├── admin.routes.js   # Super Admin
+│   │   ├── whatsapp.routes.js # WhatsApp
+│   │   ├── chatbot.routes.js # Chatbot
+│   │   ├── pagamento.routes.js # Pagamentos
+│   │   └── planos.routes.js  # Planos (Upgrade, cancelar)
+│   ├── services/
+│   │   ├── whatsapp.js       # Serviço de notificações WhatsApp (CORRIGIDO)
+│   │   ├── evolution-instances.js # Gestão de instâncias WhatsApp (CORRIGIDO v2)
+│   │   └── mercadopago.js    # Integração com MercadoPago
+│   ├── jobs/
+│   │   ├── lembretes.js      # Job automático de lembretes (09:00)
+│   │   └── reset-contador.js # Job de reset de contadores
+│   └── utils/
+│       ├── constants.js      # Constantes (PLANOS, JWT_SECRET)
+│       └── helpers.js        # Funções auxiliares
+├── .env.dev                  # SQLite (desenvolvimento)
+├── .env.local                # PostgreSQL (teste com dados reais)
+├── atualizar.sh              # Script de atualização blindado da VPS
+├── server.js                 # Backend (AGORA LIMPO - ~350 linhas)
+└── package.json              # Dependências e scripts
+
+=========================================
+🔥 REFATORAÇÃO COMPLETA (04/08/2026)
+=========================================
+
+### ✅ TODAS AS ROTAS FORAM EXTRAÍDAS (100% COMPLETO)
+
+| Rota | Status | Arquivo |
+|------|--------|---------|
+| Auth | ✅ | auth.routes.js |
+| Empresa | ✅ | empresas.routes.js |
+| Serviços | ✅ | servicos.routes.js |
+| Horários | ✅ | horarios.routes.js |
+| Profissionais | ✅ | profissionais.routes.js |
+| Clientes | ✅ | clientes.routes.js |
+| Despesas | ✅ | despesas.routes.js |
+| Agendamentos | ✅ | agendamentos.routes.js |
+| Financeiro | ✅ | financeiro.routes.js |
+| Admin | ✅ | admin.routes.js |
+| WhatsApp | ✅ | whatsapp.routes.js |
+| Chatbot | ✅ | chatbot.routes.js |
+| Pagamentos | ✅ | pagamento.routes.js |
+| Planos | ✅ | planos.routes.js |
+
+📊 **RESUMO DA REFATORAÇÃO**
+- Arquivo server.js: de ~8700 linhas → ~350 linhas
+- 13 arquivos de rotas criados
+- Código mais organizado e fácil de manter
+
+=========================================
+🗄️ TABELAS DO BANCO
+=========================================
+Tabela                      Colunas principais                                          Status
+empresas                    id, nome, plano, limite_profissionais, trial_expira,       ✅
+                            assinatura_ativa, assinatura_valida_ate, agendamentos_mes,
+                            mes_referencia, dias_bloqueio_geral, telefone_dono, endereco,
+                            whatsapp_instance, whatsapp_connected, whatsapp_number,
+                            whatsapp_connected_at, whatsapp_proprio_habilitado, created_at
+usuarios                    id, nome, email, senha, role, empresa_id, telefone         ✅
+profissionais               id, nome, email, senha, comissao_percent, empresa_id,      ✅
+                            ativo, created_at, telefone
+clientes                    id, nome, telefone, email, empresa_id,                     ✅
+                            bloqueado_chatbot, dias_bloqueio, created_at
+servicos                    id, nome, descricao, valor, duracao, ativo, empresa_id     ✅
+agendamentos                id, cliente_id, data, hora, servico_id, servico, valor,    ✅
+                            duracao, status, comissao, empresa_id, profissional_id,
+                            lembrete_enviado, valor_total, servicos_extras, valor_extras
+despesas                    id, empresa_id, descricao, categoria, valor, data,         ✅
+                            data_vencimento, pago, forma_pagamento, observacao
+horarios_funcionamento      id, empresa_id, dia_semana, aberto, hora_inicio,           ✅
+                            hora_fim, almoco_inicio, almoco_fim
+acessos                     id, empresa_id, usuario_id, data_acesso, ip, user_agent    ✅
+
+=========================================
+📋 VARIAVEIS DE AMBIENTE
+=========================================
+.env.dev (SQLite - Desenvolvimento)
+NODE_ENV=development
+RENDER=false
+WHATSAPP_ENABLED=true
+WHATSAPP_PROVIDER=log
+
+.env.local (PostgreSQL - Teste/Produção)
+DATABASE_URL=postgresql://usuario:senha@host:porta/banco
+NODE_ENV=production
+RENDER=false
+WHATSAPP_ENABLED=true
+WHATSAPP_PROVIDER=evolution
+EVOLUTION_API_URL=http://163.176.218.131:8080
+EVOLUTION_API_KEY=seeagende2024
+EVOLUTION_INSTANCE=seeagende
+
+=========================================
+✅ STATUS DAS FUNCIONALIDADES
+=========================================
+Login                              ✅ OK
+Dashboard                          ✅ OK
+Agenda Inteligente                 ✅ OK
+Agendamentos (com extras)          ✅ OK
+Despesas                           ✅ OK
+Profissionais                      ✅ OK
+Horários                           ✅ OK
+Serviços                           ✅ OK
+Financeiro com TABS                ✅ OK
+Comparativo Mensal                 ✅ OK
+Super Admin                        ✅ OK
+Sistema de Acessos                 ✅ OK
+WhatsApp Evolution                 ✅ OK
+WhatsApp Multi-Instância (v2)      ✅ OK
+Script de Atualização Blindado     ✅ OK
+Grupos de Clientes                 ✅ OK
+Promoções com Grupos               ✅ OK
+Busca Mobile Otimizada             ✅ OK
+Índice A-Z para Clientes           ✅ OK
+Lupa removida no mobile            ✅ OK
+Filtro de letra com localStorage   ✅ OK
+Criação Auto. Instância (SA)       ✅ OK
+Correção Query Booleana (VPS)      ✅ OK
+WhatsApp Próprio com Nome Correto  ✅ OK
+Envio WhatsApp no Agendamento      ✅ OK
+Refatoração Backend                ✅ **100% COMPLETA**
+
+=========================================
+ULTIMA ATUALIZACAO: 04/08/2026
+=========================================
+

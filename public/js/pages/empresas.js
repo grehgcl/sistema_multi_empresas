@@ -14,11 +14,14 @@ async function carregarDashboardSuperAdmin() {
     const token = localStorage.getItem('token');
 
     try {
+        // public/js/pages/empresas.js
+
         const [statsRes, empresasRes, usuariosRes, paymentRes] = await Promise.all([
             fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/admin/empresas', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/admin/usuarios', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/payment/config', { headers: { 'Authorization': 'Bearer ' + token } })
+            // 🔥 CORRIGIR: /api/payment/config → /api/pagamento/config
+            fetch('/api/pagamento/config', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
         const stats = (await statsRes.json()).data || {};
@@ -391,46 +394,55 @@ async function carregarDashboardSuperAdmin() {
     }
 }
 
+// public/js/pages/empresas.js
+
 // ============================================
-// 🔥 ALTERNAR MODO DE PAGAMENTO (SUPER ADMIN)
+// ALTERNAR MODO DE PAGAMENTO - CORRIGIDO
 // ============================================
+
 async function alternarModoPagamento() {
     const token = localStorage.getItem('token');
+
     try {
-        const res = await fetch('/api/payment/config', { headers: { 'Authorization': 'Bearer ' + token } });
-        if (!res.ok) { showToast('⚠️ Rota de pagamento não encontrada', 'warning'); return; }
+        // 🔥 CORRIGIR: /api/payment/config → /api/pagamento/config
+        const res = await fetch('/api/pagamento/config', {
+            method: 'GET',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
 
         const data = await res.json();
-        if (!data.success) { showToast('Erro ao buscar configuração', 'error'); return; }
 
-        const modoAtual = data.data.mode;
-        const novoModo = modoAtual === 'simulation' ? 'real' : 'simulation';
-        const label = novoModo === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO';
-        const descricao = novoModo === 'real'
-            ? '⚠️ ATENÇÃO: Isso ativará os pagamentos REAIS! Os clientes serão cobrados de verdade.'
-            : '🔸 Isso ativará o modo de SIMULAÇÃO. Nenhum pagamento real será processado.';
+        if (data.success) {
+            const modoAtual = data.data.mode;
+            const novoModo = modoAtual === 'real' ? 'simulation' : 'real';
 
-        if (!confirm(`Deseja alterar o modo de pagamento para ${label}?\n\n${descricao}`)) return;
+            // Enviar alteração
+            const updateRes = await fetch('/api/pagamento/config', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({ mode: novoModo })
+            });
 
-        showLoading();
-        const resUpdate = await fetch('/api/payment/config', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-            body: JSON.stringify({ mode: novoModo })
-        });
-        const result = await resUpdate.json();
-        hideLoading();
+            const updateData = await updateRes.json();
 
-        if (result.success) {
-            showToast(result.message, 'success');
-            setTimeout(() => carregarDashboardSuperAdmin(), 500);
-        } else {
-            showToast(result.message || 'Erro ao alterar modo', 'error');
+            if (updateData.success) {
+                showToast(`💳 Modo alterado para: ${updateData.data.isReal ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`, 'success');
+                // Recarregar o dashboard
+                setTimeout(() => carregarDashboardSuperAdmin(), 500);
+            } else {
+                showToast(updateData.message || '❌ Erro ao alterar modo', 'error');
+            }
         }
     } catch (error) {
-        hideLoading();
-        console.error('Erro:', error);
-        showToast('Erro ao alterar modo de pagamento: ' + error.message, 'error');
+        console.error('❌ Erro ao alternar modo de pagamento:', error);
+        showToast('❌ Erro ao alternar modo de pagamento', 'error');
     }
 }
 
