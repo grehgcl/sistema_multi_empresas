@@ -17,28 +17,33 @@ router.get('/', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { mes, ano, categoria, search } = req.query;
 
-    console.log('📊 Buscando despesas - Empresa:', empresaId, 'Mês:', mes, 'Ano:', ano);
-
     let sql = isProduction
         ? "SELECT * FROM despesas WHERE empresa_id = $1"
         : "SELECT * FROM despesas WHERE empresa_id = ?";
     let params = [empresaId];
     let counter = 2;
 
+    // 🔥 CORREÇÃO: Usar EXTRACT no PostgreSQL
     if (mes) {
-        sql += isProduction ? ` AND strftime('%m', data) = $${counter}` : " AND strftime('%m', data) = ?";
-        params.push(mes.padStart(2, '0'));
+        sql += isProduction
+            ? ` AND EXTRACT(MONTH FROM data) = $${counter}`
+            : " AND strftime('%m', data) = ?";
+        params.push(mes);
         counter++;
     }
 
     if (ano) {
-        sql += isProduction ? ` AND strftime('%Y', data) = $${counter}` : " AND strftime('%Y', data) = ?";
+        sql += isProduction
+            ? ` AND EXTRACT(YEAR FROM data) = $${counter}`
+            : " AND strftime('%Y', data) = ?";
         params.push(ano);
         counter++;
     }
 
     if (categoria) {
-        sql += isProduction ? ` AND categoria = $${counter}` : " AND categoria = ?";
+        sql += isProduction
+            ? ` AND categoria = $${counter}`
+            : " AND categoria = ?";
         params.push(categoria);
         counter++;
     }
@@ -54,9 +59,6 @@ router.get('/', auth, (req, res) => {
 
     sql += isProduction ? " ORDER BY data DESC" : " ORDER BY data DESC";
 
-    console.log('📊 SQL:', sql);
-    console.log('📊 Params:', params);
-
     db.all(sql, params, (err, despesas) => {
         if (err) {
             console.error("❌ Erro ao buscar despesas:", err);
@@ -66,9 +68,6 @@ router.get('/', auth, (req, res) => {
             });
         }
 
-        console.log(`📊 ${despesas.length} despesas encontradas para empresa ${empresaId}`);
-
-        // 🔥 RETORNAR ARRAY DIRETO
         res.json({
             success: true,
             data: despesas || []
@@ -102,6 +101,8 @@ router.get('/categorias', auth, (req, res) => {
     });
 });
 
+// server/routes/despesas.routes.js
+
 // ============================================
 // GET /api/despesas/resumo
 // ============================================
@@ -109,6 +110,7 @@ router.get('/resumo', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { mes, ano } = req.query;
 
+    // 🔥 CORREÇÃO: Usar EXTRACT no PostgreSQL e strftime no SQLite
     const sql = isProduction
         ? `SELECT 
             SUM(valor) as total,
@@ -116,8 +118,8 @@ router.get('/resumo', auth, (req, res) => {
             categoria
            FROM despesas 
            WHERE empresa_id = $1 
-           AND strftime('%m', data) = $2 
-           AND strftime('%Y', data) = $3
+           AND EXTRACT(MONTH FROM data) = $2
+           AND EXTRACT(YEAR FROM data) = $3
            GROUP BY categoria
            ORDER BY total DESC`
         : `SELECT 
@@ -133,7 +135,7 @@ router.get('/resumo', auth, (req, res) => {
 
     db.all(sql, [empresaId, mes, ano], (err, resumo) => {
         if (err) {
-            console.error("Erro ao buscar resumo:", err);
+            console.error("❌ Erro ao buscar resumo:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
