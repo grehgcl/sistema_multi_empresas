@@ -94,6 +94,8 @@ if (isProduction) {
                     console.error('❌ db.run error:', err.message);
                     return callback(err);
                 }
+                // 🔥 ADICIONE ESTA LINHA
+                console.log('📌 PostgreSQL result.rows:', result.rows);
                 callback(null, {
                     lastID: result.rows[0]?.id || null,
                     changes: result.rowCount

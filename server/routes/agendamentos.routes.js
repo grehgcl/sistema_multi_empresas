@@ -17,8 +17,6 @@ const {
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// server/routes/agendamentos.routes.js - GET /api/agendamentos
-
 // ============================================
 // GET /api/agendamentos
 // ============================================
@@ -26,10 +24,29 @@ router.get('/', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { data, status, cliente_id, profissional_id, mes, ano } = req.query;
 
-    // 🔥 CORREÇÃO: Usar DATE(data) para comparação sem timezone
+    // 🔥 CORREÇÃO: Usar TO_CHAR no PostgreSQL para formatar a data
     let sql = isProduction
-        ? "SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome FROM agendamentos a LEFT JOIN clientes c ON a.cliente_id = c.id LEFT JOIN profissionais p ON a.profissional_id = p.id LEFT JOIN servicos s ON a.servico_id = s.id WHERE a.empresa_id = $1"
-        : "SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome FROM agendamentos a LEFT JOIN clientes c ON a.cliente_id = c.id LEFT JOIN profissionais p ON a.profissional_id = p.id LEFT JOIN servicos s ON a.servico_id = s.id WHERE a.empresa_id = ?";
+        ? `SELECT a.*, 
+           TO_CHAR(a.data, 'YYYY-MM-DD') as data_formatada,
+           c.nome as cliente_nome, 
+           p.nome as profissional_nome, 
+           s.nome as servico_nome 
+           FROM agendamentos a 
+           LEFT JOIN clientes c ON a.cliente_id = c.id 
+           LEFT JOIN profissionais p ON a.profissional_id = p.id 
+           LEFT JOIN servicos s ON a.servico_id = s.id 
+           WHERE a.empresa_id = $1`
+        : `SELECT a.*, 
+           date(a.data) as data_formatada,
+           c.nome as cliente_nome, 
+           p.nome as profissional_nome, 
+           s.nome as servico_nome 
+           FROM agendamentos a 
+           LEFT JOIN clientes c ON a.cliente_id = c.id 
+           LEFT JOIN profissionais p ON a.profissional_id = p.id 
+           LEFT JOIN servicos s ON a.servico_id = s.id 
+           WHERE a.empresa_id = ?`;
+
     let params = [empresaId];
     let counter = 2;
 
@@ -78,9 +95,22 @@ router.get('/', auth, (req, res) => {
             });
         }
 
+        // 🔥 CORREÇÃO: Substituir o campo data pelo formatado
+        const dados = agendamentos.map(ag => {
+            // Se tiver data_formatada do PostgreSQL, usa ela
+            if (ag.data_formatada) {
+                // Mantém a data original para compatibilidade
+                ag.data_original = ag.data;
+                ag.data = ag.data_formatada;
+            }
+            // Remove o campo extra
+            delete ag.data_formatada;
+            return ag;
+        });
+
         res.json({
             success: true,
-            data: agendamentos || []
+            data: dados || []
         });
     });
 });
@@ -250,7 +280,24 @@ router.post('/', auth, async (req, res) => {
             return res.json({ success: false, message: 'Erro ao criar agendamento: ' + err.message });
         }
 
-        let id = this?.lastID || this?.id || null;
+        // 🔥 CORRIGIDO: O ID vem do this.lastID (que o database.js retorna)
+        let id = this?.lastID || null;
+
+        // 🔥 SE AINDA FOR NULL, tenta pegar do result.rows
+        if (!id) {
+            // Fallback: buscar o último agendamento criado
+            db.get(
+                `SELECT id FROM agendamentos WHERE cliente_id = $1 AND data = $2 AND hora = $3 ORDER BY id DESC LIMIT 1`,
+                [cliente_id, data, hora],
+                (err, row) => {
+                    if (!err && row) {
+                        id = row.id;
+                        console.log('✅ ID recuperado via fallback:', id);
+                    }
+                }
+            );
+        }
+
         console.log('✅ Agendamento criado com ID:', id, 'Data:', data);
 
         // ✅ INCREMENTAR CONTADOR - CORRIGIDO
@@ -378,8 +425,28 @@ router.put('/:id', auth, verificarDono, (req, res) => {
     const hojeStr = new Date().toISOString().split('T')[0];
 
     const sqlSelect = isProduction
-        ? `SELECT * FROM agendamentos WHERE id = $1 AND empresa_id = $2`
-        : `SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?`;
+        ? `SELECT a.*, 
+       TO_CHAR(a.data, 'YYYY-MM-DD') as data_formatada,
+       c.nome as cliente_nome, 
+       p.nome as profissional_nome, 
+       s.nome as servico_nome 
+       FROM agendamentos a
+       LEFT JOIN clientes c ON a.cliente_id = c.id
+       LEFT JOIN profissionais p ON a.profissional_id = p.id
+       LEFT JOIN servicos s ON a.servico_id = s.id
+       WHERE a.id = $1 AND a.empresa_id = $2
+       ORDER BY a.data DESC`
+        : `SELECT a.*, 
+       date(a.data) as data_formatada,
+       c.nome as cliente_nome, 
+       p.nome as profissional_nome, 
+       s.nome as servico_nome 
+       FROM agendamentos a
+       LEFT JOIN clientes c ON a.cliente_id = c.id
+       LEFT JOIN profissionais p ON a.profissional_id = p.id
+       LEFT JOIN servicos s ON a.servico_id = s.id
+       WHERE a.id = ? AND a.empresa_id = ?
+       ORDER BY a.data DESC`;
 
     db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {

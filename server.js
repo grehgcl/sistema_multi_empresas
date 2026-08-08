@@ -215,46 +215,50 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
 
 initDatabase();
 
-// ============================================================
-// MIGRAÇÕES AUTOMÁTICAS
-// ============================================================
-
+// ============================================
+// CRIAR TABELA DE CONFIGURAÇÕES (HÍBRIDO)
+// ============================================
 setTimeout(() => {
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    console.log('🔧 Verificando tabela configuracoes...');
 
-    if (!isProduction) {
-        console.log('📌 Ambiente local - Migrações PostgreSQL ignoradas');
-        return;
-    }
+    const sql = isProduction
+        ? `CREATE TABLE IF NOT EXISTS configuracoes (
+            id SERIAL PRIMARY KEY,
+            chave TEXT UNIQUE NOT NULL,
+            valor TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+        : `CREATE TABLE IF NOT EXISTS configuracoes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chave TEXT UNIQUE NOT NULL,
+            valor TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`;
 
-    console.log('🔍 [RENDER] Verificando colunas no PostgreSQL...');
+    db.run(sql, [], (err) => {
+        if (err) {
+            console.error('❌ Erro ao criar tabela configuracoes:', err);
+            return;
+        }
 
-    const colunas = [
-        { tabela: 'empresas', coluna: 'telefone_dono', tipo: 'VARCHAR(20)' },
-        { tabela: 'empresas', coluna: 'endereco', tipo: 'TEXT' },
-        { tabela: 'empresas', coluna: 'dias_bloqueio_geral', tipo: 'INTEGER DEFAULT 0' },
-        { tabela: 'usuarios', coluna: 'telefone', tipo: 'VARCHAR(20)' },
-        { tabela: 'profissionais', coluna: 'telefone', tipo: 'VARCHAR(20)' }
-    ];
+        console.log('✅ Tabela configuracoes verificada/criada');
 
-    let executadas = 0;
+        // Inserir valor padrão se não existir
+        const sqlInsert = isProduction
+            ? `INSERT INTO configuracoes (chave, valor) VALUES ('payment_mode', 'simulation') ON CONFLICT (chave) DO NOTHING`
+            : `INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('payment_mode', 'simulation')`;
 
-    colunas.forEach(({ tabela, coluna, tipo }) => {
-        const sql = `ALTER TABLE ${tabela} ADD COLUMN IF NOT EXISTS ${coluna} ${tipo}`;
-        db.run(sql, [], (err) => {
+        db.run(sqlInsert, [], (err) => {
             if (err) {
-                console.log(`⚠️ Não foi possível criar ${coluna} em ${tabela}: ${err.message}`);
+                console.error('❌ Erro ao inserir configuração padrão:', err);
             } else {
-                console.log(`✅ ${coluna} criada em ${tabela}!`);
-            }
-            executadas++;
-
-            if (executadas === colunas.length) {
-                console.log('✅ Todas as migrações verificadas!');
+                console.log('✅ Configuração payment_mode = simulation');
             }
         });
     });
-}, 5000);
+}, 1000);
 
 // ============================================================
 // CRIAR SUPER ADMIN E EMPRESA TESTE
@@ -415,14 +419,11 @@ if (process.env.RENDER === 'true') {
         console.log('✅ Keep Alive fallback ativado!');
     }
 }
-// server.js - ADICIONAR APÓS initDatabase()
-
 // ============================================
 // CRIAR TABELA DE CONFIGURAÇÕES
 // ============================================
 setTimeout(() => {
     console.log('🔧 Verificando tabela configuracoes...');
-
     const sql = `
         CREATE TABLE IF NOT EXISTS configuracoes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -432,16 +433,12 @@ setTimeout(() => {
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `;
-
     db.run(sql, [], (err) => {
         if (err) {
             console.error('❌ Erro ao criar tabela configuracoes:', err);
             return;
         }
-
         console.log('✅ Tabela configuracoes verificada/criada');
-
-        // Inserir valor padrão se não existir
         const sqlInsert = 'INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ("payment_mode", "simulation")';
         db.run(sqlInsert, [], (err) => {
             if (err) {
