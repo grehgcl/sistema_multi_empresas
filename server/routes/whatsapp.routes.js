@@ -154,7 +154,7 @@ router.post('/criar-instancia', auth, async (req, res) => {
 });
 
 // ============================================
-// GET /api/empresa/whatsapp/qrcode
+// GET /api/empresa/whatsapp/qrcode - CORRIGIDO
 // ============================================
 router.get('/qrcode', auth, async (req, res) => {
     const empresaId = req.usuario.empresa_id;
@@ -169,13 +169,29 @@ router.get('/qrcode', auth, async (req, res) => {
 
         let nomeInstancia = empresa.whatsapp_instance;
 
+        // 🔥 SE NÃO TEM INSTÂNCIA, MAS ESTÁ HABILITADO, CRIAR COM NOME COMPLETO
         if (!nomeInstancia && (empresa.whatsapp_proprio_habilitado === 1 || empresa.whatsapp_proprio_habilitado === true)) {
-            nomeInstancia = `emp-${empresaId}`;
-            console.log(`[QR CODE] 🚀 Instância não encontrada, criando ${nomeInstancia}...`);
+            // Buscar o nome da empresa
+            const empresaNome = await new Promise((resolve) => {
+                db.get('SELECT nome FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                    resolve(row?.nome || 'empresa');
+                });
+            });
+
+            const nomeLimpo = empresaNome
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            nomeInstancia = `emp-${empresaId}-${nomeLimpo}`;
+            console.log(`[QR CODE] 🚀 Criando instância: ${nomeInstancia}...`);
 
             try {
                 const EvolutionInstances = require('../services/evolution-instances');
-                const resultado = await EvolutionInstances.criarInstancia(nomeInstancia);
+                const resultado = await EvolutionInstances.criarInstancia(empresaId, empresaNome);
 
                 if (resultado.success) {
                     const sqlSave = isProduction
