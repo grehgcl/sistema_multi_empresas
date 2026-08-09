@@ -126,98 +126,63 @@ router.post('/criar-instancia', auth, async (req, res) => {
     }
 });
 
-// ============================================
-// GET /api/empresa/whatsapp/qrcode - CORRIGIDO
-// ============================================
+// GET /api/empresa/whatsapp/qrcode
 router.get('/qrcode', auth, async (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const sql = isProduction
-        ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = $1'
-        : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_proprio_habilitado FROM empresas WHERE id = ?';
+    try {
+        const empresaId = req.user?.empresa_id || req.usuario?.empresa_id;
 
-    db.get(sql, [empresaId], async (err, empresa) => {
-        if (err) return res.status(500).json({ success: false, message: 'Erro no banco' });
+        console.log(`📱 QR CODE - Empresa: ${empresaId}`);
 
-        if (!empresa) return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
-
-        let nomeInstancia = empresa.whatsapp_instance;
-
-        // 🔥 SE NÃO TEM INSTÂNCIA, MAS ESTÁ HABILITADO, CRIAR COM NOME COMPLETO
-        if (!nomeInstancia && (empresa.whatsapp_proprio_habilitado === 1 || empresa.whatsapp_proprio_habilitado === true)) {
-            // Buscar o nome da empresa
-            const empresaNome = await new Promise((resolve) => {
-                db.get('SELECT nome FROM empresas WHERE id = ?', [empresaId], (err, row) => {
-                    resolve(row?.nome || 'empresa');
-                });
+        const empresa = await new Promise((resolve) => {
+            db.get('SELECT whatsapp_instance FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                resolve(row);
             });
+        });
 
-            const nomeLimpo = empresaNome
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9]/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '');
-
-            nomeInstancia = `emp-${empresaId}-${nomeLimpo}`;
-            console.log(`[QR CODE] 🚀 Criando instância: ${nomeInstancia}...`);
-
-            try {
-                const EvolutionInstances = require('../services/evolution-instances');
-                const resultado = await EvolutionInstances.criarInstancia(empresaId, empresaNome);
-
-                if (resultado.success) {
-                    const sqlSave = isProduction
-                        ? 'UPDATE empresas SET whatsapp_instance = $1 WHERE id = $2'
-                        : 'UPDATE empresas SET whatsapp_instance = ? WHERE id = ?';
-                    await new Promise((resolve, reject) => {
-                        db.run(sqlSave, [nomeInstancia, empresaId], (err) => {
-                            if (err) reject(err);
-                            else resolve();
-                        });
-                    });
-                    console.log(`[QR CODE] ✅ Instância ${nomeInstancia} criada e salva.`);
-                }
-            } catch (e) {
-                console.error(`[QR CODE] ❌ Erro ao criar instância automática:`, e.message);
-            }
-        }
-
-        if (!nomeInstancia) {
+        if (!empresa?.whatsapp_instance) {
             return res.status(400).json({
                 success: false,
-                message: 'Crie uma instância primeiro ou peça ao Super Admin para habilitar.'
+                message: 'Nenhuma instância configurada.'
             });
         }
 
-        const isConnected = empresa.whatsapp_connected === true ||
-            empresa.whatsapp_connected === 1 ||
-            empresa.whatsapp_connected === 't';
+        const instanceName = empresa.whatsapp_instance;
+        console.log(`📱 Instância: ${instanceName}`);
 
-        if (isConnected) {
+        const EvolutionInstances = require('../services/evolution-instances');
+        const resultado = await EvolutionInstances.getQrCode(instanceName);
+
+        console.log(`📥 Resultado:`, resultado);
+
+        if (resultado.success && resultado.qrCode) {
+            return res.json({
+                success: true,
+                qrCode: resultado.qrCode,
+                message: 'QR Code gerado!'
+            });
+        } else if (resultado.alreadyConnected) {
+            await new Promise((resolve) => {
+                db.run('UPDATE empresas SET whatsapp_connected = 1 WHERE id = ?', [empresaId], () => resolve());
+            });
             return res.json({
                 success: false,
                 message: 'WhatsApp já está conectado!',
                 alreadyConnected: true
             });
-        }
-
-        const EvolutionInstances = require('../services/evolution-instances');
-        const resultado = await EvolutionInstances.getQrCode(nomeInstancia);
-
-        if (resultado.success && resultado.qrCode) {
-            res.json({
-                success: true,
-                qrCode: resultado.qrCode,
-                pairingCode: resultado.pairingCode || null
-            });
         } else {
-            res.json({
+            return res.status(400).json({
                 success: false,
-                message: resultado.message || 'Erro ao gerar QR Code. Tente novamente em alguns segundos.'
+                message: resultado.message || 'Erro ao gerar QR Code'
             });
         }
-    });
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro ao buscar QR Code'
+        });
+    }
 });
 
 // ============================================

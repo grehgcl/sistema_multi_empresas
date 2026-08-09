@@ -223,9 +223,9 @@ class EvolutionInstances {
 
             const api = this.getApiClient();
 
-            // 🔥 Verificar status
+            // 🔥 PRIMEIRO: Verificar status
             const status = await this.getStatus(instanceName);
-            console.log(`📊 Status:`, status);
+            console.log(`📊 Status atual:`, status);
 
             if (status.connected) {
                 return {
@@ -236,16 +236,29 @@ class EvolutionInstances {
                 };
             }
 
-            // 🔥 BUSCAR QR CODE - USAR O ENDPOINT CORRETO DA v2
-            // Na v2.3.7, o QR Code está em /instance/qrcode/{name}
+            // 🔥 SEGUNDO: Se está em "connecting", FORÇAR LOGOUT E RECONECTAR
+            if (status.state === 'connecting' || status.state === 'connecting') {
+                console.log(`⏳ Instância em conexão, forçando logout para gerar novo QR...`);
+
+                try {
+                    await api.post(`/instance/logout/${instanceName}`, {});
+                    console.log(`✅ Logout forçado com sucesso!`);
+                    // Aguardar para reconectar
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                } catch (err) {
+                    console.log(`⚠️ Logout falhou (pode já estar desconectado):`, err.message);
+                }
+            }
+
+            // 🔥 TERCEIRO: Buscar QR Code
+            console.log(`📱 Buscando QR Code...`);
             const response = await api.get(`/instance/qrcode/${instanceName}`);
 
-            console.log(`📥 Resposta completa:`, JSON.stringify(response.data, null, 2));
+            console.log(`📥 Resposta da Evolution:`, JSON.stringify(response.data, null, 2));
 
             // 🔥 EXTRAIR QR CODE
             let qrCode = null;
 
-            // Tentar diferentes formatos
             if (response.data?.base64) {
                 qrCode = response.data.base64;
             } else if (response.data?.qrcode) {
@@ -255,7 +268,7 @@ class EvolutionInstances {
             }
 
             if (qrCode) {
-                console.log(`✅ QR Code obtido com sucesso! (tamanho: ${qrCode.length})`);
+                console.log(`✅ QR Code obtido com sucesso!`);
                 return {
                     success: true,
                     qrCode: qrCode,
@@ -273,11 +286,11 @@ class EvolutionInstances {
         } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error.message);
 
-            // Se for 404, a instância pode não ter QR ainda
+            // Se for 404, tentar recriar a conexão
             if (error.response?.status === 404) {
                 return {
                     success: false,
-                    message: 'Instância em processo de conexão. Aguarde 10 segundos e tente novamente.',
+                    message: 'Instância não encontrada. Crie uma nova instância.',
                     qrCode: null
                 };
             }
