@@ -219,15 +219,39 @@ class EvolutionInstances {
 
     static async getQrCode(instanceName) {
         try {
-            console.log(`📱 Obtendo QR Code para ${instanceName}...`);
+            console.log(`📱 Obtendo QR Code via WebSocket para ${instanceName}...`);
 
-            const api = this.getApiClient();
+            const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+            const EvolutionWebSocket = require('./evolution-websocket');
 
-            // 🔥 PRIMEIRO: Verificar status
-            const status = await this.getStatus(instanceName);
-            console.log(`📊 Status atual:`, status);
+            const ws = new EvolutionWebSocket(instanceName, apiKey);
 
-            if (status.connected) {
+            // 🔥 PROMISE PARA AGUARDAR O QR CODE
+            const qrCode = await new Promise((resolve, reject) => {
+                let timeout = setTimeout(() => {
+                    ws.disconnect();
+                    reject(new Error('Timeout - QR Code não recebido'));
+                }, 30000);
+
+                ws.onQRCode = (qr) => {
+                    clearTimeout(timeout);
+                    ws.disconnect();
+                    resolve(qr);
+                };
+
+                ws.onConnected = () => {
+                    clearTimeout(timeout);
+                    ws.disconnect();
+                    resolve(null); // Já conectado
+                };
+
+                ws.connect().catch((err) => {
+                    clearTimeout(timeout);
+                    reject(err);
+                });
+            });
+
+            if (qrCode === null) {
                 return {
                     success: true,
                     alreadyConnected: true,
@@ -236,68 +260,26 @@ class EvolutionInstances {
                 };
             }
 
-            // 🔥 SEGUNDO: Se está em "connecting", FORÇAR LOGOUT E RECONECTAR
-            if (status.state === 'connecting' || status.state === 'connecting') {
-                console.log(`⏳ Instância em conexão, forçando logout para gerar novo QR...`);
-
-                try {
-                    await api.post(`/instance/logout/${instanceName}`, {});
-                    console.log(`✅ Logout forçado com sucesso!`);
-                    // Aguardar para reconectar
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                } catch (err) {
-                    console.log(`⚠️ Logout falhou (pode já estar desconectado):`, err.message);
-                }
-            }
-
-            // 🔥 TERCEIRO: Buscar QR Code
-            console.log(`📱 Buscando QR Code...`);
-            const response = await api.get(`/instance/qrcode/${instanceName}`);
-
-            console.log(`📥 Resposta da Evolution:`, JSON.stringify(response.data, null, 2));
-
-            // 🔥 EXTRAIR QR CODE
-            let qrCode = null;
-
-            if (response.data?.base64) {
-                qrCode = response.data.base64;
-            } else if (response.data?.qrcode) {
-                qrCode = response.data.qrcode;
-            } else if (response.data?.qr) {
-                qrCode = response.data.qr;
-            }
-
             if (qrCode) {
-                console.log(`✅ QR Code obtido com sucesso!`);
                 return {
                     success: true,
                     qrCode: qrCode,
                     alreadyConnected: false,
-                    message: 'QR Code gerado! Escaneie com o WhatsApp.'
+                    message: 'QR Code gerado!'
                 };
             }
 
             return {
                 success: false,
-                message: 'QR Code não disponível. Aguarde e tente novamente.',
+                message: 'QR Code não disponível',
                 qrCode: null
             };
 
         } catch (error) {
-            console.error('❌ Erro ao buscar QR Code:', error.message);
-
-            // Se for 404, tentar recriar a conexão
-            if (error.response?.status === 404) {
-                return {
-                    success: false,
-                    message: 'Instância não encontrada. Crie uma nova instância.',
-                    qrCode: null
-                };
-            }
-
+            console.error('❌ Erro:', error.message);
             return {
                 success: false,
-                message: error.response?.data?.message || error.message || 'Erro ao buscar QR Code',
+                message: error.message || 'Erro ao buscar QR Code',
                 qrCode: null
             };
         }
