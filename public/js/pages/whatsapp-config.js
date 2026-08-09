@@ -192,6 +192,9 @@ async function criarInstancia() {
   }
 }
 
+// ============================================
+// BUSCAR QR CODE - CORRIGIDO
+// ============================================
 async function buscarQrCode() {
   const token = localStorage.getItem('token');
   try {
@@ -202,13 +205,27 @@ async function buscarQrCode() {
     const data = await res.json();
     console.log('📥 Resposta do QR Code:', data);
 
-    if (data.success && data.qrCode) {
+    // 🔥 VERIFICAR SE O QR CODE É UM OBJETO OU STRING
+    let qrCode = data.qrCode;
+
+    // Se for um objeto, extrair o base64 ou code
+    if (typeof qrCode === 'object' && qrCode !== null) {
+      if (qrCode.base64) {
+        qrCode = qrCode.base64;
+      } else if (qrCode.code) {
+        qrCode = qrCode.code;
+      } else {
+        qrCode = null;
+      }
+    }
+
+    if (qrCode) {
       const container = document.getElementById('qrcode-container');
       if (container) {
-        // 🔥 EXIBIR O QR CODE
-        let qrImage = data.qrCode;
+        // 🔥 SE FOR BASE64, EXIBIR COMO IMAGEM
+        let qrImage = qrCode;
         // Se não começar com data:image, adicionar o prefixo
-        if (!qrImage.startsWith('data:image')) {
+        if (typeof qrImage === 'string' && !qrImage.startsWith('data:image')) {
           qrImage = `data:image/png;base64,${qrImage}`;
         }
         container.innerHTML = `<img src="${qrImage}" style="width: 256px; height: 256px; border-radius: 12px; background: white; padding: 10px;">`;
