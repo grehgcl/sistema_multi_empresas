@@ -48,7 +48,27 @@ class EvolutionInstances {
         try {
             // 🔥 GARANTIR QUE O ID É APENAS NÚMEROS
             const idLimpo = String(empresaId).replace(/[^0-9]/g, '');
-            const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+
+            // 🔥 SE NOME EMPRESA NÃO VEIO, BUSCAR NO BANCO
+            let nome = nomeEmpresa;
+            if (!nome || nome.trim() === '') {
+                console.log(`📱 Buscando nome da empresa ${idLimpo} no banco...`);
+                const { db } = require('../config/database');
+                const empresa = await new Promise((resolve) => {
+                    db.get('SELECT nome FROM empresas WHERE id = ?', [idLimpo], (err, row) => {
+                        if (err) {
+                            console.error('❌ Erro ao buscar empresa:', err);
+                            resolve(null);
+                        } else {
+                            resolve(row);
+                        }
+                    });
+                });
+                nome = empresa?.nome || 'empresa';
+                console.log(`📱 Nome encontrado: ${nome}`);
+            }
+
+            const nomeLimpo = nome.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
             const instanceName = `emp-${idLimpo}-${nomeLimpo}`;
 
             console.log(`📱 Criando instância: ${instanceName}`);
@@ -56,7 +76,7 @@ class EvolutionInstances {
             const api = this.getApiClient();
 
             // Verificar se já existe
-            const existing = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
+            const existing = await this.buscarInstanciaPorEmpresa(empresaId, nome);
             if (existing.success && existing.connected) {
                 return {
                     success: true,
@@ -123,7 +143,20 @@ class EvolutionInstances {
         try {
             // 🔥 GARANTIR QUE O ID É APENAS NÚMEROS
             const idLimpo = String(empresaId).replace(/[^0-9]/g, '');
-            const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+
+            // 🔥 SE NOME EMPRESA NÃO VEIO, BUSCAR NO BANCO
+            let nome = nomeEmpresa;
+            if (!nome || nome.trim() === '') {
+                const { db } = require('../config/database');
+                const empresa = await new Promise((resolve) => {
+                    db.get('SELECT nome FROM empresas WHERE id = ?', [idLimpo], (err, row) => {
+                        resolve(row);
+                    });
+                });
+                nome = empresa?.nome || 'empresa';
+            }
+
+            const nomeLimpo = nome.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
 
             // 🔥 GERAR NOMES POSSÍVEIS
             const possibleNames = [
@@ -136,7 +169,6 @@ class EvolutionInstances {
 
             const instances = await this.listarInstancias();
 
-            // Procurar por correspondência exata
             for (const name of possibleNames) {
                 const found = instances.find(inst => inst.name === name);
                 if (found) {
@@ -150,12 +182,11 @@ class EvolutionInstances {
                 }
             }
 
-            // Tentar busca por nome parcial (mais flexível)
-            const nomeBusca = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+            // Busca por nome parcial
+            const nomeBusca = nome.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
             if (nomeBusca) {
                 for (const inst of instances) {
                     const instName = inst.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    // Verificar se contém o ID e o nome
                     if (instName.includes(idLimpo) && instName.includes(nomeBusca.substring(0, 5))) {
                         console.log(`✅ Instância encontrada por nome parcial: ${inst.name}`);
                         return {
