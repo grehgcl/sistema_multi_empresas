@@ -322,9 +322,6 @@ class EvolutionInstances {
             };
         }
     }
-    // ============================================
-    // VERIFICAR STATUS
-    // ============================================
     static async getStatus(instanceName) {
         try {
             const api = this.getApiClient();
@@ -332,8 +329,30 @@ class EvolutionInstances {
 
             const response = await api.get(`/instance/connectionState/${instanceName}`);
 
-            const state = response.data?.instance?.state || response.data?.state || 'disconnected';
-            const isConnected = state === 'open' || state === 'connected';
+            console.log(`📥 Resposta da Evolution:`, JSON.stringify(response.data, null, 2));
+
+            // 🔥 EXTRAIR STATUS CORRETAMENTE
+            let state = 'disconnected';
+            let number = null;
+
+            if (response.data) {
+                // Formato 1: { instance: { state: 'open' } }
+                if (response.data.instance?.state) {
+                    state = response.data.instance.state;
+                    number = response.data.instance?.number || null;
+                }
+                // Formato 2: { state: 'open' }
+                else if (response.data.state) {
+                    state = response.data.state;
+                    number = response.data.number || null;
+                }
+                // Formato 3: { connectionState: 'open' }
+                else if (response.data.connectionState) {
+                    state = response.data.connectionState;
+                }
+            }
+
+            const isConnected = state === 'open' || state === 'connected' || state === 'CONNECTED';
 
             console.log(`📊 Status: ${state} - Conectado: ${isConnected}`);
 
@@ -341,16 +360,20 @@ class EvolutionInstances {
                 success: true,
                 state: state,
                 connected: isConnected,
+                number: number,
                 data: response.data
             };
 
         } catch (error) {
             console.error(`❌ Erro ao verificar status:`, error.message);
 
-            // Se for 403, log específico
-            if (error.response?.status === 403) {
-                console.error(`🔑 ERRO 403 - API Key inválida ou não enviada!`);
-                console.error(`🔑 Verifique EVOLUTION_API_KEY no .env`);
+            if (error.response?.status === 404) {
+                return {
+                    success: true,
+                    state: 'not_found',
+                    connected: false,
+                    message: 'Instância não encontrada'
+                };
             }
 
             return {

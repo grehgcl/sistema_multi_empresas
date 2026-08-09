@@ -248,45 +248,135 @@ router.get('/qrcode', auth, async (req, res) => {
 });
 
 // ============================================
-// GET /api/empresa/whatsapp/status
+// GET /api/empresa/whatsapp/status - CORRIGIDO
 // ============================================
 router.get('/status', auth, async (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const sql = isProduction
-        ? 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_number FROM empresas WHERE id = $1'
-        : 'SELECT whatsapp_instance, whatsapp_connected, whatsapp_number FROM empresas WHERE id = ?';
+    try {
+        const empresaId = req.usuario?.empresa_id;
 
-    db.get(sql, [empresaId], async (err, empresa) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: 'Erro ao verificar' });
+        if (!empresaId) {
+            return res.status(401).json({
+                success: false,
+                message: 'Usuário não autenticado'
+            });
         }
 
-        if (!empresa?.whatsapp_instance) {
-            return res.json({ success: true, data: { connected: false, status: 'no_instance' } });
+        console.log(`📊 Verificando status WhatsApp para empresa ${empresaId}`);
+
+        // Buscar dados da empresa
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? 'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at FROM empresas WHERE id = $1'
+                : 'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at FROM empresas WHERE id = ?';
+            db.get(sql, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
         }
 
+        // Se não tem instância, retornar status desconectado
+        if (!empresa.whatsapp_instance) {
+            return res.json({
+                success: true,
+                data: {
+                    connected: false,
+                    status: 'no_instance',
+                    instanceName: null,
+                    number: null,
+                    message: 'Nenhuma instância configurada'
+                }
+            });
+        }
+
+        // 🔥 VERIFICAR STATUS NA EVOLUTION API
         const EvolutionInstances = require('../services/evolution-instances');
         const status = await EvolutionInstances.getStatus(empresa.whatsapp_instance);
-        const isConnected = status.state === 'open';
 
-        if (isConnected !== Boolean(empresa.whatsapp_connected)) {
-            const sqlUpdate = isProduction
-                ? 'UPDATE empresas SET whatsapp_connected = $1 WHERE id = $2'
-                : 'UPDATE empresas SET whatsapp_connected = ? WHERE id = ?';
+        console.log(`📊 Status da Evolution:`, status);
 
-            db.run(sqlUpdate, [isConnected, empresaId], () => { });
+        // Verificar se está conectado
+        const isConnected = status.connected || status.state === 'open' || status.state === 'connected';
+        const statusState = status.state || 'disconnected';
+
+        // 🔥 ATUALIZAR O BANCO SE O STATUS MUDOU
+        const shouldUpdate = isConnected !== Boolean(empresa.whatsapp_connected);
+
+        if (shouldUpdate) {
+            console.log(`🔄 Atualizando status da empresa ${empresaId}: ${isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
+
+            await new Promise((resolve, reject) => {
+                const sqlUpdate = isProduction
+                    ? `UPDATE empresas 
+                       SET whatsapp_connected = $1, 
+                           whatsapp_connected_at = ${isConnected ? 'NOW()' : 'NULL'},
+                           whatsapp_number = $2
+                       WHERE id = $3`
+                    : `UPDATE empresas 
+                       SET whatsapp_connected = ?, 
+                           whatsapp_connected_at = ${isConnected ? "datetime('now')" : 'NULL'},
+                           whatsapp_number = ?
+                       WHERE id = ?`;
+
+                const params = isProduction
+                    ? [isConnected, status.number || empresa.whatsapp_number || null, empresaId]
+                    : [isConnected ? 1 : 0, status.number || empresa.whatsapp_number || null, empresaId];
+
+                db.run(sqlUpdate, params, (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+            });
         }
 
+        // 🔥 SE ESTIVER CONECTADO, BUSCAR O NÚMERO
+        let number = empresa.whatsapp_number;
+        if (isConnected && !number) {
+            try {
+                // Tentar buscar o número da instância
+                const api = EvolutionInstances.getApiClient();
+                const response = await api.get(`/instance/info/${empresa.whatsapp_instance}`);
+                if (response.data?.number) {
+                    number = response.data.number;
+                    // Atualizar no banco
+                    await new Promise((resolve) => {
+                        const sqlUpdate = isProduction
+                            ? 'UPDATE empresas SET whatsapp_number = $1 WHERE id = $2'
+                            : 'UPDATE empresas SET whatsapp_number = ? WHERE id = ?';
+                        db.run(sqlUpdate, [number, empresaId], () => resolve());
+                    });
+                }
+            } catch (err) {
+                console.log(`⚠️ Não foi possível buscar o número: ${err.message}`);
+            }
+        }
+
+        // 🔥 RETORNAR STATUS ATUALIZADO
         res.json({
             success: true,
             data: {
                 connected: isConnected,
-                status: status.state,
+                status: statusState,
                 instanceName: empresa.whatsapp_instance,
-                number: empresa.whatsapp_number
+                number: number || empresa.whatsapp_number || null,
+                connectedAt: empresa.whatsapp_connected_at || null,
+                updated: shouldUpdate
             }
         });
-    });
+
+    } catch (error) {
+        console.error('❌ Erro ao verificar status:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro ao verificar status'
+        });
+    }
 });
 
 // ============================================
