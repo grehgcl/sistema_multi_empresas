@@ -30,48 +30,79 @@ function dateInterval(intervalo) {
     return isProduction ? `CURRENT_DATE - INTERVAL '${intervalo}'` : `date('now', '-${intervalo}')`;
 }
 
-// server/routes/admin.routes.js
-
 // ============================================
-// GET /api/admin/stats - ESTATÍSTICAS
+// GET /api/admin/stats - ESTATÍSTICAS GERAIS
 // ============================================
-router.get('/stats', auth, verificarSuperAdmin, (req, res) => {
-    console.log('📊 Buscando estatísticas para SuperAdmin');
+router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+        console.log('📊 Buscando estatísticas para SuperAdmin');
 
-    const sql = isProduction
-        ? `SELECT 
-           (SELECT COUNT(*) FROM empresas) as total_empresas,
-           (SELECT COUNT(*) FROM usuarios) as total_usuarios,
-           (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true) as empresas_ativas,
-           (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
-           (SELECT COUNT(*) FROM agendamentos WHERE status = 'concluido' AND strftime('%m', data) = strftime('%m', 'now')) as total_agendamentos_mes,
-           (SELECT SUM(valor) FROM agendamentos WHERE status = 'concluido' AND strftime('%m', data) = strftime('%m', 'now')) as faturamento_mes
-           FROM empresas LIMIT 1`
-        : `SELECT 
-           (SELECT COUNT(*) FROM empresas) as total_empresas,
-           (SELECT COUNT(*) FROM usuarios) as total_usuarios,
-           (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1) as empresas_ativas,
-           (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
-           (SELECT COUNT(*) FROM agendamentos WHERE status = 'concluido' AND strftime('%m', data) = strftime('%m', 'now')) as total_agendamentos_mes,
-           (SELECT SUM(valor) FROM agendamentos WHERE status = 'concluido' AND strftime('%m', data) = strftime('%m', 'now')) as faturamento_mes
-           FROM empresas LIMIT 1`;
+        // 🔥 CORRIGIDO: Usar TO_CHAR no PostgreSQL
+        const sql = isProduction
+            ? `SELECT 
+                (SELECT COUNT(*) FROM empresas) as total_empresas,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true OR plano != 'trial') as empresas_ativas,
+                (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
+                (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'dono') as total_donos,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'profissional') as total_profissionais,
+                (SELECT COUNT(*) FROM clientes) as total_clientes,
+                (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
+                (SELECT COUNT(*) FROM agendamentos WHERE EXTRACT(MONTH FROM data) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM data) = EXTRACT(YEAR FROM CURRENT_DATE)) as agendamentos_mes,
+                (SELECT COALESCE(SUM(valor), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true) as empresas_pagas
+            `
+            : `SELECT 
+                (SELECT COUNT(*) FROM empresas) as total_empresas,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1 OR plano != 'trial') as empresas_ativas,
+                (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
+                (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'dono') as total_donos,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'profissional') as total_profissionais,
+                (SELECT COUNT(*) FROM clientes) as total_clientes,
+                (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
+                (SELECT COUNT(*) FROM agendamentos WHERE strftime('%m', data) = strftime('%m', 'now') AND strftime('%Y', data) = strftime('%Y', 'now')) as agendamentos_mes,
+                (SELECT COALESCE(SUM(valor), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1) as empresas_pagas
+            `;
 
-    db.get(sql, [], (err, stats) => {
-        if (err) {
-            console.error('❌ Erro ao buscar stats:', err);
-            return res.status(500).json({
-                success: false,
-                message: err.message
+        db.get(sql, [], (err, stats) => {
+            if (err) {
+                console.error('❌ Erro ao buscar stats:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro ao buscar estatísticas: ' + err.message
+                });
+            }
+
+            console.log('✅ Estatísticas carregadas:', stats);
+            res.json({
+                success: true,
+                data: stats || {
+                    total_empresas: 0,
+                    empresas_ativas: 0,
+                    empresas_trial: 0,
+                    total_usuarios: 0,
+                    total_donos: 0,
+                    total_profissionais: 0,
+                    total_clientes: 0,
+                    total_agendamentos: 0,
+                    agendamentos_mes: 0,
+                    faturamento_total: 0,
+                    empresas_pagas: 0
+                }
             });
-        }
-
-        res.json({
-            success: true,
-            data: stats || {}
         });
-    });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar estatísticas:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro interno: ' + error.message
+        });
+    }
 });
 
 // ============================================
@@ -1128,5 +1159,71 @@ router.post('/registrar-acesso', auth, (req, res) => {
         }
         res.json({ success: true });
     });
+});
+// ============================================
+// PUT /api/admin/empresas/:id/whatsapp-proprio
+// ============================================
+router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { habilitado } = req.body;
+
+    console.log(`🔧 Super Admin - Alternando WhatsApp próprio da empresa ${id}:`, habilitado ? 'HABILITAR' : 'DESABILITAR');
+
+    try {
+        // Buscar empresa
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? 'SELECT id, nome FROM empresas WHERE id = $1'
+                : 'SELECT id, nome FROM empresas WHERE id = ?';
+            db.get(sql, [id], (err, row) => {
+                if (err) reject(err);
+                resolve(row);
+            });
+        });
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        // Atualizar WhatsApp próprio
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2`
+            : `UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?`;
+
+        await new Promise((resolve, reject) => {
+            db.run(sqlUpdate, [habilitado ? 1 : 0, id], function (err) {
+                if (err) reject(err);
+                resolve(this);
+            });
+        });
+
+        // Se habilitou, criar instância
+        if (habilitado) {
+            try {
+                const evolution = require('../services/evolution-instances');
+                const instanceName = `emp-${id}-${empresa.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
+                await evolution.criarInstancia(instanceName);
+                console.log(`✅ Instância ${instanceName} criada para empresa ${id}`);
+            } catch (e) {
+                console.error('❌ Erro ao criar instância:', e.message);
+                // Não falha a requisição, só loga o erro
+            }
+        }
+
+        res.json({
+            success: true,
+            message: habilitado ? 'WhatsApp próprio habilitado!' : 'WhatsApp próprio desabilitado!'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 });
 module.exports = router;

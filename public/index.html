@@ -523,11 +523,11 @@
         }
 
         function carregarMenu() {
-            // 🔥 PEGAR O USUÁRIO DO LOCAL STORAGE
             const usuarioStr = localStorage.getItem('usuario');
             const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
             console.log('📋 Carregando menu para:', usuario?.nome);
+            console.log('🔍 Role:', usuario?.role);
 
             const sidebar = document.getElementById('sidebar');
             let botoes = [];
@@ -537,17 +537,28 @@
                 return;
             }
 
-            if (usuario.role === 'superadmin') {
+            // 🔥 CORREÇÃO: Verificar se é Super Admin corretamente
+            const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+            const isProfissional = usuario.role === 'profissional';
+            const isDono = usuario.role === 'dono';
+
+            console.log('🔍 isSuperAdmin:', isSuperAdmin);
+
+            if (isSuperAdmin) {
+                // 🔥 SUPER ADMIN - Menu correto (apenas 4 opções)
                 botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardSuperAdmin' }
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
+                    { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
+                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
+                    { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
                 ];
-            } else if (usuario.role === 'profissional') {
+            } else if (isProfissional) {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
-                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' },
-                    { id: 'financeiro', nome: 'Minhas Comissões', icone: 'fa-coins', funcao: 'carregarFinanceiro' }
+                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' }
                 ];
-            } else {
+            } else if (isDono) {
+                // Dono - Menu completo
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
                     { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
@@ -555,16 +566,21 @@
                     { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
                     { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
                     { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
-                    { id: 'whatsapp', nome: '📱 WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarConfigWhatsApp' },
+                    { id: 'whatsapp', nome: '📱 WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
                     { id: 'planos', nome: '💎 Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
                 ];
             }
 
+            // Gerar HTML dos botões
             sidebar.innerHTML = botoes.map(b =>
                 `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`
             ).join('');
-        }
 
+            // Ativar o botão correto
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = urlParams.get('page') || 'dashboard';
+            ativarBotao(page);
+        }
         function ativarBotao(id) {
             document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
             const btn = document.getElementById('btn' + id);
@@ -597,7 +613,8 @@
             }
 
             if (userBadgeEl) {
-                if (usuario?.role === 'superadmin') {
+                const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+                if (isSuperAdmin) {
                     userBadgeEl.innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
                 } else if (usuario?.role === 'profissional') {
                     userBadgeEl.innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
@@ -606,17 +623,19 @@
                 }
             }
 
+            // 🔥 CARREGAR O MENU
             carregarMenu();
 
-            if (usuario?.role === 'profissional') {
+            // 🔥 CARREGAR A PÁGINA CORRETA
+            const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+            if (isSuperAdmin) {
+                if (typeof carregarDashboard === 'function') carregarDashboard();
+            } else if (usuario?.role === 'profissional') {
                 if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
-            } else if (usuario?.role === 'superadmin') {
-                if (typeof carregarDashboardSuperAdmin === 'function') carregarDashboardSuperAdmin();
             } else {
                 if (typeof carregarDashboard === 'function') carregarDashboard();
             }
         }
-
         // ========== FECHAR MODAL AO CLICAR FORA ==========
         window.onclick = function (event) {
             if (event.target.classList.contains('modal')) {

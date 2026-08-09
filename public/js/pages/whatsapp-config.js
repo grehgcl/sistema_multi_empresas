@@ -361,6 +361,7 @@ function verificarConexao() {
 // EXPORTAR TODAS AS FUNÇÕES PARA O ESCOPO GLOBAL
 // ============================================
 window.carregarConfigWhatsApp = carregarConfigWhatsApp;
+window.carregarWhatsappConfig = carregarConfigWhatsApp; // 🔥 ALIAS PARA O MENU
 window.criarInstancia = criarInstancia;
 window.buscarQrCode = buscarQrCode;
 window.gerarQrCode = gerarQrCode;

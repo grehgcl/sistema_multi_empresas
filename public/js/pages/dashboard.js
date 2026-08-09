@@ -781,6 +781,12 @@ async function carregarDashboardDono() {
 // ============================================
 
 async function carregarDashboardSuperAdmin() {
+    if (typeof window.carregarCSS === 'function') {
+        window.carregarCSS('dashboard');
+    }
+    ativarBotao('dashboard');
+    showLoading();
+
     const token = localStorage.getItem('token');
 
     try {
@@ -809,8 +815,21 @@ async function carregarDashboardSuperAdmin() {
 
     } catch (error) {
         console.error('❌ Erro ao carregar dashboard Super Admin:', error);
-        throw error;
+        document.getElementById('content').innerHTML = `
+            <div class="card">
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h4>Erro ao carregar dashboard</h4>
+                    <p>${error.message}</p>
+                    <button class="btn btn-primary btn-sm" onclick="carregarDashboardSuperAdmin()">
+                        <i class="fas fa-sync"></i> Tentar Novamente
+                    </button>
+                </div>
+            </div>
+        `;
     }
+
+    hideLoading();
 }
 
 // ============================================
@@ -826,143 +845,179 @@ function renderizarDashboardSuperAdmin(empresas, usuarios, estatisticas) {
     const empresasAtivas = empresas.filter(e => e.assinatura_ativa || e.plano !== 'trial').length;
     const empresasTrial = empresas.filter(e => e.plano === 'trial').length;
 
-    // Planos
+    // Total de clientes em todas as empresas
+    const totalClientes = empresas.reduce((acc, e) => acc + (e.total_clientes || 0), 0);
+    const totalAgendamentos = empresas.reduce((acc, e) => acc + (e.total_agendamentos || 0), 0);
+
+    // Contar por plano
     const planosCount = {};
     empresas.forEach(e => {
         const plano = e.plano || 'trial';
         planosCount[plano] = (planosCount[plano] || 0) + 1;
     });
 
+    // Faturamento total
+    const faturamentoTotal = estatisticas.faturamento_total || 0;
+
     let html = `
         <div class="fade-in">
+            <!-- HEADER -->
             <div class="dashboard-header" style="flex-direction:${isMobile ? 'column' : 'row'}; align-items:${isMobile ? 'flex-start' : 'center'}; gap:${isMobile ? '8px' : '0'};">
                 <div>
-                    <h2 class="page-title" style="font-size:${isMobile ? '20px' : '24px'};">👑 Dashboard Super Admin</h2>
+                    <h2 class="page-title" style="font-size:${isMobile ? '20px' : '24px'};">
+                        👑 Dashboard Administrativo
+                    </h2>
                     <p class="page-subtitle" style="font-size:${isMobile ? '13px' : '14px'};">
                         <i class="fas fa-chart-line"></i> 
-                        Visão geral de todas as empresas e usuários
+                        Visão geral de todas as empresas do sistema
                     </p>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-primary btn-sm" onclick="carregarDashboard()">
+                    <button class="btn btn-primary btn-sm" onclick="carregarDashboardSuperAdmin()">
                         <i class="fas fa-sync"></i> Atualizar
                     </button>
-                    <button class="btn btn-success btn-sm" onclick="executarAcao('empresas')">
+                    <button class="btn btn-success btn-sm" onclick="executarAcao('carregarEmpresas')">
                         <i class="fas fa-building"></i> Gerenciar Empresas
                     </button>
                 </div>
             </div>
 
             <!-- CARDS DE ESTATÍSTICAS -->
-            <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:${isMobile ? '8px' : '12px'};margin-bottom:${isMobile ? '12px' : '16px'};">
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(5,1fr)'};gap:${isMobile ? '8px' : '12px'};margin-bottom:${isMobile ? '12px' : '16px'};">
+                
+                <!-- Empresas -->
                 <div style="background:linear-gradient(135deg, #667eea, #764ba2);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
                     <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">🏢 Empresas</div>
                     <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${totalEmpresas}</div>
-                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${empresasAtivas} ativas • ${empresasTrial} em trial</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${empresasAtivas} ativas • ${empresasTrial} trial</div>
                 </div>
                 
+                <!-- Usuários -->
                 <div style="background:linear-gradient(135deg, #22c55e, #16a34a);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(34,197,94,0.3);">
-                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">👤 Usuários</div>
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">👥 Usuários</div>
                     <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${totalUsuarios}</div>
                     <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">Donos e profissionais</div>
                 </div>
                 
+                <!-- Clientes -->
                 <div style="background:linear-gradient(135deg, #f59e0b, #d97706);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(245,158,11,0.3);">
-                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">📊 Planos</div>
-                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${Object.keys(planosCount).length}</div>
-                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${planosCount.pro || 0} Pro • ${planosCount.business || 0} Business</div>
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">👤 Clientes</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${totalClientes}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">Em todas as empresas</div>
                 </div>
                 
+                <!-- Agendamentos -->
                 <div style="background:linear-gradient(135deg, #8b5cf6, #6d28d9);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(139,92,246,0.3);">
+                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">📅 Agendamentos</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">${totalAgendamentos}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">+${estatisticas.agendamentos_mes || 0} este mês</div>
+                </div>
+                
+                <!-- Faturamento -->
+                <div style="background:linear-gradient(135deg, #ec4899, #be185d);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(236,72,153,0.3);">
                     <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">💰 Faturamento</div>
-                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">R$ ${(estatisticas.faturamento_total || 0).toFixed(2)}</div>
-                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">Este mês</div>
+                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">R$ ${faturamentoTotal.toFixed(2)}</div>
+                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${estatisticas.empresas_pagas || 0} empresas pagas</div>
                 </div>
             </div>
 
-            <!-- LISTA DE EMPRESAS -->
+            <!-- GRÁFICOS -->
+            <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:${isMobile ? '12px' : '16px'};margin-bottom:${isMobile ? '12px' : '16px'};">
+                
+                <!-- Gráfico: Empresas por Plano -->
+                <div class="card" style="padding:${isMobile ? '12px' : '16px'};">
+                    <h4 style="margin:0 0 12px 0;font-size:${isMobile ? '14px' : '16px'};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-chart-pie" style="color:var(--primary);"></i> Empresas por Plano
+                    </h4>
+                    <canvas id="graficoPlanos" style="max-height:200px;max-width:100%;"></canvas>
+                </div>
+
+                <!-- Gráfico: Crescimento -->
+                <div class="card" style="padding:${isMobile ? '12px' : '16px'};">
+                    <h4 style="margin:0 0 12px 0;font-size:${isMobile ? '14px' : '16px'};display:flex;align-items:center;gap:8px;">
+                        <i class="fas fa-chart-line" style="color:var(--primary);"></i> Crescimento de Empresas
+                    </h4>
+                    <canvas id="graficoCrescimento" style="max-height:200px;max-width:100%;"></canvas>
+                </div>
+            </div>
+
+            <!-- LISTA DE EMPRESAS (RESUMO) -->
             <div class="card" style="padding:${isMobile ? '12px' : '16px'};">
                 <div class="card-header" style="flex-direction:${isMobile ? 'column' : 'row'};align-items:${isMobile ? 'flex-start' : 'center'};gap:${isMobile ? '8px' : '0'};">
                     <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;">
                         <i class="fas fa-building"></i> Empresas Cadastradas
                         <span style="font-size:12px;color:var(--text-muted);font-weight:400;">(${totalEmpresas})</span>
                     </h3>
-                    <button class="btn btn-primary btn-sm" onclick="executarAcao('empresas')">
-                        <i class="fas fa-plus"></i> Gerenciar
+                    <button class="btn btn-primary btn-sm" onclick="executarAcao('carregarEmpresas')">
+                        <i class="fas fa-arrow-right"></i> Ver Todas
                     </button>
                 </div>
                 
-                ${isMobile ? `
-                    <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px;">
-                        ${empresas.slice(0, 10).map(e => `
-                            <div style="background:var(--bg-hover);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);">
-                                <div style="display:flex;justify-content:space-between;align-items:center;">
-                                    <div>
-                                        <div style="font-weight:600;font-size:14px;color:var(--text-primary);">${escapeHtml(e.nome || 'Sem nome')}</div>
-                                        <div style="font-size:11px;color:var(--text-muted);">
-                                            📅 ${e.created_at ? formatarDataBr(e.created_at.split('T')[0]) : '-'}
-                                            • 📋 ${e.plano || 'trial'}
-                                            • 👤 ${e.total_usuarios || 0}
-                                        </div>
-                                    </div>
-                                    <span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${e.assinatura_ativa ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${e.assinatura_ativa ? '#22c55e' : '#ef4444'};">
-                                        ${e.assinatura_ativa ? '✅ Ativo' : '⏳ Inativo'}
-                                    </span>
-                                </div>
-                            </div>
-                        `).join('')}
-                        ${empresas.length > 10 ? `
-                            <div style="text-align:center;padding:8px;font-size:12px;color:var(--text-muted);">
-                                + ${empresas.length - 10} outras empresas
-                            </div>
-                        ` : ''}
-                    </div>
-                ` : `
-                    <div class="table-responsive" style="margin-top:12px;">
-                        <table class="data-table" style="font-size:13px;">
-                            <thead>
+                <div style="overflow-x:auto;margin-top:12px;">
+                    <table class="data-table" style="font-size:13px;width:100%;min-width:600px;">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Empresa</th>
+                                <th>Plano</th>
+                                <th>👤 Usuários</th>
+                                <th>👥 Clientes</th>
+                                <th>📅 Agend.</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${empresas.slice(0, 10).map(e => `
                                 <tr>
-                                    <th>#</th>
-                                    <th>Empresa</th>
-                                    <th>Plano</th>
-                                    <th>Usuários</th>
-                                    <th>Status</th>
-                                    <th>Data</th>
-                                    <th>Ações</th>
+                                    <td>${e.id}</td>
+                                    <td><strong>${escapeHtml(e.nome || 'Sem nome')}</strong></td>
+                                    <td>
+                                        <span class="badge" style="background:${e.plano === 'pro' ? '#f59e0b' : e.plano === 'business' ? '#8b5cf6' : e.plano === 'enterprise' ? '#ec4899' : '#6b7280'};color:white;padding:2px 10px;border-radius:12px;font-size:11px;">
+                                            ${e.plano || 'trial'}
+                                        </span>
+                                    </td>
+                                    <td>${e.total_usuarios || 0}</td>
+                                    <td>${e.total_clientes || 0}</td>
+                                    <td>${e.total_agendamentos || 0}</td>
+                                    <td>
+                                        <span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${e.assinatura_ativa ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${e.assinatura_ativa ? '#22c55e' : '#ef4444'};">
+                                            ${e.assinatura_ativa ? '✅ Ativo' : '⏳ Inativo'}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button onclick="editarEmpresa(${e.id})" class="btn-icon btn-edit" style="padding:4px 8px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
+                                            <i class="fas fa-pen"></i>
+                                        </button>
+                                        <button onclick="verDetalhesEmpresa(${e.id})" class="btn-icon btn-view" style="padding:4px 8px;border:none;background:rgba(34,197,94,0.1);border-radius:4px;cursor:pointer;color:#22c55e;">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                ${empresas.map(e => `
-                                    <tr>
-                                        <td>${e.id}</td>
-                                        <td><strong>${escapeHtml(e.nome || 'Sem nome')}</strong></td>
-                                        <td><span class="badge" style="background:${e.plano === 'pro' ? '#f59e0b' : e.plano === 'business' ? '#8b5cf6' : e.plano === 'enterprise' ? '#ec4899' : '#6b7280'};color:white;">${e.plano || 'trial'}</span></td>
-                                        <td>${e.total_usuarios || 0}</td>
-                                        <td>
-                                            <span style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${e.assinatura_ativa ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${e.assinatura_ativa ? '#22c55e' : '#ef4444'};">
-                                                ${e.assinatura_ativa ? '✅ Ativo' : '⏳ Inativo'}
-                                            </span>
-                                        </td>
-                                        <td>${e.created_at ? formatarDataBr(e.created_at.split('T')[0]) : '-'}</td>
-                                        <td>
-                                            <button onclick="editarEmpresa(${e.id})" class="btn-icon btn-edit" style="padding:4px 8px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
-                                                <i class="fas fa-pen"></i>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                                ${empresas.length === 0 ? `
-                                    <tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);">Nenhuma empresa cadastrada</td></tr>
-                                ` : ''}
-                            </tbody>
-                        </table>
-                    </div>
-                `}
+                            `).join('')}
+                            ${empresas.length === 0 ? `
+                                <tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted);">Nenhuma empresa cadastrada</td></tr>
+                            ` : ''}
+                            ${empresas.length > 10 ? `
+                                <tr><td colspan="8" style="text-align:center;padding:8px;font-size:12px;color:var(--text-muted);">
+                                    + ${empresas.length - 10} outras empresas
+                                </td></tr>
+                            ` : ''}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     `;
 
     document.getElementById('content').innerHTML = html;
+
+    // 🔥 CRIAR GRÁFICOS
+    setTimeout(() => {
+        criarGraficoPlanos(planosCount);
+        criarGraficoCrescimento(empresas);
+    }, 300);
+
     console.log('✅ Dashboard Super Admin renderizado com sucesso!');
 }
 
@@ -1002,7 +1057,131 @@ window.addEventListener('resize', function () {
         agendaResizeTimeout = null;
     }, 300);
 });
+// ============================================
+// GRÁFICO: EMPRESAS POR PLANO
+// ============================================
 
+function criarGraficoPlanos(planosCount) {
+    const canvas = document.getElementById('graficoPlanos');
+    if (!canvas) return;
+
+    const labels = ['Trial', 'Starter', 'Pro', 'Business', 'Enterprise'];
+    const data = labels.map(label => planosCount[label.toLowerCase()] || 0);
+
+    new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: data,
+                backgroundColor: ['#6b7280', '#f59e0b', '#667eea', '#8b5cf6', '#ec4899'],
+                borderWidth: 2,
+                borderColor: '#1e1e2e'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        color: '#e0e0e0',
+                        font: { size: 10 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ============================================
+// GRÁFICO: CRESCIMENTO DE EMPRESAS
+// ============================================
+
+function criarGraficoCrescimento(empresas) {
+    const canvas = document.getElementById('graficoCrescimento');
+    if (!canvas) return;
+
+    // Agrupar empresas por data de criação
+    const datas = {};
+    empresas.forEach(e => {
+        if (e.created_at) {
+            const data = e.created_at.split('T')[0];
+            datas[data] = (datas[data] || 0) + 1;
+        }
+    });
+
+    const sortedDates = Object.keys(datas).sort();
+    const cumulative = [];
+    let total = 0;
+    sortedDates.forEach(date => {
+        total += datas[date];
+        cumulative.push(total);
+    });
+
+    new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels: sortedDates.map(d => d.split('-')[2] + '/' + d.split('-')[1]),
+            datasets: [{
+                label: 'Empresas Cadastradas',
+                data: cumulative,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102,126,234,0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    labels: { color: '#e0e0e0', font: { size: 10 } }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { color: '#a0a0a0', font: { size: 9 } }
+                },
+                x: {
+                    ticks: { color: '#a0a0a0', font: { size: 9 }, maxTicksLimit: 10 }
+                }
+            }
+        }
+    });
+}
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+// ============================================
+// VER DETALHES DA EMPRESA (Super Admin)
+// ============================================
+
+function verDetalhesEmpresa(id) {
+    showToast(`📊 Carregando detalhes da empresa ${id}...`, 'info');
+    // Abrir a página de empresas com o ID selecionado
+    executarAcao('carregarEmpresas');
+    setTimeout(() => {
+        // Tentar selecionar a empresa na lista
+        const rows = document.querySelectorAll('#tabelaEmpresas tbody tr');
+        rows.forEach(row => {
+            if (row.dataset.id == id) {
+                row.style.background = 'rgba(102,126,234,0.2)';
+                row.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    }, 500);
+}
+
+// Exportar função global
+window.verDetalhesEmpresa = verDetalhesEmpresa;
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================

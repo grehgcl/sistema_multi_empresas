@@ -353,6 +353,72 @@ window.addEventListener('storage', function (e) {
 });
 
 // ============================================
+// GERAR MENU DINÂMICO
+// ============================================
+function gerarMenu(usuario) {
+    const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+    const isDono = usuario.role === 'dono';
+    const isProfissional = usuario.role === 'profissional';
+
+    let menu = '';
+
+    if (isSuperAdmin) {
+        // 🔥 SUPER ADMIN - Menu correto
+        menu = `
+            <button class="menu-btn active" data-page="dashboard" onclick="executarAcao('carregarDashboard', this)">
+                <i class="fas fa-chart-pie"></i> Dashboard
+            </button>
+            <button class="menu-btn" data-page="empresas" onclick="executarAcao('carregarEmpresas', this)">
+                <i class="fas fa-building"></i> Empresas
+            </button>
+            <button class="menu-btn" data-page="whatsapp" onclick="executarAcao('carregarWhatsappConfig', this)">
+                <i class="fas fa-whatsapp"></i> WhatsApp
+            </button>
+            <button class="menu-btn" data-page="planos" onclick="executarAcao('carregarPlanos', this)">
+                <i class="fas fa-crown"></i> Planos
+            </button>
+        `;
+    } else if (isDono) {
+        menu = `
+            <button class="menu-btn active" data-page="dashboard" onclick="executarAcao('carregarDashboard', this)">
+                <i class="fas fa-chart-pie"></i> Dashboard
+            </button>
+            <button class="menu-btn" data-page="agendamentos" onclick="executarAcao('carregarAgendamentos', this)">
+                <i class="fas fa-calendar-check"></i> Agendamentos
+            </button>
+            <button class="menu-btn" data-page="servicos" onclick="executarAcao('carregarServicos', this)">
+                <i class="fas fa-cut"></i> Serviços
+            </button>
+            <button class="menu-btn" data-page="financeiro" onclick="executarAcao('carregarFinanceiro', this)">
+                <i class="fas fa-coins"></i> Financeiro
+            </button>
+            <button class="menu-btn" data-page="clientes" onclick="executarAcao('carregarClientes', this)">
+                <i class="fas fa-users"></i> Clientes
+            </button>
+            <button class="menu-btn" data-page="configuracoes" onclick="executarAcao('carregarConfiguracoes', this)">
+                <i class="fas fa-cog"></i> Configurações
+            </button>
+            <button class="menu-btn" data-page="whatsapp" onclick="executarAcao('carregarWhatsappConfig', this)">
+                <i class="fas fa-whatsapp"></i> WhatsApp
+            </button>
+            <button class="menu-btn" data-page="planos" onclick="executarAcao('carregarPlanos', this)">
+                <i class="fas fa-crown"></i> Planos
+            </button>
+        `;
+    } else if (isProfissional) {
+        menu = `
+            <button class="menu-btn active" data-page="dashboard" onclick="executarAcao('carregarDashboardProfissional', this)">
+                <i class="fas fa-chart-pie"></i> Dashboard
+            </button>
+            <button class="menu-btn" data-page="agendamentos" onclick="executarAcao('carregarAgendamentosProfissional', this)">
+                <i class="fas fa-calendar-check"></i> Agendamentos
+            </button>
+        `;
+    }
+
+    return menu;
+}
+// ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 window.carregarCSS = carregarCSS;

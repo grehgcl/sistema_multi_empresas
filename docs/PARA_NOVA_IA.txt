@@ -1,6 +1,6 @@
 ﻿=========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 31/07/2026
+ULTIMA ATUALIZACAO: 08/08/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -21,6 +21,29 @@ USUARIOS:
 -----------------------------------------
 Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
+Dono Empresa 14: luziasandraleal@hotmail.com / 123456
+
+=========================================
+✅ IMPLEMENTADO (08/08/2026) - CORREÇÕES VPS
+=========================================
+
+### CORREÇÃO DO DASHBOARD E HORÁRIOS 🚀
+- Criada tabela `horarios_funcionamento` no PostgreSQL da VPS
+- Inseridos horários padrão para a empresa 14 (Segunda a Sábado, 08:00-18:00)
+- Dashboard agora carrega os horários corretamente
+
+### CORREÇÃO DE USUÁRIOS NA VPS 🛠️
+- Script `migrar-usuarios-vps.js` criado para garantir usuários no PostgreSQL
+- Usuários migrados do SQLite para o PostgreSQL
+- Login funcionando com `luziasandraleal@hotmail.com / 123456`
+
+### CORREÇÃO DO ERRO `payment_mode` 📱
+- Adicionada coluna `payment_mode` na tabela `configuracoes`
+- Erro `column "payment_mode" does not exist` corrigido
+
+### REMOÇÃO DE DUPLICATA AUTOINCREMENT 🔧
+- Removida segunda ocorrência da criação da tabela `configuracoes` no `server.js`
+- Erro `syntax error at or near "AUTOINCREMENT"` corrigido
 
 =========================================
 ✅ IMPLEMENTADO (31/07/2026) - CORREÇÃO WHATSAPP PRÓPRIO E INSTÂNCIAS
@@ -200,6 +223,9 @@ ssh ubuntu@163.176.218.131 "pm2 restart seeagende --update-env"
 - Preservação de Horário: Horário é mantido ao selecionar serviço na agenda.
 - Nome das Instâncias: Agora usa formato `emp-{ID}-{NOME-DA-EMPRESA}`.
 - Envio WhatsApp no Agendamento: Usa `db.get` em vez de `pool.query`.
+- Horários na VPS: Tabela `horarios_funcionamento` criada com dados padrão.
+- Usuários na VPS: Script `migrar-usuarios-vps.js` para criar usuários.
+- Payment Mode: Coluna adicionada na tabela `configuracoes`.
 
 =========================================
 🗄️ ESTRUTURA DOS ARQUIVOS (Principais)
@@ -209,6 +235,7 @@ server/
 ├── middlewares/auth.js
 ├── services/whatsapp.js, evolution-instances.js, mercadopago.js
 ├── jobs/lembretes.js, reset-contador.js
+├── routes/ (13 arquivos - 100% extraídos)
 └── utils/constants.js, helpers.js
 
 public/js/pages/
@@ -220,7 +247,8 @@ public/js/pages/
 scripts/
 ├── migrate-vps.js (Script principal de migração segura)
 ├── migrate-whatsapp.js, migrate-whatsapp-pg.js
-└── corrigir-booleanos.js, corrigir-tofixed.js
+├── corrigir-booleanos.js, corrigir-tofixed.js
+└── migrar-usuarios-vps.js (Script para criar usuários na VPS)
 
 =========================================
 📋 PLANOS COMPLETOS
@@ -262,8 +290,14 @@ scp arquivo.js ubuntu@163.176.218.131:~/seeagende/pasta/
 # Enviar e reiniciar
 scp public/js/pages/clientes.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/ && ssh ubuntu@163.176.218.131 "cd ~/seeagende && pm2 restart seeagende --update-env"
 
+# Criar horários na VPS (se necessário)
+node scripts/criar-horarios-vps.js
+
+# Migrar usuários na VPS
+node scripts/migrar-usuarios-vps.js
+
 =========================================
-✅ STATUS ATUAL (31/07/2026)
+✅ STATUS ATUAL (08/08/2026)
 =========================================
 Tudo funcionando em AMBOS os bancos!
 ✅ SQLite (desenvolvimento local)
@@ -282,10 +316,13 @@ Tudo funcionando em AMBOS os bancos!
 ✅ Correção de Query Booleana no Chatbot
 ✅ INSTÂNCIAS COM NOME CORRETO (emp-ID-nome-empresa) ⭐
 ✅ ENVIO DE WHATSAPP NO AGENDAMENTO FUNCIONANDO ⭐
+✅ HORÁRIOS NA VPS FUNCIONANDO ⭐
+✅ USUÁRIOS NA VPS FUNCIONANDO ⭐
+✅ REFATORAÇÃO BACKEND 100% COMPLETA ⭐
 
 =========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 04/08/2026
+ULTIMA ATUALIZACAO: 08/08/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -300,36 +337,25 @@ USUARIOS:
 -----------------------------------------
 Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
+Dono Empresa 14: luziasandraleal@hotmail.com / 123456
 
 =========================================
-📋 STATUS DO PROJETO (04/08/2026)
+📋 STATUS DO PROJETO (08/08/2026)
 =========================================
 
-### ✅ O QUE JÁ FOI FEITO
+### ✅ CONCLUÍDO
 1. Mensagens WhatsApp melhoradas com Google Maps e Waze
 2. Configurações da empresa (nome, telefone, endereço)
-3. Refatoração do backend - 7 rotas extraídas (60% concluído)
+3. Refatoração do backend - 100% concluído
+4. Correção de horários na VPS
+5. Correção de usuários na VPS
+6. Correção do erro `payment_mode`
+7. Remoção de duplicata AUTOINCREMENT
 
-### 🔄 O QUE ESTÁ SENDO FEITO
-Refatoração do server.js - extração de rotas:
-- ✅ Auth (login/cadastro)
-- ✅ Empresa (dados, plano, endereço)
-- ✅ Serviços (CRUD)
-- ✅ Horários (funcionamento)
-- ✅ Profissionais (CRUD)
-- ✅ Clientes (CRUD + grupos)
-- ✅ Despesas (CRUD)
-- ⬜ Agendamentos (PRÓXIMO)
-- ⬜ Financeiro
-- ⬜ Admin
-- ⬜ WhatsApp
-- ⬜ Chatbot
-- ⬜ Pagamentos
-
-### 📋 COMO AJUDAR
-1. Continuar extraindo rotas do server.js
-2. Manter o padrão já estabelecido
-3. Testar localmente antes de subir para VPS
+### 📋 PRÓXIMOS PASSOS
+1. Monitorar logs da VPS
+2. Corrigir eventuais erros que aparecerem
+3. Manter documentação atualizada
 
 =========================================
 🔧 COMANDOS ÚTEIS
@@ -348,118 +374,13 @@ ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 50"
 =========================================
 WhatsApp (com Maps/Waze)      ✅ OK
 Configurações Empresa          ✅ OK
-Refatoração Backend            🔄 60%
+Refatoração Backend            ✅ 100%
 Agendamentos                   ✅ OK
 Financeiro                     ✅ OK
 Super Admin                    ✅ OK
-
-
----
-
-## 📄 **PARA_NOVA_IA.txt** (ATUALIZADO)
-
-```markdown
-=========================================
-GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 04/08/2026
-=========================================
-
-🚀 COMO EXECUTAR O PROJETO
------------------------------------------
-Modo Local (SQLite - Desenvolvimento)
-node -r dotenv/config server.js dotenv_config_path=.env.dev
-
-Modo com PostgreSQL (Teste com dados reais / Produção)
-node -r dotenv/config server.js dotenv_config_path=.env.local
-
-USUARIOS:
------------------------------------------
-Super Admin: super@admin.com / super123
-Dono: admin@teste.com / 123456
+Horários na VPS                ✅ OK
+Usuários na VPS                ✅ OK
 
 =========================================
-📋 STATUS DO PROJETO (04/08/2026)
-=========================================
-
-### ✅ REFATORAÇÃO COMPLETA (100%)
-
-Todas as rotas foram extraídas do server.js para arquivos separados:
-
-| Rota | Status |
-|------|--------|
-| Auth | ✅ |
-| Empresa | ✅ |
-| Serviços | ✅ |
-| Horários | ✅ |
-| Profissionais | ✅ |
-| Clientes | ✅ |
-| Despesas | ✅ |
-| Agendamentos | ✅ |
-| Financeiro | ✅ |
-| Admin | ✅ |
-| WhatsApp | ✅ |
-| Chatbot | ✅ |
-| Pagamentos | ✅ |
-| Planos | ✅ |
-
-### 📊 RESULTADO
-- server.js: ~8700 → ~350 linhas
-- 13 arquivos de rotas criados
-- Código 100% organizado
-
-### 🔧 CORREÇÕES REALIZADAS
-1. Mensagens WhatsApp com Maps/Waze
-2. Configurações da Empresa
-3. JWT_SECRET unificado
-4. Frontend com token no header
-5. Rotas de login atualizadas
-
-=========================================
-🔧 COMANDOS ÚTEIS
-=========================================
-# Rodar local
-node -r dotenv/config server.js dotenv_config_path=.env.dev
-
-# Atualizar VPS
-ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
-
-# Ver logs VPS
-ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 50"
-
-=========================================
-✅ STATUS DAS FUNCIONALIDADES
-=========================================
-WhatsApp (com Maps/Waze)      ✅ OK
-Configurações Empresa          ✅ OK
-Refatoração Backend            ✅ **100%**
-Agendamentos                   ✅ OK
-Financeiro                     ✅ OK
-Super Admin                    ✅ OK
-WhatsApp Multi-Instância       ✅ OK
-Grupos de Clientes             ✅ OK
-Busca Mobile Otimizada         ✅ OK
-Índice A-Z Clientes            ✅ OK
-Criação Auto. Instância (SA)   ✅ OK
-Envio WhatsApp no Agendamento  ✅ OK
-
-=========================================
-📋 PLANOS COMPLETOS
-=========================================
-Plano       Valor               Profissionais   WhatsApp Próprio
-Trial       Grátis (45 dias)    1                ❌
-Starter     R$ 29,90/mês        1                ❌
-Pro         R$ 59,90/mês        5                ❌
-Business    R$ 119,90/mês       15               ✅
-Enterprise  R$ 249,90/mês       Ilimitado        ✅
-
-=========================================
-🚀 COMO AJUDAR
-=========================================
-1. Manter o padrão de código já estabelecido
-2. Testar localmente antes de subir para VPS
-3. Usar `fetchWithAuth()` para requisições autenticadas
-4. Sempre filtrar por `empresa_id` nas queries
-
-=========================================
-ULTIMA ATUALIZACAO: 04/08/2026
+ULTIMA ATUALIZACAO: 08/08/2026
 =========================================
