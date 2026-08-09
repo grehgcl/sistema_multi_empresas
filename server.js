@@ -108,6 +108,10 @@ app.use(express.static('public'));
 // 🔥 ROTAS (TUDO EXTRAÍDO!)
 app.use('/api', routes);
 
+// 🔥 ADICIONAR ROTA WHATSAPP TAMBÉM EM /api/empresa/whatsapp PARA COMPATIBILIDADE
+const whatsappRoutes = require('./server/routes/whatsapp.routes');
+app.use('/api/empresa/whatsapp', whatsappRoutes);
+
 // ============================================================
 // FUNÇÕES AUXILIARES
 // ============================================================

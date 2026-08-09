@@ -196,7 +196,7 @@ async function buscarQrCode() {
   const token = localStorage.getItem('token');
   try {
     console.log('📱 Buscando QR Code...');
-    const res = await fetch('/api/empresa/whatsapp/qrcode', {
+    const res = await fetch('/api/whatsapp/qrcode', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     const data = await res.json();
@@ -284,11 +284,13 @@ async function desconectarWhatsApp() {
     try {
       const payload = JSON.parse(atob(token.split('.')[1]));
       empresaId = payload.empresa_id;
-    } catch (e) { console.error('Erro ao decodificar token', e); }
+    } catch (e) {
+      console.error('Erro ao decodificar token', e);
+    }
   }
 
   try {
-    // ✅ CORRIGIDO: URL CORRETA
+    // ✅ URL CORRETA
     const res = await fetch('/api/whatsapp/disconnect', {
       method: 'POST',
       headers: {
