@@ -215,16 +215,18 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // OBTER QR CODE - CORRIGIDO PARA v2
+    // OBTER QR CODE - CORRIGIDO
     // ============================================
 
     static async getQrCode(instanceName) {
         try {
+            console.log(`📱 Obtendo QR Code para ${instanceName}...`);
+
             const api = this.getApiClient();
 
             // 🔥 PRIMEIRO: Verificar status
             const status = await this.getStatus(instanceName);
-            console.log(`📊 Status da instância ${instanceName}:`, status);
+            console.log(`📊 Status da instância:`, status);
 
             if (status.connected) {
                 return {
@@ -235,14 +237,12 @@ class EvolutionInstances {
                 };
             }
 
-            // 🔥 SEGUNDO: Conectar e obter QR Code (POST, não GET!)
-            console.log(`📱 Solicitando QR Code para ${instanceName}...`);
+            // 🔥 SEGUNDO: Forçar conexão via POST (Evolution API v2)
+            console.log(`📱 Conectando instância ${instanceName}...`);
 
-            const response = await api.post(`/instance/connect/${instanceName}`, {
-                number: ''  // Pode ser vazio, a API vai gerar o QR
-            });
+            const response = await api.post(`/instance/connect/${instanceName}`, {});
 
-            console.log('📥 Resposta da Evolution:', response.data);
+            console.log('📥 Resposta da Evolution:', JSON.stringify(response.data, null, 2));
 
             // 🔥 EXTRAIR QR CODE
             let qrCode = null;
@@ -250,65 +250,64 @@ class EvolutionInstances {
             // Tenta diferentes formatos de resposta
             if (response.data?.qrcode) {
                 qrCode = response.data.qrcode;
-            } else if (response.data?.qrCode) {
-                qrCode = response.data.qrCode;
             } else if (response.data?.base64) {
                 qrCode = response.data.base64;
             } else if (response.data?.qr) {
                 qrCode = response.data.qr;
-            }
-
-            // Se veio como objeto com qrcode dentro
-            if (response.data?.data?.qrcode) {
+            } else if (response.data?.data?.qrcode) {
                 qrCode = response.data.data.qrcode;
             }
 
+            // Se não veio QR, tentar buscar diretamente
             if (!qrCode) {
-                // Verificar se já conectou
-                const newStatus = await this.getStatus(instanceName);
-                if (newStatus.connected) {
-                    return {
-                        success: true,
-                        alreadyConnected: true,
-                        message: 'Já conectado!',
-                        qrCode: null
-                    };
+                console.log(`📱 Tentando buscar QR via GET /instance/qrcode/${instanceName}...`);
+                try {
+                    const response2 = await api.get(`/instance/qrcode/${instanceName}`);
+                    console.log('📥 Resposta GET QR:', JSON.stringify(response2.data, null, 2));
+                    if (response2.data?.qrcode) {
+                        qrCode = response2.data.qrcode;
+                    }
+                } catch (err) {
+                    console.log('⚠️ GET /qrcode falhou:', err.message);
                 }
+            }
 
-                console.warn('⚠️ Nenhum QR Code encontrado na resposta:', response.data);
+            if (qrCode) {
                 return {
-                    success: false,
-                    message: 'QR Code não disponível. Aguarde alguns segundos e tente novamente.',
+                    success: true,
+                    qrCode: qrCode,
+                    alreadyConnected: false,
+                    message: 'QR Code gerado com sucesso!'
+                };
+            }
+
+            // Verificar se já conectou após a tentativa
+            const newStatus = await this.getStatus(instanceName);
+            if (newStatus.connected) {
+                return {
+                    success: true,
+                    alreadyConnected: true,
+                    message: 'Já conectado!',
                     qrCode: null
                 };
             }
 
             return {
-                success: true,
-                qrCode: qrCode,
-                alreadyConnected: false,
-                message: 'QR Code gerado com sucesso! Escaneie com o WhatsApp.'
+                success: false,
+                message: 'QR Code não disponível. Aguarde alguns segundos e tente novamente.',
+                qrCode: null
             };
 
         } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error.message);
             console.error('📥 Detalhes:', error.response?.data || error.message);
 
-            // Se a instância não existe
-            if (error.response?.status === 404) {
+            // Se for erro 403 ou 401, log específico
+            if (error.response?.status === 403 || error.response?.status === 401) {
+                console.error('🔑 ERRO DE AUTENTICAÇÃO NA EVOLUTION API! Verifique a API Key.');
                 return {
                     success: false,
-                    message: 'Instância não encontrada. Crie uma nova.',
-                    qrCode: null
-                };
-            }
-
-            // Se já está conectado
-            if (error.response?.data?.message?.includes('already connected')) {
-                return {
-                    success: true,
-                    alreadyConnected: true,
-                    message: 'Já conectado!',
+                    message: 'Erro de autenticação com a Evolution API. Verifique a chave.',
                     qrCode: null
                 };
             }
@@ -320,7 +319,6 @@ class EvolutionInstances {
             };
         }
     }
-
     // ============================================
     // VERIFICAR STATUS
     // ============================================
