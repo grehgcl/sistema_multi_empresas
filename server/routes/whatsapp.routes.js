@@ -51,19 +51,27 @@ router.get('/info', auth, (req, res) => {
 });
 
 // ============================================
-// POST /api/empresa/whatsapp/criar-instancia
+// POST /api/whatsapp/criar-instancia - CORRIGIDO
 // ============================================
 router.post('/criar-instancia', auth, async (req, res) => {
     try {
-        const empresaId = req.usuario.empresa_id;
-        const { telefone } = req.body;
+        // 🔥 CORRIGIDO: Usar req.user em vez de req.usuario
+        const empresaId = req.user?.empresa_id || req.usuario?.empresa_id;
+
+        if (!empresaId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Empresa não identificada'
+            });
+        }
 
         console.log(`📱 Criando instância para empresa ${empresaId}`);
 
+        // Buscar nome da empresa
         const empresa = await new Promise((resolve, reject) => {
             const sql = isProduction
-                ? 'SELECT nome FROM empresas WHERE id = $1'
-                : 'SELECT nome FROM empresas WHERE id = ?';
+                ? 'SELECT nome, telefone_dono FROM empresas WHERE id = $1'
+                : 'SELECT nome, telefone_dono FROM empresas WHERE id = ?';
             db.get(sql, [empresaId], (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
@@ -77,75 +85,40 @@ router.post('/criar-instancia', auth, async (req, res) => {
             });
         }
 
-        const nomeLimpo = empresa.nome
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/[^a-z0-9]/g, '-')
-            .replace(/-+/g, '-')
-            .replace(/^-|-$/g, '');
-
-        const instanceName = `emp-${empresaId}-${nomeLimpo}`;
-
-        console.log(`📱 Nome da instância: ${instanceName}`);
-
-        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-        const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
-
-        try {
-            const checkResponse = await axios.get(
-                `${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`,
-                { headers: { 'apikey': EVOLUTION_API_KEY } }
-            );
-
-            if (checkResponse.data?.instance?.state === 'open') {
-                return res.json({
-                    success: true,
-                    message: 'Instância já existe e está conectada!',
-                    instanceName: instanceName,
-                    alreadyExists: true
-                });
-            }
-        } catch (e) {
-            console.log('📱 Instância não encontrada, criando nova...');
-        }
-
-        const response = await axios.post(
-            `${EVOLUTION_API_URL}/instance/create`,
-            {
-                instanceName: instanceName,
-                number: telefone?.replace(/\D/g, '') || '',
-                qrcode: true,
-                integration: "WHATSAPP-BAILEYS"
-            },
-            {
-                headers: {
-                    'apikey': EVOLUTION_API_KEY,
-                    'Content-Type': 'application/json'
-                }
-            }
+        // 🔥 USAR O SERVICE CORRETO
+        const EvolutionInstances = require('../services/evolution-instances');
+        const resultado = await EvolutionInstances.criarInstancia(
+            empresaId,
+            empresa.nome,
+            empresa.telefone_dono
         );
 
-        const sqlUpdate = isProduction
-            ? 'UPDATE empresas SET whatsapp_instance = $1, whatsapp_proprio_habilitado = true WHERE id = $2'
-            : 'UPDATE empresas SET whatsapp_instance = ?, whatsapp_proprio_habilitado = 1 WHERE id = ?';
+        console.log(`📥 Resultado:`, resultado);
 
-        await new Promise((resolve, reject) => {
-            db.run(sqlUpdate, [instanceName, empresaId], (err) => {
-                if (err) reject(err);
-                else resolve();
+        if (resultado.success) {
+            // Salvar no banco
+            await new Promise((resolve) => {
+                const sqlUpdate = isProduction
+                    ? 'UPDATE empresas SET whatsapp_instance = $1, whatsapp_proprio_habilitado = true WHERE id = $2'
+                    : 'UPDATE empresas SET whatsapp_instance = ?, whatsapp_proprio_habilitado = 1 WHERE id = ?';
+                db.run(sqlUpdate, [resultado.instanceName, empresaId], () => resolve());
             });
-        });
 
-        res.json({
-            success: true,
-            message: 'Instância criada com sucesso!',
-            instanceName: instanceName,
-            data: response.data
+            return res.json({
+                success: true,
+                message: 'Instância criada com sucesso!',
+                instanceName: resultado.instanceName,
+                qrCode: resultado.qrCode || null
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: resultado.message || 'Erro ao criar instância'
         });
 
     } catch (error) {
-        console.error('❌ Erro ao criar instância:', error.message);
+        console.error('❌ Erro ao criar instância:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Erro ao criar instância'

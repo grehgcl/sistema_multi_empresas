@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // MIDDLEWARES - COMPLETO COM LIMITE DE AGENDAMENTOS
 // ============================================
 
@@ -17,10 +17,11 @@ function auth(req, res, next) {
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.usuario = decoded;
+        req.user = decoded;  // 🔥 USAR req.user
+        req.usuario = decoded; // 🔥 TAMBÉM PARA COMPATIBILIDADE
         next();
     } catch (err) {
-        res.status(401).json({ success: false, message: 'Token inválido' });
+        return res.status(401).json({ success: false, message: 'Token inválido' });
     }
 }
 
