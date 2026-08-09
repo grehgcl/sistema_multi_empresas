@@ -106,7 +106,7 @@ router.post('/login', (req, res) => {
 });
 
 // ============================================
-// POST /api/cadastro - CORRIGIDO
+// POST /api/cadastro - CORRIGIDO COM HORÁRIOS
 // ============================================
 router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, empresa_nome, telefone } = req.body;
@@ -143,7 +143,6 @@ router.post('/cadastro', async (req, res) => {
 
         const empresaId = await new Promise((resolve, reject) => {
             db.run(
-                // 🔥 CORRIGIDO: datetime('now') -> NOW()
                 "INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, created_at) VALUES (?, 'trial', 1, ?, NOW())",
                 [empresa_nome, trialExpira.toISOString()],
                 function (err) {
@@ -153,10 +152,28 @@ router.post('/cadastro', async (req, res) => {
             );
         });
 
+        // 🔥 CRIAR HORÁRIOS PADRÃO PARA A EMPRESA
+        const diasSemana = [0, 1, 2, 3, 4, 5, 6];
+        for (const dia of diasSemana) {
+            const aberto = dia !== 0 && dia !== 6;
+            await new Promise((resolve, reject) => {
+                db.run(
+                    `INSERT INTO horarios_funcionamento 
+                     (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim) 
+                     VALUES (?, ?, ?, '08:00:00', '18:00:00', '12:00:00', '13:00:00')`,
+                    [empresaId, dia, aberto],
+                    function (err) {
+                        if (err) reject(err);
+                        else resolve(this);
+                    }
+                );
+            });
+        }
+        console.log(`✅ Horários padrão criados para empresa ${empresaId}`);
+
         // Criar usuário (dono)
         const usuarioId = await new Promise((resolve, reject) => {
             db.run(
-                // 🔥 CORRIGIDO: datetime('now') -> NOW()
                 "INSERT INTO usuarios (nome, email, senha, role, empresa_id, created_at) VALUES (?, ?, ?, 'dono', ?, NOW())",
                 [nome, email, senhaHash, empresaId],
                 function (err) {
