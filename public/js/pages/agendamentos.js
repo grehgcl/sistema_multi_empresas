@@ -1,10 +1,38 @@
 ﻿// ============================================
-// PÁGINA AGENDAMENTOS - VERSÃO CORRIGIDA
+// PÁGINA AGENDAMENTOS - VERSÃO COMPLETA COM PAGAMENTO
 // ============================================
 
 let profissionaisList = [];
 let clientesList = [];
 let servicosList = [];
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const p = dataStr.split('-');
+            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+        }
+        return dataStr;
+    } catch {
+        return dataStr;
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================
+// CARREGAR AGENDAMENTOS
+// ============================================
 
 async function carregarAgendamentos() {
     if (typeof window.carregarCSS === 'function') {
@@ -942,8 +970,6 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
     }
 }
 
-// public/js/pages/agendamentos.js
-
 // ============================================
 // FUNÇÃO: ABRIR MODAL NOVO AGENDAMENTO - CORRIGIDO
 // ============================================
@@ -1342,119 +1368,13 @@ function atualizarValorPorServicoDono() {
 }
 
 // ============================================
-// SALVAR AGENDAMENTO
-// ============================================
-
-async function salvarAgendamentoDono() {
-    const cliente_id = document.getElementById("clienteIdDono").value;
-    const data = document.getElementById("dataAgendamentoDono").value;
-    const hora = document.getElementById("horaAgendamentoDono").value;
-    const servico_id = document.getElementById("servicoIdDono").value;
-    const servico_descricao = document.getElementById("servicoDescricaoDono").value;
-    const valor = document.getElementById("valorAgendamentoDono").value;
-    const profissional_id = document.getElementById("profissionalIdDono").value;
-
-    if (!cliente_id || !data) {
-        showToast("Cliente e data são obrigatórios", "warning");
-        return;
-    }
-
-    if (!hora || hora === '') {
-        showToast("Selecione um horário", "warning");
-        return;
-    }
-
-    showLoading();
-
-    const token = localStorage.getItem("token");
-    const body = {
-        cliente_id: parseInt(cliente_id),
-        data: data,
-        hora: hora,
-        valor: parseFloat(valor) || 0,
-        profissional_id: profissional_id ? parseInt(profissional_id) : null
-    };
-
-    if (servico_id && servico_id !== '') {
-        body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao && servico_descricao.trim() !== '') {
-        body.servico = servico_descricao.trim();
-    }
-
-    try {
-        const res = await fetch("/api/agendamentos", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-
-        if (result.success) {
-            showToast("✅ Agendamento criado!", "success");
-            fecharModalAgendamentoDono();
-
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-
-            if (typeof carregarAgendamentos === 'function') {
-                carregarAgendamentos();
-            }
-        } else {
-            showToast("❌ Erro: " + result.message, "error");
-        }
-    } catch (error) {
-        console.error("❌ Erro:", error);
-        showToast("❌ Erro ao criar agendamento", "error");
-    }
-
-    hideLoading();
-}
-
-// ============================================
-// CONCLUIR AGENDAMENTO
+// FUNÇÃO: CONCLUIR AGENDAMENTO
 // ============================================
 
 async function concluirAgendamento(id) {
-    if (!confirm("Concluir este agendamento?")) return;
-
-    showLoading();
-    const token = localStorage.getItem("token");
-
-    try {
-        const res = await fetch(`/api/agendamentos/${id}/concluir`, {
-            method: "PUT",
-            headers: { "Authorization": "Bearer " + token }
-        });
-        const result = await res.json();
-
-        if (result.success) {
-            showToast(result.message, "success");
-            carregarAgendamentos();
-
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-
-            if (typeof carregarFinanceiro === "function") {
-                const btnFinanceiro = document.getElementById("btnFinanceiro");
-                if (btnFinanceiro && btnFinanceiro.classList.contains("active")) {
-                    carregarFinanceiro();
-                }
-            }
-        } else {
-            showToast("Erro: " + result.message, "error");
-        }
-    } catch (error) {
-        console.error("Erro:", error);
-        showToast("Erro ao concluir", "error");
-    }
-
-    hideLoading();
+    console.log('🔥 Concluir agendamento chamado para ID:', id);
+    // 🔥 ABRIR O MODAL DE PAGAMENTO
+    abrirModalPagamento(id);
 }
 
 // ============================================
@@ -1931,67 +1851,6 @@ function atualizarValorPorServicoEditDono() {
     }
 }
 
-async function salvarEdicaoAgendamentoDono(id) {
-    const cliente_id = document.getElementById("editClienteIdDono").value;
-    const data = document.getElementById("editDataAgendamentoDono").value;
-    const hora = document.getElementById("editHoraAgendamentoDono").value;
-    const servico_id = document.getElementById("editServicoIdDono").value;
-    const servico_descricao = document.getElementById("editServicoDescricaoDono").value;
-    const valor = document.getElementById("editValorAgendamentoDono").value;
-    const profissional_id = document.getElementById("editProfissionalIdDono").value;
-
-    if (!cliente_id || !data) {
-        showToast("Cliente e data são obrigatórios", "warning");
-        return;
-    }
-
-    showLoading();
-
-    const token = localStorage.getItem("token");
-    const body = {
-        cliente_id: parseInt(cliente_id),
-        data: data,
-        hora: hora,
-        valor: parseFloat(valor) || 0,
-        profissional_id: profissional_id ? parseInt(profissional_id) : null
-    };
-
-    if (servico_id && servico_id !== '') {
-        body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao && servico_descricao.trim() !== '') {
-        body.servico = servico_descricao.trim();
-    }
-
-    try {
-        const res = await fetch(`/api/agendamentos/${id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-
-        if (result.success) {
-            showToast("Agendamento atualizado!", "success");
-            fecharModalEditarAgendamentoDono();
-            carregarAgendamentos();
-
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-        } else {
-            showToast("Erro: " + result.message, "error");
-        }
-    } catch (error) {
-        console.error("Erro:", error);
-        showToast("Erro ao atualizar", "error");
-    }
-
-    hideLoading();
-}
 // ============================================
 // 🔥 SERVIÇOS EXTRAS - FUNÇÕES
 // ============================================
@@ -2392,6 +2251,309 @@ function salvarExtrasModal(agendamentoId) {
         }
     }
 }
+
+// ============================================
+// 🔥 FUNÇÃO: ABRIR MODAL DE PAGAMENTO
+// ============================================
+
+function abrirModalPagamento(agendamentoId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('Faça login novamente', 'error');
+        return;
+    }
+
+    // Buscar dados do agendamento
+    fetch('/api/agendamentos', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                showToast('Erro ao carregar dados', 'error');
+                return;
+            }
+
+            const agendamento = data.data.find(a => a.id === agendamentoId);
+            if (!agendamento) {
+                showToast('Agendamento não encontrado', 'error');
+                return;
+            }
+
+            // Montar modal
+            const modalHtml = `
+            <div id="modalPagamento" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+            ">
+                <div style="
+                    background: var(--bg-card);
+                    border-radius: 16px;
+                    padding: 24px;
+                    max-width: 420px;
+                    width: 100%;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                ">
+                    <h3 style="margin: 0 0 16px 0;">💰 Forma de Pagamento</h3>
+                    
+                    <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: 8px;">
+                        <p style="margin: 4px 0;"><strong>Cliente:</strong> ${agendamento.cliente_nome || 'N/A'}</p>
+                        <p style="margin: 4px 0;"><strong>Serviço:</strong> ${agendamento.servico_nome || agendamento.servico || 'N/A'}</p>
+                        <p style="margin: 4px 0;"><strong>Valor:</strong> R$ ${(parseFloat(agendamento.valor) || 0).toFixed(2)}</p>
+                    </div>
+                    
+                    <input type="hidden" id="formaPagamentoSelecionada" value="dinheiro">
+                    
+                    <div style="margin-bottom: 16px;">
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('dinheiro')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--primary);
+                            background: rgba(102,126,234,0.1);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">💰 Dinheiro</span>
+                            <span style="margin-left:auto;color:var(--primary);"><i class="fas fa-check-circle"></i></span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('pix')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">📱 Pix</span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('debito')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">💳 Débito</span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('credito')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">💳 Crédito</span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('prazo')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">📝 A Prazo (Fiado)</span>
+                        </div>
+                    </div>
+                    
+                    <div id="prazoContainer" style="display: none; margin-bottom: 16px;">
+                        <label style="display:block;margin-bottom:4px;">Prazo:</label>
+                        <select id="prazoDiasSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+                            <option value="10">10 dias</option>
+                            <option value="15">15 dias</option>
+                            <option value="30">30 dias</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;">
+                        <button onclick="fecharModalPagamento()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;cursor:pointer;">
+                            Cancelar
+                        </button>
+                        <button onclick="salvarFormaPagamento(${agendamentoId})" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;cursor:pointer;">
+                            Salvar e Concluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+            // Remover modal existente
+            const existing = document.getElementById('modalPagamento');
+            if (existing) existing.remove();
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        })
+        .catch(err => {
+            console.error('❌ Erro:', err);
+            showToast('Erro ao carregar dados', 'error');
+        });
+}
+
+// ============================================
+// 🔥 FUNÇÃO: SELECIONAR FORMA DE PAGAMENTO - CORRIGIDA
+// ============================================
+
+function selecionarFormaPagamento(forma) {
+    console.log('🔥 Selecionando forma:', forma);
+
+    // 🔥 PROCURAR O HIDDEN FIELD
+    let hiddenInput = document.getElementById('formaPagamentoSelecionada');
+
+    // 🔥 SE NÃO EXISTIR, CRIAR
+    if (!hiddenInput) {
+        console.log('⚠️ Hidden field não encontrado, criando...');
+        hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'formaPagamentoSelecionada';
+        hiddenInput.value = 'dinheiro';
+        document.body.appendChild(hiddenInput);
+        console.log('✅ Hidden field criado!');
+    }
+
+    // 🔥 ATUALIZAR O VALOR
+    hiddenInput.value = forma;
+    console.log('✅ Hidden field agora é:', hiddenInput.value);
+
+    // Atualizar visual das opções
+    const opcoes = document.querySelectorAll('.opcao-pagamento');
+    opcoes.forEach(el => {
+        el.style.borderColor = 'var(--border-color)';
+        el.style.background = 'var(--bg-hover)';
+        const check = el.querySelector('.fa-check-circle');
+        if (check) check.remove();
+    });
+
+    // Marcar a opção selecionada
+    const selecionado = document.querySelector(`.opcao-pagamento[onclick*="${forma}"]`);
+    if (selecionado) {
+        selecionado.style.borderColor = 'var(--primary)';
+        selecionado.style.background = 'rgba(102,126,234,0.1)';
+        if (!selecionado.querySelector('.fa-check-circle')) {
+            selecionado.insertAdjacentHTML('beforeend', '<span style="margin-left:auto;color:var(--primary);"><i class="fas fa-check-circle"></i></span>');
+        }
+    }
+
+    // Mostrar/esconder prazo
+    const prazoContainer = document.getElementById('prazoContainer');
+    if (prazoContainer) {
+        prazoContainer.style.display = forma === 'prazo' ? 'block' : 'none';
+    }
+}
+
+// ============================================
+// 🔥 FUNÇÃO: FECHAR MODAL PAGAMENTO
+// ============================================
+
+function fecharModalPagamento() {
+    const modal = document.getElementById('modalPagamento');
+    if (modal) modal.remove();
+}
+
+// ============================================
+// 🔥 FUNÇÃO: SALVAR FORMA DE PAGAMENTO - CORRIGIDA
+// ============================================
+
+async function salvarFormaPagamento(agendamentoId) {
+    // 🔥 PROCURAR O HIDDEN FIELD
+    let hiddenInput = document.getElementById('formaPagamentoSelecionada');
+
+    // 🔥 SE NÃO EXISTIR, CRIAR
+    if (!hiddenInput) {
+        console.log('⚠️ Hidden field não encontrado, criando...');
+        hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'formaPagamentoSelecionada';
+        hiddenInput.value = 'dinheiro';
+        document.body.appendChild(hiddenInput);
+    }
+
+    const formaPagamento = hiddenInput.value || 'dinheiro';
+    console.log('🔥 Forma de pagamento selecionada:', formaPagamento);
+
+    const prazoDias = parseInt(document.getElementById('prazoDiasSelect')?.value || 0);
+
+    if (!formaPagamento) {
+        showToast('Selecione uma forma de pagamento', 'warning');
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const body = {
+            forma_pagamento: formaPagamento,
+            prazo_dias: prazoDias,
+            data_vencimento: null,
+            descricao_pagamento: ''
+        };
+
+        console.log('📤 Enviando pagamento:', body);
+
+        const res = await fetch(`/api/agendamentos/${agendamentoId}/pagamento`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(body)
+        });
+
+        const result = await res.json();
+        console.log('📥 Resposta:', result);
+
+        if (result.success) {
+            fecharModalPagamento();
+            showToast('✅ Pagamento registrado e agendamento concluído!', 'success');
+
+            if (typeof carregarAgendamentos === 'function') {
+                await carregarAgendamentos();
+            }
+            if (typeof carregarFinanceiro === 'function') {
+                const btnFinanceiro = document.getElementById('btnFinanceiro');
+                if (btnFinanceiro && btnFinanceiro.classList.contains('active')) {
+                    await carregarFinanceiro();
+                }
+            }
+        } else {
+            showToast('❌ Erro: ' + (result.message || 'Erro ao salvar'), 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        showToast('❌ Erro ao salvar pagamento', 'error');
+    }
+
+    hideLoading();
+}
+
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -2419,5 +2581,9 @@ window.fecharModalExtras = fecharModalExtras;
 window.adicionarExtraNoModal = adicionarExtraNoModal;
 window.removerExtraDoModal = removerExtraDoModal;
 window.salvarExtrasModal = salvarExtrasModal;
+window.abrirModalPagamento = abrirModalPagamento;
+window.selecionarFormaPagamento = selecionarFormaPagamento;
+window.fecharModalPagamento = fecharModalPagamento;
+window.salvarFormaPagamento = salvarFormaPagamento;
 
 console.log('✅ agendamentos.js carregado com sucesso!');

@@ -1,5 +1,5 @@
 ﻿// ============================================
-// FINANCEIRO V2 - COMPLETO COM TODAS AS TABS
+// FINANCEIRO V2 - COMPLETO COM FORMAS DE PAGAMENTO
 // ============================================
 
 // ============================================
@@ -42,6 +42,32 @@ let filtroAnoReceitas = null;
 let despesaEditandoId = null;
 
 // ============================================
+// MAPEAMENTO DE FORMAS DE PAGAMENTO
+// ============================================
+
+const pagamentoLabels = {
+    'dinheiro': '💰 Dinheiro',
+    'pix': '📱 Pix',
+    'debito': '💳 Débito',
+    'credito': '💳 Crédito',
+    'prazo': '📝 Fiado',
+    '': '❓ Não informado',
+    'null': '❓ Não informado',
+    'undefined': '❓ Não informado'
+};
+
+const pagamentoCores = {
+    'dinheiro': '#22c55e',
+    'pix': '#3b82f6',
+    'debito': '#8b5cf6',
+    'credito': '#f59e0b',
+    'prazo': '#ef4444',
+    '': 'var(--text-muted)',
+    'null': 'var(--text-muted)',
+    'undefined': 'var(--text-muted)'
+};
+
+// ============================================
 // FUNÇÕES AUXILIARES
 // ============================================
 
@@ -68,7 +94,7 @@ function escapeHtml(text) {
 }
 
 // ============================================
-// CARREGAR FINANCEIRO - CORRIGIDO
+// CARREGAR FINANCEIRO
 // ============================================
 
 async function carregarFinanceiro() {
@@ -112,7 +138,6 @@ async function carregarFinanceiro() {
         console.log('📊 Receitas Result:', receitasResult);
         console.log('📊 Comparativo Result:', comparativoResult);
 
-        // Processar despesas
         let despesasProcessadas = { totais: { total: 0, pago: 0, pendente: 0 }, despesas: [] };
 
         if (despesasResult.success) {
@@ -189,7 +214,7 @@ async function carregarFinanceiro() {
 }
 
 // ============================================
-// RENDERIZAR FINANCEIRO V2 - MAIS OBJETIVO
+// RENDERIZAR FINANCEIRO V2
 // ============================================
 
 function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usuario) {
@@ -426,7 +451,7 @@ function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usu
                     </div>
                 </div>
 
-                <!-- ANÁLISE RÁPIDA E COMPARATIVO -->
+                <!-- ANÁLISE RÁPIDA -->
                 <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:${isMobile ? '10px' : '16px'};margin-bottom:${isMobile ? '12px' : '16px'};">
                     <div style="background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};border:1px solid var(--border-color);">
                         <h4 style="font-size:${isMobile ? '14px' : '16px'};margin:0 0 ${isMobile ? '8px' : '12px'} 0;display:flex;align-items:center;gap:8px;">
@@ -634,7 +659,7 @@ function renderizarVisaoProfissional(financeiro, isMobile) {
 }
 
 // ============================================
-// RENDER TABS (RECEITAS, DESPESAS, COMISSÕES, ANÁLISE)
+// RENDER TABS
 // ============================================
 
 function renderTabReceitas(isMobile) {
@@ -823,7 +848,7 @@ function renderTabAnaliseDiaria(isMobile) {
 }
 
 // ============================================
-// CARREGAR RECEITAS - FUNÇÃO PRINCIPAL
+// CARREGAR RECEITAS - COM FORMA DE PAGAMENTO
 // ============================================
 
 async function carregarReceitas() {
@@ -862,9 +887,70 @@ async function carregarReceitas() {
                 return;
             }
 
-            let html = `
+            // ============================================
+            // 🔥 AGRUPAR POR FORMA DE PAGAMENTO
+            // ============================================
+            const agrupado = {
+                dinheiro: { total: 0, count: 0 },
+                pix: { total: 0, count: 0 },
+                debito: { total: 0, count: 0 },
+                credito: { total: 0, count: 0 },
+                prazo: { total: 0, count: 0 },
+                nao_informado: { total: 0, count: 0 }
+            };
+
+            for (let item of lista) {
+                const forma = item.forma_pagamento || '';
+                const valor = toNumber(item.valor_total) || toNumber(item.valor) || 0;
+
+                if (forma === 'dinheiro') { agrupado.dinheiro.total += valor; agrupado.dinheiro.count++; }
+                else if (forma === 'pix') { agrupado.pix.total += valor; agrupado.pix.count++; }
+                else if (forma === 'debito') { agrupado.debito.total += valor; agrupado.debito.count++; }
+                else if (forma === 'credito') { agrupado.credito.total += valor; agrupado.credito.count++; }
+                else if (forma === 'prazo') { agrupado.prazo.total += valor; agrupado.prazo.count++; }
+                else { agrupado.nao_informado.total += valor; agrupado.nao_informado.count++; }
+            }
+
+            // ============================================
+            // 🔥 RESUMO POR FORMA DE PAGAMENTO
+            // ============================================
+            const resumoHtml = `
                 <div style="
-                    padding: ${isMobile ? '12px' : '14px'};
+                    display: grid;
+                    grid-template-columns: ${isMobile ? '1fr 1fr' : 'repeat(5, 1fr)'};
+                    gap: ${isMobile ? '6px' : '8px'};
+                    margin-bottom: ${isMobile ? '12px' : '16px'};
+                ">
+                    ${[
+                    { id: 'dinheiro', label: '💰 Dinheiro', data: agrupado.dinheiro, color: '#22c55e' },
+                    { id: 'pix', label: '📱 Pix', data: agrupado.pix, color: '#3b82f6' },
+                    { id: 'debito', label: '💳 Débito', data: agrupado.debito, color: '#8b5cf6' },
+                    { id: 'credito', label: '💳 Crédito', data: agrupado.credito, color: '#f59e0b' },
+                    { id: 'prazo', label: '📝 Fiado', data: agrupado.prazo, color: '#ef4444' }
+                ].map(p => `
+                        <div style="
+                            background: var(--bg-hover);
+                            border-radius: ${isMobile ? '8px' : '10px'};
+                            padding: ${isMobile ? '8px' : '12px'};
+                            text-align: center;
+                            border: 1px solid ${p.data.total > 0 ? p.color : 'var(--border-color)'}33;
+                        ">
+                            <div style="font-size: ${isMobile ? '10px' : '11px'}; color: var(--text-muted);">${p.label}</div>
+                            <div style="font-size: ${isMobile ? '16px' : '18px'}; font-weight: 700; color: ${p.data.total > 0 ? p.color : 'var(--text-muted)'};">
+                                R$ ${p.data.total.toFixed(2)}
+                            </div>
+                            ${p.data.count > 0 ? `<div style="font-size: 9px; color: var(--text-muted);">${p.data.count} serviço(s)</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Total geral
+            let html = resumoHtml;
+
+            html += `
+                <div style="
+                    padding: ${isMobile ? '10px' : '12px'};
                     background: var(--bg-hover);
                     border-radius: 10px;
                     margin-bottom: 14px;
@@ -875,7 +961,7 @@ async function carregarReceitas() {
                     gap: 8px;
                 ">
                     <span style="font-weight: 600; font-size: ${isMobile ? '14px' : '16px'};">
-                        Total: <span style="color: #22c55e;">R$ ${total.toFixed(2)}</span>
+                        Total Geral: <span style="color: #22c55e;">R$ ${total.toFixed(2)}</span>
                     </span>
                     <span style="font-size: ${isMobile ? '12px' : '14px'}; color: var(--text-muted);">
                         ${lista.length} ${lista.length === 1 ? 'serviço' : 'serviços'}
@@ -883,15 +969,22 @@ async function carregarReceitas() {
                 </div>
             `;
 
+            // ============================================
+            // 🔥 LISTA DE RECEITAS COM FORMA DE PAGAMENTO
+            // ============================================
             if (isMobile) {
                 html += `<div style="display: flex; flex-direction: column; gap: 10px;">`;
                 for (let item of lista) {
+                    const forma = item.forma_pagamento || '';
+                    const label = pagamentoLabels[forma] || '❓ Não informado';
+                    const cor = pagamentoCores[forma] || 'var(--text-muted)';
+
                     html += `
                         <div style="
                             background: var(--bg-card);
                             border-radius: 12px;
                             padding: 14px 16px;
-                            border: 1px solid var(--border-color);
+                            border: 1px solid ${cor}33;
                             box-shadow: 0 2px 8px rgba(0,0,0,0.04);
                         ">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
@@ -909,6 +1002,7 @@ async function carregarReceitas() {
                             </div>
                             <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); border-top: 1px solid var(--border-color); padding-top: 8px;">
                                 <span>📅 ${formatarDataBr(item.data)}</span>
+                                <span style="color: ${cor}; font-weight: 600;">${label}</span>
                                 ${item.profissional_id ? `<span>👨‍💼 ${escapeHtml(item.profissional_nome || 'Profissional')}</span>` : ''}
                             </div>
                         </div>
@@ -925,17 +1019,26 @@ async function carregarReceitas() {
                                     <th>👤 Cliente</th>
                                     <th>✂️ Serviço</th>
                                     <th>💰 Valor</th>
+                                    <th>💳 Pagamento</th>
+                                    <th>👨‍💼 Profissional</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${lista.map(item => `
-                                    <tr>
-                                        <td>${formatarDataBr(item.data)}</td>
-                                        <td><strong>${escapeHtml(item.cliente_nome || 'Cliente')}</strong></td>
-                                        <td>${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
-                                        <td><span style="color:#22c55e;font-weight:700;">R$ ${(toNumber(item.valor_total) || toNumber(item.valor) || 0).toFixed(2)}</span></td>
-                                    </tr>
-                                `).join('')}
+                                ${lista.map(item => {
+                    const forma = item.forma_pagamento || '';
+                    const label = pagamentoLabels[forma] || '❓ Não informado';
+                    const cor = pagamentoCores[forma] || 'var(--text-muted)';
+                    return `
+                                        <tr>
+                                            <td>${formatarDataBr(item.data)}</td>
+                                            <td><strong>${escapeHtml(item.cliente_nome || 'Cliente')}</strong></td>
+                                            <td>${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
+                                            <td><span style="color:#22c55e;font-weight:700;">R$ ${(toNumber(item.valor_total) || toNumber(item.valor) || 0).toFixed(2)}</span></td>
+                                            <td><span style="color:${cor};font-weight:600;">${label}</span></td>
+                                            <td>${item.profissional_id ? escapeHtml(item.profissional_nome || 'Profissional') : '-'}</td>
+                                        </tr>
+                                    `;
+                }).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -960,6 +1063,66 @@ async function carregarReceitas() {
             `;
         }
     }
+}
+
+// ============================================
+// SWITCH TABS
+// ============================================
+
+function switchFinanceiroTab(tab) {
+    document.querySelectorAll('.config-tab').forEach(t => {
+        t.classList.remove('active');
+        t.style.background = 'transparent';
+        t.style.color = 'var(--text-secondary)';
+        t.style.boxShadow = 'none';
+    });
+
+    const tabs = document.querySelectorAll('.config-tab');
+    const index = ['resumo', 'receitas', 'despesas', 'profissionais', 'analise'].indexOf(tab);
+    if (tabs[index]) {
+        tabs[index].classList.add('active');
+        tabs[index].style.background = 'var(--gradient)';
+        tabs[index].style.color = 'white';
+        tabs[index].style.boxShadow = '0 4px 12px rgba(102,126,234,0.3)';
+    }
+
+    const isMobile = window.innerWidth < 768;
+
+    switch (tab) {
+        case 'resumo':
+            carregarFinanceiro();
+            break;
+        case 'receitas':
+            document.getElementById('financeiroContent').innerHTML = renderTabReceitas(isMobile);
+            carregarReceitas();
+            break;
+        case 'despesas':
+            document.getElementById('financeiroContent').innerHTML = renderTabDespesas(isMobile);
+            carregarDespesasTab();
+            break;
+        case 'profissionais':
+            document.getElementById('financeiroContent').innerHTML = renderTabComissoes(isMobile);
+            carregarComissoesTab();
+            break;
+        case 'analise':
+            document.getElementById('financeiroContent').innerHTML = renderTabAnaliseDiaria(isMobile);
+            carregarAnaliseDiaria();
+            break;
+        default:
+            break;
+    }
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES DAS TABS
+// ============================================
+
+function aplicarFiltroReceitas() {
+    carregarReceitas();
+}
+
+function aplicarFiltrosDespesasTab() {
+    carregarDespesasTab();
 }
 
 // ============================================
@@ -1436,257 +1599,11 @@ async function carregarAnaliseDiaria() {
 }
 
 // ============================================
-// SWITCH TABS - CORRIGIDO
-// ============================================
-
-function switchFinanceiroTab(tab) {
-    document.querySelectorAll('.config-tab').forEach(t => {
-        t.classList.remove('active');
-        t.style.background = 'transparent';
-        t.style.color = 'var(--text-secondary)';
-        t.style.boxShadow = 'none';
-    });
-
-    const tabs = document.querySelectorAll('.config-tab');
-    const index = ['resumo', 'receitas', 'despesas', 'profissionais', 'analise'].indexOf(tab);
-    if (tabs[index]) {
-        tabs[index].classList.add('active');
-        tabs[index].style.background = 'var(--gradient)';
-        tabs[index].style.color = 'white';
-        tabs[index].style.boxShadow = '0 4px 12px rgba(102,126,234,0.3)';
-    }
-
-    const isMobile = window.innerWidth < 768;
-
-    switch (tab) {
-        case 'resumo':
-            carregarFinanceiro();
-            break;
-        case 'receitas':
-            document.getElementById('financeiroContent').innerHTML = renderTabReceitas(isMobile);
-            carregarReceitas();
-            break;
-        case 'despesas':
-            document.getElementById('financeiroContent').innerHTML = renderTabDespesas(isMobile);
-            carregarDespesasTab();
-            break;
-        case 'profissionais':
-            document.getElementById('financeiroContent').innerHTML = renderTabComissoes(isMobile);
-            carregarComissoesTab();
-            break;
-        case 'analise':
-            document.getElementById('financeiroContent').innerHTML = renderTabAnaliseDiaria(isMobile);
-            carregarAnaliseDiaria();
-            break;
-        default:
-            break;
-    }
-}
-
-function aplicarFiltroReceitas() {
-    carregarReceitas();
-}
-
-function aplicarFiltrosDespesasTab() {
-    carregarDespesasTab();
-}
-
-// ============================================
-// CRUD DESPESAS
-// ============================================
-
-function abrirModalDespesa(despesa = null) {
-    const isEdit = !!despesa;
-    despesaEditandoId = despesa?.id || null;
-
-    const hoje = new Date().toISOString().split('T')[0];
-    const isMobile = window.innerWidth < 768;
-
-    const categoriasDisponiveis = [
-        'Aluguel', 'Água', 'Energia Elétrica', 'Internet', 'Telefone',
-        'Material de Consumo', 'Equipamentos', 'Manutenção', 'Impostos',
-        'Salários', 'Comissões', 'Marketing', 'Limpeza', 'Alimentação',
-        'Transporte', 'Outros'
-    ];
-
-    let html = `
-        <div style="padding:4px 0;">
-            <form id="formDespesa" onsubmit="salvarDespesa(event)">
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">📝 Descrição *</label>
-                    <input type="text" id="despDescricao" value="${escapeHtml(despesa?.descricao || '')}" 
-                           style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;" required>
-                </div>
-                
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="form-group" style="margin-bottom:14px;">
-                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">📂 Categoria *</label>
-                        <select id="despCategoria" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;" required>
-                            <option value="">Selecione...</option>
-                            ${categoriasDisponiveis.map(cat => `
-                                <option value="${escapeHtml(cat)}" ${despesa?.categoria === cat ? 'selected' : ''}>${escapeHtml(cat)}</option>
-                            `).join('')}
-                            <option value="__nova__">➕ Nova categoria</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom:14px;">
-                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">💰 Valor *</label>
-                        <input type="number" step="0.01" id="despValor" value="${despesa?.valor || ''}" 
-                               style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;" required>
-                    </div>
-                </div>
-                
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                    <div class="form-group" style="margin-bottom:14px;">
-                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">📅 Data *</label>
-                        <input type="date" id="despData" value="${despesa?.data || hoje}" 
-                               style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;" required>
-                    </div>
-                    
-                    <div class="form-group" style="margin-bottom:14px;">
-                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">📊 Status</label>
-                        <select id="despPago" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;">
-                            <option value="0" ${!despesa?.pago ? 'selected' : ''}>⏳ Pendente</option>
-                            <option value="1" ${despesa?.pago ? 'selected' : ''}>✅ Paga</option>
-                        </select>
-                    </div>
-                </div>
-                
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">💳 Forma de Pagamento</label>
-                    <select id="despFormaPagamento" style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;">
-                        <option value="">Selecione...</option>
-                        <option value="Dinheiro" ${despesa?.forma_pagamento === 'Dinheiro' ? 'selected' : ''}>Dinheiro</option>
-                        <option value="Cartão de Crédito" ${despesa?.forma_pagamento === 'Cartão de Crédito' ? 'selected' : ''}>Cartão de Crédito</option>
-                        <option value="Cartão de Débito" ${despesa?.forma_pagamento === 'Cartão de Débito' ? 'selected' : ''}>Cartão de Débito</option>
-                        <option value="PIX" ${despesa?.forma_pagamento === 'PIX' ? 'selected' : ''}>PIX</option>
-                        <option value="Boleto" ${despesa?.forma_pagamento === 'Boleto' ? 'selected' : ''}>Boleto</option>
-                        <option value="Transferência" ${despesa?.forma_pagamento === 'Transferência' ? 'selected' : ''}>Transferência</option>
-                    </select>
-                </div>
-                
-                <div class="form-group" style="margin-bottom:14px;">
-                    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:4px;color:var(--text-secondary);">📝 Observação</label>
-                    <textarea id="despObservacao" rows="2" 
-                              style="width:100%;padding:10px 12px;border:1px solid var(--border-color);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:14px;resize:vertical;">${escapeHtml(despesa?.observacao || '')}</textarea>
-                </div>
-                
-                <div style="display:flex;gap:8px;margin-top:16px;">
-                    <button type="submit" class="btn btn-primary" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--gradient);color:white;font-weight:600;cursor:pointer;">
-                        <i class="fas fa-save"></i> ${isEdit ? 'Atualizar' : 'Salvar'} Despesa
-                    </button>
-                    <button type="button" class="btn btn-outline" onclick="fecharModalDespesa()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;color:var(--text-secondary);cursor:pointer;">
-                        Cancelar
-                    </button>
-                </div>
-            </form>
-        </div>
-    `;
-
-    showModal(
-        isEdit ? '✏️ Editar Despesa' : '➕ Nova Despesa',
-        html,
-        () => { }
-    );
-
-    setTimeout(() => {
-        const select = document.getElementById('despCategoria');
-        if (select) {
-            select.addEventListener('change', function () {
-                if (this.value === '__nova__') {
-                    const novaCat = prompt('Digite o nome da nova categoria:');
-                    if (novaCat && novaCat.trim()) {
-                        const option = document.createElement('option');
-                        option.value = novaCat.trim();
-                        option.textContent = novaCat.trim();
-                        option.selected = true;
-                        this.insertBefore(option, this.querySelector('option[value="__nova__"]'));
-                        this.value = novaCat.trim();
-                    } else {
-                        this.value = '';
-                    }
-                }
-            });
-        }
-    }, 100);
-}
-
-async function salvarDespesa(event) {
-    event.preventDefault();
-
-    const token = localStorage.getItem('token');
-    const descricao = document.getElementById('despDescricao').value.trim();
-    const categoria = document.getElementById('despCategoria').value;
-    const valor = parseFloat(document.getElementById('despValor').value);
-    const data = document.getElementById('despData').value;
-    const pago = document.getElementById('despPago').value === '1';
-    const forma_pagamento = document.getElementById('despFormaPagamento').value || null;
-    const observacao = document.getElementById('despObservacao').value.trim() || null;
-
-    if (!descricao || !categoria || !valor || !data) {
-        showToast('Preencha todos os campos obrigatórios', 'error');
-        return;
-    }
-
-    if (valor <= 0) {
-        showToast('O valor deve ser maior que zero', 'error');
-        return;
-    }
-
-    showLoading();
-
-    try {
-        const body = { descricao, categoria, valor, data, pago, forma_pagamento, observacao };
-        let url = '/api/despesas';
-        let method = 'POST';
-
-        if (despesaEditandoId) {
-            url = `/api/despesas/${despesaEditandoId}`;
-            method = 'PUT';
-        }
-
-        const res = await fetch(url, {
-            method,
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-
-        if (result.success) {
-            showToast(result.message, 'success');
-            fecharModalDespesa();
-            carregarFinanceiro();
-        } else {
-            showToast(result.message || 'Erro ao salvar despesa', 'error');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        showToast('Erro ao salvar despesa', 'error');
-    }
-
-    hideLoading();
-}
-
-function fecharModalDespesa() {
-    despesaEditandoId = null;
-    const modal = document.querySelector('.modal-overlay');
-    if (modal) modal.remove();
-}
-
-// ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 
 window.carregarFinanceiro = carregarFinanceiro;
 window.switchFinanceiroTab = switchFinanceiroTab;
-window.abrirModalDespesa = abrirModalDespesa;
-window.salvarDespesa = salvarDespesa;
-window.fecharModalDespesa = fecharModalDespesa;
 window.carregarReceitas = carregarReceitas;
 window.carregarDespesasTab = carregarDespesasTab;
 window.carregarComissoesTab = carregarComissoesTab;
@@ -1694,4 +1611,4 @@ window.carregarAnaliseDiaria = carregarAnaliseDiaria;
 window.aplicarFiltroReceitas = aplicarFiltroReceitas;
 window.aplicarFiltrosDespesasTab = aplicarFiltrosDespesasTab;
 
-console.log('✅ Financeiro V2 - Completo com todas as tabs!');
+console.log('✅ Financeiro V2 - Completo com formas de pagamento!');

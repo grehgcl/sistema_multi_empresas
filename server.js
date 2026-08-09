@@ -20,6 +20,9 @@ require('dotenv').config();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 
+// 2. Depois usa o db
+const { iniciarJobLembretesPagamento } = require('./server/jobs/lembretes-pagamento');
+
 // ============================================
 // IMPORTS DAS PARTES EXTRATÍDAS
 // ============================================
@@ -42,6 +45,10 @@ const {
     gerarSenhaTemporaria
 } = require('./server/utils/helpers');
 
+// ============================================
+// WHATSAPP - IMPORTAR AQUI!
+// ============================================
+const { enviarWhatsApp } = require('./server/services/whatsapp');
 // ============================================
 // ROTAS (TUDO EXTRAÍDO!)
 // ============================================
@@ -420,6 +427,10 @@ if (process.env.RENDER === 'true') {
     }
 }
 
+// ============================================
+// INICIAR JOB DE LEMBRETES (FIADO)
+// ============================================
+
 // ============================================================
 // INICIAR SERVIDOR
 // ============================================================
@@ -439,3 +450,8 @@ app.listen(PORT, HOST, () => {
     console.log(`\n✅ Todas as rotas foram extraídas para server/routes/`);
     console.log(`📁 Total de arquivos de rotas: 13\n`);
 });
+
+// ============================================
+// INICIAR JOB DE LEMBRETES (DEPOIS DO SERVIDOR)
+// ============================================
+iniciarJobLembretesPagamento(db, enviarWhatsApp);

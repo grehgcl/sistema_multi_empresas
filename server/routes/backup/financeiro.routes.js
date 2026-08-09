@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // ROTAS DE FINANCEIRO
 // ============================================
 const express = require('express');
@@ -90,7 +90,7 @@ router.get('/', auth, (req, res) => {
                 LEFT JOIN servicos s ON a.servico_id = s.id
                 WHERE a.profissional_id = ?
                     AND a.empresa_id = ?
-                    AND ${lower('a.status')} IN ('concluido', 'finalizado')
+                    AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
                     AND ${extractMonth('a.data')} = ?
                     AND ${extractYear('a.data')} = ?
                 ORDER BY a.data DESC
@@ -165,7 +165,7 @@ router.get('/', auth, (req, res) => {
                 LEFT JOIN profissionais p ON a.profissional_id = p.id
                 LEFT JOIN servicos s ON a.servico_id = s.id
                 WHERE a.empresa_id = $1
-                    AND LOWER(a.status) IN ('concluido', 'finalizado')
+                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
                     AND EXTRACT(MONTH FROM a.data) = $2
                     AND EXTRACT(YEAR FROM a.data) = $3
                 ORDER BY a.data DESC
@@ -175,7 +175,6 @@ router.get('/', auth, (req, res) => {
             sql = `
                 SELECT 
                     a.id,
-                    a.forma_pagamento, 
                     date(a.data) as data_formatada,
                     COALESCE(a.valor_total, a.valor, 0) as valor_total,
                     a.valor,
@@ -191,7 +190,7 @@ router.get('/', auth, (req, res) => {
                 LEFT JOIN profissionais p ON a.profissional_id = p.id
                 LEFT JOIN servicos s ON a.servico_id = s.id
                 WHERE a.empresa_id = ?
-                    AND LOWER(a.status) IN ('concluido', 'finalizado')
+                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
                     AND strftime('%m', a.data) = ?
                     AND strftime('%Y', a.data) = ?
                 ORDER BY a.data DESC
@@ -273,10 +272,12 @@ router.get('/', auth, (req, res) => {
     res.status(403).json({ success: false, message: 'Acesso negado' });
 });
 
-// server/routes/financeiro.routes.js - Rota GET /receitas
+// ============================================
+// GET /api/financeiro/receitas
+// ============================================
 router.get('/receitas', auth, (req, res) => {
     const { mes, ano } = req.query;
-    const empresaId = req.user.empresa_id;
+    const empresaId = req.usuario.empresa_id;
 
     if (!mes || !ano) {
         return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
@@ -287,9 +288,8 @@ router.get('/receitas', auth, (req, res) => {
         sql = `
             SELECT 
                 a.id,
-                a.forma_pagamento,
-                to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-                COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                ${formatDate('a.data')} as data_formatada,
+                ${coalesce('a.valor_total', 0)} as valor_total,
                 a.valor,
                 a.comissao,
                 a.servico,
@@ -303,9 +303,9 @@ router.get('/receitas', auth, (req, res) => {
             LEFT JOIN servicos s ON a.servico_id = s.id
             LEFT JOIN profissionais p ON a.profissional_id = p.id
             WHERE a.empresa_id = $1
-                AND LOWER(a.status) IN ('concluido', 'finalizado')
-                AND EXTRACT(MONTH FROM a.data) = $2
-                AND EXTRACT(YEAR FROM a.data) = $3
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                AND ${extractMonth('a.data')} = $2
+                AND ${extractYear('a.data')} = $3
             ORDER BY a.data DESC
         `;
         params = [empresaId, parseInt(mes), parseInt(ano)];
@@ -313,9 +313,8 @@ router.get('/receitas', auth, (req, res) => {
         sql = `
             SELECT 
                 a.id,
-                a.forma_pagamento,
-                date(a.data) as data_formatada,
-                COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                ${formatDate('a.data')} as data_formatada,
+                ${coalesce('a.valor_total', 0)} as valor_total,
                 a.valor,
                 a.comissao,
                 a.servico,
@@ -329,9 +328,9 @@ router.get('/receitas', auth, (req, res) => {
             LEFT JOIN servicos s ON a.servico_id = s.id
             LEFT JOIN profissionais p ON a.profissional_id = p.id
             WHERE a.empresa_id = ?
-                AND LOWER(a.status) IN ('concluido', 'finalizado')
-                AND strftime('%m', a.data) = ?
-                AND strftime('%Y', a.data) = ?
+                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                AND ${extractMonth('a.data')} = ?
+                AND ${extractYear('a.data')} = ?
             ORDER BY a.data DESC
         `;
         params = [empresaId, mes.padStart(2, '0'), ano];
@@ -351,15 +350,11 @@ router.get('/receitas', auth, (req, res) => {
                 ...row,
                 data: row.data_formatada || row.data,
                 data_formatada: undefined,
-                forma_pagamento: row.forma_pagamento || '',  // 🔥 GARANTIR QUE VEM
                 valor_total: valor,
                 valor: parseFloat(row.valor) || 0,
                 comissao: parseFloat(row.comissao) || 0
             };
         });
-
-        console.log('📊 Receitas encontradas:', receitas.length);
-        console.log('📊 Primeira receita:', receitas[0]);
 
         res.json({
             success: true,

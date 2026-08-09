@@ -1,4 +1,4 @@
-﻿// ============================================
+// ============================================
 // ROTAS DE AGENDAMENTOS
 // ============================================
 const express = require('express');
@@ -7,8 +7,6 @@ const { db } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 // server/routes/agendamentos.routes.js - No início do arquivo
 
-// No topo
-const { criarLembreteFiado } = require('../jobs/lembretes-pagamento');
 
 // ✅ IMPORTAR FUNÇÕES DO HELPERS
 const {
@@ -964,34 +962,32 @@ router.get('/profissionais-disponiveis', auth, (req, res) => {
         });
     });
 });
+
 // ============================================
-// ROTA: ATUALIZAR FORMA DE PAGAMENTO
+// ROTA: AGENDAR LEMBRETES
 // ============================================
-router.put('/:id/pagamento', auth, async (req, res) => {
+
+router.post('/agendar-lembretes', auth, async (req, res) => {
     try {
-        const { id } = req.params;
-        const { forma_pagamento, prazo_dias, data_vencimento, descricao_pagamento } = req.body;
+        const { agendamento_id, data_vencimento } = req.body;
+        const empresa_id = req.user.empresa_id;
 
-        const empresa_id = req.user?.empresa_id || req.usuario?.empresa_id;
-
-        if (!empresa_id) {
+        if (!agendamento_id || !data_vencimento) {
             return res.status(400).json({
                 success: false,
-                message: 'Empresa não identificada'
+                message: 'Agendamento e data de vencimento são obrigatórios'
             });
         }
 
-        // Verificar se o agendamento existe
-        const agendamento = await new Promise((resolve, reject) => {
-            db.get(
-                'SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?',
-                [id, empresa_id],
-                (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                }
-            );
-        });
+        // Buscar dados do agendamento
+        const agendamento = await db.get(
+            `SELECT a.*, c.nome as cliente_nome, c.telefone as cliente_telefone, e.nome as empresa_nome
+             FROM agendamentos a
+             LEFT JOIN clientes c ON a.cliente_id = c.id
+             LEFT JOIN empresas e ON a.empresa_id = e.id
+             WHERE a.id = ? AND a.empresa_id = ?`,
+            [agendamento_id, empresa_id]
+        );
 
         if (!agendamento) {
             return res.status(404).json({
@@ -1000,63 +996,128 @@ router.put('/:id/pagamento', auth, async (req, res) => {
             });
         }
 
-        // Atualizar
-        await new Promise((resolve, reject) => {
-            db.run(
-                `UPDATE agendamentos 
-                 SET forma_pagamento = ?,
-                     prazo_dias = ?,
-                     data_vencimento = ?,
-                     descricao_pagamento = ?,
-                     status = 'concluido'
-                 WHERE id = ? AND empresa_id = ?`,
-                [
-                    forma_pagamento || 'dinheiro',
-                    prazo_dias || 0,
-                    data_vencimento || null,
-                    descricao_pagamento || '',
-                    id,
-                    empresa_id
-                ],
-                function (err) {
-                    if (err) reject(err);
-                    else resolve(this);
-                }
-            );
-        });
+        // Calcular datas dos lembretes
+        const vencimento = new Date(data_vencimento);
+        const data2DiasAntes = new Date(vencimento);
+        data2DiasAntes.setDate(data2DiasAntes.getDate() - 2);
 
-        // 🔥 CRIAR LEMBRETE SE FOR FIADO - DENTRO DA ROTA!
-        if (forma_pagamento === 'prazo' && data_vencimento) {
-            try {
-                await criarLembreteFiado(db, id, empresa_id, agendamento.cliente_id, data_vencimento);
-                console.log('📅 Lembrete de fiado criado para #' + id);
-            } catch (err) {
-                console.error('⚠️ Erro ao criar lembrete:', err.message);
-            }
-        }
+        const data1DiaAntes = new Date(vencimento);
+        data1DiaAntes.setDate(data1DiaAntes.getDate() - 1);
 
-        // Verificar resultado
-        const updated = await new Promise((resolve, reject) => {
-            db.get(
-                'SELECT id, status, forma_pagamento FROM agendamentos WHERE id = ?',
-                [id],
-                (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                }
-            );
-        });
+        // Salvar os lembretes na tabela de lembretes (se existir)
+        // Ou criar uma tabela para isso
 
-        console.log('✅ Agendamento #' + id + ' concluído com pagamento: ' + forma_pagamento);
+        // Exemplo: salvar em uma tabela 'lembretes_pagamento'
+        await db.run(
+            `INSERT OR REPLACE INTO lembretes_pagamento 
+             (agendamento_id, empresa_id, data_vencimento, lembrete_2dias, lembrete_1dia, lembrete_dia, enviado_2dias, enviado_1dia, enviado_dia)
+             VALUES (?, ?, ?, ?, ?, ?, 0, 0, 0)`,
+            [
+                agendamento_id,
+                empresa_id,
+                data_vencimento,
+                data2DiasAntes.toISOString().split('T')[0],
+                data1DiaAntes.toISOString().split('T')[0],
+                data_vencimento
+            ]
+        );
+
+        // Agendar job para enviar lembretes
+        // Isso pode ser feito com node-cron ou agendando na tabela
 
         res.json({
             success: true,
-            message: '✅ Pagamento registrado com sucesso!',
-            data: updated
+            message: 'Lembretes agendados com sucesso!',
+            data: {
+                lembrete_2dias: data2DiasAntes.toISOString().split('T')[0],
+                lembrete_1dia: data1DiaAntes.toISOString().split('T')[0],
+                lembrete_dia: data_vencimento
+            }
         });
 
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('❌ Erro ao agendar lembretes:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ============================================
+// ROTA: ATUALIZAR FORMA DE PAGAMENTO
+// ============================================
+
+router.put('/:id/pagamento', auth, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            forma_pagamento,
+            prazo_dias,
+            data_vencimento,
+            descricao_pagamento
+        } = req.body;
+
+        // 🔥 CORREÇÃO: Pegar empresa_id do token
+        const empresa_id = req.user?.empresa_id || req.headers['x-empresa-id'];
+
+        if (!empresa_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Empresa não identificada'
+            });
+        }
+
+        console.log('📝 Atualizando pagamento:', { id, empresa_id, forma_pagamento, prazo_dias });
+
+        // Verificar se o agendamento existe
+        const agendamento = await db.get(
+            'SELECT * FROM agendamentos WHERE id = ? AND empresa_id = ?',
+            [id, empresa_id]
+        );
+
+        if (!agendamento) {
+            return res.status(404).json({
+                success: false,
+                message: 'Agendamento não encontrado'
+            });
+        }
+
+        // Atualizar com forma de pagamento e status
+        await db.run(
+            `UPDATE agendamentos 
+             SET forma_pagamento = ?,
+                 prazo_dias = ?,
+                 data_vencimento = ?,
+                 descricao_pagamento = ?,
+                 status = 'concluido',
+                 updated_at = datetime('now')
+             WHERE id = ? AND empresa_id = ?`,
+            [
+                forma_pagamento || 'dinheiro',
+                prazo_dias || 0,
+                data_vencimento || null,
+                descricao_pagamento || '',
+                id,
+                empresa_id
+            ]
+        );
+
+        // Se for a prazo, agendar lembretes
+        if (forma_pagamento === 'prazo' && data_vencimento) {
+            // Salvar na tabela de lembretes
+            await db.run(
+                `INSERT OR REPLACE INTO lembretes_pagamento 
+                 (agendamento_id, empresa_id, data_vencimento)
+                 VALUES (?, ?, ?)`,
+                [id, empresa_id, data_vencimento]
+            );
+        }
+
+        res.json({
+            success: true,
+            message: '✅ Pagamento registrado com sucesso!'
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao registrar pagamento:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
