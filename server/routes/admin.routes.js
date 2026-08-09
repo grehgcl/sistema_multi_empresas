@@ -39,7 +39,6 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
 
         console.log('📊 Buscando estatísticas para SuperAdmin');
 
-        // 🔥 CORRIGIDO: Usar TO_CHAR no PostgreSQL
         const sql = isProduction
             ? `SELECT 
         (SELECT COUNT(*) FROM empresas) as total_empresas,
@@ -51,7 +50,7 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
         (SELECT COUNT(*) FROM clientes) as total_clientes,
         (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
         (SELECT COUNT(*) FROM agendamentos WHERE EXTRACT(MONTH FROM data) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM data) = EXTRACT(YEAR FROM CURRENT_DATE)) as agendamentos_mes,
-        (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
+        (SELECT COALESCE(SUM(valor), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
         (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true) as empresas_pagas
     `
             : `SELECT 
@@ -64,7 +63,7 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
         (SELECT COUNT(*) FROM clientes) as total_clientes,
         (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
         (SELECT COUNT(*) FROM agendamentos WHERE strftime('%m', data) = strftime('%m', 'now') AND strftime('%Y', data) = strftime('%Y', 'now')) as agendamentos_mes,
-        (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
+        (SELECT COALESCE(SUM(valor), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
         (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1) as empresas_pagas
     `;
 
