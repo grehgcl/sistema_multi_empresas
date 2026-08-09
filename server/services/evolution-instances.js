@@ -223,7 +223,7 @@ class EvolutionInstances {
 
             const api = this.getApiClient();
 
-            // 🔥 PASSO 1: Verificar status
+            // 🔥 Verificar status
             const status = await this.getStatus(instanceName);
             console.log(`📊 Status:`, status);
 
@@ -236,70 +236,55 @@ class EvolutionInstances {
                 };
             }
 
-            // 🔥 PASSO 2: OBTER QR CODE VIA GET (NÃO POST!)
-            console.log(`📱 Buscando QR Code via GET /instance/qrcode/${instanceName}...`);
+            // 🔥 BUSCAR QR CODE - USAR O ENDPOINT CORRETO DA v2
+            // Na v2.3.7, o QR Code está em /instance/qrcode/{name}
+            const response = await api.get(`/instance/qrcode/${instanceName}`);
 
-            try {
-                const response = await api.get(`/instance/qrcode/${instanceName}`);
-                console.log(`📥 Resposta:`, JSON.stringify(response.data, null, 2));
+            console.log(`📥 Resposta completa:`, JSON.stringify(response.data, null, 2));
 
-                let qrCode = null;
-                if (response.data?.qrcode) {
-                    qrCode = response.data.qrcode;
-                } else if (response.data?.base64) {
-                    qrCode = response.data.base64;
-                } else if (response.data?.qr) {
-                    qrCode = response.data.qr;
-                }
+            // 🔥 EXTRAIR QR CODE
+            let qrCode = null;
 
-                if (qrCode) {
-                    console.log(`✅ QR Code obtido com sucesso!`);
-                    return {
-                        success: true,
-                        qrCode: qrCode,
-                        alreadyConnected: false,
-                        message: 'QR Code gerado! Escaneie com o WhatsApp.'
-                    };
-                }
-            } catch (err) {
-                console.log(`⚠️ GET /qrcode falhou:`, err.message);
-                if (err.response?.data) {
-                    console.log(`📥 Detalhes:`, err.response.data);
-                }
+            // Tentar diferentes formatos
+            if (response.data?.base64) {
+                qrCode = response.data.base64;
+            } else if (response.data?.qrcode) {
+                qrCode = response.data.qrcode;
+            } else if (response.data?.qr) {
+                qrCode = response.data.qr;
             }
 
-            // 🔥 PASSO 3: Se a instância está "connecting", esperar um pouco
-            if (status.state === 'connecting') {
-                console.log(`⏳ Instância está conectando, aguardando 3 segundos...`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
-
-                // Tentar novamente
-                try {
-                    const response2 = await api.get(`/instance/qrcode/${instanceName}`);
-                    if (response2.data?.qrcode) {
-                        return {
-                            success: true,
-                            qrCode: response2.data.qrcode,
-                            alreadyConnected: false,
-                            message: 'QR Code gerado!'
-                        };
-                    }
-                } catch (err) {
-                    console.log(`⚠️ Segunda tentativa falhou:`, err.message);
-                }
+            if (qrCode) {
+                console.log(`✅ QR Code obtido com sucesso! (tamanho: ${qrCode.length})`);
+                return {
+                    success: true,
+                    qrCode: qrCode,
+                    alreadyConnected: false,
+                    message: 'QR Code gerado! Escaneie com o WhatsApp.'
+                };
             }
 
             return {
                 success: false,
-                message: 'QR Code não disponível. A instância está em processo de conexão. Aguarde alguns segundos e tente novamente.',
+                message: 'QR Code não disponível. Aguarde e tente novamente.',
                 qrCode: null
             };
 
         } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error.message);
+
+            // Se for 404, a instância pode não ter QR ainda
+            if (error.response?.status === 404) {
+                return {
+                    success: false,
+                    message: 'Instância em processo de conexão. Aguarde 10 segundos e tente novamente.',
+                    qrCode: null
+                };
+            }
+
             return {
                 success: false,
-                message: error.message || 'Erro ao buscar QR Code',
+                message: error.response?.data?.message || error.message || 'Erro ao buscar QR Code',
                 qrCode: null
             };
         }
