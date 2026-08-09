@@ -15,11 +15,14 @@ class EvolutionInstances {
         const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
         const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
+        console.log(`🔑 API URL: ${apiUrl}`);
+        console.log(`🔑 API Key: ${apiKey.substring(0, 4)}...`);
+
         return axios.create({
             baseURL: apiUrl,
             headers: {
                 'Content-Type': 'application/json',
-                'apikey': apiKey
+                'apikey': apiKey  // 🔥 ESSA LINHA É CRUCIAL!
             },
             timeout: 30000
         });
@@ -322,15 +325,17 @@ class EvolutionInstances {
     // ============================================
     // VERIFICAR STATUS
     // ============================================
-
     static async getStatus(instanceName) {
         try {
             const api = this.getApiClient();
+            console.log(`📊 Verificando status de ${instanceName}...`);
 
             const response = await api.get(`/instance/connectionState/${instanceName}`);
 
             const state = response.data?.instance?.state || response.data?.state || 'disconnected';
             const isConnected = state === 'open' || state === 'connected';
+
+            console.log(`📊 Status: ${state} - Conectado: ${isConnected}`);
 
             return {
                 success: true,
@@ -340,15 +345,12 @@ class EvolutionInstances {
             };
 
         } catch (error) {
-            console.error('❌ Erro ao verificar status:', error.message);
+            console.error(`❌ Erro ao verificar status:`, error.message);
 
-            if (error.response && error.response.status === 404) {
-                return {
-                    success: true,
-                    state: 'not_found',
-                    connected: false,
-                    message: 'Instância não encontrada'
-                };
+            // Se for 403, log específico
+            if (error.response?.status === 403) {
+                console.error(`🔑 ERRO 403 - API Key inválida ou não enviada!`);
+                console.error(`🔑 Verifique EVOLUTION_API_KEY no .env`);
             }
 
             return {
@@ -359,7 +361,6 @@ class EvolutionInstances {
             };
         }
     }
-
     // ============================================
     // VERIFICAR STATUS DA INSTÂNCIA DA EMPRESA
     // ============================================
