@@ -192,54 +192,47 @@ async function criarInstancia() {
   }
 }
 
-// ============================================
-// BUSCAR QR CODE
-// ============================================
 async function buscarQrCode() {
   const token = localStorage.getItem('token');
-
   try {
-    // ✅ CORRIGIDO: URL CORRETA
-    const res = await fetch('/api/whatsapp/qrcode', {
+    console.log('📱 Buscando QR Code...');
+    const res = await fetch('/api/empresa/whatsapp/qrcode', {
       headers: { 'Authorization': 'Bearer ' + token }
     });
     const data = await res.json();
+    console.log('📥 Resposta do QR Code:', data);
 
     if (data.success && data.qrCode) {
       const container = document.getElementById('qrcode-container');
       if (container) {
-        container.innerHTML = `<img src="${data.qrCode}" style="width: 256px; height: 256px;">`;
+        // 🔥 EXIBIR O QR CODE
+        let qrImage = data.qrCode;
+        // Se não começar com data:image, adicionar o prefixo
+        if (!qrImage.startsWith('data:image')) {
+          qrImage = `data:image/png;base64,${qrImage}`;
+        }
+        container.innerHTML = `<img src="${qrImage}" style="width: 256px; height: 256px; border-radius: 12px; background: white; padding: 10px;">`;
+        showToast('QR Code gerado! Escaneie com o WhatsApp.', 'success');
       }
     } else if (data.alreadyConnected) {
       const container = document.getElementById('qrcode-container');
       if (container) {
         container.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-              <p style="color: var(--success); font-size: 18px;">✅ WhatsApp já está conectado!</p>
-              <button onclick="carregarConfigWhatsApp()" class="btn btn-primary" style="margin-top: 10px;">
-                🔄 Atualizar Página
-              </button>
-            </div>
-          `;
+          <div style="text-align: center; padding: 20px;">
+            <p style="color: var(--success); font-size: 18px;">✅ WhatsApp já está conectado!</p>
+          </div>
+        `;
       }
     } else {
       const container = document.getElementById('qrcode-container');
       if (container) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-              <p style="color: var(--warning);">${data.message || 'QR Code não disponível'}</p>
-              <button onclick="verificarStatus()" class="btn btn-primary" style="margin-top: 10px;">
-                ✅ Verificar Conexão
-              </button>
-            </div>
-          `;
+        container.innerHTML = `<p style="color: var(--warning);">${data.message || 'QR Code não disponível'}</p>`;
       }
+      showToast(data.message || 'Erro ao gerar QR Code', 'warning');
     }
   } catch (error) {
-    const container = document.getElementById('qrcode-container');
-    if (container) {
-      container.innerHTML = '<p style="color: var(--danger);">Erro ao buscar QR Code</p>';
-    }
+    console.error('❌ Erro ao buscar QR Code:', error);
+    showToast('Erro ao buscar QR Code', 'error');
   }
 }
 

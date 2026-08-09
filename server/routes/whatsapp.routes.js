@@ -137,6 +137,8 @@ router.get('/qrcode', auth, async (req, res) => {
             });
         }
 
+        console.log(`📱 QR CODE - Empresa: ${empresaId}`);
+
         const empresa = await new Promise((resolve) => {
             db.get('SELECT nome, whatsapp_instance FROM empresas WHERE id = ?', [empresaId], (err, row) => {
                 resolve(row);
@@ -156,7 +158,10 @@ router.get('/qrcode', auth, async (req, res) => {
         const EvolutionInstances = require('../services/evolution-instances');
         const resultado = await EvolutionInstances.getQrCode(instanceName, empresaId, empresa.nome);
 
+        console.log(`📥 Resultado:`, resultado);
+
         if (resultado.success && resultado.qrCode) {
+            // 🔥 GARANTIR QUE O QR CODE É ENVIADO
             return res.json({
                 success: true,
                 qrCode: resultado.qrCode,
