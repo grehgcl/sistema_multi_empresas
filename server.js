@@ -419,36 +419,7 @@ if (process.env.RENDER === 'true') {
         console.log('✅ Keep Alive fallback ativado!');
     }
 }
-// ============================================
-// CRIAR TABELA DE CONFIGURAÇÕES
-// ============================================
-setTimeout(() => {
-    console.log('🔧 Verificando tabela configuracoes...');
-    const sql = `
-        CREATE TABLE IF NOT EXISTS configuracoes (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            chave TEXT UNIQUE NOT NULL,
-            valor TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    `;
-    db.run(sql, [], (err) => {
-        if (err) {
-            console.error('❌ Erro ao criar tabela configuracoes:', err);
-            return;
-        }
-        console.log('✅ Tabela configuracoes verificada/criada');
-        const sqlInsert = 'INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ("payment_mode", "simulation")';
-        db.run(sqlInsert, [], (err) => {
-            if (err) {
-                console.error('❌ Erro ao inserir configuração padrão:', err);
-            } else {
-                console.log('✅ Configuração payment_mode = simulation');
-            }
-        });
-    });
-}, 1000);
+
 // ============================================================
 // INICIAR SERVIDOR
 // ============================================================
