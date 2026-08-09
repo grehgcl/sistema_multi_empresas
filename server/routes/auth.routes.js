@@ -106,7 +106,7 @@ router.post('/login', (req, res) => {
 });
 
 // ============================================
-// POST /api/cadastro - COMPLETO CORRIGIDO
+// POST /api/cadastro - CORRIGIDO
 // ============================================
 router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, empresa_nome, telefone } = req.body;
@@ -140,29 +140,34 @@ router.post('/cadastro', async (req, res) => {
         // Criar empresa (trial de 45 dias)
         const trialExpira = new Date();
         trialExpira.setDate(trialExpira.getDate() + 45);
+        const trialExpiraStr = trialExpira.toISOString().split('T')[0];
 
         console.log('📝 Criando empresa:', empresa_nome);
 
-        const empresaId = await new Promise((resolve, reject) => {
-            db.run(
-                "INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, created_at) VALUES (?, 'trial', 1, ?, NOW())",
-                [empresa_nome, trialExpira.toISOString()],
-                function (err) {
+        // 🔥 USAR db.get PARA PEGAR O ID RETORNADO
+        const empresaResult = await new Promise((resolve, reject) => {
+            db.get(
+                "INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira) VALUES ($1, 'trial', 1, $2) RETURNING id",
+                [empresa_nome, trialExpiraStr],
+                (err, row) => {
                     if (err) {
-                        console.error('❌ Erro ao criar empresa:', err);
+                        console.error('❌ Erro SQL:', err);
                         reject(err);
                     } else {
-                        console.log('✅ Empresa criada com ID:', this.lastID);
-                        resolve(this.lastID);
+                        console.log('✅ Resultado INSERT:', row);
+                        resolve(row);
                     }
                 }
             );
         });
 
-        // 🔥 VERIFICAR SE O ID É VÁLIDO
+        const empresaId = empresaResult?.id;
+
         if (!empresaId) {
             throw new Error('Erro ao criar empresa - ID inválido');
         }
+
+        console.log('✅ Empresa criada com ID:', empresaId);
 
         // 🔥 CRIAR HORÁRIOS PADRÃO
         console.log('📝 Criando horários para empresa:', empresaId);
@@ -173,7 +178,7 @@ router.post('/cadastro', async (req, res) => {
                 db.run(
                     `INSERT INTO horarios_funcionamento 
                      (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim) 
-                     VALUES (?, ?, ?, '08:00:00', '18:00:00', '12:00:00', '13:00:00')`,
+                     VALUES ($1, $2, $3, '08:00:00', '18:00:00', '12:00:00', '13:00:00')`,
                     [empresaId, dia, aberto],
                     function (err) {
                         if (err) {
@@ -193,7 +198,7 @@ router.post('/cadastro', async (req, res) => {
         console.log('📝 Criando usuário:', email);
         const usuarioId = await new Promise((resolve, reject) => {
             db.run(
-                "INSERT INTO usuarios (nome, email, senha, role, empresa_id, created_at) VALUES (?, ?, ?, 'dono', ?, NOW())",
+                "INSERT INTO usuarios (nome, email, senha, role, empresa_id) VALUES ($1, $2, $3, 'dono', $4) RETURNING id",
                 [nome, email, senhaHash, empresaId],
                 function (err) {
                     if (err) {
@@ -209,7 +214,7 @@ router.post('/cadastro', async (req, res) => {
 
         // Atualizar telefone do dono na empresa
         if (telefone) {
-            db.run("UPDATE empresas SET telefone_dono = ? WHERE id = ?", [telefone, empresaId]);
+            db.run("UPDATE empresas SET telefone_dono = $1 WHERE id = $2", [telefone, empresaId]);
         }
 
         // Gerar token
