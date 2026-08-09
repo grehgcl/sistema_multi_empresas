@@ -41,75 +41,17 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // BUSCAR INSTÂNCIA POR NOME DA EMPRESA
-    // ============================================
-
-    static async buscarInstanciaPorEmpresa(empresaId, nomeEmpresa) {
-        try {
-            // Gerar possíveis nomes de instância
-            const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
-            const possibleNames = [
-                `emp-${empresaId}-${nomeLimpo}`,
-                `emp-${empresaId}`,
-                nomeLimpo ? `emp-${nomeLimpo}` : null
-            ].filter(Boolean);
-
-            const instances = await this.listarInstancias();
-
-            // Procurar por correspondência exata
-            for (const name of possibleNames) {
-                const found = instances.find(inst => inst.name === name);
-                if (found) {
-                    console.log(`✅ Instância encontrada: ${found.name} (${found.connectionStatus})`);
-                    return {
-                        success: true,
-                        instance: found,
-                        instanceName: found.name,
-                        connected: found.connectionStatus === 'open'
-                    };
-                }
-            }
-
-            // Tentar busca por nome parcial (caso o nome seja diferente)
-            const nomeBusca = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
-            if (nomeBusca) {
-                for (const inst of instances) {
-                    const instName = inst.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    if (instName.includes(nomeBusca) && instName.includes('emp')) {
-                        console.log(`✅ Instância encontrada por nome parcial: ${inst.name}`);
-                        return {
-                            success: true,
-                            instance: inst,
-                            instanceName: inst.name,
-                            connected: inst.connectionStatus === 'open'
-                        };
-                    }
-                }
-            }
-
-            return {
-                success: false,
-                message: 'Nenhuma instância encontrada para esta empresa'
-            };
-
-        } catch (error) {
-            console.error('❌ Erro ao buscar instância:', error.message);
-            return {
-                success: false,
-                message: error.message
-            };
-        }
-    }
-
-    // ============================================
     // CRIAR INSTÂNCIA COM NOME DA EMPRESA - CORRIGIDO
     // ============================================
 
     static async criarInstancia(empresaId, nomeEmpresa, telefone) {
         try {
-            // Gerar nome único baseado no ID e nome da empresa
+            // 🔥 GARANTIR QUE O ID É APENAS NÚMEROS
+            const idLimpo = String(empresaId).replace(/[^0-9]/g, '');
             const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
-            const instanceName = `emp-${empresaId}-${nomeLimpo}`;
+            const instanceName = `emp-${idLimpo}-${nomeLimpo}`;
+
+            console.log(`📱 Criando instância: ${instanceName}`);
 
             const api = this.getApiClient();
 
@@ -125,7 +67,6 @@ class EvolutionInstances {
                 };
             }
 
-            // Se existe mas não está conectada, retornar para reconectar
             if (existing.success) {
                 return {
                     success: true,
@@ -136,14 +77,10 @@ class EvolutionInstances {
                 };
             }
 
-            // 🔥 CRIAR NOVA INSTÂNCIA - CORRETO PARA v2
-            console.log(`📱 Criando instância: ${instanceName}`);
-
             const response = await api.post('/instance/create', {
                 instanceName: instanceName,
-                qrcode: true,              // ← CORRETO: qrcode (minúsculo)
-                integration: 'WHATSAPP-BAILEYS'  // ← CORRETO
-                // NÃO ENVIAR "number" ou "qrCode"
+                qrcode: true,
+                integration: 'WHATSAPP-BAILEYS'
             });
 
             console.log(`✅ Instância ${instanceName} criada com sucesso`);
@@ -159,7 +96,6 @@ class EvolutionInstances {
             console.error('❌ Erro ao criar instância:', error.message);
             console.error('❌ Detalhes:', error.response?.data || error.message);
 
-            // Se já existe, tentar encontrar
             if (error.response && error.response.status === 400) {
                 const existing = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
                 if (existing.success) {
@@ -175,6 +111,74 @@ class EvolutionInstances {
             return {
                 success: false,
                 message: error.response?.data?.message || error.message || 'Erro ao criar instância'
+            };
+        }
+    }
+
+    // ============================================
+    // BUSCAR INSTÂNCIA POR EMPRESA - CORRIGIDO
+    // ============================================
+
+    static async buscarInstanciaPorEmpresa(empresaId, nomeEmpresa) {
+        try {
+            // 🔥 GARANTIR QUE O ID É APENAS NÚMEROS
+            const idLimpo = String(empresaId).replace(/[^0-9]/g, '');
+            const nomeLimpo = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '-') || '';
+
+            // 🔥 GERAR NOMES POSSÍVEIS
+            const possibleNames = [
+                `emp-${idLimpo}-${nomeLimpo}`,
+                `emp-${idLimpo}`,
+                nomeLimpo ? `emp-${nomeLimpo}` : null
+            ].filter(Boolean);
+
+            console.log(`🔍 Buscando instâncias para: ${possibleNames.join(', ')}`);
+
+            const instances = await this.listarInstancias();
+
+            // Procurar por correspondência exata
+            for (const name of possibleNames) {
+                const found = instances.find(inst => inst.name === name);
+                if (found) {
+                    console.log(`✅ Instância encontrada: ${found.name} (${found.connectionStatus})`);
+                    return {
+                        success: true,
+                        instance: found,
+                        instanceName: found.name,
+                        connected: found.connectionStatus === 'open' || found.connectionStatus === 'connected'
+                    };
+                }
+            }
+
+            // Tentar busca por nome parcial (mais flexível)
+            const nomeBusca = nomeEmpresa?.toLowerCase().replace(/[^a-z0-9]/g, '') || '';
+            if (nomeBusca) {
+                for (const inst of instances) {
+                    const instName = inst.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    // Verificar se contém o ID e o nome
+                    if (instName.includes(idLimpo) && instName.includes(nomeBusca.substring(0, 5))) {
+                        console.log(`✅ Instância encontrada por nome parcial: ${inst.name}`);
+                        return {
+                            success: true,
+                            instance: inst,
+                            instanceName: inst.name,
+                            connected: inst.connectionStatus === 'open' || inst.connectionStatus === 'connected'
+                        };
+                    }
+                }
+            }
+
+            console.log(`⚠️ Nenhuma instância encontrada para empresa ${idLimpo}`);
+            return {
+                success: false,
+                message: 'Nenhuma instância encontrada para esta empresa'
+            };
+
+        } catch (error) {
+            console.error('❌ Erro ao buscar instância:', error.message);
+            return {
+                success: false,
+                message: error.message
             };
         }
     }
