@@ -102,7 +102,7 @@ class EvolutionInstances {
     }
 
     // ============================================
-    // CRIAR INSTÂNCIA COM NOME DA EMPRESA
+    // CRIAR INSTÂNCIA COM NOME DA EMPRESA - CORRIGIDO
     // ============================================
 
     static async criarInstancia(empresaId, nomeEmpresa, telefone) {
@@ -136,14 +136,14 @@ class EvolutionInstances {
                 };
             }
 
-            // Criar nova instância
+            // 🔥 CRIAR NOVA INSTÂNCIA - CORRETO PARA v2
             console.log(`📱 Criando instância: ${instanceName}`);
 
             const response = await api.post('/instance/create', {
                 instanceName: instanceName,
-                qrCode: true,
-                number: telefone?.replace(/\D/g, '') || '',
-                integration: 'WHATSAPP-BAILEYS'
+                qrcode: true,              // ← CORRETO: qrcode (minúsculo)
+                integration: 'WHATSAPP-BAILEYS'  // ← CORRETO
+                // NÃO ENVIAR "number" ou "qrCode"
             });
 
             console.log(`✅ Instância ${instanceName} criada com sucesso`);
@@ -157,6 +157,7 @@ class EvolutionInstances {
 
         } catch (error) {
             console.error('❌ Erro ao criar instância:', error.message);
+            console.error('❌ Detalhes:', error.response?.data || error.message);
 
             // Se já existe, tentar encontrar
             if (error.response && error.response.status === 400) {
@@ -173,7 +174,7 @@ class EvolutionInstances {
 
             return {
                 success: false,
-                message: error.message || 'Erro ao criar instância'
+                message: error.response?.data?.message || error.message || 'Erro ao criar instância'
             };
         }
     }
