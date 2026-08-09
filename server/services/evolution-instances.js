@@ -217,41 +217,17 @@ class EvolutionInstances {
         }
     }
 
-    static async getQrCode(instanceName) {
+    static async getQrCode(instanceName, empresaId, nomeEmpresa) {
         try {
-            console.log(`📱 Obtendo QR Code via WebSocket para ${instanceName}...`);
+            console.log(`📱 Obtendo QR Code para ${instanceName}...`);
 
-            const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
-            const EvolutionWebSocket = require('./evolution-websocket');
+            const api = this.getApiClient();
 
-            const ws = new EvolutionWebSocket(instanceName, apiKey);
+            // 🔥 Verificar status
+            const status = await this.getStatus(instanceName);
+            console.log(`📊 Status:`, status);
 
-            // 🔥 PROMISE PARA AGUARDAR O QR CODE
-            const qrCode = await new Promise((resolve, reject) => {
-                let timeout = setTimeout(() => {
-                    ws.disconnect();
-                    reject(new Error('Timeout - QR Code não recebido'));
-                }, 30000);
-
-                ws.onQRCode = (qr) => {
-                    clearTimeout(timeout);
-                    ws.disconnect();
-                    resolve(qr);
-                };
-
-                ws.onConnected = () => {
-                    clearTimeout(timeout);
-                    ws.disconnect();
-                    resolve(null); // Já conectado
-                };
-
-                ws.connect().catch((err) => {
-                    clearTimeout(timeout);
-                    reject(err);
-                });
-            });
-
-            if (qrCode === null) {
+            if (status.connected) {
                 return {
                     success: true,
                     alreadyConnected: true,
@@ -260,23 +236,60 @@ class EvolutionInstances {
                 };
             }
 
+            // 🔥 DELETAR A INSTÂNCIA EXISTENTE
+            console.log(`🔄 Deletando instância ${instanceName}...`);
+            try {
+                await api.delete(`/instance/delete/${instanceName}`);
+                console.log(`✅ Instância deletada`);
+            } catch (err) {
+                console.log(`⚠️ Erro ao deletar:`, err.message);
+            }
+
+            // Aguardar 2 segundos
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // 🔥 RECRIAR A INSTÂNCIA
+            console.log(`📱 Recriando instância ${instanceName}...`);
+            const createResponse = await api.post('/instance/create', {
+                instanceName: instanceName,
+                qrcode: true,
+                integration: 'WHATSAPP-BAILEYS'
+            });
+
+            console.log(`✅ Instância recriada`);
+            console.log(`📥 Resposta:`, JSON.stringify(createResponse.data, null, 2));
+
+            // 🔥 EXTRAIR QR CODE
+            let qrCode = null;
+            if (createResponse.data?.base64) {
+                qrCode = createResponse.data.base64;
+            } else if (createResponse.data?.qrcode) {
+                qrCode = createResponse.data.qrcode;
+            }
+
             if (qrCode) {
+                // Atualizar o banco com a nova instância
+                const { db } = require('../config/database');
+                await new Promise((resolve) => {
+                    db.run('UPDATE empresas SET whatsapp_instance = ? WHERE id = ?', [instanceName, empresaId], () => resolve());
+                });
+
                 return {
                     success: true,
                     qrCode: qrCode,
                     alreadyConnected: false,
-                    message: 'QR Code gerado!'
+                    message: 'QR Code gerado! Escaneie com o WhatsApp.'
                 };
             }
 
             return {
                 success: false,
-                message: 'QR Code não disponível',
+                message: 'QR Code não disponível. Tente novamente.',
                 qrCode: null
             };
 
         } catch (error) {
-            console.error('❌ Erro:', error.message);
+            console.error('❌ Erro ao buscar QR Code:', error.message);
             return {
                 success: false,
                 message: error.message || 'Erro ao buscar QR Code',

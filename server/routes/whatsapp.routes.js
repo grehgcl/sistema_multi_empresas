@@ -126,15 +126,19 @@ router.post('/criar-instancia', auth, async (req, res) => {
     }
 });
 
-// GET /api/empresa/whatsapp/qrcode
 router.get('/qrcode', auth, async (req, res) => {
     try {
         const empresaId = req.user?.empresa_id || req.usuario?.empresa_id;
 
-        console.log(`📱 QR CODE - Empresa: ${empresaId}`);
+        if (!empresaId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Empresa não identificada'
+            });
+        }
 
         const empresa = await new Promise((resolve) => {
-            db.get('SELECT whatsapp_instance FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+            db.get('SELECT nome, whatsapp_instance FROM empresas WHERE id = ?', [empresaId], (err, row) => {
                 resolve(row);
             });
         });
@@ -142,7 +146,7 @@ router.get('/qrcode', auth, async (req, res) => {
         if (!empresa?.whatsapp_instance) {
             return res.status(400).json({
                 success: false,
-                message: 'Nenhuma instância configurada.'
+                message: 'Nenhuma instância configurada. Ative o WhatsApp primeiro.'
             });
         }
 
@@ -150,9 +154,7 @@ router.get('/qrcode', auth, async (req, res) => {
         console.log(`📱 Instância: ${instanceName}`);
 
         const EvolutionInstances = require('../services/evolution-instances');
-        const resultado = await EvolutionInstances.getQrCode(instanceName);
-
-        console.log(`📥 Resultado:`, resultado);
+        const resultado = await EvolutionInstances.getQrCode(instanceName, empresaId, empresa.nome);
 
         if (resultado.success && resultado.qrCode) {
             return res.json({
