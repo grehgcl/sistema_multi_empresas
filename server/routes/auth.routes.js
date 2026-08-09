@@ -106,7 +106,7 @@ router.post('/login', (req, res) => {
 });
 
 // ============================================
-// POST /api/cadastro
+// POST /api/cadastro - CORRIGIDO
 // ============================================
 router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, empresa_nome, telefone } = req.body;
@@ -143,7 +143,8 @@ router.post('/cadastro', async (req, res) => {
 
         const empresaId = await new Promise((resolve, reject) => {
             db.run(
-                "INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, created_at) VALUES (?, 'trial', 1, ?, datetime('now'))",
+                // 🔥 CORRIGIDO: datetime('now') -> NOW()
+                "INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, created_at) VALUES (?, 'trial', 1, ?, NOW())",
                 [empresa_nome, trialExpira.toISOString()],
                 function (err) {
                     if (err) reject(err);
@@ -155,7 +156,8 @@ router.post('/cadastro', async (req, res) => {
         // Criar usuário (dono)
         const usuarioId = await new Promise((resolve, reject) => {
             db.run(
-                "INSERT INTO usuarios (nome, email, senha, role, empresa_id, created_at) VALUES (?, ?, ?, 'dono', ?, datetime('now'))",
+                // 🔥 CORRIGIDO: datetime('now') -> NOW()
+                "INSERT INTO usuarios (nome, email, senha, role, empresa_id, created_at) VALUES (?, ?, ?, 'dono', ?, NOW())",
                 [nome, email, senhaHash, empresaId],
                 function (err) {
                     if (err) reject(err);
@@ -194,7 +196,7 @@ router.post('/cadastro', async (req, res) => {
         console.error('Erro no cadastro:', error);
         res.status(500).json({
             success: false,
-            message: 'Erro ao realizar cadastro'
+            message: 'Erro ao realizar cadastro: ' + error.message
         });
     }
 });
