@@ -106,7 +106,7 @@ router.post('/login', (req, res) => {
 });
 
 // ============================================
-// POST /api/cadastro - CORRIGIDO COM HORÁRIOS
+// POST /api/cadastro - COMPLETO CORRIGIDO
 // ============================================
 router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, empresa_nome, telefone } = req.body;
@@ -141,18 +141,31 @@ router.post('/cadastro', async (req, res) => {
         const trialExpira = new Date();
         trialExpira.setDate(trialExpira.getDate() + 45);
 
+        console.log('📝 Criando empresa:', empresa_nome);
+
         const empresaId = await new Promise((resolve, reject) => {
             db.run(
                 "INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, created_at) VALUES (?, 'trial', 1, ?, NOW())",
                 [empresa_nome, trialExpira.toISOString()],
                 function (err) {
-                    if (err) reject(err);
-                    else resolve(this.lastID);
+                    if (err) {
+                        console.error('❌ Erro ao criar empresa:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ Empresa criada com ID:', this.lastID);
+                        resolve(this.lastID);
+                    }
                 }
             );
         });
 
-        // 🔥 CRIAR HORÁRIOS PADRÃO PARA A EMPRESA
+        // 🔥 VERIFICAR SE O ID É VÁLIDO
+        if (!empresaId) {
+            throw new Error('Erro ao criar empresa - ID inválido');
+        }
+
+        // 🔥 CRIAR HORÁRIOS PADRÃO
+        console.log('📝 Criando horários para empresa:', empresaId);
         const diasSemana = [0, 1, 2, 3, 4, 5, 6];
         for (const dia of diasSemana) {
             const aberto = dia !== 0 && dia !== 6;
@@ -163,8 +176,13 @@ router.post('/cadastro', async (req, res) => {
                      VALUES (?, ?, ?, '08:00:00', '18:00:00', '12:00:00', '13:00:00')`,
                     [empresaId, dia, aberto],
                     function (err) {
-                        if (err) reject(err);
-                        else resolve(this);
+                        if (err) {
+                            console.error(`❌ Erro ao criar horário para dia ${dia}:`, err.message);
+                            reject(err);
+                        } else {
+                            console.log(`✅ Horário criado para dia ${dia}`);
+                            resolve(this);
+                        }
                     }
                 );
             });
@@ -172,13 +190,19 @@ router.post('/cadastro', async (req, res) => {
         console.log(`✅ Horários padrão criados para empresa ${empresaId}`);
 
         // Criar usuário (dono)
+        console.log('📝 Criando usuário:', email);
         const usuarioId = await new Promise((resolve, reject) => {
             db.run(
                 "INSERT INTO usuarios (nome, email, senha, role, empresa_id, created_at) VALUES (?, ?, ?, 'dono', ?, NOW())",
                 [nome, email, senhaHash, empresaId],
                 function (err) {
-                    if (err) reject(err);
-                    else resolve(this.lastID);
+                    if (err) {
+                        console.error('❌ Erro ao criar usuário:', err);
+                        reject(err);
+                    } else {
+                        console.log('✅ Usuário criado com ID:', this.lastID);
+                        resolve(this.lastID);
+                    }
                 }
             );
         });
@@ -210,12 +234,11 @@ router.post('/cadastro', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Erro no cadastro:', error);
+        console.error('❌ Erro no cadastro:', error);
         res.status(500).json({
             success: false,
             message: 'Erro ao realizar cadastro: ' + error.message
         });
     }
 });
-
 module.exports = router;
