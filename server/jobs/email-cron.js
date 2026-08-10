@@ -1,12 +1,12 @@
-// server/jobs/email-cron.js
+﻿// server/jobs/email-cron.js
 const cron = require('node-cron');
 const emailService = require('../services/email');
 
 // ============================================
-// ENVIAR DICAS (7 DIAS APÓS CADASTRO)
+// ENVIAR DICAS (7 DIAS APÃ“S CADASTRO)
 // ============================================
 async function enviarDicas() {
-    console.log('📧 Verificando usuários para enviar dicas...');
+    console.log('ðŸ“§ Verificando usuÃ¡rios para enviar dicas...');
 
     const sql = `
         SELECT u.id, u.email, u.nome, u.created_at 
@@ -24,7 +24,7 @@ async function enviarDicas() {
 // VERIFICAR TRIAL EXPIRANDO
 // ============================================
 async function verificarTrial() {
-    console.log('📧 Verificando trials expirando...');
+    console.log('ðŸ“§ Verificando trials expirando...');
 
     const sql = `
         SELECT u.email, u.nome, e.trial_expira 
@@ -42,13 +42,13 @@ async function verificarTrial() {
 
 // Agendar jobs
 function start() {
-    // Todos os dias às 10:00
+    // Todos os dias Ã s 10:00
     cron.schedule('0 10 * * *', () => {
         enviarDicas();
         verificarTrial();
     });
 
-    console.log('📧 Job de emails agendado (10:00 todos os dias)');
+    console.log('ðŸ“§ Job de emails agendado (10:00 todos os dias)');
 }
 
 module.exports = { start };

@@ -1,5 +1,5 @@
-// ============================================
-// PLANOS.JS - VERSÃO COMPLETA E CORRIGIDA
+﻿// ============================================
+// PLANOS.JS - VERSÃƒO COMPLETA E CORRIGIDA
 // ============================================
 
 let currentPaymentId = null;
@@ -9,11 +9,11 @@ let planoSelecionado = null;
 let modoPagamento = 'simulation';
 
 // ============================================
-// CONFIGURAÇÕES DOS PLANOS
+// CONFIGURAÃ‡Ã•ES DOS PLANOS
 // ============================================
 
 const PLANOS_CONFIG = {
-    // 🔥 PLANO DE TESTE - R$ 1,00 (ADICIONAR PRIMEIRO)
+    // ðŸ”¥ PLANO DE TESTE - R$ 1,00 (ADICIONAR PRIMEIRO)
     teste: {
         id: 'teste',
         nome: 'Teste R$ 1,00',
@@ -23,14 +23,14 @@ const PLANOS_CONFIG = {
         popular: false,
         cor: '#10b981',
         recursos: [
-            '✅ Teste de pagamento real',
-            '✅ Apenas R$ 1,00',
-            '✅ Plano Starter por 1 mês',
-            '✅ Perfeito para validar integração'
+            'âœ… Teste de pagamento real',
+            'âœ… Apenas R$ 1,00',
+            'âœ… Plano Starter por 1 mÃªs',
+            'âœ… Perfeito para validar integraÃ§Ã£o'
         ],
         limitacoes: [
-            '❌ Apenas 1 profissional',
-            '❌ Válido por 1 dia'
+            'âŒ Apenas 1 profissional',
+            'âŒ VÃ¡lido por 1 dia'
         ]
     },
     pro: {
@@ -42,16 +42,16 @@ const PLANOS_CONFIG = {
         popular: true,
         cor: '#f59e0b',
         recursos: [
-            '✅ Tudo do Starter',
-            '✅ Agendamentos Ilimitados',
-            '✅ Até 5 Profissionais',
-            '✅ Dashboard Analytics',
-            '✅ Relatórios Avançados',
-            '✅ Suporte WhatsApp'
+            'âœ… Tudo do Starter',
+            'âœ… Agendamentos Ilimitados',
+            'âœ… AtÃ© 5 Profissionais',
+            'âœ… Dashboard Analytics',
+            'âœ… RelatÃ³rios AvanÃ§ados',
+            'âœ… Suporte WhatsApp'
         ],
         limitacoes: [
-            '❌ Sem API',
-            '❌ Sem Múltiplas Unidades'
+            'âŒ Sem API',
+            'âŒ Sem MÃºltiplas Unidades'
         ]
     },
     business: {
@@ -63,16 +63,16 @@ const PLANOS_CONFIG = {
         popular: false,
         cor: '#8b5cf6',
         recursos: [
-            '✅ Tudo do Pro',
-            '✅ Até 15 Profissionais',
-            '✅ API Básica',
-            '✅ Suporte Prioritário 24/7',
-            '✅ Relatórios Customizáveis',
-            '✅ Chatbot Premium',
-            '✅ Múltiplas Unidades'
+            'âœ… Tudo do Pro',
+            'âœ… AtÃ© 15 Profissionais',
+            'âœ… API BÃ¡sica',
+            'âœ… Suporte PrioritÃ¡rio 24/7',
+            'âœ… RelatÃ³rios CustomizÃ¡veis',
+            'âœ… Chatbot Premium',
+            'âœ… MÃºltiplas Unidades'
         ],
         limitacoes: [
-            '❌ Limite de 15 profissionais'
+            'âŒ Limite de 15 profissionais'
         ]
     },
     enterprise: {
@@ -84,18 +84,18 @@ const PLANOS_CONFIG = {
         popular: false,
         cor: '#ec4899',
         recursos: [
-            '✅ Tudo do Business',
-            '✅ Profissionais Ilimitados',
-            '✅ API Completa',
-            '✅ Suporte Dedicado',
-            '✅ Onboarding Personalizado',
-            '✅ SLA Garantido',
-            '✅ Treinamento da Equipe'
+            'âœ… Tudo do Business',
+            'âœ… Profissionais Ilimitados',
+            'âœ… API Completa',
+            'âœ… Suporte Dedicado',
+            'âœ… Onboarding Personalizado',
+            'âœ… SLA Garantido',
+            'âœ… Treinamento da Equipe'
         ],
         limitacoes: []
     }
 };
-// public/js/pages/planos.js - ADICIONAR NO INÍCIO
+// public/js/pages/planos.js - ADICIONAR NO INÃCIO
 
 // ============================================
 // BUSCAR MODO DE PAGAMENTO ATUAL
@@ -111,13 +111,13 @@ async function buscarModoPagamento() {
             const data = await res.json();
             if (data.success) {
                 modoPagamento = data.data.mode;
-                console.log(`💳 Modo de pagamento atual: ${modoPagamento}`);
+                console.log(`ðŸ’³ Modo de pagamento atual: ${modoPagamento}`);
                 return modoPagamento;
             }
         }
         return 'simulation';
     } catch (error) {
-        console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
+        console.warn('âš ï¸ Erro ao buscar modo de pagamento:', error);
         return 'simulation';
     }
 }
@@ -129,14 +129,14 @@ async function carregarPlanos() {
     if (typeof window.carregarCSS === 'function') {
         window.carregarCSS('planos');
     }
-    console.log('🔄 Carregando planos...');
+    console.log('ðŸ”„ Carregando planos...');
     showLoading();
 
     const token = localStorage.getItem('token');
     const isMobile = window.innerWidth < 768;
 
     try {
-        // 🔥 BUSCAR MODO DE PAGAMENTO PRIMEIRO
+        // ðŸ”¥ BUSCAR MODO DE PAGAMENTO PRIMEIRO
         let modoAtual = 'simulation';
         try {
             const resModo = await fetch('/api/pagamento/config', {
@@ -147,14 +147,14 @@ async function carregarPlanos() {
                 if (dataModo.success) {
                     modoAtual = dataModo.data.mode;
                     modoPagamento = modoAtual;
-                    console.log(`💳 Modo de pagamento: ${modoAtual === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`);
+                    console.log(`ðŸ’³ Modo de pagamento: ${modoAtual === 'real' ? 'ðŸ”´ REAL' : 'ðŸŸ¡ SIMULAÃ‡ÃƒO'}`);
                 }
             }
         } catch (error) {
-            console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
+            console.warn('âš ï¸ Erro ao buscar modo de pagamento:', error);
         }
 
-        // 🔥 USAR /api/planos/empresa (rota que existe no planos.routes.js)
+        // ðŸ”¥ USAR /api/planos/empresa (rota que existe no planos.routes.js)
         const resPlano = await fetch('/api/planos/empresa', {
             headers: { 'Authorization': 'Bearer ' + token }
         });
@@ -175,7 +175,7 @@ async function carregarPlanos() {
         }
 
         const isReal = modoAtual === 'real';
-        const modoLabel = isReal ? '🔴 Pagamentos Reais' : '🟡 Modo Simulação';
+        const modoLabel = isReal ? 'ðŸ”´ Pagamentos Reais' : 'ðŸŸ¡ Modo SimulaÃ§Ã£o';
         const modoCor = isReal ? '#ef4444' : '#f59e0b';
         const modoBg = isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
         const modoBorder = isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
@@ -185,14 +185,14 @@ async function carregarPlanos() {
             <div class="fade-in">
                 <div class="dashboard-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'flex-start' : 'center'}; gap: ${isMobile ? '8px' : '0'};">
                     <div>
-                        <h2 class="page-title" style="font-size: ${isMobile ? '20px' : '24px'};">💎 Planos e Assinaturas</h2>
+                        <h2 class="page-title" style="font-size: ${isMobile ? '20px' : '24px'};">ðŸ’Ž Planos e Assinaturas</h2>
                         <p class="page-subtitle" style="font-size: ${isMobile ? '13px' : '14px'};">
-                            <i class="fas fa-rocket"></i> Escolha o plano ideal para o seu negócio
+                            <i class="fas fa-rocket"></i> Escolha o plano ideal para o seu negÃ³cio
                         </p>
                     </div>
                 </div>
 
-                <!-- 🔥 CARD - MODO DE PAGAMENTO -->
+                <!-- ðŸ”¥ CARD - MODO DE PAGAMENTO -->
                 <div style="
                     background: ${modoBg}; 
                     border: 1px solid ${modoBorder}; 
@@ -206,13 +206,13 @@ async function carregarPlanos() {
                     gap: 10px;
                 ">
                     <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 24px;">${isReal ? '🔴' : '🟡'}</span>
+                        <span style="font-size: 24px;">${isReal ? 'ðŸ”´' : 'ðŸŸ¡'}</span>
                         <div>
                             <div style="font-size: ${isMobile ? '14px' : '16px'}; font-weight: 600; color: var(--text-primary);">
-                                💳 Modo de Pagamento: <span style="color: ${modoCor};">${modoLabel}</span>
+                                ðŸ’³ Modo de Pagamento: <span style="color: ${modoCor};">${modoLabel}</span>
                             </div>
                             <div style="font-size: ${isMobile ? '11px' : '13px'}; color: var(--text-muted); margin-top: 2px;">
-                                ${isReal ? '⚠️ Pagamentos REAIS estão ativos! Os clientes serão cobrados de verdade.' : '🔸 Modo SIMULAÇÃO ativo. Nenhum pagamento real é processado.'}
+                                ${isReal ? 'âš ï¸ Pagamentos REAIS estÃ£o ativos! Os clientes serÃ£o cobrados de verdade.' : 'ðŸ”¸ Modo SIMULAÃ‡ÃƒO ativo. Nenhum pagamento real Ã© processado.'}
                             </div>
                         </div>
                     </div>
@@ -250,19 +250,19 @@ async function carregarPlanos() {
                                 <i class="fas fa-crown"></i> Plano Atual
                             </h3>
                             <p style="font-size: ${isMobile ? '24px' : '32px'}; font-weight: bold; margin: 0;">
-                                ${isTrial ? '🎯 Trial (Teste Grátis)' : PLANOS_CONFIG[planoAtual]?.nome || planoAtual}
+                                ${isTrial ? 'ðŸŽ¯ Trial (Teste GrÃ¡tis)' : PLANOS_CONFIG[planoAtual]?.nome || planoAtual}
                             </p>
                             ${isTrial ? `
                                 <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
-                                    ⏳ ${diasRestantes} dias restantes de teste
+                                    â³ ${diasRestantes} dias restantes de teste
                                 </p>
                             ` : `
                                 <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
-                                    📅 Válido até: ${validaAte || 'N/A'}
+                                    ðŸ“… VÃ¡lido atÃ©: ${validaAte || 'N/A'}
                                 </p>
                             `}
                             <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
-                                👥 ${limiteAtual} profissional(is) ativo(s)
+                                ðŸ‘¥ ${limiteAtual} profissional(is) ativo(s)
                             </p>
                         </div>
                         ${isTrial ? `
@@ -284,20 +284,20 @@ async function carregarPlanos() {
                                 border-radius: 8px; 
                                 cursor: pointer;
                             ">
-                                ❌ Cancelar Assinatura
+                                âŒ Cancelar Assinatura
                             </button>
                         `}
                     </div>
                 </div>
         `;
 
-        // Aviso de trial próximo do fim
+        // Aviso de trial prÃ³ximo do fim
         if (isTrial && diasRestantes <= 7 && diasRestantes > 0) {
             html += `
                 <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: ${isMobile ? '12px 16px' : '15px 20px'}; border-radius: 8px; margin-bottom: 20px;">
                     <p style="margin: 0; color: #92400e; font-size: ${isMobile ? '13px' : '14px'};">
-                        ⚠️ <strong>Atenção!</strong> Seu período de teste termina em <strong>${diasRestantes} dias</strong>. 
-                        Escolha um plano abaixo para não perder o acesso ao sistema.
+                        âš ï¸ <strong>AtenÃ§Ã£o!</strong> Seu perÃ­odo de teste termina em <strong>${diasRestantes} dias</strong>. 
+                        Escolha um plano abaixo para nÃ£o perder o acesso ao sistema.
                     </p>
                 </div>
             `;
@@ -319,7 +319,7 @@ async function carregarPlanos() {
                             transition: all 0.3s;
                             font-size: ${isMobile ? '13px' : '14px'};
                         ">
-                        📅 Mensal
+                        ðŸ“… Mensal
                     </button>
                     <button onclick="togglePeriodo('anual')" id="btnAnual" 
                         style="
@@ -332,7 +332,7 @@ async function carregarPlanos() {
                             transition: all 0.3s;
                             font-size: ${isMobile ? '13px' : '14px'};
                         ">
-                        📆 Anual 
+                        ðŸ“† Anual 
                         <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: ${isMobile ? '9px' : '11px'}; margin-left: 4px;">
                             -20%
                         </span>
@@ -346,12 +346,12 @@ async function carregarPlanos() {
         for (const [key, plano] of Object.entries(PLANOS_CONFIG)) {
             const isCurrent = planoAtual === key;
             const valor = periodoSelecionado === 'anual' ? plano.valor_anual : plano.valor_mensal;
-            const periodoLabel = periodoSelecionado === 'anual' ? '/ano' : '/mês';
+            const periodoLabel = periodoSelecionado === 'anual' ? '/ano' : '/mÃªs';
 
-            // 🔥 INDICADOR DE MODO NO CARD
+            // ðŸ”¥ INDICADOR DE MODO NO CARD
             const modoBadge = isReal ?
-                '<span style="background:#ef4444;color:white;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:700;">🔴 REAL</span>' :
-                '<span style="background:#f59e0b;color:white;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:700;">🟡 SIMULAÇÃO</span>';
+                '<span style="background:#ef4444;color:white;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:700;">ðŸ”´ REAL</span>' :
+                '<span style="background:#f59e0b;color:white;padding:2px 10px;border-radius:12px;font-size:9px;font-weight:700;">ðŸŸ¡ SIMULAÃ‡ÃƒO</span>';
 
             html += `
                 <div class="plano-card" style="
@@ -384,7 +384,7 @@ async function carregarPlanos() {
                             box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
                             white-space: nowrap;
                         ">
-                            ⭐ MAIS POPULAR
+                            â­ MAIS POPULAR
                         </div>
                     ` : ''}
                     ${isCurrent ? `
@@ -399,7 +399,7 @@ async function carregarPlanos() {
                             font-size: ${isMobile ? '9px' : '11px'}; 
                             font-weight: bold;
                         ">
-                            ✅ ATUAL
+                            âœ… ATUAL
                         </div>
                     ` : ''}
                     
@@ -420,13 +420,13 @@ async function carregarPlanos() {
                         margin-bottom: 14px; 
                         display: inline-block;
                     ">
-                        👥 ${plano.profs === 'Ilimitado' ? '♾️ Profissionais Ilimitados' : `Até ${plano.profs} profissionais`}
+                        ðŸ‘¥ ${plano.profs === 'Ilimitado' ? 'â™¾ï¸ Profissionais Ilimitados' : `AtÃ© ${plano.profs} profissionais`}
                     </div>
                     
                     <ul style="list-style: none; padding: 0; margin: 14px 0; text-align: left;">
                         ${plano.recursos.slice(0, isMobile ? 4 : 6).map(r => `
                             <li style="padding: ${isMobile ? '4px 0' : '6px 0'}; font-size: ${isMobile ? '13px' : '14px'}; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-                                <span style="color: #10b981;">✅</span> ${r.replace('✅ ', '')}
+                                <span style="color: #10b981;">âœ…</span> ${r.replace('âœ… ', '')}
                             </li>
                         `).join('')}
                     </ul>
@@ -443,7 +443,7 @@ async function carregarPlanos() {
                             width: 100%;
                             font-size: ${isMobile ? '13px' : '14px'};
                         ">
-                            ✅ Plano Atual
+                            âœ… Plano Atual
                         </button>
                     ` : `
                         <button onclick="event.stopPropagation(); escolherPlano('${key}')" 
@@ -479,14 +479,14 @@ async function carregarPlanos() {
         atualizarTogglePeriodo();
 
     } catch (error) {
-        console.error('❌ Erro ao carregar planos:', error);
+        console.error('âŒ Erro ao carregar planos:', error);
         document.getElementById('content').innerHTML = `
             <div class="fade-in">
-                <h2 class="page-title">💎 Planos</h2>
+                <h2 class="page-title">ðŸ’Ž Planos</h2>
                 <div style="background: #fee2e2; padding: 20px; border-radius: 8px; text-align: center;">
-                    <p>❌ Erro ao carregar planos</p>
+                    <p>âŒ Erro ao carregar planos</p>
                     <button onclick="carregarPlanos()" class="btn-primary" style="margin-top: 10px;">
-                        🔄 Tentar novamente
+                        ðŸ”„ Tentar novamente
                     </button>
                 </div>
             </div>
@@ -496,7 +496,7 @@ async function carregarPlanos() {
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FUNÃ‡Ã•ES AUXILIARES
 // ============================================
 
 function togglePeriodo(periodo) {
@@ -536,15 +536,15 @@ function selecionarPlano(planoId) {
 
 function gerarTabelaComparativa(isMobile) {
     const comparacao = [
-        { recurso: 'Chatbot Inteligente', starter: '✅', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'Agendamentos/Mês', starter: '100', pro: '♾️', business: '♾️', enterprise: '♾️' },
-        { recurso: 'Profissionais', starter: '1', pro: '5', business: '15', enterprise: '♾️' },
-        { recurso: 'WhatsApp Business', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'Dashboard Analytics', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'Relatórios', starter: '❌', pro: '✅', business: '✅', enterprise: '✅' },
-        { recurso: 'API', starter: '❌', pro: '❌', business: '✅', enterprise: '✅' },
-        { recurso: 'Suporte', starter: '📧', pro: '💬', business: '🆘', enterprise: '👨‍💼' },
-        { recurso: 'Múltiplas Unidades', starter: '❌', pro: '❌', business: '✅', enterprise: '✅' },
+        { recurso: 'Chatbot Inteligente', starter: 'âœ…', pro: 'âœ…', business: 'âœ…', enterprise: 'âœ…' },
+        { recurso: 'Agendamentos/MÃªs', starter: '100', pro: 'â™¾ï¸', business: 'â™¾ï¸', enterprise: 'â™¾ï¸' },
+        { recurso: 'Profissionais', starter: '1', pro: '5', business: '15', enterprise: 'â™¾ï¸' },
+        { recurso: 'WhatsApp Business', starter: 'âŒ', pro: 'âœ…', business: 'âœ…', enterprise: 'âœ…' },
+        { recurso: 'Dashboard Analytics', starter: 'âŒ', pro: 'âœ…', business: 'âœ…', enterprise: 'âœ…' },
+        { recurso: 'RelatÃ³rios', starter: 'âŒ', pro: 'âœ…', business: 'âœ…', enterprise: 'âœ…' },
+        { recurso: 'API', starter: 'âŒ', pro: 'âŒ', business: 'âœ…', enterprise: 'âœ…' },
+        { recurso: 'Suporte', starter: 'ðŸ“§', pro: 'ðŸ’¬', business: 'ðŸ†˜', enterprise: 'ðŸ‘¨â€ðŸ’¼' },
+        { recurso: 'MÃºltiplas Unidades', starter: 'âŒ', pro: 'âŒ', business: 'âœ…', enterprise: 'âœ…' },
     ];
 
     const valorMensal = {
@@ -568,7 +568,7 @@ function gerarTabelaComparativa(isMobile) {
         const planos = ['starter', 'pro', 'business', 'enterprise'];
         const planosNomes = {
             starter: 'Starter',
-            pro: '⭐ Pro',
+            pro: 'â­ Pro',
             business: 'Business',
             enterprise: 'Enterprise'
         };
@@ -590,7 +590,7 @@ function gerarTabelaComparativa(isMobile) {
                 ">
                     <div style="font-size: 14px; font-weight: 700; color: ${planosCores[p]}; text-align: center; margin-bottom: 8px;">
                         ${planosNomes[p]}
-                        ${isPro ? '<span style="display:block;font-size:10px;color:#f59e0b;">⭐ MAIS POPULAR</span>' : ''}
+                        ${isPro ? '<span style="display:block;font-size:10px;color:#f59e0b;">â­ MAIS POPULAR</span>' : ''}
                     </div>
                     <div style="font-size: 18px; font-weight: 700; color: var(--text-primary); text-align: center; margin-bottom: 10px;">
                         ${valores[p]}
@@ -624,7 +624,7 @@ function gerarTabelaComparativa(isMobile) {
         return `
             <div style="margin-top: 32px; background: var(--bg-card); border-radius: 12px; padding: 16px; border: 1px solid var(--border-color);">
                 <h3 style="text-align: center; margin-bottom: 16px; font-size: 16px;">
-                    📊 Comparação de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
+                    ðŸ“Š ComparaÃ§Ã£o de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
                 </h3>
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     ${cards}
@@ -635,7 +635,7 @@ function gerarTabelaComparativa(isMobile) {
         return `
             <div style="margin-top: 48px; background: var(--bg-card); border-radius: 16px; padding: 24px; border: 1px solid var(--border-color);">
                 <h3 style="text-align: center; margin-bottom: 20px;">
-                    📊 Comparação de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
+                    ðŸ“Š ComparaÃ§Ã£o de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
                 </h3>
                 <div style="overflow-x: auto;">
                     <table class="data-table" style="min-width: 600px; font-size: 14px; border-collapse: collapse; width: 100%;">
@@ -643,7 +643,7 @@ function gerarTabelaComparativa(isMobile) {
                             <tr>
                                 <th style="min-width: 180px; text-align: left; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-primary);">Recurso</th>
                                 <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Starter</th>
-                                <th style="text-align: center; padding: 12px 16px; background: #1e293b; border-bottom: 2px solid #f59e0b; font-weight: 600; color: #f59e0b;">⭐ Pro</th>
+                                <th style="text-align: center; padding: 12px 16px; background: #1e293b; border-bottom: 2px solid #f59e0b; font-weight: 600; color: #f59e0b;">â­ Pro</th>
                                 <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Business</th>
                                 <th style="text-align: center; padding: 12px 16px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); font-weight: 600; color: var(--text-secondary);">Enterprise</th>
                             </tr>
@@ -659,11 +659,11 @@ function gerarTabelaComparativa(isMobile) {
                                 </tr>
                             `).join('')}
                             <tr style="font-weight: bold; background: var(--bg-hover);">
-                                <td style="padding: 12px 16px; color: var(--text-primary); border-top: 2px solid var(--border-color);">💰 Valor</td>
+                                <td style="padding: 12px 16px; color: var(--text-primary); border-top: 2px solid var(--border-color);">ðŸ’° Valor</td>
                                 <td style="text-align: center; padding: 12px 16px; color: #3b82f6; border-top: 2px solid var(--border-color);">${valores.starter}</td>
                                 <td style="text-align: center; padding: 12px 16px; background: #fbbf24; color: #1e293b; font-weight: 700; border-top: 2px solid #f59e0b;">
                                     ${valores.pro}
-                                    <span style="display: block; font-size: 10px; font-weight: 400; color: #78350f;">⭐ Melhor custo-benefício</span>
+                                    <span style="display: block; font-size: 10px; font-weight: 400; color: #78350f;">â­ Melhor custo-benefÃ­cio</span>
                                 </td>
                                 <td style="text-align: center; padding: 12px 16px; color: #8b5cf6; border-top: 2px solid var(--border-color);">${valores.business}</td>
                                 <td style="text-align: center; padding: 12px 16px; color: #ec4899; border-top: 2px solid var(--border-color);">${valores.enterprise}</td>
@@ -682,16 +682,16 @@ function gerarTabelaComparativa(isMobile) {
 
 function gerarFAQ(isMobile) {
     const faqs = [
-        { q: 'Posso mudar de plano depois?', a: 'Sim! Você pode fazer upgrade ou downgrade a qualquer momento.' },
-        { q: 'O que acontece se meu plano expirar?', a: 'Você volta para o plano Trial com 7 dias de acesso para regularizar.' },
-        { q: 'Posso cancelar quando quiser?', a: 'Sim! Você pode cancelar a qualquer momento sem multa.' },
-        { q: 'Tem desconto para pagamento anual?', a: 'Sim! Planos anuais têm 20% de desconto.' },
-        { q: 'O que é o período de teste?', a: 'Você tem 45 dias de teste grátis com acesso a todas as funcionalidades.' }
+        { q: 'Posso mudar de plano depois?', a: 'Sim! VocÃª pode fazer upgrade ou downgrade a qualquer momento.' },
+        { q: 'O que acontece se meu plano expirar?', a: 'VocÃª volta para o plano Trial com 7 dias de acesso para regularizar.' },
+        { q: 'Posso cancelar quando quiser?', a: 'Sim! VocÃª pode cancelar a qualquer momento sem multa.' },
+        { q: 'Tem desconto para pagamento anual?', a: 'Sim! Planos anuais tÃªm 20% de desconto.' },
+        { q: 'O que Ã© o perÃ­odo de teste?', a: 'VocÃª tem 45 dias de teste grÃ¡tis com acesso a todas as funcionalidades.' }
     ];
 
     return `
         <div style="margin-top: 32px; background: var(--bg-hover); padding: ${isMobile ? '20px' : '30px'}; border-radius: 16px;">
-            <h3 style="text-align: center; margin-bottom: 16px; font-size: ${isMobile ? '18px' : '22px'};">❓ Perguntas Frequentes</h3>
+            <h3 style="text-align: center; margin-bottom: 16px; font-size: ${isMobile ? '18px' : '22px'};">â“ Perguntas Frequentes</h3>
             <div style="max-width: 700px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px;">
                 ${faqs.map(faq => `
                     <details style="background: var(--bg-card); padding: ${isMobile ? '12px 16px' : '16px 20px'}; border-radius: 10px; border: 1px solid var(--border-color);">
@@ -710,15 +710,15 @@ function gerarFAQ(isMobile) {
 }
 
 // ============================================
-// GERAR BENEFÍCIOS ADICIONAIS
+// GERAR BENEFÃCIOS ADICIONAIS
 // ============================================
 
 function gerarBeneficiosAdicionais(isMobile) {
     const beneficios = [
-        { icon: '🔒', title: 'Segurança', desc: 'Dados criptografados e backups automáticos' },
-        { icon: '📱', title: 'Mobile Ready', desc: 'Acesso completo pelo celular' },
-        { icon: '🔄', title: 'Atualizações', desc: 'Novas funcionalidades sempre incluídas' },
-        { icon: '💳', title: 'Pagamento Seguro', desc: 'Processado via Mercado Pago' }
+        { icon: 'ðŸ”’', title: 'SeguranÃ§a', desc: 'Dados criptografados e backups automÃ¡ticos' },
+        { icon: 'ðŸ“±', title: 'Mobile Ready', desc: 'Acesso completo pelo celular' },
+        { icon: 'ðŸ”„', title: 'AtualizaÃ§Ãµes', desc: 'Novas funcionalidades sempre incluÃ­das' },
+        { icon: 'ðŸ’³', title: 'Pagamento Seguro', desc: 'Processado via Mercado Pago' }
     ];
 
     return `
@@ -734,7 +734,7 @@ function gerarBeneficiosAdicionais(isMobile) {
     `;
 }
 
-// public/js/pages/planos.js - SUBSTITUIR A FUNÇÃO escolherPlano
+// public/js/pages/planos.js - SUBSTITUIR A FUNÃ‡ÃƒO escolherPlano
 
 // ============================================
 // ESCOLHER PLANO - CORRIGIDO (BUSCA MODO DO BACKEND)
@@ -743,23 +743,23 @@ function gerarBeneficiosAdicionais(isMobile) {
 async function escolherPlano(planoId) {
     const planoConfig = PLANOS_CONFIG[planoId];
     if (!planoConfig) {
-        showToast('Plano não encontrado', 'error');
+        showToast('Plano nÃ£o encontrado', 'error');
         return;
     }
 
     const valor = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
-    const periodoLabel = periodoSelecionado === 'anual' ? 'ano' : 'mês';
+    const periodoLabel = periodoSelecionado === 'anual' ? 'ano' : 'mÃªs';
     const nomePlano = planoConfig.nome;
 
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
     const empresaId = usuario.empresa_id || usuario.empresaId;
 
     if (!empresaId) {
-        showToast('Erro: Empresa não identificada.', 'error');
+        showToast('Erro: Empresa nÃ£o identificada.', 'error');
         return;
     }
 
-    // 🔥 BUSCAR MODO DE PAGAMENTO ATUAL DO BACKEND
+    // ðŸ”¥ BUSCAR MODO DE PAGAMENTO ATUAL DO BACKEND
     let modoAtual = 'simulation';
     try {
         const token = localStorage.getItem('token');
@@ -770,29 +770,29 @@ async function escolherPlano(planoId) {
             const data = await res.json();
             if (data.success) {
                 modoAtual = data.data.mode;
-                modoPagamento = modoAtual; // Atualizar variável global
+                modoPagamento = modoAtual; // Atualizar variÃ¡vel global
             }
         }
     } catch (error) {
-        console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
+        console.warn('âš ï¸ Erro ao buscar modo de pagamento:', error);
     }
 
     const isReal = modoAtual === 'real';
-    const modoLabel = isReal ? '🔴 MODO REAL - Pagamentos com cobrança' : '🟡 MODO SIMULAÇÃO - Teste sem pagamento real';
+    const modoLabel = isReal ? 'ðŸ”´ MODO REAL - Pagamentos com cobranÃ§a' : 'ðŸŸ¡ MODO SIMULAÃ‡ÃƒO - Teste sem pagamento real';
     const modoCor = isReal ? '#ef4444' : '#f59e0b';
     const modoBg = isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
     const modoBorder = isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
 
     const modalContent = `
         <div style="padding: 10px;">
-            <p>Você está escolhendo o plano <strong>${nomePlano}</strong> por <strong>R$ ${valor.toFixed(2)}/${periodoLabel}</strong>.</p>
-            ${periodoSelecionado === 'anual' ? `<p style="color: #10b981;">🎉 Economia de 20% no plano anual!</p>` : ''}
+            <p>VocÃª estÃ¡ escolhendo o plano <strong>${nomePlano}</strong> por <strong>R$ ${valor.toFixed(2)}/${periodoLabel}</strong>.</p>
+            ${periodoSelecionado === 'anual' ? `<p style="color: #10b981;">ðŸŽ‰ Economia de 20% no plano anual!</p>` : ''}
             
-            <!-- 🔥 INDICADOR DO MODO ATUAL -->
+            <!-- ðŸ”¥ INDICADOR DO MODO ATUAL -->
             <div style="margin: 16px 0; padding: 12px; border-radius: 8px; background: ${modoBg}; border: 1px solid ${modoBorder};">
                 <p style="margin: 0; font-size: 13px; color: ${modoCor};">
                     <strong>${modoLabel}</strong>
-                    ${isReal ? ' - O pagamento será processado com cobrança real no cartão/PIX/boleto' : ' - Nenhum pagamento real é processado'}
+                    ${isReal ? ' - O pagamento serÃ¡ processado com cobranÃ§a real no cartÃ£o/PIX/boleto' : ' - Nenhum pagamento real Ã© processado'}
                 </p>
             </div>
             
@@ -808,7 +808,7 @@ async function escolherPlano(planoId) {
                 cursor: pointer;
                 margin-top: 16px;
             ">
-                ${isReal ? '🔴 Pagar Agora' : '✅ Confirmar Escolha'}
+                ${isReal ? 'ðŸ”´ Pagar Agora' : 'âœ… Confirmar Escolha'}
             </button>
         </div>
     `;
@@ -816,10 +816,10 @@ async function escolherPlano(planoId) {
     showModal('Confirmar Plano', modalContent, null);
 }
 
-// public/js/pages/planos.js - SUBSTITUIR A FUNÇÃO confirmarUpgrade
+// public/js/pages/planos.js - SUBSTITUIR A FUNÃ‡ÃƒO confirmarUpgrade
 
 // ============================================
-// CONFIRMAR UPGRADE - COM VERIFICAÇÃO DO MODO
+// CONFIRMAR UPGRADE - COM VERIFICAÃ‡ÃƒO DO MODO
 // ============================================
 
 async function confirmarUpgrade(planoId) {
@@ -832,12 +832,12 @@ async function confirmarUpgrade(planoId) {
         const empresaId = usuario.empresa_id || usuario.empresaId;
 
         if (!empresaId) {
-            showToast('Erro: Empresa não identificada', 'error');
+            showToast('Erro: Empresa nÃ£o identificada', 'error');
             hideLoading();
             return;
         }
 
-        // 🔥 VERIFICAR MODO DE PAGAMENTO ATUAL
+        // ðŸ”¥ VERIFICAR MODO DE PAGAMENTO ATUAL
         let modoAtual = 'simulation';
         try {
             const res = await fetch('/api/pagamento/config', {
@@ -850,13 +850,13 @@ async function confirmarUpgrade(planoId) {
                 }
             }
         } catch (error) {
-            console.warn('⚠️ Erro ao buscar modo:', error);
+            console.warn('âš ï¸ Erro ao buscar modo:', error);
         }
 
         const isReal = modoAtual === 'real';
 
         if (isReal) {
-            showToast('🔴 Redirecionando para pagamento...', 'info');
+            showToast('ðŸ”´ Redirecionando para pagamento...', 'info');
 
             const planoConfig = PLANOS_CONFIG[planoId];
             const valor = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
@@ -879,24 +879,24 @@ async function confirmarUpgrade(planoId) {
             hideLoading();
 
             if (result.success) {
-                // 🔥 USAR O LINK CORRETO
+                // ðŸ”¥ USAR O LINK CORRETO
                 // Se for REAL, usar init_point
                 // Se for SANDBOX, usar sandbox_init_point
                 const url = result.link || result.init_point || result.sandbox_init_point;
 
                 if (url) {
                     window.open(url, '_blank');
-                    showToast(result.isReal ? '🔴 Redirecionando para pagamento REAL...' : '🟡 Redirecionando para pagamento de teste...', 'info');
+                    showToast(result.isReal ? 'ðŸ”´ Redirecionando para pagamento REAL...' : 'ðŸŸ¡ Redirecionando para pagamento de teste...', 'info');
                 } else {
-                    showToast('❌ Erro ao gerar link de pagamento', 'error');
+                    showToast('âŒ Erro ao gerar link de pagamento', 'error');
                 }
             } else {
-                showToast(result.message || '❌ Erro ao criar pagamento', 'error');
+                showToast(result.message || 'âŒ Erro ao criar pagamento', 'error');
             }
             return;
         }
 
-        // 🟡 MODO SIMULAÇÃO - Ativar plano imediatamente
+        // ðŸŸ¡ MODO SIMULAÃ‡ÃƒO - Ativar plano imediatamente
         const response = await fetch('/api/planos/empresa', {
             method: 'PUT',
             headers: {
@@ -915,7 +915,7 @@ async function confirmarUpgrade(planoId) {
         hideLoading();
 
         if (result.success) {
-            showToast(`✅ Plano ${PLANOS_CONFIG[planoId]?.nome || planoId} ativado com sucesso!`, 'success');
+            showToast(`âœ… Plano ${PLANOS_CONFIG[planoId]?.nome || planoId} ativado com sucesso!`, 'success');
 
             if (usuario) {
                 usuario.plano = planoId;
@@ -929,13 +929,13 @@ async function confirmarUpgrade(planoId) {
                 }
             }, 500);
         } else {
-            showToast('❌ ' + (result.message || 'Erro ao ativar plano'), 'error');
+            showToast('âŒ ' + (result.message || 'Erro ao ativar plano'), 'error');
         }
 
     } catch (error) {
-        console.error('❌ Erro ao confirmar upgrade:', error);
+        console.error('âŒ Erro ao confirmar upgrade:', error);
         hideLoading();
-        showToast('❌ Erro ao processar upgrade', 'error');
+        showToast('âŒ Erro ao processar upgrade', 'error');
     }
 }
 
@@ -950,7 +950,7 @@ async function cancelarAssinatura() {
     const token = localStorage.getItem('token');
 
     try {
-        // 🔥 USAR /api/planos/empresa (rota que existe)
+        // ðŸ”¥ USAR /api/planos/empresa (rota que existe)
         const res = await fetch('/api/planos/empresa', {
             method: 'PUT',
             headers: {
@@ -968,7 +968,7 @@ async function cancelarAssinatura() {
         hideLoading();
 
         if (data.success) {
-            showToast('✅ Assinatura cancelada. Você está no plano Trial.', 'success');
+            showToast('âœ… Assinatura cancelada. VocÃª estÃ¡ no plano Trial.', 'success');
 
             const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
             usuario.plano = 'trial';
@@ -981,17 +981,17 @@ async function cancelarAssinatura() {
                 }
             }, 500);
         } else {
-            showToast(data.message || '❌ Erro ao cancelar', 'error');
+            showToast(data.message || 'âŒ Erro ao cancelar', 'error');
         }
     } catch (error) {
         hideLoading();
         console.error('Erro:', error);
-        showToast('❌ Erro ao cancelar assinatura', 'error');
+        showToast('âŒ Erro ao cancelar assinatura', 'error');
     }
 }
 
 // ============================================
-// EXPORTAR FUNÇÕES
+// EXPORTAR FUNÃ‡Ã•ES
 // ============================================
 
 window.carregarPlanos = carregarPlanos;
@@ -1001,5 +1001,5 @@ window.cancelarAssinatura = cancelarAssinatura;
 window.togglePeriodo = togglePeriodo;
 window.selecionarPlano = selecionarPlano;
 
-console.log('✅ planos.js carregado - Modo simulação');
-console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));
+console.log('âœ… planos.js carregado - Modo simulaÃ§Ã£o');
+console.log('ðŸ“Š Planos disponÃ­veis:', Object.keys(PLANOS_CONFIG));

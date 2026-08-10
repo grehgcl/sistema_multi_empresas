@@ -1,4 +1,4 @@
-// server/config/whatsapp.js
+﻿// server/config/whatsapp.js
 require('dotenv').config();
 
 const config = {
@@ -19,7 +19,7 @@ const config = {
         apiUrl: process.env.WPPCONNECT_API_URL || 'http://localhost:3000',
         apiKey: process.env.WPPCONNECT_API_KEY || 'minha_chave_wpp_2024',
     },
-    // Configurações gerais
+    // ConfiguraÃ§Ãµes gerais
     geral: {
         provider: process.env.WHATSAPP_PROVIDER || 'wati',
         enabled: process.env.WHATSAPP_ENABLED === 'true',
@@ -28,7 +28,7 @@ const config = {
     }
 };
 
-console.log('[CONFIG] 📱 WhatsApp:', {
+console.log('[CONFIG] ðŸ“± WhatsApp:', {
     provider: config.geral.provider,
     enabled: config.geral.enabled
 });

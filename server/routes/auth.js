@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -9,7 +9,7 @@ router.post('/login', (req, res) => {
     const { email, senha } = req.body;
     
     if (!email || !senha) {
-        return res.json({ success: false, message: 'Email e senha obrigatórios' });
+        return res.json({ success: false, message: 'Email e senha obrigatÃ³rios' });
     }
     
     db.get(`SELECT * FROM usuarios WHERE email = ?`, [email], (err, usuario) => {
@@ -18,7 +18,7 @@ router.post('/login', (req, res) => {
         }
         
         if (!usuario) {
-            return res.json({ success: false, message: 'Usuário não encontrado' });
+            return res.json({ success: false, message: 'UsuÃ¡rio nÃ£o encontrado' });
         }
         
         const senhaValida = bcrypt.compareSync(senha, usuario.senha);
@@ -52,14 +52,14 @@ router.get('/verify', (req, res) => {
     const token = req.headers.authorization?.split(' ')[1];
     
     if (!token) {
-        return res.json({ success: false, message: 'Token não fornecido' });
+        return res.json({ success: false, message: 'Token nÃ£o fornecido' });
     }
     
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret_key');
         res.json({ success: true, data: decoded });
     } catch (error) {
-        res.json({ success: false, message: 'Token inválido' });
+        res.json({ success: false, message: 'Token invÃ¡lido' });
     }
 });
 

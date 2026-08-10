@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // ROTAS DE ADMIN (SUPER ADMIN) - COMPLETO
 // ============================================
 const express = require('express');
@@ -11,7 +11,7 @@ const axios = require('axios');
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================
-// FUNÇÕES AUXILIARES SQL
+// FUNÃ‡Ã•ES AUXILIARES SQL
 // ============================================
 
 function formatDate(coluna) {
@@ -31,15 +31,15 @@ function dateInterval(intervalo) {
 }
 
 // ============================================
-// GET /api/admin/stats - ESTATÍSTICAS GERAIS
+// GET /api/admin/stats - ESTATÃSTICAS GERAIS
 // ============================================
 router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
     try {
         const empresaId = req.usuario.empresa_id;
 
-        console.log('📊 Buscando estatísticas para SuperAdmin');
+        console.log('ðŸ“Š Buscando estatÃ­sticas para SuperAdmin');
 
-        // 🔥 CORRIGIDO: Usar TO_CHAR no PostgreSQL
+        // ðŸ”¥ CORRIGIDO: Usar TO_CHAR no PostgreSQL
         const sql = isProduction
             ? `SELECT 
         (SELECT COUNT(*) FROM empresas) as total_empresas,
@@ -70,14 +70,14 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
 
         db.get(sql, [], (err, stats) => {
             if (err) {
-                console.error('❌ Erro ao buscar stats:', err.message);
+                console.error('âŒ Erro ao buscar stats:', err.message);
                 return res.status(500).json({
                     success: false,
-                    message: 'Erro ao buscar estatísticas: ' + err.message
+                    message: 'Erro ao buscar estatÃ­sticas: ' + err.message
                 });
             }
 
-            console.log('✅ Estatísticas carregadas:', stats);
+            console.log('âœ… EstatÃ­sticas carregadas:', stats);
             res.json({
                 success: true,
                 data: stats || {
@@ -97,7 +97,7 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao buscar estatísticas:', error);
+        console.error('âŒ Erro ao buscar estatÃ­sticas:', error);
         res.status(500).json({
             success: false,
             message: 'Erro interno: ' + error.message
@@ -109,7 +109,7 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
 // GET /api/admin/empresas - LISTAR EMPRESAS
 // ============================================
 router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
-    console.log('🏢 Buscando empresas para SuperAdmin');
+    console.log('ðŸ¢ Buscando empresas para SuperAdmin');
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -127,14 +127,14 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, empresas) => {
         if (err) {
-            console.error('❌ Erro ao listar empresas:', err);
+            console.error('âŒ Erro ao listar empresas:', err);
             return res.status(500).json({
                 success: false,
                 message: err.message
             });
         }
 
-        console.log(`✅ ${empresas.length} empresas encontradas`);
+        console.log(`âœ… ${empresas.length} empresas encontradas`);
         res.json({
             success: true,
             data: empresas || []
@@ -147,7 +147,7 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando empresa ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando empresa ${id}...`);
 
     const sql = isProduction
         ? `SELECT e.*, 
@@ -171,12 +171,12 @@ router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sql, [id], (err, empresa) => {
         if (err) {
-            console.error('❌ Erro ao buscar empresa:', err);
+            console.error('âŒ Erro ao buscar empresa:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!empresa) {
-            return res.json({ success: false, message: 'Empresa não encontrada' });
+            return res.json({ success: false, message: 'Empresa nÃ£o encontrada' });
         }
 
         res.json({ success: true, data: empresa });
@@ -189,10 +189,10 @@ router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, plano } = req.body;
-    console.log(`🔧 Super Admin - Atualizando empresa ${id}:`, { nome, plano });
+    console.log(`ðŸ”§ Super Admin - Atualizando empresa ${id}:`, { nome, plano });
 
     if (!nome) {
-        return res.json({ success: false, message: 'Nome da empresa é obrigatório' });
+        return res.json({ success: false, message: 'Nome da empresa Ã© obrigatÃ³rio' });
     }
 
     const sql = isProduction
@@ -201,11 +201,11 @@ router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.run(sql, [nome, plano || 'trial', id], function (err) {
         if (err) {
-            console.error('❌ Erro ao atualizar empresa:', err);
+            console.error('âŒ Erro ao atualizar empresa:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log('✅ Empresa atualizada com sucesso!');
+        console.log('âœ… Empresa atualizada com sucesso!');
         res.json({ success: true, message: 'Empresa atualizada com sucesso' });
     });
 });
@@ -215,7 +215,7 @@ router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
-    console.log(`⚠️ Super Admin - Deletando empresa ID: ${id}...`);
+    console.log(`âš ï¸ Super Admin - Deletando empresa ID: ${id}...`);
 
     try {
         const sqlCheck = isProduction
@@ -232,11 +232,11 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
         if (!empresa) {
             return res.status(404).json({
                 success: false,
-                message: 'Empresa não encontrada'
+                message: 'Empresa nÃ£o encontrada'
             });
         }
 
-        console.log(`📌 Empresa encontrada: "${empresa.nome}" (ID: ${id})`);
+        console.log(`ðŸ“Œ Empresa encontrada: "${empresa.nome}" (ID: ${id})`);
 
         const queries = [];
 
@@ -274,7 +274,7 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
             await new Promise((resolve, reject) => {
                 db.run(sql, [id], (err) => {
                     if (err) {
-                        console.error('❌ Erro ao deletar dados:', err.message);
+                        console.error('âŒ Erro ao deletar dados:', err.message);
                         reject(err);
                     }
                     resolve();
@@ -282,7 +282,7 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
             });
         }
 
-        console.log(`✅ Empresa "${empresa.nome}" (ID: ${id}) deletada com sucesso!`);
+        console.log(`âœ… Empresa "${empresa.nome}" (ID: ${id}) deletada com sucesso!`);
 
         res.json({
             success: true,
@@ -290,7 +290,7 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao deletar empresa:', error.message);
+        console.error('âŒ Erro ao deletar empresa:', error.message);
         res.status(500).json({
             success: false,
             message: 'Erro ao deletar empresa: ' + error.message
@@ -299,10 +299,10 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
 });
 
 // ============================================
-// GET /api/admin/usuarios - LISTAR USUÁRIOS
+// GET /api/admin/usuarios - LISTAR USUÃRIOS
 // ============================================
 router.get('/usuarios', auth, verificarSuperAdmin, (req, res) => {
-    console.log('👤 Buscando usuários para SuperAdmin');
+    console.log('ðŸ‘¤ Buscando usuÃ¡rios para SuperAdmin');
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -318,14 +318,14 @@ router.get('/usuarios', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, usuarios) => {
         if (err) {
-            console.error('❌ Erro ao listar usuários:', err);
+            console.error('âŒ Erro ao listar usuÃ¡rios:', err);
             return res.status(500).json({
                 success: false,
                 message: err.message
             });
         }
 
-        console.log(`✅ ${usuarios.length} usuários encontrados`);
+        console.log(`âœ… ${usuarios.length} usuÃ¡rios encontrados`);
         res.json({
             success: true,
             data: usuarios || []
@@ -356,7 +356,7 @@ router.get('/empresa/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sql, [id], (err, empresa) => {
         if (err) {
-            console.error('❌ Erro ao buscar empresa:', err);
+            console.error('âŒ Erro ao buscar empresa:', err);
             return res.status(500).json({
                 success: false,
                 message: err.message
@@ -366,7 +366,7 @@ router.get('/empresa/:id', auth, verificarSuperAdmin, (req, res) => {
         if (!empresa) {
             return res.status(404).json({
                 success: false,
-                message: 'Empresa não encontrada'
+                message: 'Empresa nÃ£o encontrada'
             });
         }
 
@@ -381,7 +381,7 @@ router.get('/empresa/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando usuário ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando usuÃ¡rio ${id}...`);
 
     const sqlUsuario = isProduction
         ? `SELECT id, nome, email, role, empresa_id, created_at, telefone 
@@ -393,7 +393,7 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sqlUsuario, [id], (err, usuario) => {
         if (err) {
-            console.error('❌ Erro ao buscar usuário:', err);
+            console.error('âŒ Erro ao buscar usuÃ¡rio:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -407,18 +407,18 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
                 db.get(sqlProf, [usuario.email], (err, prof) => {
                     usuario.comissao_percent = (prof?.comissao_percent || 30);
-                    console.log('✅ Usuário encontrado:', usuario.nome);
+                    console.log('âœ… UsuÃ¡rio encontrado:', usuario.nome);
                     res.json({ success: true, data: usuario });
                 });
             } else {
                 usuario.comissao_percent = null;
-                console.log('✅ Usuário encontrado:', usuario.nome);
+                console.log('âœ… UsuÃ¡rio encontrado:', usuario.nome);
                 res.json({ success: true, data: usuario });
             }
             return;
         }
 
-        console.log(`🔍 Usuário ${id} não encontrado em usuarios, buscando em profissionais...`);
+        console.log(`ðŸ” UsuÃ¡rio ${id} nÃ£o encontrado em usuarios, buscando em profissionais...`);
 
         const sqlProfissional = isProduction
             ? `SELECT id, nome, email, 'profissional' as role, empresa_id, created_at, telefone, comissao_percent
@@ -430,16 +430,16 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
         db.get(sqlProfissional, [id], (err, profissional) => {
             if (err) {
-                console.error('❌ Erro ao buscar profissional:', err);
+                console.error('âŒ Erro ao buscar profissional:', err);
                 return res.json({ success: false, message: err.message });
             }
 
             if (!profissional) {
-                console.log(`❌ Usuário ${id} não encontrado em nenhuma tabela`);
-                return res.json({ success: false, message: 'Usuário não encontrado' });
+                console.log(`âŒ UsuÃ¡rio ${id} nÃ£o encontrado em nenhuma tabela`);
+                return res.json({ success: false, message: 'UsuÃ¡rio nÃ£o encontrado' });
             }
 
-            console.log('✅ Profissional encontrado:', profissional.nome);
+            console.log('âœ… Profissional encontrado:', profissional.nome);
             res.json({ success: true, data: profissional });
         });
     });
@@ -452,7 +452,7 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, role, senha, telefone } = req.body;
 
-    console.log(`🔧 Super Admin - Atualizando usuário ${id}:`, { nome, email, role, telefone });
+    console.log(`ðŸ”§ Super Admin - Atualizando usuÃ¡rio ${id}:`, { nome, email, role, telefone });
 
     const sqlCheck = isProduction
         ? `SELECT id, empresa_id, role FROM usuarios WHERE id = $1`
@@ -460,12 +460,12 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sqlCheck, [id], (err, usuario) => {
         if (err) {
-            console.error('❌ Erro ao verificar usuário:', err);
+            console.error('âŒ Erro ao verificar usuÃ¡rio:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!usuario) {
-            return res.json({ success: false, message: 'Usuário não encontrado' });
+            return res.json({ success: false, message: 'UsuÃ¡rio nÃ£o encontrado' });
         }
 
         let query = isProduction
@@ -498,7 +498,7 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
         db.run(query, params, function (err) {
             if (err) {
-                console.error('❌ Erro ao atualizar usuário:', err);
+                console.error('âŒ Erro ao atualizar usuÃ¡rio:', err);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -507,7 +507,7 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
             const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
 
             if (novaRole === 'dono' && telefoneLimpo && empresaId) {
-                console.log(`📝 Atualizando telefone do dono na empresa ${empresaId}: ${telefoneLimpo}`);
+                console.log(`ðŸ“ Atualizando telefone do dono na empresa ${empresaId}: ${telefoneLimpo}`);
 
                 const sqlEmpresa = isProduction
                     ? `UPDATE empresas SET telefone_dono = $1 WHERE id = $2`
@@ -515,17 +515,17 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
                 db.run(sqlEmpresa, [telefoneLimpo, empresaId], function (err) {
                     if (err) {
-                        console.error('❌ Erro ao atualizar telefone da empresa:', err);
+                        console.error('âŒ Erro ao atualizar telefone da empresa:', err);
                     } else {
-                        console.log(`✅ Telefone do dono atualizado na empresa ${empresaId}: ${telefoneLimpo}`);
+                        console.log(`âœ… Telefone do dono atualizado na empresa ${empresaId}: ${telefoneLimpo}`);
                     }
                 });
             }
 
-            console.log('✅ Usuário atualizado com sucesso!');
+            console.log('âœ… UsuÃ¡rio atualizado com sucesso!');
             res.json({
                 success: true,
-                message: 'Usuário atualizado com sucesso!'
+                message: 'UsuÃ¡rio atualizado com sucesso!'
             });
         });
     });
@@ -548,7 +548,7 @@ router.get('/faturamento-mensal', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, rows) => {
         if (err) {
-            console.error('❌ Erro ao buscar faturamento mensal:', err);
+            console.error('âŒ Erro ao buscar faturamento mensal:', err);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: rows });
@@ -571,7 +571,7 @@ router.get('/crescimento-empresas', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, rows) => {
         if (err) {
-            console.error('❌ Erro ao buscar crescimento de empresas:', err);
+            console.error('âŒ Erro ao buscar crescimento de empresas:', err);
             return res.json({ success: false, message: err.message });
         }
         res.json({ success: true, data: rows });
@@ -583,7 +583,7 @@ router.get('/crescimento-empresas', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando usuários e profissionais da empresa ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando usuÃ¡rios e profissionais da empresa ${id}...`);
 
     const ativoCond = isProduction ? 'TRUE' : '1';
 
@@ -649,7 +649,7 @@ router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [id, id], (err, usuarios) => {
         if (err) {
-            console.error('❌ Erro ao buscar usuários e profissionais:', err);
+            console.error('âŒ Erro ao buscar usuÃ¡rios e profissionais:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -662,7 +662,7 @@ router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
             };
         });
 
-        console.log(`✅ ${dadosFormatados.length} usuários/profissionais encontrados`);
+        console.log(`âœ… ${dadosFormatados.length} usuÃ¡rios/profissionais encontrados`);
         console.log(`   - Donos: ${dadosFormatados.filter(u => u.tipo === 'dono').length}`);
         console.log(`   - Profissionais: ${dadosFormatados.filter(u => u.tipo === 'profissional').length}`);
 
@@ -675,7 +675,7 @@ router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando acessos da empresa ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando acessos da empresa ${id}...`);
 
     const sql = isProduction
         ? `SELECT a.*, u.nome as usuario_nome
@@ -693,11 +693,11 @@ router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [id], (err, acessos) => {
         if (err) {
-            console.error('❌ Erro ao buscar acessos:', err);
+            console.error('âŒ Erro ao buscar acessos:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log(`✅ ${acessos.length} acessos encontrados`);
+        console.log(`âœ… ${acessos.length} acessos encontrados`);
         res.json({ success: true, data: acessos });
     });
 });
@@ -707,7 +707,7 @@ router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando clientes da empresa ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando clientes da empresa ${id}...`);
 
     const sql = isProduction
         ? `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
@@ -721,7 +721,7 @@ router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [id], (err, clientes) => {
         if (err) {
-            console.error('❌ Erro ao buscar clientes:', err);
+            console.error('âŒ Erro ao buscar clientes:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -734,7 +734,7 @@ router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando agendamentos da empresa ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando agendamentos da empresa ${id}...`);
 
     const sql = `
         SELECT a.*, 
@@ -753,7 +753,7 @@ router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) =
 
     db.all(sql, [id], (err, agendamentos) => {
         if (err) {
-            console.error('❌ Erro ao buscar agendamentos:', err);
+            console.error('âŒ Erro ao buscar agendamentos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -772,7 +772,7 @@ router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) =
 // ============================================
 router.post('/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔧 Super Admin - Estendendo trial da empresa ${id}...`);
+    console.log(`ðŸ”§ Super Admin - Estendendo trial da empresa ${id}...`);
 
     const dataTrialExpira = new Date();
     dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
@@ -784,11 +784,11 @@ router.post('/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res
 
     db.run(sql, [dataStr, id], function (err) {
         if (err) {
-            console.error('❌ Erro ao estender trial:', err);
+            console.error('âŒ Erro ao estender trial:', err);
             return res.json({ success: false, message: 'Erro ao estender trial' });
         }
 
-        console.log(`✅ Trial estendido até ${dataStr}`);
+        console.log(`âœ… Trial estendido atÃ© ${dataStr}`);
         res.json({
             success: true,
             message: `Trial estendido por mais 45 dias! Nova data: ${dataTrialExpira.toLocaleDateString('pt-BR')}`,
@@ -801,7 +801,7 @@ router.post('/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res
 // GET /api/admin/empresas/estatisticas
 // ============================================
 router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
-    console.log('🔍 Super Admin - Buscando empresas com estatísticas...');
+    console.log('ðŸ” Super Admin - Buscando empresas com estatÃ­sticas...');
 
     const sqlEmpresas = isProduction
         ? `SELECT * FROM empresas ORDER BY created_at DESC`
@@ -809,11 +809,11 @@ router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sqlEmpresas, [], (err, empresas) => {
         if (err) {
-            console.error('❌ Erro ao buscar empresas:', err);
+            console.error('âŒ Erro ao buscar empresas:', err);
             return res.json({ success: false, message: err.message });
         }
 
-        console.log(`📊 ${empresas.length} empresas encontradas`);
+        console.log(`ðŸ“Š ${empresas.length} empresas encontradas`);
 
         const promises = empresas.map((e) => {
             return new Promise((resolve) => {
@@ -883,7 +883,7 @@ router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
         });
 
         Promise.all(promises).then((empresasCompletas) => {
-            console.log(`✅ ${empresasCompletas.length} empresas com estatísticas carregadas`);
+            console.log(`âœ… ${empresasCompletas.length} empresas com estatÃ­sticas carregadas`);
             res.json({ success: true, data: empresasCompletas });
         });
     });
@@ -895,7 +895,7 @@ router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
 router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
 
-    console.log(`📍 Buscando localização da empresa ${id}...`);
+    console.log(`ðŸ“ Buscando localizaÃ§Ã£o da empresa ${id}...`);
 
     const sqlCheck = isProduction
         ? `SELECT EXISTS (
@@ -906,7 +906,7 @@ router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) =>
 
     db.get(sqlCheck, [], (err, tableExists) => {
         if (err) {
-            console.error('❌ Erro ao verificar tabela localizacoes:', err.message);
+            console.error('âŒ Erro ao verificar tabela localizacoes:', err.message);
             return res.json({ success: true, data: {} });
         }
 
@@ -918,7 +918,7 @@ router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) =>
         }
 
         if (!existe) {
-            console.log('⚠️ Tabela localizacoes não encontrada');
+            console.log('âš ï¸ Tabela localizacoes nÃ£o encontrada');
             return res.json({ success: true, data: {} });
         }
 
@@ -928,16 +928,16 @@ router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) =>
 
         db.get(sqlLocation, [id], (err, localizacao) => {
             if (err) {
-                console.error('❌ Erro ao buscar localização:', err.message);
+                console.error('âŒ Erro ao buscar localizaÃ§Ã£o:', err.message);
                 return res.json({ success: true, data: {} });
             }
 
             if (!localizacao) {
-                console.log(`⚠️ Nenhuma localização encontrada para empresa ${id}`);
+                console.log(`âš ï¸ Nenhuma localizaÃ§Ã£o encontrada para empresa ${id}`);
                 return res.json({ success: true, data: {} });
             }
 
-            console.log(`📍 Localização encontrada: ${localizacao.cidade}/${localizacao.estado}`);
+            console.log(`ðŸ“ LocalizaÃ§Ã£o encontrada: ${localizacao.cidade}/${localizacao.estado}`);
             res.json({ success: true, data: localizacao });
         });
     });
@@ -950,7 +950,7 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
 
-    console.log(`🔧 Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
+    console.log(`ðŸ”§ Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
 
     const sqlCheck = isProduction
         ? `SELECT id, empresa_id FROM profissionais WHERE id = $1`
@@ -958,13 +958,13 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sqlCheck, [id], (err, profissional) => {
         if (err) {
-            console.error('❌ Erro ao verificar profissional:', err);
+            console.error('âŒ Erro ao verificar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            console.log(`❌ Profissional ID ${id} não encontrado`);
-            return res.json({ success: false, message: 'Profissional não encontrado' });
+            console.log(`âŒ Profissional ID ${id} nÃ£o encontrado`);
+            return res.json({ success: false, message: 'Profissional nÃ£o encontrado' });
         }
 
         let query = isProduction
@@ -1005,11 +1005,11 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 
         db.run(query, params, function (err) {
             if (err) {
-                console.error('❌ Erro ao atualizar profissional:', err);
+                console.error('âŒ Erro ao atualizar profissional:', err);
                 return res.json({ success: false, message: err.message });
             }
 
-            console.log(`✅ Profissional ${id} atualizado com sucesso!`);
+            console.log(`âœ… Profissional ${id} atualizado com sucesso!`);
             res.json({
                 success: true,
                 message: 'Profissional atualizado com sucesso!'
@@ -1023,7 +1023,7 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 router.get('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-    console.log(`🔍 Super Admin - Buscando profissional ${id}...`);
+    console.log(`ðŸ” Super Admin - Buscando profissional ${id}...`);
 
     const ativoCond = isProduction ? 'TRUE' : '1';
 
@@ -1037,18 +1037,18 @@ router.get('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 
     db.get(sql, [id], (err, profissional) => {
         if (err) {
-            console.error('❌ Erro ao buscar profissional:', err);
+            console.error('âŒ Erro ao buscar profissional:', err);
             return res.json({ success: false, message: err.message });
         }
 
         if (!profissional) {
-            console.log(`❌ Profissional ID ${id} não encontrado`);
-            return res.json({ success: false, message: 'Profissional não encontrado' });
+            console.log(`âŒ Profissional ID ${id} nÃ£o encontrado`);
+            return res.json({ success: false, message: 'Profissional nÃ£o encontrado' });
         }
 
         profissional.role = 'profissional';
 
-        console.log(`✅ Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
+        console.log(`âœ… Profissional encontrado: ${profissional.nome} (ID: ${profissional.id})`);
         res.json({ success: true, data: profissional });
     });
 });
@@ -1079,7 +1079,7 @@ router.get('/acessos', auth, verificarSuperAdmin, (req, res) => {
 
     db.all(sql, [], (err, acessos) => {
         if (err) {
-            console.error('❌ Erro ao buscar acessos:', err);
+            console.error('âŒ Erro ao buscar acessos:', err);
             return res.json({ success: false, message: err.message });
         }
 
@@ -1099,7 +1099,7 @@ router.get('/acessos', auth, verificarSuperAdmin, (req, res) => {
 
         db.get(sqlTotais, [], (err, totais) => {
             if (err) {
-                console.error('❌ Erro ao buscar totais de acessos:', err);
+                console.error('âŒ Erro ao buscar totais de acessos:', err);
                 return res.json({ success: false, message: err.message });
             }
 
@@ -1155,7 +1155,7 @@ router.post('/registrar-acesso', auth, (req, res) => {
 
     db.run(sql, [usuario_id, empresa_id, ip, user_agent], (err) => {
         if (err) {
-            console.error('❌ Erro ao registrar acesso:', err);
+            console.error('âŒ Erro ao registrar acesso:', err);
         }
         res.json({ success: true });
     });
@@ -1167,7 +1167,7 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
     const { id } = req.params;
     const { habilitado } = req.body;
 
-    console.log(`🔧 Super Admin - Alternando WhatsApp próprio da empresa ${id}:`, habilitado ? 'HABILITAR' : 'DESABILITAR');
+    console.log(`ðŸ”§ Super Admin - Alternando WhatsApp prÃ³prio da empresa ${id}:`, habilitado ? 'HABILITAR' : 'DESABILITAR');
 
     try {
         // Buscar empresa
@@ -1184,11 +1184,11 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
         if (!empresa) {
             return res.status(404).json({
                 success: false,
-                message: 'Empresa não encontrada'
+                message: 'Empresa nÃ£o encontrada'
             });
         }
 
-        // Atualizar WhatsApp próprio
+        // Atualizar WhatsApp prÃ³prio
         const sqlUpdate = isProduction
             ? `UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2`
             : `UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?`;
@@ -1200,26 +1200,26 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
             });
         });
 
-        // Se habilitou, criar instância
+        // Se habilitou, criar instÃ¢ncia
         if (habilitado) {
             try {
                 const evolution = require('../services/evolution-instances');
                 const instanceName = `emp-${id}-${empresa.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
                 await evolution.criarInstancia(instanceName);
-                console.log(`✅ Instância ${instanceName} criada para empresa ${id}`);
+                console.log(`âœ… InstÃ¢ncia ${instanceName} criada para empresa ${id}`);
             } catch (e) {
-                console.error('❌ Erro ao criar instância:', e.message);
-                // Não falha a requisição, só loga o erro
+                console.error('âŒ Erro ao criar instÃ¢ncia:', e.message);
+                // NÃ£o falha a requisiÃ§Ã£o, sÃ³ loga o erro
             }
         }
 
         res.json({
             success: true,
-            message: habilitado ? 'WhatsApp próprio habilitado!' : 'WhatsApp próprio desabilitado!'
+            message: habilitado ? 'WhatsApp prÃ³prio habilitado!' : 'WhatsApp prÃ³prio desabilitado!'
         });
 
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('âŒ Erro:', error);
         res.status(500).json({
             success: false,
             message: error.message

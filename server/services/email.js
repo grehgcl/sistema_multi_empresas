@@ -1,4 +1,4 @@
-// server/services/email.js
+﻿// server/services/email.js
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
     }
 });
 
-console.log('📧 Serviço de email carregado!');
+console.log('ðŸ“§ ServiÃ§o de email carregado!');
 
 // ============================================
 // EMAIL DE BOAS-VINDAS COMPLETO
@@ -166,63 +166,63 @@ async function enviarBoasVindas(email, nome, empresaNome) {
     <div class="container">
         <!-- HEADER -->
         <div class="header">
-            <div style="font-size: 40px; margin-bottom: 6px;">💎</div>
+            <div style="font-size: 40px; margin-bottom: 6px;">ðŸ’Ž</div>
             <h1>See&Agende</h1>
             <p>Sua agenda inteligente</p>
         </div>
         
         <!-- CONTENT -->
         <div class="content">
-            <h2>Olá ${nome}! 👋</h2>
+            <h2>OlÃ¡ ${nome}! ðŸ‘‹</h2>
             <p class="subtitle">Seja bem-vindo ao <strong>See&Agende</strong>! Sua empresa <strong>${empresaNome}</strong> foi cadastrada com sucesso.</p>
             
-            <p style="font-size: 14px; color: #555;">Para começar a usar o sistema, siga os passos abaixo:</p>
+            <p style="font-size: 14px; color: #555;">Para comeÃ§ar a usar o sistema, siga os passos abaixo:</p>
             
             <!-- DICA 1 -->
             <div class="dica">
-                <h4>📋 1. Adicione seus serviços</h4>
+                <h4>ðŸ“‹ 1. Adicione seus serviÃ§os</h4>
                 <div class="passo">
                     <strong>Como fazer:</strong><br>
-                    1. Clique em <strong>"Serviços"</strong> no menu lateral<br>
-                    2. Clique em <strong>"Novo Serviço"</strong><br>
-                    3. Preencha: <strong>Nome</strong> (ex: Corte de Cabelo), <strong>Valor</strong> (ex: R$ 50,00) e <strong>Duração</strong> (ex: 30 min)<br>
+                    1. Clique em <strong>"ServiÃ§os"</strong> no menu lateral<br>
+                    2. Clique em <strong>"Novo ServiÃ§o"</strong><br>
+                    3. Preencha: <strong>Nome</strong> (ex: Corte de Cabelo), <strong>Valor</strong> (ex: R$ 50,00) e <strong>DuraÃ§Ã£o</strong> (ex: 30 min)<br>
                     4. Clique em <strong>"Salvar"</strong>
                 </div>
-                <div class="exemplo">💡 Exemplo: Corte de Cabelo - R$ 50,00 - 30 min</div>
+                <div class="exemplo">ðŸ’¡ Exemplo: Corte de Cabelo - R$ 50,00 - 30 min</div>
             </div>
             
             <!-- DICA 2 -->
             <div class="dica">
-                <h4>⏰ 2. Configure seus horários de trabalho</h4>
+                <h4>â° 2. Configure seus horÃ¡rios de trabalho</h4>
                 <div class="passo">
                     <strong>Como fazer:</strong><br>
-                    1. Clique em <strong>"Configurações"</strong> no menu lateral<br>
-                    2. Vá na aba <strong>"Horários"</strong><br>
+                    1. Clique em <strong>"ConfiguraÃ§Ãµes"</strong> no menu lateral<br>
+                    2. VÃ¡ na aba <strong>"HorÃ¡rios"</strong><br>
                     3. Para cada dia da semana, ative/desative e ajuste:<br>
-                    &nbsp;&nbsp;• <strong>Horário de início</strong> (ex: 09:00)<br>
-                    &nbsp;&nbsp;• <strong>Horário de fim</strong> (ex: 18:00)<br>
-                    &nbsp;&nbsp;• <strong>Horário de almoço</strong> (ex: 12:00 às 13:00)<br>
-                    4. As alterações são salvas <strong>automaticamente</strong>
+                    &nbsp;&nbsp;â€¢ <strong>HorÃ¡rio de inÃ­cio</strong> (ex: 09:00)<br>
+                    &nbsp;&nbsp;â€¢ <strong>HorÃ¡rio de fim</strong> (ex: 18:00)<br>
+                    &nbsp;&nbsp;â€¢ <strong>HorÃ¡rio de almoÃ§o</strong> (ex: 12:00 Ã s 13:00)<br>
+                    4. As alteraÃ§Ãµes sÃ£o salvas <strong>automaticamente</strong>
                 </div>
             </div>
             
             <!-- DICA 3 -->
             <div class="dica">
-                <h4>🤖 3. Ative seu Chatbot</h4>
+                <h4>ðŸ¤– 3. Ative seu Chatbot</h4>
                 <div class="passo">
                     <strong>Como fazer:</strong><br>
-                    1. Clique em <strong>"Configurações"</strong> no menu lateral<br>
-                    2. Vá na aba <strong>"Chatbot"</strong><br>
+                    1. Clique em <strong>"ConfiguraÃ§Ãµes"</strong> no menu lateral<br>
+                    2. VÃ¡ na aba <strong>"Chatbot"</strong><br>
                     3. Copie o link gerado para o seu estabelecimento<br>
                     4. Envie o link para seus clientes via <strong>WhatsApp, Instagram ou redes sociais</strong><br>
-                    5. Seus clientes vão poder agendar <strong>24h por dia</strong> automaticamente!
+                    5. Seus clientes vÃ£o poder agendar <strong>24h por dia</strong> automaticamente!
                 </div>
-                <div class="exemplo">📱 Link do Chatbot: https://seusite.com/chatbot?empresa=123</div>
+                <div class="exemplo">ðŸ“± Link do Chatbot: https://seusite.com/chatbot?empresa=123</div>
             </div>
             
             <!-- DICA 4 -->
             <div class="dica">
-                <h4>👤 4. Cadastre seus clientes</h4>
+                <h4>ðŸ‘¤ 4. Cadastre seus clientes</h4>
                 <div class="passo">
                     <strong>Como fazer:</strong><br>
                     1. Clique em <strong>"Clientes"</strong> no menu lateral<br>
@@ -230,26 +230,26 @@ async function enviarBoasVindas(email, nome, empresaNome) {
                     3. Preencha: <strong>Nome</strong>, <strong>Telefone</strong> (importante!) e <strong>Email</strong><br>
                     4. Clique em <strong>"Salvar"</strong>
                 </div>
-                <div class="exemplo">💡 Dica: Ao enviar o link do chatbot, seus clientes podem se cadastrar sozinhos!</div>
+                <div class="exemplo">ðŸ’¡ Dica: Ao enviar o link do chatbot, seus clientes podem se cadastrar sozinhos!</div>
             </div>
             
             <!-- DICA EXTRA -->
             <div class="highlight-box">
-                <h4>🌟 Dica especial sobre o Chatbot</h4>
+                <h4>ðŸŒŸ Dica especial sobre o Chatbot</h4>
                 <p>
-                    Ao enviar o link do chatbot para seus clientes, eles farão o <strong>primeiro agendamento</strong> se cadastrando como <strong>"não sou cliente"</strong>.
-                    No <strong>segundo agendamento</strong>, eles já podem selecionar <strong>"já sou cliente"</strong> e o sistema vai reconhecê-los automaticamente! 📱
+                    Ao enviar o link do chatbot para seus clientes, eles farÃ£o o <strong>primeiro agendamento</strong> se cadastrando como <strong>"nÃ£o sou cliente"</strong>.
+                    No <strong>segundo agendamento</strong>, eles jÃ¡ podem selecionar <strong>"jÃ¡ sou cliente"</strong> e o sistema vai reconhecÃª-los automaticamente! ðŸ“±
                 </p>
             </div>
             
-            <!-- BOTÃO -->
+            <!-- BOTÃƒO -->
             <div style="text-align: center; margin: 28px 0 16px 0;">
-                <a href="${process.env.BASE_URL}" class="btn">🚀 Acessar o Sistema</a>
+                <a href="${process.env.BASE_URL}" class="btn">ðŸš€ Acessar o Sistema</a>
             </div>
             
             <div style="background: #f0f4ff; padding: 16px; border-radius: 10px; text-align: center; margin-top: 16px;">
                 <p style="margin: 0; font-size: 13px; color: #555;">
-                    📅 Você tem <strong>45 dias de teste grátis</strong>! Aproveite para explorar todas as funcionalidades.
+                    ðŸ“… VocÃª tem <strong>45 dias de teste grÃ¡tis</strong>! Aproveite para explorar todas as funcionalidades.
                 </p>
             </div>
         </div>
@@ -260,8 +260,8 @@ async function enviarBoasVindas(email, nome, empresaNome) {
                 <strong>See&Agende</strong> - Sua agenda inteligente
             </p>
             <p style="margin: 0;">
-                © 2026 See&Agende. Todos os direitos reservados.<br>
-                Dúvidas? Responda este email ou entre em contato pelo suporte.
+                Â© 2026 See&Agende. Todos os direitos reservados.<br>
+                DÃºvidas? Responda este email ou entre em contato pelo suporte.
             </p>
         </div>
     </div>
@@ -272,15 +272,15 @@ async function enviarBoasVindas(email, nome, empresaNome) {
         await transporter.sendMail({
             from: `"See&Agende" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: '🎉 Bem-vindo ao See&Agende - Sua agenda inteligente!',
+            subject: 'ðŸŽ‰ Bem-vindo ao See&Agende - Sua agenda inteligente!',
             html: html
         });
 
-        console.log(`✅ Email de boas-vindas enviado para ${email}`);
+        console.log(`âœ… Email de boas-vindas enviado para ${email}`);
         return { success: true };
 
     } catch (error) {
-        console.error('❌ Erro ao enviar email de boas-vindas:', error.message);
+        console.error('âŒ Erro ao enviar email de boas-vindas:', error.message);
         return { success: false, error: error.message };
     }
 }
@@ -291,24 +291,24 @@ async function enviarBoasVindas(email, nome, empresaNome) {
 async function enviarBoleto(email, nome, planoNome, valor, boletoUrl) {
     try {
         const html = `
-            <h2>📄 Seu boleto foi gerado!</h2>
-            <p>Olá <strong>${nome}</strong>,</p>
+            <h2>ðŸ“„ Seu boleto foi gerado!</h2>
+            <p>OlÃ¡ <strong>${nome}</strong>,</p>
             <p>Seu boleto para o plano <strong>${planoNome}</strong> foi gerado.</p>
-            <p><strong>💰 Valor:</strong> R$ ${valor.toFixed(2)}</p>
-            <p><a href="${boletoUrl}" style="background: #667eea; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">📄 Visualizar Boleto</a></p>
+            <p><strong>ðŸ’° Valor:</strong> R$ ${valor.toFixed(2)}</p>
+            <p><a href="${boletoUrl}" style="background: #667eea; color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none;">ðŸ“„ Visualizar Boleto</a></p>
         `;
 
         await transporter.sendMail({
             from: `"See&Agende" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: `📄 Boleto gerado - Plano ${planoNome}`,
+            subject: `ðŸ“„ Boleto gerado - Plano ${planoNome}`,
             html: html
         });
 
-        console.log(`✅ Email de boleto enviado para ${email}`);
+        console.log(`âœ… Email de boleto enviado para ${email}`);
         return { success: true };
     } catch (error) {
-        console.error('❌ Erro ao enviar email de boleto:', error.message);
+        console.error('âŒ Erro ao enviar email de boleto:', error.message);
         return { success: false };
     }
 }
@@ -319,31 +319,31 @@ async function enviarBoleto(email, nome, planoNome, valor, boletoUrl) {
 async function enviarPix(email, nome, planoNome, valor, qrCode, qrCodeBase64) {
     try {
         const html = `
-            <h2>📱 Seu PIX foi gerado!</h2>
-            <p>Olá <strong>${nome}</strong>,</p>
+            <h2>ðŸ“± Seu PIX foi gerado!</h2>
+            <p>OlÃ¡ <strong>${nome}</strong>,</p>
             <p>Seu PIX para o plano <strong>${planoNome}</strong> foi gerado.</p>
-            <p><strong>💰 Valor:</strong> R$ ${valor.toFixed(2)}</p>
+            <p><strong>ðŸ’° Valor:</strong> R$ ${valor.toFixed(2)}</p>
             ${qrCodeBase64 ? `<img src="data:image/png;base64,${qrCodeBase64}" style="width: 200px; height: 200px; border-radius: 12px; margin: 10px 0;">` : ''}
-            <p><strong>📋 Código PIX:</strong></p>
+            <p><strong>ðŸ“‹ CÃ³digo PIX:</strong></p>
             <p style="background: #f3f4f6; padding: 10px; border-radius: 8px; font-family: monospace; word-break: break-all;">${qrCode}</p>
         `;
 
         await transporter.sendMail({
             from: `"See&Agende" <${process.env.EMAIL_USER}>`,
             to: email,
-            subject: `📱 PIX gerado - Plano ${planoNome}`,
+            subject: `ðŸ“± PIX gerado - Plano ${planoNome}`,
             html: html
         });
 
-        console.log(`✅ Email de PIX enviado para ${email}`);
+        console.log(`âœ… Email de PIX enviado para ${email}`);
         return { success: true };
     } catch (error) {
-        console.error('❌ Erro ao enviar email de PIX:', error.message);
+        console.error('âŒ Erro ao enviar email de PIX:', error.message);
         return { success: false };
     }
 }
 // ============================================
-// NOTIFICAÇÃO DE NOVO CADASTRO (PARA O DONO)
+// NOTIFICAÃ‡ÃƒO DE NOVO CADASTRO (PARA O DONO)
 // ============================================
 async function notificarNovoCadastro(donoEmail, nome, empresaNome, telefone, email) {
     try {
@@ -352,17 +352,17 @@ async function notificarNovoCadastro(donoEmail, nome, empresaNome, telefone, ema
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>📢 Novo cadastro no See&Agende!</title>
+    <title>ðŸ“¢ Novo cadastro no See&Agende!</title>
 </head>
 <body style="font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px;">
     <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
         <div style="text-align: center; padding-bottom: 20px; border-bottom: 2px solid #10b981;">
-            <h1 style="color: #10b981; margin: 0;">📢 Novo Cadastro!</h1>
+            <h1 style="color: #10b981; margin: 0;">ðŸ“¢ Novo Cadastro!</h1>
             <p style="color: #666;">Um novo cliente se cadastrou no See&Agende</p>
         </div>
         
         <div style="padding: 20px 0;">
-            <h2>👤 Dados do Cliente:</h2>
+            <h2>ðŸ‘¤ Dados do Cliente:</h2>
             <table style="width: 100%; border-collapse: collapse;">
                 <tr>
                     <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Nome:</td>
@@ -374,7 +374,7 @@ async function notificarNovoCadastro(donoEmail, nome, empresaNome, telefone, ema
                 </tr>
                 <tr>
                     <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Telefone:</td>
-                    <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${telefone || 'Não informado'}</td>
+                    <td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${telefone || 'NÃ£o informado'}</td>
                 </tr>
                 <tr>
                     <td style="padding: 8px; font-weight: bold; border-bottom: 1px solid #e5e7eb;">Email:</td>
@@ -387,16 +387,16 @@ async function notificarNovoCadastro(donoEmail, nome, empresaNome, telefone, ema
             </table>
             
             <div style="background: #fef3c7; padding: 15px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
-                <p style="margin: 0;"><strong>📅 Status:</strong> Trial de 45 dias ativado!</p>
+                <p style="margin: 0;"><strong>ðŸ“… Status:</strong> Trial de 45 dias ativado!</p>
             </div>
             
             <div style="text-align: center; margin: 30px 0;">
-                <a href="${process.env.BASE_URL}/#admin" style="background: #667eea; color: white; padding: 12px 28px; border-radius: 10px; text-decoration: none; font-weight: 600;">🔍 Ver no Sistema</a>
+                <a href="${process.env.BASE_URL}/#admin" style="background: #667eea; color: white; padding: 12px 28px; border-radius: 10px; text-decoration: none; font-weight: 600;">ðŸ” Ver no Sistema</a>
             </div>
         </div>
         
         <div style="text-align: center; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #999;">
-            <p style="margin: 0;">See&Agende - Sistema de Gestão</p>
+            <p style="margin: 0;">See&Agende - Sistema de GestÃ£o</p>
         </div>
     </div>
 </body>
@@ -406,14 +406,14 @@ async function notificarNovoCadastro(donoEmail, nome, empresaNome, telefone, ema
         await transporter.sendMail({
             from: `"See&Agende" <${process.env.EMAIL_USER}>`,
             to: donoEmail,
-            subject: `📢 Novo cadastro: ${nome} - ${empresaNome}`,
+            subject: `ðŸ“¢ Novo cadastro: ${nome} - ${empresaNome}`,
             html: html
         });
 
-        console.log(`✅ Notificação de novo cadastro enviada para ${donoEmail}`);
+        console.log(`âœ… NotificaÃ§Ã£o de novo cadastro enviada para ${donoEmail}`);
         return { success: true };
     } catch (error) {
-        console.error('❌ Erro ao enviar notificação:', error.message);
+        console.error('âŒ Erro ao enviar notificaÃ§Ã£o:', error.message);
         return { success: false, error: error.message };
     }
 }

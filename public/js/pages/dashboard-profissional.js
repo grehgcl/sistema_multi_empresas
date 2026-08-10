@@ -1,6 +1,6 @@
-
+﻿
 // ============================================
-// FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
+// FUNÃ‡Ã•ES DE COMPATIBILIDADE POSTGRESQL
 // ============================================
 
 // Converter aberto (true/false ou 1/0)
@@ -19,7 +19,7 @@ function isAtivo(valor) {
     return false;
 }
 
-// Converter valor para número
+// Converter valor para nÃºmero
 function toNumber(valor) {
     return parseFloat(valor) || 0;
 }
@@ -29,7 +29,7 @@ function formatMoney(valor) {
     return toNumber(valor).toFixed(2).replace('.', ',');
 }
 
-﻿// Dashboard para Profissional
+ï»¿// Dashboard para Profissional
 async function carregarDashboardProfissional() {
     ativarBotao('dashboard');
     showLoading();
@@ -39,24 +39,24 @@ async function carregarDashboardProfissional() {
 
     let html = `
         <div class="fade-in">
-            <h2 class="page-title">📊 Meu Dashboard</h2>
+            <h2 class="page-title">ðŸ“Š Meu Dashboard</h2>
             <div class="card-grid">
                 <div class="stat-card">
-                    <div class="stat-icon">💰</div>
+                    <div class="stat-icon">ðŸ’°</div>
                     <div class="stat-content">
                         <div class="stat-value" id="totalComissoes">R$ 0,00</div>
-                        <div class="stat-label">Total em Comissões</div>
+                        <div class="stat-label">Total em ComissÃµes</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">✂️</div>
+                    <div class="stat-icon">âœ‚ï¸</div>
                     <div class="stat-content">
                         <div class="stat-value" id="totalServicos">0</div>
                         <div class="stat-label">Total Atendimentos</div>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">⏳</div>
+                    <div class="stat-icon">â³</div>
                     <div class="stat-content">
                         <div class="stat-value" id="servicosPendentes">0</div>
                         <div class="stat-label">Pendentes</div>
@@ -64,16 +64,16 @@ async function carregarDashboardProfissional() {
                 </div>
             </div>
             <div class="card">
-                <h3>📋 Últimas Comissões</h3>
+                <h3>ðŸ“‹ Ãšltimas ComissÃµes</h3>
                 <div class="table-responsive">
                     <table class="data-table">
                         <thead>
                             <tr>
                                 <th>Data</th>
                                 <th>Cliente</th>
-                                <th>Serviço</th>
+                                <th>ServiÃ§o</th>
                                 <th>Valor</th>
-                                <th>Sua Comissão</th>
+                                <th>Sua ComissÃ£o</th>
                             </tr>
                         </thead>
                         <tbody id="ultimasComissoes"></tbody>
@@ -108,15 +108,15 @@ async function carregarDashboardProfissional() {
             document.getElementById('totalComissoes').innerHTML = `R$ ${(parseFloat(totais.total_comissoes) || 0).toFixed(2)}`;
             document.getElementById('totalServicos').innerHTML = totais.total_servicos || 0;
 
-            // Últimas 5 comissões
+            // Ãšltimas 5 comissÃµes
             const ultimas = comissoes.slice(0, 5);
             const tbody = document.getElementById('ultimasComissoes');
 
             if (ultimas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">Nenhuma comissão registrada ainda</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:40px;">Nenhuma comissÃ£o registrada ainda</td></tr>';
             } else {
                 tbody.innerHTML = ultimas.map(c => {
-                    // Pegar o nome do serviço corretamente
+                    // Pegar o nome do serviÃ§o corretamente
                     const servicoNome = c.servico_nome || c.servico || 'N/A';
                     const clienteNome = c.cliente_nome || c.nome_cliente || 'N/A';
                     const dataFormatada = c.data ? new Date(c.data).toLocaleDateString('pt-BR') : '-';
@@ -134,7 +134,7 @@ async function carregarDashboardProfissional() {
             }
         } else {
             console.error('Erro ao carregar financeiro:', financeiro);
-            document.getElementById('ultimasComissoes').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Erro ao carregar comissões</td></tr>';
+            document.getElementById('ultimasComissoes').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Erro ao carregar comissÃµes</td></tr>';
         }
 
         if (agendamentos.success) {

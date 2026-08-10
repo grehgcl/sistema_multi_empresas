@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // ROTAS DE PLANOS
 // ============================================
 const express = require('express');
@@ -9,12 +9,12 @@ const { auth, verificarDono } = require('../middlewares/auth');
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================
-// PLANOS DISPONÍVEIS
+// PLANOS DISPONÃVEIS
 // ============================================
 // server/routes/pagamento.routes.js
 
 const PLANOS = {
-    // 🔥 PLANO DE TESTE - R$ 1,00 (ADICIONAR PRIMEIRO)
+    // ðŸ”¥ PLANO DE TESTE - R$ 1,00 (ADICIONAR PRIMEIRO)
     teste: { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00, dias_acesso: 1 },
     starter: { nome: 'Starter', limite: 1, valor: 24.90, dias_acesso: 30 },
     pro: { nome: 'Pro', limite: 5, valor: 49.90, dias_acesso: 30 },
@@ -24,7 +24,7 @@ const PLANOS = {
 
 const PLANOS_NOMES = {
     trial: 'Trial',
-    teste: 'Teste R$ 1,00',  // 🔥 ADICIONAR
+    teste: 'Teste R$ 1,00',  // ðŸ”¥ ADICIONAR
     starter: 'Starter',
     pro: 'Pro',
     business: 'Business',
@@ -39,7 +39,7 @@ router.post('/upgrade', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
     if (!PLANOS[plano]) {
-        return res.status(400).json({ success: false, message: 'Plano inválido' });
+        return res.status(400).json({ success: false, message: 'Plano invÃ¡lido' });
     }
 
     const config = PLANOS[plano];
@@ -87,32 +87,32 @@ router.post('/upgrade', auth, verificarDono, (req, res) => {
                    VALUES (?, ?, ?, ?, ?, ?)`;
 
             db.run(sqlHistorico, [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null], (err) => {
-                if (err) console.error('Erro ao salvar histórico:', err);
+                if (err) console.error('Erro ao salvar histÃ³rico:', err);
             });
 
-            // Habilitar WhatsApp próprio para Business/Enterprise
+            // Habilitar WhatsApp prÃ³prio para Business/Enterprise
             if (['Business', 'Enterprise', 'business', 'enterprise'].includes(plano)) {
                 const sqlWhats = isProduction
                     ? 'UPDATE empresas SET whatsapp_proprio_habilitado = TRUE WHERE id = $1'
                     : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
                 db.run(sqlWhats, [empresaId], (err) => {
                     if (err) console.error('Erro ao habilitar WhatsApp:', err);
-                    else console.log(`✅ WhatsApp próprio habilitado automaticamente para empresa ${empresaId} (plano: ${plano})`);
+                    else console.log(`âœ… WhatsApp prÃ³prio habilitado automaticamente para empresa ${empresaId} (plano: ${plano})`);
                 });
             } else {
-                // Se fez downgrade, desabilitar WhatsApp próprio
+                // Se fez downgrade, desabilitar WhatsApp prÃ³prio
                 const sqlWhats = isProduction
                     ? 'UPDATE empresas SET whatsapp_proprio_habilitado = FALSE WHERE id = $1'
                     : 'UPDATE empresas SET whatsapp_proprio_habilitado = 0 WHERE id = ?';
                 db.run(sqlWhats, [empresaId], (err) => {
                     if (err) console.error('Erro ao desabilitar WhatsApp:', err);
-                    else console.log(`⚠️ WhatsApp próprio desabilitado para empresa ${empresaId} (plano: ${plano})`);
+                    else console.log(`âš ï¸ WhatsApp prÃ³prio desabilitado para empresa ${empresaId} (plano: ${plano})`);
                 });
             }
 
             res.json({
                 success: true,
-                message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
+                message: `ParabÃ©ns! Seu plano ${config.nome} foi ativado com sucesso.`,
                 data: {
                     plano: plano,
                     plano_nome: config.nome,
@@ -145,11 +145,11 @@ router.post('/cancel-subscription', auth, verificarDono, (req, res) => {
         }
 
         if (!empresa) {
-            return res.json({ success: false, message: 'Empresa não encontrada' });
+            return res.json({ success: false, message: 'Empresa nÃ£o encontrada' });
         }
 
         if (empresa.plano === 'trial') {
-            return res.json({ success: false, message: 'Você já está no plano Trial' });
+            return res.json({ success: false, message: 'VocÃª jÃ¡ estÃ¡ no plano Trial' });
         }
 
         const sqlHistorico = isProduction
@@ -160,7 +160,7 @@ router.post('/cancel-subscription', auth, verificarDono, (req, res) => {
                (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
                VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`;
 
-        db.run(sqlHistorico, [empresaId, empresa.plano, motivo || 'Usuário cancelou assinatura'], (err) => {
+        db.run(sqlHistorico, [empresaId, empresa.plano, motivo || 'UsuÃ¡rio cancelou assinatura'], (err) => {
             if (err) console.error('Erro ao registrar cancelamento:', err);
         });
 
@@ -191,7 +191,7 @@ router.post('/cancel-subscription', auth, verificarDono, (req, res) => {
 
             res.json({
                 success: true,
-                message: `Assinatura cancelada! Você tem 7 dias de acesso ao plano Trial até ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
+                message: `Assinatura cancelada! VocÃª tem 7 dias de acesso ao plano Trial atÃ© ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
                 dias_trial: 7
             });
         });
@@ -257,7 +257,7 @@ router.post('/simulate-downgrade', auth, verificarDono, (req, res) => {
         if (err) {
             return res.json({ success: false, message: 'Erro ao voltar para trial' });
         }
-        res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! Válido até ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
+        res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! VÃ¡lido atÃ© ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
     });
 });
 // server/routes/planos.routes.js
@@ -269,12 +269,12 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { plano, assinatura_ativa, assinatura_valida_ate } = req.body;
 
-    console.log('📝 Atualizando plano da empresa:', { empresaId, plano, assinatura_ativa, assinatura_valida_ate });
+    console.log('ðŸ“ Atualizando plano da empresa:', { empresaId, plano, assinatura_ativa, assinatura_valida_ate });
 
     if (!plano) {
         return res.status(400).json({
             success: false,
-            message: 'Plano é obrigatório'
+            message: 'Plano Ã© obrigatÃ³rio'
         });
     }
 
@@ -282,7 +282,7 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
     if (!planosPermitidos.includes(plano)) {
         return res.status(400).json({
             success: false,
-            message: 'Plano inválido'
+            message: 'Plano invÃ¡lido'
         });
     }
 
@@ -310,14 +310,14 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-    // 🔥 VERIFICAR SE A EMPRESA EXISTE
+    // ðŸ”¥ VERIFICAR SE A EMPRESA EXISTE
     const sqlSelect = isProduction
         ? "SELECT id FROM empresas WHERE id = $1"
         : "SELECT id FROM empresas WHERE id = ?";
 
     db.get(sqlSelect, [empresaId], (err, empresa) => {
         if (err) {
-            console.error('❌ Erro ao buscar empresa:', err);
+            console.error('âŒ Erro ao buscar empresa:', err);
             return res.status(500).json({
                 success: false,
                 message: 'Erro ao buscar empresa: ' + err.message
@@ -327,11 +327,11 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
         if (!empresa) {
             return res.status(404).json({
                 success: false,
-                message: 'Empresa não encontrada'
+                message: 'Empresa nÃ£o encontrada'
             });
         }
 
-        // 🔥 SQL SIMPLIFICADO - SEM updated_at
+        // ðŸ”¥ SQL SIMPLIFICADO - SEM updated_at
         const sql = isProduction
             ? `UPDATE empresas 
                SET plano = $1, 
@@ -354,21 +354,21 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
             empresaId
         ];
 
-        console.log('📝 SQL:', sql);
-        console.log('📝 Params:', params);
+        console.log('ðŸ“ SQL:', sql);
+        console.log('ðŸ“ Params:', params);
 
         db.run(sql, params, function (err) {
             if (err) {
-                console.error('❌ Erro ao atualizar plano:', err);
+                console.error('âŒ Erro ao atualizar plano:', err);
                 return res.status(500).json({
                     success: false,
                     message: 'Erro ao atualizar plano: ' + err.message
                 });
             }
 
-            console.log(`✅ Plano da empresa ${empresaId} atualizado para ${plano}`);
+            console.log(`âœ… Plano da empresa ${empresaId} atualizado para ${plano}`);
 
-            // 🔥 BUSCAR DADOS ATUALIZADOS
+            // ðŸ”¥ BUSCAR DADOS ATUALIZADOS
             const sqlSelectUpdated = isProduction
                 ? `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira
                    FROM empresas WHERE id = $1`
@@ -377,7 +377,7 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
 
             db.get(sqlSelectUpdated, [empresaId], (err, empresaAtualizada) => {
                 if (err) {
-                    console.error('❌ Erro ao buscar empresa atualizada:', err);
+                    console.error('âŒ Erro ao buscar empresa atualizada:', err);
                     return res.json({
                         success: true,
                         message: 'Plano atualizado com sucesso!'
@@ -400,7 +400,7 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
 router.get('/empresa', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
-    console.log('📊 Buscando plano da empresa:', empresaId);
+    console.log('ðŸ“Š Buscando plano da empresa:', empresaId);
 
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -412,7 +412,7 @@ router.get('/empresa', auth, (req, res) => {
 
     db.get(sql, [empresaId], (err, empresa) => {
         if (err) {
-            console.error('❌ Erro ao buscar plano:', err);
+            console.error('âŒ Erro ao buscar plano:', err);
             return res.status(500).json({
                 success: false,
                 message: 'Erro ao buscar plano: ' + err.message
@@ -422,11 +422,11 @@ router.get('/empresa', auth, (req, res) => {
         if (!empresa) {
             return res.status(404).json({
                 success: false,
-                message: 'Empresa não encontrada'
+                message: 'Empresa nÃ£o encontrada'
             });
         }
 
-        // Verificar se está em trial
+        // Verificar se estÃ¡ em trial
         const isTrial = empresa.plano === 'trial';
         let diasRestantes = 0;
 
@@ -466,16 +466,16 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
         const { plano_id, plano_nome, valor, metodo_pagamento, periodo } = req.body;
         const empresaId = req.usuario.empresa_id;
 
-        console.log('💳 Criando pagamento real:', { empresaId, plano_id, plano_nome, valor, periodo });
+        console.log('ðŸ’³ Criando pagamento real:', { empresaId, plano_id, plano_nome, valor, periodo });
 
-        // Verificar se o Mercado Pago está configurado
+        // Verificar se o Mercado Pago estÃ¡ configurado
         const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
         if (!mpAccessToken) {
-            console.warn('⚠️ MERCADO_PAGO_ACCESS_TOKEN não configurado');
-            // Fallback para modo simulação
+            console.warn('âš ï¸ MERCADO_PAGO_ACCESS_TOKEN nÃ£o configurado');
+            // Fallback para modo simulaÃ§Ã£o
             return res.status(400).json({
                 success: false,
-                message: 'Pagamento real não configurado. Use o modo simulação.',
+                message: 'Pagamento real nÃ£o configurado. Use o modo simulaÃ§Ã£o.',
                 fallback: true
             });
         }
@@ -486,7 +486,7 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
             access_token: mpAccessToken
         });
 
-        // Criar preferência de pagamento
+        // Criar preferÃªncia de pagamento
         const preference = {
             items: [{
                 title: `Plano ${plano_nome} - ${periodo === 'anual' ? 'Anual' : 'Mensal'}`,
@@ -511,10 +511,10 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
         const response = await mercadopago.preferences.create(preference);
         const payment = response.body;
 
-        console.log('✅ Pagamento criado:', payment.id);
+        console.log('âœ… Pagamento criado:', payment.id);
 
         // Salvar no banco (opcional - se tiver tabela de pagamentos)
-        // Se não tiver tabela, pode pular esta parte
+        // Se nÃ£o tiver tabela, pode pular esta parte
 
         res.json({
             success: true,
@@ -525,7 +525,7 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
         });
 
     } catch (error) {
-        console.error('❌ Erro ao criar pagamento:', error);
+        console.error('âŒ Erro ao criar pagamento:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Erro ao criar pagamento'
@@ -539,21 +539,21 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
 router.post('/webhook', async (req, res) => {
     try {
         const body = req.body;
-        console.log('📥 Webhook recebido:', JSON.stringify(body, null, 2));
+        console.log('ðŸ“¥ Webhook recebido:', JSON.stringify(body, null, 2));
 
-        // Verificar se é uma notificação de pagamento
+        // Verificar se Ã© uma notificaÃ§Ã£o de pagamento
         if (body.type === 'payment' || body.topic === 'payment') {
             const paymentId = body.data?.id || body.id;
 
             if (!paymentId) {
-                console.log('⚠️ ID do pagamento não encontrado');
+                console.log('âš ï¸ ID do pagamento nÃ£o encontrado');
                 return res.sendStatus(200);
             }
 
             // Buscar status do pagamento
             const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
             if (!mpAccessToken) {
-                console.error('❌ MERCADO_PAGO_ACCESS_TOKEN não configurado');
+                console.error('âŒ MERCADO_PAGO_ACCESS_TOKEN nÃ£o configurado');
                 return res.sendStatus(200);
             }
 
@@ -565,14 +565,14 @@ router.post('/webhook', async (req, res) => {
             const response = await mercadopago.payment.findById(paymentId);
             const payment = response.body;
 
-            console.log('📊 Status do pagamento:', payment.status);
+            console.log('ðŸ“Š Status do pagamento:', payment.status);
 
             if (payment.status === 'approved') {
                 const externalRef = payment.external_reference || '';
                 const [empresaId, planoId] = externalRef.split('_');
 
                 if (empresaId && planoId) {
-                    console.log(`✅ Pagamento aprovado para empresa ${empresaId}, plano ${planoId}`);
+                    console.log(`âœ… Pagamento aprovado para empresa ${empresaId}, plano ${planoId}`);
 
                     // Definir limite baseado no plano
                     let limiteProfissionais = 1;
@@ -602,9 +602,9 @@ router.post('/webhook', async (req, res) => {
 
                     db.run(sql, [planoId, limiteProfissionais, empresaId], function (err) {
                         if (err) {
-                            console.error('❌ Erro ao ativar plano:', err);
+                            console.error('âŒ Erro ao ativar plano:', err);
                         } else {
-                            console.log(`✅ Plano ${planoId} ativado para empresa ${empresaId}`);
+                            console.log(`âœ… Plano ${planoId} ativado para empresa ${empresaId}`);
                         }
                     });
 
@@ -615,7 +615,7 @@ router.post('/webhook', async (req, res) => {
                             : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
                         db.run(sqlWhats, [empresaId], (err) => {
                             if (err) console.error('Erro ao habilitar WhatsApp:', err);
-                            else console.log(`✅ WhatsApp habilitado para empresa ${empresaId}`);
+                            else console.log(`âœ… WhatsApp habilitado para empresa ${empresaId}`);
                         });
                     }
                 }
@@ -625,7 +625,7 @@ router.post('/webhook', async (req, res) => {
         res.sendStatus(200);
 
     } catch (error) {
-        console.error('❌ Erro no webhook:', error);
+        console.error('âŒ Erro no webhook:', error);
         res.sendStatus(500);
     }
 });

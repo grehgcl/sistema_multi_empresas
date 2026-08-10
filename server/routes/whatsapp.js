@@ -1,4 +1,4 @@
-// server/routes/whatsapp.js
+﻿// server/routes/whatsapp.js
 const express = require('express');
 const router = express.Router();
 const whatsappService = require('../services/whatsapp');
@@ -12,7 +12,7 @@ router.post('/webhook/wati', async (req, res) => {
 
         console.log('[WHATSAPP WEBHOOK] Evento recebido:', event, data);
 
-        // Processa conforme necessário
+        // Processa conforme necessÃ¡rio
         if (event === 'message_sent') {
             // Mensagem enviada com sucesso
         } else if (event === 'message_failed') {
@@ -33,12 +33,12 @@ router.post('/teste', async (req, res) => {
     const { telefone, mensagem } = req.body;
 
     if (!telefone) {
-        return res.status(400).json({ success: false, error: 'Telefone é obrigatório' });
+        return res.status(400).json({ success: false, error: 'Telefone Ã© obrigatÃ³rio' });
     }
 
     const result = await whatsappService.send(
         telefone,
-        mensagem || '🧪 *Mensagem de Teste*\n\nO SEE&AGENDE está funcionando! 🎉'
+        mensagem || 'ðŸ§ª *Mensagem de Teste*\n\nO SEE&AGENDE estÃ¡ funcionando! ðŸŽ‰'
     );
 
     res.json(result);

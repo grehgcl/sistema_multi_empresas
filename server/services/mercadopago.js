@@ -1,41 +1,41 @@
-// ============================================
+﻿// ============================================
 // MERCADO PAGO SERVICE
 // ============================================
 
-// Carregar variáveis de ambiente ANTES de tudo
+// Carregar variÃ¡veis de ambiente ANTES de tudo
 require('dotenv').config({ path: '.env.local' });
 
 const axios = require('axios');
 
 class MercadoPagoService {
     constructor() {
-        // Forçar leitura do .env.local
+        // ForÃ§ar leitura do .env.local
         require('dotenv').config({ path: '.env.local' });
 
         this.token = process.env.MERCADOPAGO_ACCESS_TOKEN;
         this.mode = process.env.PAYMENT_MODE || 'sandbox';
         this.url = 'https://api.mercadopago.com';
-        console.log('🔑 Modo FORÇADO:', this.mode);
-        console.log('🔑 Token configurado:', this.token ? '✅ Sim' : '❌ Não');
+        console.log('ðŸ”‘ Modo FORÃ‡ADO:', this.mode);
+        console.log('ðŸ”‘ Token configurado:', this.token ? 'âœ… Sim' : 'âŒ NÃ£o');
     }
 
-    // 🔥 GERAR CHAVE IDEMPOTENTE ÚNICA
+    // ðŸ”¥ GERAR CHAVE IDEMPOTENTE ÃšNICA
     gerarIdempotencyKey() {
         return `idemp-${Date.now()}-${Math.random().toString(36).substr(2, 16)}`;
     }
 
-    // 🔥 EMAIL DE TESTE VÁLIDO DO MERCADO PAGO
+    // ðŸ”¥ EMAIL DE TESTE VÃLIDO DO MERCADO PAGO
     getEmailTeste() {
         return 'cliente@teste.com';
     }
 
-    // CRIAR PREFERÊNCIA DE PAGAMENTO (CHECKOUT PRO)
+    // CRIAR PREFERÃŠNCIA DE PAGAMENTO (CHECKOUT PRO)
     async criarPreferencia(preferenceData) {
         try {
             if (!this.token) {
                 return {
                     success: false,
-                    message: 'Token do Mercado Pago não configurado. Configure MERCADOPAGO_ACCESS_TOKEN no .env.local'
+                    message: 'Token do Mercado Pago nÃ£o configurado. Configure MERCADOPAGO_ACCESS_TOKEN no .env.local'
                 };
             }
 
@@ -50,7 +50,7 @@ class MercadoPagoService {
                 };
             }
 
-            console.log('📧 Email do payer:', preferenceData.payer.email);
+            console.log('ðŸ“§ Email do payer:', preferenceData.payer.email);
 
             const res = await axios.post(`${this.url}/checkout/preferences`, preferenceData, {
                 headers: {
@@ -70,7 +70,7 @@ class MercadoPagoService {
                 external_reference: preference.external_reference
             };
         } catch (e) {
-            console.error('❌ Erro ao criar preferencia:', e.response?.data || e.message);
+            console.error('âŒ Erro ao criar preferencia:', e.response?.data || e.message);
             return {
                 success: false,
                 message: e.response?.data?.message || 'Erro ao criar preferencia de pagamento'
@@ -82,12 +82,12 @@ class MercadoPagoService {
     async criarPix(empresaId, planoId, planoNome, valor, periodo, emailUsuario) {
         try {
             if (!this.token) {
-                return { success: false, message: 'Token do Mercado Pago não configurado' };
+                return { success: false, message: 'Token do Mercado Pago nÃ£o configurado' };
             }
 
             const emailPayer = emailUsuario || this.getEmailTeste();
 
-            console.log('💳 Criando PIX:', { empresaId, planoId, valor, email: emailPayer });
+            console.log('ðŸ’³ Criando PIX:', { empresaId, planoId, valor, email: emailPayer });
 
             const payload = {
                 transaction_amount: parseFloat(valor),
@@ -112,7 +112,7 @@ class MercadoPagoService {
             });
 
             const p = res.data;
-            console.log('✅ PIX criado com sucesso! ID:', p.id);
+            console.log('âœ… PIX criado com sucesso! ID:', p.id);
 
             return {
                 success: true,
@@ -122,15 +122,15 @@ class MercadoPagoService {
                 status: p.status
             };
         } catch (e) {
-            console.error('❌ Erro ao criar PIX:', e.response?.data || e.message);
+            console.error('âŒ Erro ao criar PIX:', e.response?.data || e.message);
 
             let mensagemErro = 'Erro ao criar PIX';
             if (e.response?.status === 400) {
-                mensagemErro = e.response?.data?.message || 'Dados inválidos no PIX';
+                mensagemErro = e.response?.data?.message || 'Dados invÃ¡lidos no PIX';
             } else if (e.response?.status === 401) {
-                mensagemErro = 'Token do Mercado Pago inválido';
+                mensagemErro = 'Token do Mercado Pago invÃ¡lido';
             } else if (e.response?.status === 403) {
-                mensagemErro = 'Conta não autorizada. Verifique as credenciais.';
+                mensagemErro = 'Conta nÃ£o autorizada. Verifique as credenciais.';
             }
 
             return {
@@ -141,17 +141,17 @@ class MercadoPagoService {
         }
     }
 
-    // 🔹 BOLETO REAL - CORRIGIDO (com first_name e last_name)
+    // ðŸ”¹ BOLETO REAL - CORRIGIDO (com first_name e last_name)
     async criarBoleto(empresaId, planoId, planoNome, valor, cpf, nome, emailUsuario) {
         try {
             if (!this.token) {
-                return { success: false, message: 'Token do Mercado Pago não configurado' };
+                return { success: false, message: 'Token do Mercado Pago nÃ£o configurado' };
             }
 
             const emailPayer = emailUsuario || this.getEmailTeste();
             const cpfLimpo = cpf.replace(/\D/g, '');
 
-            // 🔥 Separar nome em primeiro e último nome
+            // ðŸ”¥ Separar nome em primeiro e Ãºltimo nome
             const nomeCompleto = nome || 'Cliente';
             const nomeParts = nomeCompleto.trim().split(' ');
             const firstName = nomeParts[0] || 'Cliente';
@@ -163,8 +163,8 @@ class MercadoPagoService {
                 payment_method_id: 'bolbradesco',
                 payer: {
                     email: emailPayer,
-                    first_name: firstName,   // ← OBRIGATÓRIO
-                    last_name: lastName,     // ← OBRIGATÓRIO
+                    first_name: firstName,   // â† OBRIGATÃ“RIO
+                    last_name: lastName,     // â† OBRIGATÃ“RIO
                     identification: {
                         type: 'CPF',
                         number: cpfLimpo
@@ -174,7 +174,7 @@ class MercadoPagoService {
                         street_name: 'Rua Teste',
                         street_number: 123,
                         neighborhood: 'Centro',
-                        city: 'São Paulo',
+                        city: 'SÃ£o Paulo',
                         federal_unit: 'SP'
                     }
                 },
@@ -182,7 +182,7 @@ class MercadoPagoService {
                 date_of_expiration: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
             };
 
-            console.log('📤 Payload do boleto:', JSON.stringify(payload, null, 2));
+            console.log('ðŸ“¤ Payload do boleto:', JSON.stringify(payload, null, 2));
 
             const response = await axios.post(`${this.url}/v1/payments`, payload, {
                 headers: {
@@ -193,7 +193,7 @@ class MercadoPagoService {
             });
 
             const p = response.data;
-            console.log('✅ Boleto criado! ID:', p.id);
+            console.log('âœ… Boleto criado! ID:', p.id);
 
             return {
                 success: true,
@@ -203,18 +203,18 @@ class MercadoPagoService {
                 status: p.status
             };
         } catch (e) {
-            console.error('❌ Erro ao criar boleto:', e.response?.data || e.message);
+            console.error('âŒ Erro ao criar boleto:', e.response?.data || e.message);
             return {
                 success: false,
                 message: e.response?.data?.message || 'Erro ao criar boleto'
             };
         }
     }
-    // CARTÃO REAL
+    // CARTÃƒO REAL
     async criarCartao(empresaId, planoId, planoNome, valor, tokenCartao, emailUsuario) {
         try {
             if (!this.token) {
-                return { success: false, message: 'Token do Mercado Pago não configurado' };
+                return { success: false, message: 'Token do Mercado Pago nÃ£o configurado' };
             }
 
             const emailPayer = emailUsuario || this.getEmailTeste();
@@ -246,8 +246,8 @@ class MercadoPagoService {
                 status: p.status
             };
         } catch (e) {
-            console.error('❌ Erro ao criar cartão:', e.response?.data || e.message);
-            return { success: false, message: e.response?.data?.message || 'Erro no cartão' };
+            console.error('âŒ Erro ao criar cartÃ£o:', e.response?.data || e.message);
+            return { success: false, message: e.response?.data?.message || 'Erro no cartÃ£o' };
         }
     }
 

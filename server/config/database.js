@@ -1,5 +1,5 @@
-// ============================================
-// CONFIGURAÇÃO DO BANCO DE DADOS HÍBRIDO
+﻿// ============================================
+// CONFIGURAÃ‡ÃƒO DO BANCO DE DADOS HÃBRIDO
 // ============================================
 
 const { Pool } = require('pg');
@@ -10,24 +10,24 @@ const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER
 let db;
 let sqlite3 = null;
 
-// 🔥 SÓ CARREGA SQLITE EM DESENVOLVIMENTO
+// ðŸ”¥ SÃ“ CARREGA SQLITE EM DESENVOLVIMENTO
 if (!isProduction) {
     try {
         sqlite3 = require('sqlite3').verbose();
-        console.log('✅ sqlite3 carregado para desenvolvimento');
+        console.log('âœ… sqlite3 carregado para desenvolvimento');
     } catch (e) {
-        console.log('⚠ sqlite3 não disponível');
+        console.log('âš  sqlite3 nÃ£o disponÃ­vel');
         sqlite3 = null;
     }
 }
 
 if (isProduction) {
-    console.log('🔵 Conectando ao PostgreSQL (Produção)...');
-    console.log('📡 DATABASE_URL:', process.env.DATABASE_URL ? '✅ Definido' : '❌ NÃO DEFINIDO');
+    console.log('ðŸ”µ Conectando ao PostgreSQL (ProduÃ§Ã£o)...');
+    console.log('ðŸ“¡ DATABASE_URL:', process.env.DATABASE_URL ? 'âœ… Definido' : 'âŒ NÃƒO DEFINIDO');
 
     const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: false  // ← MUDE PARA false
+        ssl: false  // â† MUDE PARA false
     });
 
     function convertPlaceholders(sql) {
@@ -51,7 +51,7 @@ if (isProduction) {
             const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
             pool.query(sqlFinal, params, (err, result) => {
                 if (err) {
-                    console.error('❌ db.get error:', err.message);
+                    console.error('âŒ db.get error:', err.message);
                     return callback(err);
                 }
                 callback(null, result.rows[0] || null);
@@ -71,7 +71,7 @@ if (isProduction) {
             const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
             pool.query(sqlFinal, params, (err, result) => {
                 if (err) {
-                    console.error('❌ db.all error:', err.message);
+                    console.error('âŒ db.all error:', err.message);
                     return callback(err);
                 }
                 callback(null, result.rows);
@@ -91,11 +91,11 @@ if (isProduction) {
             const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
             pool.query(sqlFinal, params, (err, result) => {
                 if (err) {
-                    console.error('❌ db.run error:', err.message);
+                    console.error('âŒ db.run error:', err.message);
                     return callback(err);
                 }
-                // 🔥 ADICIONE ESTA LINHA
-                console.log('📌 PostgreSQL result.rows:', result.rows);
+                // ðŸ”¥ ADICIONE ESTA LINHA
+                console.log('ðŸ“Œ PostgreSQL result.rows:', result.rows);
                 callback(null, {
                     lastID: result.rows[0]?.id || null,
                     changes: result.rowCount
@@ -107,15 +107,15 @@ if (isProduction) {
 
     pool.connect((err, client, done) => {
         if (err) {
-            console.error('❌ Erro PostgreSQL:', err.message);
+            console.error('âŒ Erro PostgreSQL:', err.message);
             return;
         }
-        console.log('✅ PostgreSQL conectado!');
+        console.log('âœ… PostgreSQL conectado!');
         done();
     });
 
 } else {
-    console.log('🟢 Conectando ao SQLite (Desenvolvimento)...');
+    console.log('ðŸŸ¢ Conectando ao SQLite (Desenvolvimento)...');
     if (sqlite3) {
         const sqliteDb = new sqlite3.Database(path.join(__dirname, '../../database/barbearia.db'));
 
@@ -160,15 +160,15 @@ if (isProduction) {
                 return sqliteDb.run(sql, params, callback);
             }
         };
-        console.log('✅ SQLite conectado!');
+        console.log('âœ… SQLite conectado!');
     } else {
-        console.error('❌ sqlite3 não disponível!');
+        console.error('âŒ sqlite3 nÃ£o disponÃ­vel!');
         process.exit(1);
     }
 }
 
 // ============================================
-// FUNÇÕES MÍNIMAS PARA COMPATIBILIDADE
+// FUNÃ‡Ã•ES MÃNIMAS PARA COMPATIBILIDADE
 // ============================================
 function initDatabase() { }
 function inserirHorariosPadrao() { }
@@ -181,4 +181,4 @@ module.exports = {
     verificarColunaDiasBloqueio
 };
 
-console.log('✅ database.js carregado!');
+console.log('âœ… database.js carregado!');

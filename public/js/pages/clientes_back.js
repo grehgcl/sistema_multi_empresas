@@ -1,10 +1,10 @@
-// ============================================
-// CLIENTES.JS - VERSÃO CRM COMPLETA + MOBILE BLINDADO
+﻿// ============================================
+// CLIENTES.JS - VERSÃƒO CRM COMPLETA + MOBILE BLINDADO
 // ULTIMA ATUALIZACAO: 24/07/2026
 // ============================================
 
 // ============================================
-// FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
+// FUNÃ‡Ã•ES DE COMPATIBILIDADE POSTGRESQL
 // ============================================
 
 function isAberto(valor) {
@@ -43,7 +43,7 @@ function formatarDataBr(data) {
 }
 
 // ============================================
-// VARIÁVEIS GLOBAIS
+// VARIÃVEIS GLOBAIS
 // ============================================
 
 let clientesCompletos = [];
@@ -55,7 +55,7 @@ let termoBuscaClientes = '';
 // ============================================
 
 async function carregarClientes() {
-    console.log("🟢 carregarClientes chamada (CRM)");
+    console.log("ðŸŸ¢ carregarClientes chamada (CRM)");
     ativarBotao('clientes');
     showLoading();
 
@@ -95,10 +95,10 @@ async function carregarClientes() {
                 diasDesdeUltima = Math.ceil((hoje - ultimaVisita) / (1000 * 60 * 60 * 24));
             }
 
-            let classificacao = 'regular'; let icone = '👤';
-            if (totalConcluidos >= 10 && valorTotal >= 500) { classificacao = 'vip'; icone = '⭐'; }
-            else if (totalConcluidos >= 5) { classificacao = 'frequente'; icone = '🔥'; }
-            else if (diasDesdeUltima !== null && diasDesdeUltima > 60) { classificacao = 'sumido'; icone = '😴'; }
+            let classificacao = 'regular'; let icone = 'ðŸ‘¤';
+            if (totalConcluidos >= 10 && valorTotal >= 500) { classificacao = 'vip'; icone = 'â­'; }
+            else if (totalConcluidos >= 5) { classificacao = 'frequente'; icone = 'ðŸ”¥'; }
+            else if (diasDesdeUltima !== null && diasDesdeUltima > 60) { classificacao = 'sumido'; icone = 'ðŸ˜´'; }
             else if (totalConcluidos <= 1) { classificacao = 'novo'; icone = ''; }
 
             return { ...cliente, total_concluidos: totalConcluidos, pendentes: agsPendentes.length, valor_total: valorTotal, ticket_medio: ticketMedio, dias_sem_visita: diasDesdeUltima, classificacao, icone };
@@ -106,7 +106,7 @@ async function carregarClientes() {
 
         clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
 
-        // Detecção de Mobile Robusta
+        // DetecÃ§Ã£o de Mobile Robusta
         const isMobile = window.innerWidth < 768;
 
         // Filtros e Busca
@@ -127,7 +127,7 @@ async function carregarClientes() {
             });
         }
 
-        // Métricas para Header
+        // MÃ©tricas para Header
         const stats = {
             total: clientesFiltrados.length,
             vip: clientesFiltrados.filter(c => c.classificacao === 'vip').length,
@@ -139,33 +139,33 @@ async function carregarClientes() {
         };
 
         // ==========================================
-        // RENDERIZAÇÃO HTML BLINDADA
+        // RENDERIZAÃ‡ÃƒO HTML BLINDADA
         // ==========================================
         let html = `<div class="fade-in" style="padding-bottom: 80px;">`; // Padding extra para scroll mobile
 
-        // Header e Ações
+        // Header e AÃ§Ãµes
         html += `
             <div class="dashboard-header">
-                <h2 class="page-title">👥 Clientes</h2>
+                <h2 class="page-title">ðŸ‘¥ Clientes</h2>
                 <div class="dashboard-actions" style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;">
-                    <input type="text" id="buscaClientesInput" placeholder="🔍 Buscar..." 
+                    <input type="text" id="buscaClientesInput" placeholder="ðŸ” Buscar..." 
                            style="flex: 1; min-width: 100px; padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);"
                            oninput="buscarClientes()" value="${termoBuscaClientes}">
-                    <button onclick="abrirModalPromocao()" class="btn btn-success" style="font-size: 12px; padding: 8px 12px;">📢 Promoção</button>
-                    <button onclick="abrirModalImportarCSV()" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">📂 Importar</button>
-                    <button onclick="abrirModalCliente()" class="btn btn-whatsapp" style="font-size: 12px; padding: 8px 12px;">➕ Novo</button>
+                    <button onclick="abrirModalPromocao()" class="btn btn-success" style="font-size: 12px; padding: 8px 12px;">ðŸ“¢ PromoÃ§Ã£o</button>
+                    <button onclick="abrirModalImportarCSV()" class="btn btn-primary" style="font-size: 12px; padding: 8px 12px;">ðŸ“‚ Importar</button>
+                    <button onclick="abrirModalCliente()" class="btn btn-whatsapp" style="font-size: 12px; padding: 8px 12px;">âž• Novo</button>
                 </div>
             </div>
 
-            <!-- Filtros Rápidos + Botão Apagar Tudo -->
+            <!-- Filtros RÃ¡pidos + BotÃ£o Apagar Tudo -->
             <div style="display: flex; gap: 6px; overflow-x: auto; padding: 10px 0; margin-bottom: 10px; -webkit-overflow-scrolling: touch; align-items: center;">
                 <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="white-space: nowrap; font-size: 11px; padding: 4px 10px;">Todos (${stats.total})</button>
-                <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="white-space: nowrap; font-size: 11px; padding: 4px 10px;">⭐ VIP (${stats.vip})</button>
+                <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="white-space: nowrap; font-size: 11px; padding: 4px 10px;">â­ VIP (${stats.vip})</button>
                 <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="white-space: nowrap; font-size: 11px; padding: 4px 10px;"> Frequentes (${stats.freq})</button>
                 <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="white-space: nowrap; font-size: 11px; padding: 4px 10px;"> Sumidos (${stats.sum})</button>
                 <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="white-space: nowrap; font-size: 11px; padding: 4px 10px;"> Novos (${stats.novos})</button>
                 
-                <!-- BOTÃO APAGAR TODOS -->
+                <!-- BOTÃƒO APAGAR TODOS -->
                 <button onclick="apagarTodosClientes()" class="btn btn-danger" style="margin-left: auto; white-space: nowrap; font-size: 11px; padding: 4px 10px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 8px rgba(239,68,68,0.2);">
                     <i class="fas fa-trash-alt"></i> Apagar Todos
                 </button>
@@ -183,7 +183,7 @@ async function carregarClientes() {
         if (clientesFiltrados.length === 0) {
             html += `<div class="empty-state"><p>Nenhum cliente encontrado.</p></div>`;
         } else if (isMobile) {
-            // RENDERIZAÇÃO MOBILE (CARDS)
+            // RENDERIZAÃ‡ÃƒO MOBILE (CARDS)
             html += `<div style="display: flex; flex-direction: column; gap: 12px;">`;
             for (let c of clientesFiltrados) {
                 const cores = {
@@ -212,7 +212,7 @@ async function carregarClientes() {
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; background: var(--bg-hover); padding: 8px; border-radius: 8px; margin-bottom: 12px; text-align: center;">
                             <div><div style="font-weight: bold; color: var(--text-primary);">${c.total_concluidos}</div><div style="font-size: 10px; color: var(--text-muted);">Atend.</div></div>
                             <div><div style="font-weight: bold; color: #22c55e;">R$ ${formatMoney(c.ticket_medio)}</div><div style="font-size: 10px; color: var(--text-muted);">Ticket</div></div>
-                            <div><div style="font-weight: bold; color: ${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size: 10px; color: var(--text-muted);">Última</div></div>
+                            <div><div style="font-weight: bold; color: ${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size: 10px; color: var(--text-muted);">Ãšltima</div></div>
                         </div>
 
                         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;">
@@ -226,11 +226,11 @@ async function carregarClientes() {
             }
             html += `</div>`;
         } else {
-            // RENDERIZAÇÃO DESKTOP (TABELA)
+            // RENDERIZAÃ‡ÃƒO DESKTOP (TABELA)
             html += `
                 <div class="table-responsive" style="overflow-x: auto;">
                     <table class="data-table" style="width: 100%; min-width: 800px;">
-                        <thead><tr><th>#</th><th>Cliente</th><th>Telefone</th><th>Classificação</th><th>Atend.</th><th>Ticket</th><th>Última</th><th>Ações</th></tr></thead>
+                        <thead><tr><th>#</th><th>Cliente</th><th>Telefone</th><th>ClassificaÃ§Ã£o</th><th>Atend.</th><th>Ticket</th><th>Ãšltima</th><th>AÃ§Ãµes</th></tr></thead>
                         <tbody id="listaClientesTbody">
             `;
             // Loop da tabela desktop
@@ -263,7 +263,7 @@ async function carregarClientes() {
 }
 
 // ============================================
-// 🔍 BUSCA E FILTROS - VERSÃO ESTÁVEL (RECARGA TOTAL)
+// ðŸ” BUSCA E FILTROS - VERSÃƒO ESTÃVEL (RECARGA TOTAL)
 // ============================================
 
 function buscarClientes() {
@@ -272,7 +272,7 @@ function buscarClientes() {
 
     termoBuscaClientes = input.value.toLowerCase().trim();
 
-    // Recarrega a lista completa aplicando o filtro (evita bugs de renderização parcial no mobile)
+    // Recarrega a lista completa aplicando o filtro (evita bugs de renderizaÃ§Ã£o parcial no mobile)
     carregarClientes();
 }
 
@@ -290,15 +290,15 @@ function setFiltroClientes(filtro) {
 }
 
 // ============================================
-// ️ APAGAR TODOS OS CLIENTES
+// ï¸ APAGAR TODOS OS CLIENTES
 // ============================================
 
 async function apagarTodosClientes() {
-    if (!confirm('️ ATENÇÃO: Você tem certeza que deseja apagar TODOS os clientes?\n\nEsta ação apagará também todos os agendamentos vinculados e não poderá ser desfeita!')) {
+    if (!confirm('ï¸ ATENÃ‡ÃƒO: VocÃª tem certeza que deseja apagar TODOS os clientes?\n\nEsta aÃ§Ã£o apagarÃ¡ tambÃ©m todos os agendamentos vinculados e nÃ£o poderÃ¡ ser desfeita!')) {
         return;
     }
 
-    if (!confirm('🛑 ÚLTIMA CONFIRMAÇÃO: Digite OK mentalmente. Tem certeza absoluta?')) {
+    if (!confirm('ðŸ›‘ ÃšLTIMA CONFIRMAÃ‡ÃƒO: Digite OK mentalmente. Tem certeza absoluta?')) {
         return;
     }
 
@@ -315,8 +315,8 @@ async function apagarTodosClientes() {
         hideLoading();
 
         if (data.success) {
-            showToast(`✅ ${data.message}`, 'success');
-            // Reseta variáveis locais
+            showToast(`âœ… ${data.message}`, 'success');
+            // Reseta variÃ¡veis locais
             clientesCompletos = [];
             filtroClientes = 'todos';
             termoBuscaClientes = '';
@@ -325,14 +325,14 @@ async function apagarTodosClientes() {
             showToast(data.message || 'Erro ao apagar clientes', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao apagar todos:', error);
+        console.error('âŒ Erro ao apagar todos:', error);
         hideLoading();
         showToast('Erro ao conectar com o servidor', 'error');
     }
 }
 
 // ============================================
-// VER HISTÓRICO DO CLIENTE
+// VER HISTÃ“RICO DO CLIENTE
 // ============================================
 
 async function verHistoricoCliente(id) {
@@ -347,7 +347,7 @@ async function verHistoricoCliente(id) {
         const ags = agendamentos.filter(a => a.cliente_id === id);
 
         if (ags.length === 0) {
-            showToast(' Este cliente ainda não tem agendamentos', 'info');
+            showToast(' Este cliente ainda nÃ£o tem agendamentos', 'info');
             return;
         }
 
@@ -357,7 +357,7 @@ async function verHistoricoCliente(id) {
             <div id="modalHistorico" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
                 <div class="modal-content" style="max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0;"> Histórico de ${escapeHtml(cliente?.nome || 'Cliente')}</h3>
+                        <h3 style="margin: 0;"> HistÃ³rico de ${escapeHtml(cliente?.nome || 'Cliente')}</h3>
                         <button onclick="fecharModalHistorico()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
                     </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
@@ -367,7 +367,7 @@ async function verHistoricoCliente(id) {
                         </div>
                         <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
                             <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${ags.filter(a => a.status === 'concluido').length}</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">✅ Concluídos</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">âœ… ConcluÃ­dos</div>
                         </div>
                         <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
                             <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${ags.filter(a => a.status === 'pendente' || a.status === 'agendado').length}</div>
@@ -377,8 +377,8 @@ async function verHistoricoCliente(id) {
                     <div style="max-height: 300px; overflow-y: auto;">
                         ${ags.sort((a, b) => new Date(b.data) - new Date(a.data)).map(a => `
                             <div style="display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px;">
-                                <span> 📅 ${formatarDataBr(a.data)} ${a.hora || ''}</span>
-                                <span>✂️ ${escapeHtml(a.servico_nome || a.servico || 'N/A')}</span>
+                                <span> ðŸ“… ${formatarDataBr(a.data)} ${a.hora || ''}</span>
+                                <span>âœ‚ï¸ ${escapeHtml(a.servico_nome || a.servico || 'N/A')}</span>
                                 <span style="font-weight: 600; color: ${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">${a.status || 'pendente'}</span>
                             </div>
                         `).join('')}
@@ -395,8 +395,8 @@ async function verHistoricoCliente(id) {
         document.body.insertAdjacentHTML('beforeend', html);
 
     } catch (error) {
-        console.error('❌ Erro ao buscar histórico:', error);
-        showToast('Erro ao carregar histórico', 'error');
+        console.error('âŒ Erro ao buscar histÃ³rico:', error);
+        showToast('Erro ao carregar histÃ³rico', 'error');
     }
 }
 
@@ -453,7 +453,7 @@ function fecharModalCliente() {
 }
 
 async function salvarCliente() {
-    console.log("💾 Salvando cliente...");
+    console.log("ðŸ’¾ Salvando cliente...");
 
     try {
         const nomeInput = document.getElementById('clienteNome');
@@ -461,8 +461,8 @@ async function salvarCliente() {
         const emailInput = document.getElementById('clienteEmail');
 
         if (!nomeInput) {
-            console.error('❌ Campo nome não encontrado!');
-            showToast('Erro: Campo nome não encontrado', 'error');
+            console.error('âŒ Campo nome nÃ£o encontrado!');
+            showToast('Erro: Campo nome nÃ£o encontrado', 'error');
             return;
         }
 
@@ -471,7 +471,7 @@ async function salvarCliente() {
         const email = emailInput ? emailInput.value.trim() : '';
 
         if (!nome) {
-            showToast('Nome é obrigatório', 'warning');
+            showToast('Nome Ã© obrigatÃ³rio', 'warning');
             return;
         }
 
@@ -487,7 +487,7 @@ async function salvarCliente() {
         const token = localStorage.getItem('token');
 
         if (!token) {
-            showToast('Sessão expirada. Faça login novamente.', 'error');
+            showToast('SessÃ£o expirada. FaÃ§a login novamente.', 'error');
             hideLoading();
             return;
         }
@@ -520,13 +520,13 @@ async function salvarCliente() {
 }
 
 async function editarCliente(id) {
-    console.log("✏️ Editando cliente:", id);
+    console.log("âœï¸ Editando cliente:", id);
 
     try {
         const token = localStorage.getItem('token');
 
         if (!token) {
-            showToast('Sessão expirada', 'error');
+            showToast('SessÃ£o expirada', 'error');
             return;
         }
 
@@ -539,7 +539,7 @@ async function editarCliente(id) {
         const cliente = clientes.find(c => c.id === id);
 
         if (!cliente) {
-            showToast('Cliente não encontrado', 'error');
+            showToast('Cliente nÃ£o encontrado', 'error');
             return;
         }
 
@@ -565,19 +565,19 @@ async function editarCliente(id) {
                         </div>
                         
                         <div class="form-group" style="margin:0;">
-                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">📱 Telefone</label>
+                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">ðŸ“± Telefone</label>
                             <input type="text" id="editClienteTelefone" class="form-control" value="${escapeHtml(cliente.telefone || '')}" placeholder="(00) 00000-0000" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
                         </div>
                         
                         <div class="form-group" style="margin:0;">
-                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">📧 Email</label>
+                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">ðŸ“§ Email</label>
                             <input type="email" id="editClienteEmail" class="form-control" value="${escapeHtml(cliente.email || '')}" placeholder="cliente@email.com" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
                         </div>
                         
                         <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 16px;">
                             <button type="button" onclick="fecharModalEditarCliente()" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer; font-weight: 500;">Cancelar</button>
                             <button type="submit" style="padding: 8px 24px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                                <i class="fas fa-save"></i> Salvar Alterações
+                                <i class="fas fa-save"></i> Salvar AlteraÃ§Ãµes
                             </button>
                         </div>
                     </form>
@@ -593,7 +593,7 @@ async function editarCliente(id) {
         }, 100);
 
     } catch (error) {
-        console.error('❌ Erro ao carregar cliente para edição:', error);
+        console.error('âŒ Erro ao carregar cliente para ediÃ§Ã£o:', error);
         showToast('Erro ao carregar dados do cliente', 'error');
     }
 }
@@ -604,7 +604,7 @@ function fecharModalEditarCliente() {
 }
 
 async function atualizarCliente(id) {
-    console.log('📝 Atualizando cliente:', id);
+    console.log('ðŸ“ Atualizando cliente:', id);
 
     try {
         const nomeInput = document.getElementById('editClienteNome');
@@ -612,8 +612,8 @@ async function atualizarCliente(id) {
         const emailInput = document.getElementById('editClienteEmail');
 
         if (!nomeInput) {
-            console.error('❌ Campo nome não encontrado!');
-            showToast('Erro: Campo nome não encontrado', 'error');
+            console.error('âŒ Campo nome nÃ£o encontrado!');
+            showToast('Erro: Campo nome nÃ£o encontrado', 'error');
             return;
         }
 
@@ -622,7 +622,7 @@ async function atualizarCliente(id) {
         const email = emailInput ? emailInput.value.trim() : '';
 
         if (!nome) {
-            showToast('Nome é obrigatório', 'warning');
+            showToast('Nome Ã© obrigatÃ³rio', 'warning');
             return;
         }
 
@@ -632,13 +632,13 @@ async function atualizarCliente(id) {
             email: email || ''
         };
 
-        console.log('📦 Atualizando:', dados);
+        console.log('ðŸ“¦ Atualizando:', dados);
 
         showLoading();
         const token = localStorage.getItem('token');
 
         if (!token) {
-            showToast('Sessão expirada', 'error');
+            showToast('SessÃ£o expirada', 'error');
             hideLoading();
             return;
         }
@@ -664,14 +664,14 @@ async function atualizarCliente(id) {
             showToast(data.message || 'Erro ao atualizar cliente', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao atualizar cliente:', error);
+        console.error('âŒ Erro ao atualizar cliente:', error);
         hideLoading();
         showToast('Erro ao atualizar cliente', 'error');
     }
 }
 
 async function excluirCliente(id) {
-    if (!confirm('Excluir este cliente? Esta ação não poderá ser desfeita.')) return;
+    if (!confirm('Excluir este cliente? Esta aÃ§Ã£o nÃ£o poderÃ¡ ser desfeita.')) return;
 
     showLoading();
     const token = localStorage.getItem('token');
@@ -699,7 +699,7 @@ async function excluirCliente(id) {
 }
 
 async function bloquearChatbot(id) {
-    if (!confirm('Bloquear este cliente de usar o chatbot? Ele não poderá fazer agendamentos online.')) return;
+    if (!confirm('Bloquear este cliente de usar o chatbot? Ele nÃ£o poderÃ¡ fazer agendamentos online.')) return;
 
     showLoading();
     const token = localStorage.getItem('token');
@@ -756,14 +756,14 @@ async function desbloquearChatbot(id) {
             showToast(data.message || 'Erro ao desbloquear', 'error');
         }
     } catch (error) {
-        console.error('❌ Erro ao desbloquear:', error);
+        console.error('âŒ Erro ao desbloquear:', error);
         hideLoading();
         showToast('Erro ao desbloquear cliente', 'error');
     }
 }
 
 // ============================================
-//  IMPORTAÇÃO UNIVERSAL - VERSÃO MOBILE SEGURA
+//  IMPORTAÃ‡ÃƒO UNIVERSAL - VERSÃƒO MOBILE SEGURA
 // ============================================
 
 function abrirModalImportarCSV() {
@@ -792,7 +792,7 @@ function abrirModalImportarCSV() {
                 border: 1px solid var(--border-color, #333);
             ">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; font-size: 18px; color: var(--text-primary, #fff);">📂 Importar Contatos</h3>
+                    <h3 style="margin: 0; font-size: 18px; color: var(--text-primary, #fff);">ðŸ“‚ Importar Contatos</h3>
                     <button onclick="fecharModalImportarCSV()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted, #888);">&times;</button>
                 </div>
                 
@@ -837,7 +837,7 @@ function abrirModalImportarCSV() {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    // Previne scroll do body enquanto modal está aberto
+    // Previne scroll do body enquanto modal estÃ¡ aberto
     document.body.style.overflow = 'hidden';
 }
 
@@ -879,7 +879,7 @@ async function processarArquivoContatos(file) {
         hideLoading();
 
         if (clientesParaImportar.length === 0) {
-            showToast('Nenhum contato válido encontrado.', 'warning');
+            showToast('Nenhum contato vÃ¡lido encontrado.', 'warning');
             return;
         }
 
@@ -954,12 +954,12 @@ async function salvarLoteClientes(lista) {
         showToast(`${success} contatos importados!`, 'success');
         carregarClientes();
     } else {
-        showToast('Falha na importação.', 'error');
+        showToast('Falha na importaÃ§Ã£o.', 'error');
     }
 }
 
 // ============================================
-// 📢 PROMOÇÕES WHATSAPP - VERSÃO MOBILE SEGURA
+// ðŸ“¢ PROMOÃ‡Ã•ES WHATSAPP - VERSÃƒO MOBILE SEGURA
 // ============================================
 
 function abrirModalPromocao() {
@@ -991,17 +991,17 @@ function abrirModalPromocao() {
                 border: 1px solid var(--border-color, #333);
             ">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: var(--text-primary, #fff);"> Disparar Promoção</h3>
+                    <h3 style="margin: 0; color: var(--text-primary, #fff);"> Disparar PromoÃ§Ã£o</h3>
                     <button onclick="fecharModalPromocao()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-muted, #888);">&times;</button>
                 </div>
                 
                 <div class="form-group">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-secondary, #ccc);">Mensagem</label>
-                    <textarea id="textoPromocao" rows="5" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color, #444); background: var(--bg-input, #222); color: var(--text-primary, #fff); resize: vertical;" placeholder="Olá! Temos uma promoção especial..."></textarea>
+                    <textarea id="textoPromocao" rows="5" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color, #444); background: var(--bg-input, #222); color: var(--text-primary, #fff); resize: vertical;" placeholder="OlÃ¡! Temos uma promoÃ§Ã£o especial..."></textarea>
                 </div>
 
                 <div style="margin-top: 15px; font-size: 13px; color: var(--text-muted, #888);">
-                    <i class="fas fa-info-circle"></i> Serão enviadas mensagens individuais para <strong>${clientesComTel.length}</strong> clientes.
+                    <i class="fas fa-info-circle"></i> SerÃ£o enviadas mensagens individuais para <strong>${clientesComTel.length}</strong> clientes.
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
@@ -1030,7 +1030,7 @@ function fecharModalPromocao() {
 function enviarPromocao() {
     const texto = document.getElementById('textoPromocao').value.trim();
     if (!texto) {
-        showToast('Digite a mensagem da promoção.', 'warning');
+        showToast('Digite a mensagem da promoÃ§Ã£o.', 'warning');
         return;
     }
 
@@ -1053,7 +1053,7 @@ function enviarPromocao() {
 }
 
 // ============================================
-// EXPORTAR FUNÇÕES GLOBAIS
+// EXPORTAR FUNÃ‡Ã•ES GLOBAIS
 // ============================================
 
 window.carregarClientes = carregarClientes;
@@ -1073,7 +1073,7 @@ window.desbloquearChatbot = desbloquearChatbot;
 window.verHistoricoCliente = verHistoricoCliente;
 window.fecharModalHistorico = fecharModalHistorico;
 
-// Funções de Importação Universal (CSV/VCF/iPhone) - CORRIGIDAS MOBILE
+// FunÃ§Ãµes de ImportaÃ§Ã£o Universal (CSV/VCF/iPhone) - CORRIGIDAS MOBILE
 window.abrirModalImportarCSV = abrirModalImportarCSV;
 window.fecharModalImportarCSV = fecharModalImportarCSV;
 window.handleFileSelect = handleFileSelect;
@@ -1081,7 +1081,7 @@ window.abrirModalPromocao = abrirModalPromocao;
 window.fecharModalPromocao = fecharModalPromocao;
 window.enviarPromocao = enviarPromocao;
 
-console.log('✅ clientes.js carregado com sucesso (CRM COMPLETO + IMPORTAÇÃO UNIVERSAL + MOBILE FIX)!');
+console.log('âœ… clientes.js carregado com sucesso (CRM COMPLETO + IMPORTAÃ‡ÃƒO UNIVERSAL + MOBILE FIX)!');
 
 // ============================================
 // ATUALIZAR AO REDIMENSIONAR A TELA
@@ -1090,7 +1090,7 @@ let resizeTimeoutClientes;
 window.addEventListener('resize', function () {
     clearTimeout(resizeTimeoutClientes);
     resizeTimeoutClientes = setTimeout(function () {
-        if (document.getElementById('content') && document.getElementById('content').innerHTML.includes('👥 Clientes')) {
+        if (document.getElementById('content') && document.getElementById('content').innerHTML.includes('ðŸ‘¥ Clientes')) {
             carregarClientes();
         }
     }, 300);

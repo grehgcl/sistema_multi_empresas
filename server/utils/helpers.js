@@ -1,10 +1,10 @@
-// server/utils/helpers.js
-// ✅ IMPORTAR CORRETAMENTE O DB
+﻿// server/utils/helpers.js
+// âœ… IMPORTAR CORRETAMENTE O DB
 const { db } = require('../config/database');
-// ✅ TESTE - verificar se db está disponível
-console.log('📊 DB disponível?', typeof db);
-console.log('📊 DB.run é função?', typeof db.run === 'function');
-console.log('📊 DB.get é função?', typeof db.get === 'function')
+// âœ… TESTE - verificar se db estÃ¡ disponÃ­vel
+console.log('ðŸ“Š DB disponÃ­vel?', typeof db);
+console.log('ðŸ“Š DB.run Ã© funÃ§Ã£o?', typeof db.run === 'function');
+console.log('ðŸ“Š DB.get Ã© funÃ§Ã£o?', typeof db.get === 'function')
 
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
@@ -19,9 +19,9 @@ function formatarDataBr(dataStr) {
     }
 }
 
-// ✅ FUNÇÃO PARA INCREMENTAR CONTADOR - CORRIGIDA
+// âœ… FUNÃ‡ÃƒO PARA INCREMENTAR CONTADOR - CORRIGIDA
 function incrementarContadorAgendamentos(empresaId, callback) {
-    console.log(`📊 Incrementando contador para empresa ${empresaId}`);
+    console.log(`ðŸ“Š Incrementando contador para empresa ${empresaId}`);
 
     const sql = `
         UPDATE empresas 
@@ -29,20 +29,20 @@ function incrementarContadorAgendamentos(empresaId, callback) {
         WHERE id = ?
     `;
 
-    // ✅ USAR db.run CORRETAMENTE
+    // âœ… USAR db.run CORRETAMENTE
     db.run(sql, [empresaId], function (err) {
         if (err) {
-            console.error('❌ Erro ao incrementar contador:', err);
+            console.error('âŒ Erro ao incrementar contador:', err);
             return callback(err);
         }
-        console.log(`✅ Contador incrementado para empresa ${empresaId}`);
+        console.log(`âœ… Contador incrementado para empresa ${empresaId}`);
         callback(null);
     });
 }
 
 // server/utils/helpers.js
 
-// ✅ FUNÇÃO PARA RESETAR CONTADOR - CORRIGIDA PARA POSTGRESQL
+// âœ… FUNÃ‡ÃƒO PARA RESETAR CONTADOR - CORRIGIDA PARA POSTGRESQL
 function resetarContadorAgendamentos(empresaId, callback) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -58,15 +58,15 @@ function resetarContadorAgendamentos(empresaId, callback) {
 
     db.run(sql, [empresaId], function (err) {
         if (err) {
-            console.error('❌ Erro ao resetar contador:', err);
+            console.error('âŒ Erro ao resetar contador:', err);
             return callback(err);
         }
-        console.log(`✅ Contador resetado para empresa ${empresaId}`);
+        console.log(`âœ… Contador resetado para empresa ${empresaId}`);
         callback(null);
     });
 }
 
-// ✅ FUNÇÃO PARA VERIFICAR LIMITE DE AGENDAMENTOS - CORRIGIDA
+// âœ… FUNÃ‡ÃƒO PARA VERIFICAR LIMITE DE AGENDAMENTOS - CORRIGIDA
 function verificarLimiteAgendamentos(empresaId, callback) {
     const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -84,7 +84,7 @@ function verificarLimiteAgendamentos(empresaId, callback) {
         }
 
         if (!empresa) {
-            return callback(new Error('Empresa não encontrada'));
+            return callback(new Error('Empresa nÃ£o encontrada'));
         }
 
         const planosLimitados = ['Trial', 'Starter', 'trial', 'starter'];
@@ -110,7 +110,7 @@ function verificarLimiteAgendamentos(empresaId, callback) {
     });
 }
 
-// ✅ FUNÇÃO PARA VERIFICAR DISPONIBILIDADE - CORRIGIDA
+// âœ… FUNÃ‡ÃƒO PARA VERIFICAR DISPONIBILIDADE - CORRIGIDA
 function verificarDisponibilidadeHorario(empresaId, profissionalId, data, hora, duracao) {
     return new Promise((resolve, reject) => {
         const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -120,7 +120,7 @@ function verificarDisponibilidadeHorario(empresaId, profissionalId, data, hora, 
         const horaFim = new Date(2000, 0, 1, horaStr, (minutoStr || 0) + duracaoMin);
         const horaFimStr = horaFim.toTimeString().slice(0, 5);
 
-        // 🔥 PostgreSQL: usar INTERVAL
+        // ðŸ”¥ PostgreSQL: usar INTERVAL
         const sql = isProduction
             ? `SELECT id FROM agendamentos 
                WHERE profissional_id = $1 
@@ -135,7 +135,7 @@ function verificarDisponibilidadeHorario(empresaId, profissionalId, data, hora, 
 
         db.get(sql, [profissionalId, data, hora, horaFimStr], (err, row) => {
             if (err) {
-                console.error('❌ Erro ao verificar disponibilidade:', err);
+                console.error('âŒ Erro ao verificar disponibilidade:', err);
                 reject(err);
             } else {
                 resolve(!row);
@@ -144,7 +144,7 @@ function verificarDisponibilidadeHorario(empresaId, profissionalId, data, hora, 
     });
 }
 
-// ✅ EXPORTAR TODAS AS FUNÇÕES
+// âœ… EXPORTAR TODAS AS FUNÃ‡Ã•ES
 module.exports = {
     formatarDataBr,
     incrementarContadorAgendamentos,

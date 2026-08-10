@@ -1,10 +1,10 @@
-// pages/servicos.js - Versão Mobile Friendly com Cards e Duração
+﻿// pages/servicos.js - VersÃ£o Mobile Friendly com Cards e DuraÃ§Ã£o
 let listaServicosGlobal = [];
 
 async function carregarServicos() {
     if (typeof window.carregarCSS === 'function') {
         window.carregarCSS('servicos');
-        console.log('🎨 CSS carregado: servicos.css');
+        console.log('ðŸŽ¨ CSS carregado: servicos.css');
     }
     ativarBotao('servicos');
 
@@ -15,7 +15,7 @@ async function carregarServicos() {
                 <div class="empty-state">
                     <i class="fas fa-lock"></i>
                     <h4>Acesso negado</h4>
-                    <p>Apenas donos podem acessar serviços.</p>
+                    <p>Apenas donos podem acessar serviÃ§os.</p>
                 </div>
             </div>
         `;
@@ -27,20 +27,20 @@ async function carregarServicos() {
             <!-- Header -->
             <div class="dashboard-header">
                 <div>
-                    <h2 class="page-title">💇 Serviços</h2>
+                    <h2 class="page-title">ðŸ’‡ ServiÃ§os</h2>
                     <p class="page-subtitle">
                         <i class="fas fa-cut"></i> 
-                        Gerencie os serviços da sua barbearia
+                        Gerencie os serviÃ§os da sua barbearia
                     </p>
                 </div>
                 <div class="dashboard-actions">
                     <button class="btn btn-primary" onclick="abrirModalServico()">
-                        <i class="fas fa-plus"></i> Novo Serviço
+                        <i class="fas fa-plus"></i> Novo ServiÃ§o
                     </button>
                 </div>
             </div>
 
-            <!-- Estatísticas Rápidas -->
+            <!-- EstatÃ­sticas RÃ¡pidas -->
             <div class="servico-stats" id="servicoStats">
                 <div class="stat-mini">
                     <span class="stat-mini-value" id="totalServicos">0</span>
@@ -48,20 +48,20 @@ async function carregarServicos() {
                 </div>
                 <div class="stat-mini">
                     <span class="stat-mini-value" id="ativosCount">0</span>
-                    <span class="stat-mini-label">✅ Ativos</span>
+                    <span class="stat-mini-label">âœ… Ativos</span>
                 </div>
                 <div class="stat-mini">
                     <span class="stat-mini-value" id="inativosCount">0</span>
-                    <span class="stat-mini-label">⛔ Inativos</span>
+                    <span class="stat-mini-label">â›” Inativos</span>
                 </div>
             </div>
 
-            <!-- Lista de Serviços -->
+            <!-- Lista de ServiÃ§os -->
             <div class="card">
                 <div id="listaServicosContainer">
                     <div style="text-align: center; padding: 40px;">
                         <div class="loading-spinner" style="display: inline-block;"></div>
-                        <p>Carregando serviços...</p>
+                        <p>Carregando serviÃ§os...</p>
                     </div>
                 </div>
             </div>
@@ -70,14 +70,14 @@ async function carregarServicos() {
 
     document.getElementById('content').innerHTML = html;
 
-    // 🔥 ESPERA O DOM CARREGAR E DEPOIS CARREGA OS SERVIÇOS
+    // ðŸ”¥ ESPERA O DOM CARREGAR E DEPOIS CARREGA OS SERVIÃ‡OS
     setTimeout(() => {
         carregarListaServicos();
     }, 100);
 }
 
 // ============================================
-// CARREGAR LISTA DE SERVIÇOS - VERSÃO CORRIGIDA
+// CARREGAR LISTA DE SERVIÃ‡OS - VERSÃƒO CORRIGIDA
 // ============================================
 
 async function carregarListaServicos() {
@@ -85,12 +85,12 @@ async function carregarListaServicos() {
     const container = document.getElementById('listaServicosContainer');
 
     if (!container) {
-        console.error('❌ Container não encontrado!');
+        console.error('âŒ Container nÃ£o encontrado!');
         return;
     }
 
     try {
-        console.log('🔄 Carregando serviços...');
+        console.log('ðŸ”„ Carregando serviÃ§os...');
 
         const res = await fetch('/api/servicos/todos', {
             headers: { 'Authorization': 'Bearer ' + token }
@@ -100,14 +100,14 @@ async function carregarListaServicos() {
         if (result.success) {
             listaServicosGlobal = result.data;
 
-            // 🔥 FORÇA A DETECÇÃO DE MOBILE
+            // ðŸ”¥ FORÃ‡A A DETECÃ‡ÃƒO DE MOBILE
             const isMobile = window.innerWidth < 768 || window.screen.width < 768;
 
-            console.log('📱 Modo mobile:', isMobile);
-            console.log('📊 Total de serviços:', listaServicosGlobal.length);
-            console.log('📋 Serviços:', listaServicosGlobal);
+            console.log('ðŸ“± Modo mobile:', isMobile);
+            console.log('ðŸ“Š Total de serviÃ§os:', listaServicosGlobal.length);
+            console.log('ðŸ“‹ ServiÃ§os:', listaServicosGlobal);
 
-            // Atualizar estatísticas
+            // Atualizar estatÃ­sticas
             const total = listaServicosGlobal.length;
             const ativos = listaServicosGlobal.filter(s => (s.ativo == 1 || s.ativo == true)).length;
             const inativos = listaServicosGlobal.filter(s => s.ativo === 0);
@@ -120,10 +120,10 @@ async function carregarListaServicos() {
                 container.innerHTML = `
                     <div class="empty-state">
                         <i class="fas fa-cut"></i>
-                        <h4>Nenhum serviço cadastrado</h4>
-                        <p>Comece criando seu primeiro serviço!</p>
+                        <h4>Nenhum serviÃ§o cadastrado</h4>
+                        <p>Comece criando seu primeiro serviÃ§o!</p>
                         <button class="btn btn-primary btn-sm" onclick="abrirModalServico()">
-                            <i class="fas fa-plus"></i> Novo Serviço
+                            <i class="fas fa-plus"></i> Novo ServiÃ§o
                         </button>
                     </div>
                 `;
@@ -134,16 +134,16 @@ async function carregarListaServicos() {
 
             if (isMobile) {
                 // ============================================
-                // VERSÃO MOBILE - CARDS
+                // VERSÃƒO MOBILE - CARDS
                 // ============================================
-                console.log('📱 Renderizando MOBILE - Cards');
+                console.log('ðŸ“± Renderizando MOBILE - Cards');
 
                 html = `<div style="display:flex;flex-direction:column;gap:10px;">`;
 
                 for (let s of listaServicosGlobal) {
                     const isAtivo = (s.ativo == 1 || s.ativo == true);
                     const statusClass = isAtivo ? 'ativo' : 'inativo';
-                    const statusLabel = isAtivo ? '✅ Ativo' : '⛔ Inativo';
+                    const statusLabel = isAtivo ? 'âœ… Ativo' : 'â›” Inativo';
                     const valorFormatado = (parseFloat(s.valor) || 0).toFixed(2);
 
                     html += `
@@ -172,7 +172,7 @@ async function carregarListaServicos() {
                                     font-weight: 600;
                                     color: var(--text-primary);
                                 ">
-                                    <span style="font-size: 20px;">✂️</span>
+                                    <span style="font-size: 20px;">âœ‚ï¸</span>
                                     <span>${escapeHtml(s.nome)}</span>
                                 </div>
                                 <span style="
@@ -205,15 +205,15 @@ async function carregarListaServicos() {
                                 margin: 8px 0 12px 0;
                             ">
                                 <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;">
-                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">📝 Descrição</span>
+                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">ðŸ“ DescriÃ§Ã£o</span>
                                     <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${escapeHtml(s.descricao || '-')}</span>
                                 </div>
                                 <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;">
-                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">💰 Valor</span>
+                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">ðŸ’° Valor</span>
                                     <span style="font-size:13px;font-weight:700;color:var(--primary);">R$ ${valorFormatado}</span>
                                 </div>
                                 <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;grid-column: span 2;">
-                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">⏱️ Duração</span>
+                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">â±ï¸ DuraÃ§Ã£o</span>
                                     <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${s.duracao || 30} minutos</span>
                                 </div>
                             </div>
@@ -292,9 +292,9 @@ async function carregarListaServicos() {
 
             } else {
                 // ============================================
-                // VERSÃO DESKTOP - TABELA
+                // VERSÃƒO DESKTOP - TABELA
                 // ============================================
-                console.log('💻 Renderizando DESKTOP - Tabela');
+                console.log('ðŸ’» Renderizando DESKTOP - Tabela');
 
                 html = `
                     <div class="table-responsive">
@@ -302,11 +302,11 @@ async function carregarListaServicos() {
                             <thead>
                                 <tr>
                                     <th>Nome</th>
-                                    <th>Descrição</th>
+                                    <th>DescriÃ§Ã£o</th>
                                     <th>Valor</th>
-                                    <th>⏱️ Duração</th>
+                                    <th>â±ï¸ DuraÃ§Ã£o</th>
                                     <th>Status</th>
-                                    <th>Ações</th>
+                                    <th>AÃ§Ãµes</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -319,7 +319,7 @@ async function carregarListaServicos() {
                                         <td>
                                             <span class="status-badge ${(s.ativo == 1 || s.ativo == true) ? 'ativo' : 'inativo'}">
                                                 <span class="dot"></span>
-                                                ${(s.ativo == 1 || s.ativo == true) ? '✅ Ativo' : '⛔ Inativo'}
+                                                ${(s.ativo == 1 || s.ativo == true) ? 'âœ… Ativo' : 'â›” Inativo'}
                                             </span>
                                         </td>
                                         <td>
@@ -344,13 +344,13 @@ async function carregarListaServicos() {
             }
 
             container.innerHTML = html;
-            console.log('✅ Serviços renderizados com sucesso!');
+            console.log('âœ… ServiÃ§os renderizados com sucesso!');
 
         } else {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fas fa-exclamation-triangle"></i>
-                    <h4>Erro ao carregar serviços</h4>
+                    <h4>Erro ao carregar serviÃ§os</h4>
                     <p>${result.message || 'Tente novamente mais tarde.'}</p>
                     <button class="btn btn-primary btn-sm" onclick="carregarListaServicos()">
                         <i class="fas fa-sync"></i> Tentar Novamente
@@ -359,11 +359,11 @@ async function carregarListaServicos() {
             `;
         }
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('âŒ Erro:', error);
         document.getElementById('listaServicosContainer').innerHTML = `
             <div class="empty-state">
                 <i class="fas fa-exclamation-triangle"></i>
-                <h4>Erro ao carregar serviços</h4>
+                <h4>Erro ao carregar serviÃ§os</h4>
                 <p>${error.message || 'Tente novamente mais tarde.'}</p>
                 <button class="btn btn-primary btn-sm" onclick="carregarListaServicos()">
                     <i class="fas fa-sync"></i> Tentar Novamente
@@ -374,7 +374,7 @@ async function carregarListaServicos() {
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FUNÃ‡Ã•ES AUXILIARES
 // ============================================
 
 function escapeHtml(text) {
@@ -385,7 +385,7 @@ function escapeHtml(text) {
 }
 
 // ============================================
-// ABRIR MODAL SERVIÇO (COM DURAÇÃO)
+// ABRIR MODAL SERVIÃ‡O (COM DURAÃ‡ÃƒO)
 // ============================================
 
 function abrirModalServico(servico = null) {
@@ -398,7 +398,7 @@ function abrirModalServico(servico = null) {
 
     modalDiv.innerHTML = `
         <div class="modal-content" style="max-width: 480px; width: 90%;">
-            <h3>${isEdit ? '✏️ Editar' : '➕ Novo'} Serviço</h3>
+            <h3>${isEdit ? 'âœï¸ Editar' : 'âž• Novo'} ServiÃ§o</h3>
             <input type="hidden" id="servicoEditId" value="${isEdit ? servico.id : ''}">
 
             <div class="form-group">
@@ -407,8 +407,8 @@ function abrirModalServico(servico = null) {
             </div>
 
             <div class="form-group">
-                <label>Descrição</label>
-                <textarea id="servicoDescricao" class="form-control" rows="3" placeholder="Descrição do serviço...">${isEdit ? (servico.descricao || '') : ''}</textarea>
+                <label>DescriÃ§Ã£o</label>
+                <textarea id="servicoDescricao" class="form-control" rows="3" placeholder="DescriÃ§Ã£o do serviÃ§o...">${isEdit ? (servico.descricao || '') : ''}</textarea>
             </div>
 
             <div class="form-group">
@@ -417,7 +417,7 @@ function abrirModalServico(servico = null) {
             </div>
 
             <div class="form-group">
-                <label>⏱️ Duração (minutos) *</label>
+                <label>â±ï¸ DuraÃ§Ã£o (minutos) *</label>
                 <select id="servicoDuracao" class="form-control">
     <option value="15" ${isEdit && servico.duracao === 15 ? 'selected' : ''}>15 minutos</option>
     <option value="30" ${isEdit && (servico.duracao === 30 || !servico) ? 'selected' : ''}>30 minutos</option>
@@ -435,7 +435,7 @@ function abrirModalServico(servico = null) {
 </select>
                 <small class="text-muted" style="display:block;margin-top:4px;color:var(--text-muted);">
                     <i class="fas fa-info-circle"></i> 
-                    A agenda respeitará este tempo, bloqueando os horários necessários
+                    A agenda respeitarÃ¡ este tempo, bloqueando os horÃ¡rios necessÃ¡rios
                 </small>
             </div>
 
@@ -443,8 +443,8 @@ function abrirModalServico(servico = null) {
             <div class="form-group">
                 <label>Status</label>
                 <select id="servicoStatus" class="form-control">
-                    <option value="1" ${(servico.ativo == 1 || servico.ativo == true) ? 'selected' : ''}>✅ Ativo</option>
-                    <option value="0" ${servico.ativo === 0 ? 'selected' : ''}>⛔ Inativo</option>
+                    <option value="1" ${(servico.ativo == 1 || servico.ativo == true) ? 'selected' : ''}>âœ… Ativo</option>
+                    <option value="0" ${servico.ativo === 0 ? 'selected' : ''}>â›” Inativo</option>
                 </select>
             </div>
             ` : ''}
@@ -465,7 +465,7 @@ function fecharModalServico() {
 }
 
 // ============================================
-// SALVAR SERVIÇO (COM DURAÇÃO)
+// SALVAR SERVIÃ‡O (COM DURAÃ‡ÃƒO)
 // ============================================
 
 async function salvarServico() {
@@ -476,12 +476,12 @@ async function salvarServico() {
     const duracao = document.getElementById('servicoDuracao').value;
 
     if (!nome || !valor) {
-        showToast('Nome e valor são obrigatórios', 'warning');
+        showToast('Nome e valor sÃ£o obrigatÃ³rios', 'warning');
         return;
     }
 
     if (!duracao || parseInt(duracao) < 5 || parseInt(duracao) > 480) {
-        showToast('Duração deve ser pelo menos 5 minutos', 'warning');
+        showToast('DuraÃ§Ã£o deve ser pelo menos 5 minutos', 'warning');
         return;
     }
 
@@ -523,14 +523,14 @@ async function salvarServico() {
         }
     } catch (error) {
         console.error('Erro:', error);
-        showToast('Erro ao salvar serviço', 'error');
+        showToast('Erro ao salvar serviÃ§o', 'error');
     }
 
     hideLoading();
 }
 
 // ============================================
-// EDITAR SERVIÇO
+// EDITAR SERVIÃ‡O
 // ============================================
 
 async function editarServico(id) {
@@ -541,7 +541,7 @@ async function editarServico(id) {
 }
 
 // ============================================
-// TOGGLE (ATIVAR/DESATIVAR) SERVIÇO
+// TOGGLE (ATIVAR/DESATIVAR) SERVIÃ‡O
 // ============================================
 
 async function toggleServico(id) {
@@ -549,7 +549,7 @@ async function toggleServico(id) {
     if (!servico) return;
 
     const acao = (servico.ativo == 1 || servico.ativo == true) ? 'desativar' : 'ativar';
-    if (!confirm(`Tem certeza que deseja ${acao} este serviço?`)) return;
+    if (!confirm(`Tem certeza que deseja ${acao} este serviÃ§o?`)) return;
 
     showLoading();
 
@@ -573,7 +573,7 @@ async function toggleServico(id) {
         const result = await res.json();
 
         if (result.success) {
-            showToast(`Serviço ${acao}do com sucesso!`, 'success');
+            showToast(`ServiÃ§o ${acao}do com sucesso!`, 'success');
             await carregarListaServicos();
         } else {
             showToast('Erro: ' + result.message, 'error');
@@ -587,7 +587,7 @@ async function toggleServico(id) {
 }
 
 // ============================================
-// EXCLUIR SERVIÇO
+// EXCLUIR SERVIÃ‡O
 // ============================================
 
 async function excluirServico(id) {
@@ -614,7 +614,7 @@ async function excluirServico(id) {
         }
     } catch (error) {
         console.error('Erro:', error);
-        showToast('Erro ao excluir serviço', 'error');
+        showToast('Erro ao excluir serviÃ§o', 'error');
     }
 
     hideLoading();
@@ -635,7 +635,7 @@ window.addEventListener('resize', function () {
 });
 
 // ============================================
-// EXPORTAR FUNÇÕES GLOBAIS
+// EXPORTAR FUNÃ‡Ã•ES GLOBAIS
 // ============================================
 
 window.carregarServicos = carregarServicos;
@@ -647,4 +647,4 @@ window.toggleServico = toggleServico;
 window.excluirServico = excluirServico;
 window.carregarListaServicos = carregarListaServicos;
 
-console.log('✅ servicos.js carregado com campo DURAÇÃO e MOBILE FIX!');
+console.log('âœ… servicos.js carregado com campo DURAÃ‡ÃƒO e MOBILE FIX!');

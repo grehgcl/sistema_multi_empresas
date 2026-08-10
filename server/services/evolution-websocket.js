@@ -1,4 +1,4 @@
-// server/services/evolution-websocket.js
+﻿// server/services/evolution-websocket.js
 const WebSocket = require('ws');
 
 class EvolutionWebSocket {
@@ -17,19 +17,19 @@ class EvolutionWebSocket {
         return new Promise((resolve, reject) => {
             const url = `ws://163.176.218.131:8080/ws/instance/connect/${this.instanceName}?apikey=${this.apiKey}`;
 
-            console.log(`🔌 Conectando WebSocket: ${url}`);
+            console.log(`ðŸ”Œ Conectando WebSocket: ${url}`);
 
             this.ws = new WebSocket(url);
 
             this.ws.on('open', () => {
-                console.log(`✅ WebSocket conectado para ${this.instanceName}`);
+                console.log(`âœ… WebSocket conectado para ${this.instanceName}`);
                 resolve();
             });
 
             this.ws.on('message', (data) => {
                 try {
                     const msg = JSON.parse(data);
-                    console.log(`📥 Mensagem WebSocket:`, msg);
+                    console.log(`ðŸ“¥ Mensagem WebSocket:`, msg);
 
                     if (msg.qrcode) {
                         this.qrCode = msg.qrcode;
@@ -52,23 +52,23 @@ class EvolutionWebSocket {
                         }
                     }
                 } catch (e) {
-                    console.error('❌ Erro ao processar mensagem:', e);
+                    console.error('âŒ Erro ao processar mensagem:', e);
                 }
             });
 
             this.ws.on('error', (error) => {
-                console.error('❌ WebSocket error:', error);
+                console.error('âŒ WebSocket error:', error);
                 reject(error);
             });
 
             this.ws.on('close', () => {
-                console.log('🔌 WebSocket fechado');
+                console.log('ðŸ”Œ WebSocket fechado');
             });
 
-            // Timeout após 30 segundos
+            // Timeout apÃ³s 30 segundos
             setTimeout(() => {
                 if (!this.qrCode) {
-                    reject(new Error('Timeout - QR Code não recebido'));
+                    reject(new Error('Timeout - QR Code nÃ£o recebido'));
                 }
             }, 30000);
         });

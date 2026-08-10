@@ -1,4 +1,4 @@
-// server/jobs/lembretes.js
+﻿// server/jobs/lembretes.js
 const cron = require('node-cron');
 const { db } = require('../config/database');
 const whatsappService = require('../services/whatsapp');
@@ -13,7 +13,7 @@ class LembreteJob {
     // ============================================
     async enviarLembretes() {
         if (this.executando) {
-            console.log('[LEMBRETE] Job já está executando');
+            console.log('[LEMBRETE] Job jÃ¡ estÃ¡ executando');
             return;
         }
 
@@ -30,7 +30,7 @@ class LembreteJob {
             console.log(`[LEMBRETE] Buscando agendamentos para: ${dataAmanha}`);
 
             // ============================================
-            // CORREÇÃO: Removido e.endereco (não existe)
+            // CORREÃ‡ÃƒO: Removido e.endereco (nÃ£o existe)
             // ============================================
             const agendamentos = await new Promise((resolve, reject) => {
                 db.all(`
@@ -56,10 +56,10 @@ class LembreteJob {
                 });
             });
 
-            console.log(`[LEMBRETE] Encontrados ${agendamentos.length} agendamentos para amanhã (${dataAmanha})`);
+            console.log(`[LEMBRETE] Encontrados ${agendamentos.length} agendamentos para amanhÃ£ (${dataAmanha})`);
 
             if (agendamentos.length === 0) {
-                console.log('[LEMBRETE] Nenhum agendamento pendente para amanhã');
+                console.log('[LEMBRETE] Nenhum agendamento pendente para amanhÃ£');
                 this.executando = false;
                 return;
             }
@@ -75,7 +75,7 @@ class LembreteJob {
                                 nome: agendamento.cliente_nome || 'Cliente',
                                 telefone: agendamento.cliente_telefone
                             },
-                            servico: { nome: agendamento.servico_nome || 'Serviço' },
+                            servico: { nome: agendamento.servico_nome || 'ServiÃ§o' },
                             profissional: agendamento.profissional_nome ? {
                                 nome: agendamento.profissional_nome
                             } : null,
@@ -91,7 +91,7 @@ class LembreteJob {
                         const resultado = await whatsappService.enviarLembrete(dados);
 
                         if (resultado.success) {
-                            console.log(`[LEMBRETE] ✅ Mensagem enviada com sucesso`);
+                            console.log(`[LEMBRETE] âœ… Mensagem enviada com sucesso`);
 
                             // Marca como enviado
                             await new Promise((resolve, reject) => {
@@ -105,24 +105,24 @@ class LembreteJob {
                                 );
                             });
                         } else {
-                            console.log(`[LEMBRETE] ⚠️ Falha ao enviar: ${resultado.error}`);
+                            console.log(`[LEMBRETE] âš ï¸ Falha ao enviar: ${resultado.error}`);
                         }
                     } else {
-                        console.log(`[LEMBRETE] ⚠️ Cliente sem telefone, pulando...`);
+                        console.log(`[LEMBRETE] âš ï¸ Cliente sem telefone, pulando...`);
                     }
 
-                    // Pequena pausa para não sobrecarregar a API
+                    // Pequena pausa para nÃ£o sobrecarregar a API
                     await new Promise(resolve => setTimeout(resolve, 1000));
 
                 } catch (error) {
-                    console.error(`[LEMBRETE] ❌ Erro ao enviar para ID ${agendamento.id}:`, error.message);
+                    console.error(`[LEMBRETE] âŒ Erro ao enviar para ID ${agendamento.id}:`, error.message);
                 }
             }
 
-            console.log('[LEMBRETE] ✅ Envio de lembretes concluído');
+            console.log('[LEMBRETE] âœ… Envio de lembretes concluÃ­do');
 
         } catch (error) {
-            console.error('[LEMBRETE] ❌ Erro no job:', error.message);
+            console.error('[LEMBRETE] âŒ Erro no job:', error.message);
             console.error('[LEMBRETE] Detalhes:', error);
         } finally {
             this.executando = false;
@@ -133,13 +133,13 @@ class LembreteJob {
     // INICIA O JOB AGENDADO
     // ============================================
     start() {
-        // Executa todos os dias às 09:00
+        // Executa todos os dias Ã s 09:00
         cron.schedule('0 9 * * *', async () => {
-            console.log('[LEMBRETE] ⏰ Job agendado iniciado');
+            console.log('[LEMBRETE] â° Job agendado iniciado');
             await this.enviarLembretes();
         });
 
-        console.log('[LEMBRETE] 📅 Job de lembretes iniciado (09:00 todos os dias)');
+        console.log('[LEMBRETE] ðŸ“… Job de lembretes iniciado (09:00 todos os dias)');
     }
 }
 
