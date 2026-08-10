@@ -914,12 +914,13 @@ function renderizarDashboardSuperAdmin(empresas, usuarios, estatisticas) {
                 </div>
                 
                 <!-- Faturamento -->
-                <div style="background:linear-gradient(135deg, #ec4899, #be185d);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(236,72,153,0.3);">
-                    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">💰 Faturamento</div>
-                    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">R$ ${faturamentoTotal.toFixed(2)}</div>
-                    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${estatisticas.empresas_pagas || 0} empresas pagas</div>
-                </div>
-            </div>
+<div style="background:linear-gradient(135deg, #ec4899, #be185d);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(236,72,153,0.3);">
+    <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">💰 Faturamento</div>
+    <div style="font-size:${isMobile ? '24px' : '32px'};font-weight:800;margin-top:2px;">
+        R$ ${(parseFloat(estatisticas.faturamento_total) || 0).toFixed(2)}
+    </div>
+    <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">${estatisticas.empresas_pagas || 0} empresas pagas</div>
+</div>
 
             <!-- GRÁFICOS -->
             <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:${isMobile ? '12px' : '16px'};margin-bottom:${isMobile ? '12px' : '16px'};">
