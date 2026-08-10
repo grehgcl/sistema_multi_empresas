@@ -3,7 +3,7 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { db, getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -379,10 +379,8 @@ router.post('/datas-disponiveis-mes', (req, res) => {
     });
 });
 
-// server/routes/chatbot.routes.js
-
 // ============================================
-// POST /api/chatbot/horarios-disponiveis - CORRIGIDO (SEM AUTH)
+// POST /api/chatbot/horarios-disponiveis - CORRIGIDO (SQLITE)
 // ============================================
 router.post('/horarios-disponiveis', (req, res) => {
     try {
@@ -432,10 +430,11 @@ router.post('/horarios-disponiveis', (req, res) => {
 
         const duracaoMin = parseInt(duracao) || 30;
 
+        // 🔥 USAR BANCO DA EMPRESA
+        const empresaDb = getEmpresaDb(empresaIdNum);
+
         // 🔥 VERIFICAR SE A EMPRESA EXISTE
-        const sqlCheckEmpresa = isProduction
-            ? `SELECT id FROM empresas WHERE id = $1`
-            : `SELECT id FROM empresas WHERE id = ?`;
+        const sqlCheckEmpresa = `SELECT id FROM empresas WHERE id = ?`;
 
         db.get(sqlCheckEmpresa, [empresaIdNum], (err, empresa) => {
             if (err) {
@@ -453,29 +452,24 @@ router.post('/horarios-disponiveis', (req, res) => {
                 });
             }
 
-            // 🔥 BUSCAR AGENDAMENTOS EXISTENTES
-            let sqlAgendamentos = isProduction
-                ? `SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
-                   FROM agendamentos a
-                   LEFT JOIN servicos s ON a.servico_id = s.id
-                   WHERE a.empresa_id = $1 
-                   AND a.data = $2 
-                   AND a.status != 'cancelado'`
-                : `SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
-                   FROM agendamentos a
-                   LEFT JOIN servicos s ON a.servico_id = s.id
-                   WHERE a.empresa_id = ? 
-                   AND a.data = ? 
-                   AND a.status != 'cancelado'`;
+            // 🔥 BUSCAR AGENDAMENTOS EXISTENTES NO BANCO DA EMPRESA
+            let sqlAgendamentos = `
+                SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
+                FROM agendamentos a
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.empresa_id = ? 
+                AND a.data = ? 
+                AND a.status != 'cancelado'
+            `;
 
             let params = [empresaIdNum, data];
 
             if (profissionalIdNum && profissionalIdNum > 0) {
-                sqlAgendamentos += isProduction ? ` AND a.profissional_id = $3` : ` AND a.profissional_id = ?`;
+                sqlAgendamentos += ` AND a.profissional_id = ?`;
                 params.push(profissionalIdNum);
             }
 
-            db.all(sqlAgendamentos, params, (err, agendamentos) => {
+            empresaDb.all(sqlAgendamentos, params, (err, agendamentos) => {
                 if (err) {
                     console.error('❌ Erro ao buscar agendamentos:', err);
                     return res.status(500).json({
@@ -498,15 +492,13 @@ router.post('/horarios-disponiveis', (req, res) => {
                 const dataObj = new Date(data + 'T00:00:00');
                 const diaSemana = dataObj.getDay();
 
-                const sqlHorario = isProduction
-                    ? `SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos
-                       FROM horarios_funcionamento 
-                       WHERE empresa_id = $1 AND dia_semana = $2 AND aberto = true`
-                    : `SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos
-                       FROM horarios_funcionamento 
-                       WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1`;
+                const sqlHorario = `
+                    SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos
+                    FROM horarios_funcionamento 
+                    WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1
+                `;
 
-                db.get(sqlHorario, [empresaIdNum, diaSemana], (err, horario) => {
+                empresaDb.get(sqlHorario, [empresaIdNum, diaSemana], (err, horario) => {
                     if (err) {
                         console.error('❌ Erro ao buscar horário:', err);
                         return res.status(500).json({

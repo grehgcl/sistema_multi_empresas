@@ -19,7 +19,10 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-
+// 🔥 FORÇAR SQLITE - IGNORAR POSTGRESQL
+process.env.DATABASE_URL = undefined;
+process.env.NODE_ENV = 'development';
+process.env.RENDER = 'false';
 // ============================================
 // IMPORTS DAS PARTES EXTRATÍDAS
 // ============================================
