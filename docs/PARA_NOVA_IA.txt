@@ -1,6 +1,12 @@
-﻿=========================================
+﻿
+---
+
+## 📄 4. PARA_NOVA_IA.txt (ATUALIZADO - 14/08/2026)
+
+```text
+=========================================
 GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 08/08/2026
+ULTIMA ATUALIZACAO: 14/08/2026
 =========================================
 
 🚀 COMO EXECUTAR O PROJETO
@@ -22,6 +28,70 @@ USUARIOS:
 Super Admin: super@admin.com / super123
 Dono: admin@teste.com / 123456
 Dono Empresa 14: luziasandraleal@hotmail.com / 123456
+Dono Empresa 36: luziasandraleal677@hotmail.com / 123456
+
+=========================================
+✅ IMPLEMENTADO (14/08/2026) - CORREÇÕES FINAIS
+=========================================
+
+### CORREÇÃO DO CADASTRO 🚀
+- Problema: Empresa criada com ID NULL e banco sem nome
+- Solução: Recriada tabela empresas com id INTEGER PRIMARY KEY AUTOINCREMENT
+- Melhoria: Banco criado com nome da empresa (ex: salao_das_rosas23_36.db)
+- Verificação: Sistema verifica se a empresa foi criada antes de prosseguir
+
+### CORREÇÃO DO INDICADOR WHATSAPP 📱
+- Problema: Indicador não mudava de cor (verde/vermelho)
+- Solução: Criada rota /api/whatsapp/status para monitorar status
+- Melhoria: Indicador funciona para DONO e SUPER ADMIN
+- Atualização: Menu gerado dinamicamente com status-dot
+
+### CORREÇÃO DAS ROTAS 🔧
+- Problema: Rotas 404 para /api/empresa/dados e /api/chatbot/horarios-disponiveis
+- Solução: Registro explícito das rotas no server.js
+
+### CORREÇÃO DA TABELA EMPRESAS 🗄️
+- Problema: Coluna id era TEXT sem AUTOINCREMENT
+- Solução: Recriada tabela com id INTEGER PRIMARY KEY AUTOINCREMENT
+- Migração: 15 empresas migradas com IDs corretos
+
+=========================================
+✅ IMPLEMENTADO (13/08/2026)
+=========================================
+
+### CORREÇÃO DO FLUXO WHATSAPP 🚀
+- APENAS Super Admin pode criar/deletar instâncias WhatsApp
+- Dono só pode visualizar e conectar instâncias existentes
+- Botão WhatsApp no menu do Dono fica desabilitado se não houver instância
+- Dashboard recarrega automaticamente após toggle com cache limpo
+- ✅ Envio de WhatsApp na Confirmação: FUNCIONANDO
+
+### LIMPEZA DO PROJETO 🧹
+- Removida pasta `lixo/` (cache do navegador)
+- Removidos arquivos de backup (*.backup, *.old)
+- Removidos scripts obsoletos (mais de 100 arquivos)
+- Removidas pastas de backup temporárias
+
+### CORREÇÃO DE VULNERABILIDADES 🛡️
+- `tar` atualizado para versão segura
+- `uuid` atualizado para versão segura
+- `node-cron` atualizado para versão segura
+
+### CORREÇÃO DO BOTÃO ON/OFF 🔧
+- Dashboard recarrega com dados novos após toggle
+- Cache limpo para garantir dados atualizados
+- Botão muda de cor corretamente (OFF → PEND → ON)
+
+### CORREÇÃO DO QR CODE 📱
+- QR Code aparece corretamente para o Dono quando instância existe
+- Dono não cria instância automaticamente ao acessar a página
+- Fluxo: SA cria → Dono conecta
+
+### MIGRAÇÃO DE AGENDAMENTOS 📊
+- 125+ agendamentos migrados do banco principal para bancos individuais
+- Tabelas criadas para empresas faltantes (3, 4, 6, 7)
+- Colunas de pagamento adicionadas (forma_pagamento, prazo_dias, data_vencimento, descricao_pagamento)
+- Horários de funcionamento criados para todas as empresas
 
 =========================================
 ✅ IMPLEMENTADO (08/08/2026) - CORREÇÕES VPS
@@ -46,125 +116,69 @@ Dono Empresa 14: luziasandraleal@hotmail.com / 123456
 - Erro `syntax error at or near "AUTOINCREMENT"` corrigido
 
 =========================================
-✅ IMPLEMENTADO (31/07/2026) - CORREÇÃO WHATSAPP PRÓPRIO E INSTÂNCIAS
+✅ IMPLEMENTADO (31/07/2026) - WHATSAPP
 =========================================
 1. CORREÇÃO DO NOME DAS INSTÂNCIAS 🚀
 - Instâncias agora são criadas com formato: `emp-{ID}-{NOME-DA-EMPRESA}`
 - Exemplo: `emp-14-salao-da-sandra-` em vez de `emp-14`
-- Garante que cada empresa tenha uma instância única e identificável
-- Facilita a identificação e troubleshooting
 
 2. CORREÇÃO DA ROTA DO SUPER ADMIN 🛠️
 - Rota `app.put('/api/admin/empresas/:id/whatsapp-proprio')` corrigida
-- Agora busca o nome da empresa e cria instância com ID + NOME
-- Resolve o problema de instâncias com nomes genéricos
 
 3. CORREÇÃO DO ENVIO DE WHATSAPP NO AGENDAMENTO 📱
 - Substituído `pool.query` por `db.get` para compatibilidade
-- Agora funciona corretamente no SQLite e PostgreSQL
-- Mensagens de confirmação chegam no cliente
 
 =========================================
-✅ IMPLEMENTADO (30/07/2026) - AUTOMAÇÃO WHATSAPP SUPER ADMIN & CORREÇÕES VPS
+✅ IMPLEMENTADO (30/07/2026) - AUTOMAÇÃO WHATSAPP
 =========================================
 1. CRIAÇÃO AUTOMÁTICA DE INSTÂNCIAS PELO SUPER ADMIN 🚀
 - Ao habilitar "WhatsApp Próprio", o sistema cria a instância `emp-X` na Evolution API.
-- Lógica de "Recriação de Emergência" se a instância sumir.
-- Correção do erro `db.runAsync is not a function`.
 
 2. CORREÇÃO DE QUERY BOOLEANA NO POSTGRESQL 🛠️
 - Corrigido erro na busca de serviços do Chatbot na VPS.
 
 =========================================
-✅ IMPLEMENTADO (28/07/2026) - CLIENTES: ÍNDICE A-Z E BUSCA MOBILE
+✅ IMPLEMENTADO (28/07/2026) - CLIENTES: ÍNDICE A-Z
 =========================================
 1. ÍNDICE ALFABÉTICO (A-Z) PARA CLIENTES 📋
------------------------------------------
 - Botões A-Z na página de clientes (Desktop e Mobile)
 - Filtra clientes pela letra inicial do nome
-- Botão "Todos" para limpar o filtro
-- Estado salvo no localStorage (não perde ao recarregar/scrollar)
-- Posição sticky no topo (fixo ao rolar a página)
+- Estado salvo no localStorage
 
 2. REMOÇÃO DA LUPA NO MOBILE 📱
------------------------------------------
 - Lupa removida do input de busca no mobile
-- Placeholder: "🔍 Buscar por nome..."
-- Botão "Buscar" removido no mobile
-- Apenas o botão de limpar (✕) permanece
-
-3. CORREÇÃO DO SCROLL 🔄
------------------------------------------
-- Scroll não recarrega mais a página
-- Filtro de letra permanece ativo ao rolar
-- Evento resize ignorado quando há filtro ativo
-
-4. BUSCA POR TEXTO 🔍
------------------------------------------
-- Busca por nome, telefone e email
-- Compatível com o filtro de letra
 
 =========================================
-✅ IMPLEMENTADO (27/07/2026) - CORREÇÕES CLIENTES E PROMOÇÕES
+✅ IMPLEMENTADO (27/07/2026) - CLIENTES E PROMOÇÕES
 =========================================
 1. GRUPOS DE CLIENTES 👥
 - Sistema de grupos: Premium, Frequentes, Promoções, Aniversariantes, Amigos, Indicados, Especiais
-- Filtro por grupos na página de clientes (atualiza sem recarregar)
-- Modal de gerenciamento com criação dinâmica de grupos
-- Botão de excluir grupo (✕) funcionando
-- Persistência de grupos personalizados
 
 2. BUSCA MOBILE OTIMIZADA 📱
 - Filtro local sem recarregar a página
 - Debounce de 500ms
-- Evento resize não interfere na digitação
-- Foco do input é restaurado
 
-3. MODAL DE PROMOÇÃO 📢
-- Todos os grupos disponíveis no filtro (inclusive vazios)
-- Filtro por grupo funcionando corretamente
-- Busca por nome/telefone dentro do modal
-- Contagem de clientes por grupo exibida
-
-4. WHATSAPP CORRIGIDO 📱
+3. WHATSAPP CORRIGIDO 📱
 - Formatação de números com 55
 - Fallback para diferentes formatos
-- Instância própria da empresa funcionando
-- Mensagens de confirmação e conclusão enviadas
 
 =========================================
-✅ IMPLEMENTADO (22/07/2026) - CORREÇÕES EVOLUTION V2 E SCRIPT BLINDADO
+✅ IMPLEMENTADO (22/07/2026) - EVOLUTION V2
 =========================================
 1. ENDPOINTS EVOLUTION API v2 CORRIGIDOS 📱
 - Envio de mensagem: `/message/sendText/{instanceName}`
 - Obter QR Code: `/instance/connect/{instanceName}`
 - Verificar status: `/instance/connectionState/{instanceName}`
 
-2. NOVAS COLUNAS NO BANCO (Tabela: agendamentos) 💾
-- valor_total (NUMERIC DEFAULT 0)
-- servicos_extras (JSONB DEFAULT '[]'::jsonb)
-- valor_extras (NUMERIC DEFAULT 0)
-
-3. SCRIPT DE ATUALIZAÇÃO BLINDADO (`atualizar.sh`) 🛡️
+2. SCRIPT DE ATUALIZAÇÃO BLINDADO (`atualizar.sh`) 🛡️
 - Salva .env em /tmp antes do git.
-- Usa `git reset --hard origin/main` e `git clean -fd`
-- Restaura o .env do /tmp.
-- Roda `npm install --omit=dev` e migração
-
-4. LÓGICA DE FALLBACK CONFIRMADA ✅
-- Se a instância própria NÃO estiver conectada, usa a instância padrão
 
 =========================================
-✅ IMPLEMENTADO (13/07/2026) - FINANCEIRO COMPLETO
+✅ IMPLEMENTADO (13/07/2026) - FINANCEIRO
 =========================================
 1. FINANCEIRO COM ABAS
 - Abas: Resumo, Receitas, Despesas, Comissões
 - Comparativo mês atual vs mês anterior com variação percentual
-- Cards coloridos para Faturamento, Despesas e Lucro
-
-2. NOVAS ROTAS
-GET /api/financeiro/receitas?mes=07&ano=2026
-GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_anterior=2026
 
 =========================================
 ✅ IMPLEMENTADO (10/07/2026) - WHATSAPP MULTI-INSTÂNCIA
@@ -173,11 +187,18 @@ GET /api/financeiro/comparativo?mes_atual=07&ano_atual=2026&mes_anterior=06&ano_
 - Instância Padrão: seeagende
 - Instância Própria: Empresas Business/Enterprise
 - Confirmação, Lembrete 24h, Cancelamento e Conclusão automáticos
-- Telefone do Dono e Endereço nas mensagens
+
+=========================================
+⛔ PENDENTES (PRÓXIMOS PASSOS)
+=========================================
+1. ⚠️ Envio de WhatsApp na Conclusão (EM ANDAMENTO)
+2. ⚠️ Envio de WhatsApp no Cancelamento (PENDENTE)
+3. ⚠️ Lembrete 24h automático (PENDENTE)
 
 =========================================
 🚀 DEPLOY PARA VPS (MÉTODO RECOMENDADO)
 =========================================
+
 ENVIO VIA GIT (MÉTODO PRÁTICO E SEGURO)
 ---------------------------------------------------------
 # 1. No VS Code (Local):
@@ -188,7 +209,7 @@ git push origin main
 # 2. Na VPS (Terminal Local):
 ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
 
-ENVIO DE ARQUIVOS ESPECÍFICOS VIA SCP (MÉTODO TRADICIONAL)
+ENVIO DE ARQUIVOS ESPECÍFICOS VIA SCP
 ---------------------------------------------------------
 # Comando base:
 scp caminho/do/arquivo.js ubuntu@163.176.218.131:~/seeagende/caminho/do/arquivo.js
@@ -202,9 +223,6 @@ scp public/js/pages/*.js ubuntu@163.176.218.131:~/seeagende/public/js/pages/
 # Enviar CSS
 scp public/css/style.css ubuntu@163.176.218.131:~/seeagende/public/css/
 
-# Enviar pasta inteira
-scp -r public/js/pages ubuntu@163.176.218.131:~/seeagende/public/js/
-
 # Verificar arquivos na VPS
 ssh ubuntu@163.176.218.131 "ls -la ~/seeagende/public/js/pages/"
 
@@ -215,54 +233,9 @@ ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 20"
 ssh ubuntu@163.176.218.131 "pm2 restart seeagende --update-env"
 
 =========================================
-🔧 CORREÇÕES NO BACKEND (Histórico)
-=========================================
-- Booleanos no PostgreSQL: Função isAberto() para compatibilidade true/false e 1/0.
-- .toFixed() no PostgreSQL: Uso de parseFloat() antes da formatação.
-- Placeholders PostgreSQL: Uso de counter para $1, $2...
-- Preservação de Horário: Horário é mantido ao selecionar serviço na agenda.
-- Nome das Instâncias: Agora usa formato `emp-{ID}-{NOME-DA-EMPRESA}`.
-- Envio WhatsApp no Agendamento: Usa `db.get` em vez de `pool.query`.
-- Horários na VPS: Tabela `horarios_funcionamento` criada com dados padrão.
-- Usuários na VPS: Script `migrar-usuarios-vps.js` para criar usuários.
-- Payment Mode: Coluna adicionada na tabela `configuracoes`.
-
-=========================================
-🗄️ ESTRUTURA DOS ARQUIVOS (Principais)
-=========================================
-server/
-├── config/database.js, whatsapp.js
-├── middlewares/auth.js
-├── services/whatsapp.js, evolution-instances.js, mercadopago.js
-├── jobs/lembretes.js, reset-contador.js
-├── routes/ (13 arquivos - 100% extraídos)
-└── utils/constants.js, helpers.js
-
-public/js/pages/
-├── dashboard.js, financeiro.js, agendamentos.js
-├── empresas.js, whatsapp-config.js, planos.js
-├── configuracoes.js, servicos.js
-└── clientes.js (CORRIGIDO - GRUPOS + MOBILE + PROMOÇÕES + ÍNDICE A-Z) ⭐
-
-scripts/
-├── migrate-vps.js (Script principal de migração segura)
-├── migrate-whatsapp.js, migrate-whatsapp-pg.js
-├── corrigir-booleanos.js, corrigir-tofixed.js
-└── migrar-usuarios-vps.js (Script para criar usuários na VPS)
-
-=========================================
-📋 PLANOS COMPLETOS
-=========================================
-Plano       Valor               Profissionais   Agendamentos/Mês   WhatsApp Próprio
-Trial       Grátis (45 dias)    1               100                ❌
-Starter     R$ 29,90/mês        1               100                ❌
-Pro         R$ 59,90/mês        5               Ilimitado          ❌
-Business    R$ 119,90/mês       15              Ilimitado          ✅
-Enterprise  R$ 249,90/mês       Ilimitado       Ilimitado          ✅
-
-=========================================
 🔧 COMANDOS ÚTEIS
 =========================================
+
 # Atualizar VPS com segurança (Git)
 ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
 
@@ -296,10 +269,14 @@ node scripts/criar-horarios-vps.js
 # Migrar usuários na VPS
 node scripts/migrar-usuarios-vps.js
 
+# Limpar cache do navegador (Ctrl+F5)
+
 =========================================
-✅ STATUS ATUAL (08/08/2026)
+✅ STATUS ATUAL (14/08/2026)
 =========================================
+
 Tudo funcionando em AMBOS os bancos!
+
 ✅ SQLite (desenvolvimento local)
 ✅ PostgreSQL (Render e teste local/VPS)
 ✅ WhatsApp Multi-Instância (Endpoints v2 corrigidos)
@@ -314,73 +291,21 @@ Tudo funcionando em AMBOS os bancos!
 ✅ Filtro de letra com localStorage
 ✅ Criação Automática de Instâncias pelo Super Admin
 ✅ Correção de Query Booleana no Chatbot
-✅ INSTÂNCIAS COM NOME CORRETO (emp-ID-nome-empresa) ⭐
-✅ ENVIO DE WHATSAPP NO AGENDAMENTO FUNCIONANDO ⭐
-✅ HORÁRIOS NA VPS FUNCIONANDO ⭐
-✅ USUÁRIOS NA VPS FUNCIONANDO ⭐
-✅ REFATORAÇÃO BACKEND 100% COMPLETA ⭐
+✅ INSTÂNCIAS COM NOME CORRETO (emp-ID-nome-empresa)
+✅ ENVIO DE WHATSAPP NA CONFIRMAÇÃO FUNCIONANDO
+✅ HORÁRIOS NA VPS FUNCIONANDO
+✅ USUÁRIOS NA VPS FUNCIONANDO
+✅ REFATORAÇÃO BACKEND 100% COMPLETA
+✅ FLUXO WHATSAPP CORRETO (SA cria, Dono usa)
+✅ BOTÃO ON/OFF FUNCIONANDO
+✅ LIMPEZA DO PROJETO CONCLUÍDA
+✅ MIGRAÇÃO DE AGENDAMENTOS CONCLUÍDA
+✅ PAGAMENTOS COM FORMA DE PAGAMENTO FUNCIONANDO
+✅ CADASTRO COM NOME DA EMPRESA FUNCIONANDO
+✅ INDICADOR WHATSAPP PARA DONO FUNCIONANDO
+✅ INDICADOR WHATSAPP PARA SUPER ADMIN FUNCIONANDO
+✅ ROTAS 100% REGISTRADAS E FUNCIONANDO
 
 =========================================
-GUIA PARA IA - SEE&AGENDE
-ULTIMA ATUALIZACAO: 08/08/2026
-=========================================
-
-🚀 COMO EXECUTAR O PROJETO
------------------------------------------
-Modo Local (SQLite - Desenvolvimento)
-node -r dotenv/config server.js dotenv_config_path=.env.dev
-
-Modo com PostgreSQL (Teste com dados reais / Produção)
-node -r dotenv/config server.js dotenv_config_path=.env.local
-
-USUARIOS:
------------------------------------------
-Super Admin: super@admin.com / super123
-Dono: admin@teste.com / 123456
-Dono Empresa 14: luziasandraleal@hotmail.com / 123456
-
-=========================================
-📋 STATUS DO PROJETO (08/08/2026)
-=========================================
-
-### ✅ CONCLUÍDO
-1. Mensagens WhatsApp melhoradas com Google Maps e Waze
-2. Configurações da empresa (nome, telefone, endereço)
-3. Refatoração do backend - 100% concluído
-4. Correção de horários na VPS
-5. Correção de usuários na VPS
-6. Correção do erro `payment_mode`
-7. Remoção de duplicata AUTOINCREMENT
-
-### 📋 PRÓXIMOS PASSOS
-1. Monitorar logs da VPS
-2. Corrigir eventuais erros que aparecerem
-3. Manter documentação atualizada
-
-=========================================
-🔧 COMANDOS ÚTEIS
-=========================================
-# Rodar local
-node -r dotenv/config server.js dotenv_config_path=.env.dev
-
-# Atualizar VPS
-ssh ubuntu@163.176.218.131 "cd ~/seeagende && cp .env /tmp/seeagende_env_backup && git pull origin main && cp /tmp/seeagende_env_backup .env && pm2 restart seeagende --update-env"
-
-# Ver logs VPS
-ssh ubuntu@163.176.218.131 "pm2 logs seeagende --lines 50"
-
-=========================================
-✅ STATUS DAS FUNCIONALIDADES
-=========================================
-WhatsApp (com Maps/Waze)      ✅ OK
-Configurações Empresa          ✅ OK
-Refatoração Backend            ✅ 100%
-Agendamentos                   ✅ OK
-Financeiro                     ✅ OK
-Super Admin                    ✅ OK
-Horários na VPS                ✅ OK
-Usuários na VPS                ✅ OK
-
-=========================================
-ULTIMA ATUALIZACAO: 08/08/2026
+ULTIMA ATUALIZACAO: 14/08/2026
 =========================================

@@ -1,9 +1,9 @@
 ﻿// ============================================
-// ROTAS DE FINANCEIRO
+// ROTAS DE FINANCEIRO - CORRIGIDO
 // ============================================
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { db, getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -90,7 +90,7 @@ router.get('/', auth, (req, res) => {
                 LEFT JOIN servicos s ON a.servico_id = s.id
                 WHERE a.profissional_id = ?
                     AND a.empresa_id = ?
-                    AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
+                    AND ${lower('a.status')} IN ('concluido', 'finalizado')
                     AND ${extractMonth('a.data')} = ?
                     AND ${extractYear('a.data')} = ?
                 ORDER BY a.data DESC
@@ -144,6 +144,9 @@ router.get('/', auth, (req, res) => {
         const mes = req.query.mes || String(hoje.getMonth() + 1).padStart(2, '0');
         const ano = req.query.ano || hoje.getFullYear();
 
+        // 🔥 USAR BANCO DA EMPRESA
+        const empresaDb = getEmpresaDb(empresa_id);
+
         let sql, params;
 
         if (isProduction) {
@@ -165,7 +168,7 @@ router.get('/', auth, (req, res) => {
                 LEFT JOIN profissionais p ON a.profissional_id = p.id
                 LEFT JOIN servicos s ON a.servico_id = s.id
                 WHERE a.empresa_id = $1
-                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                    AND LOWER(a.status) IN ('concluido', 'finalizado')
                     AND EXTRACT(MONTH FROM a.data) = $2
                     AND EXTRACT(YEAR FROM a.data) = $3
                 ORDER BY a.data DESC
@@ -175,6 +178,7 @@ router.get('/', auth, (req, res) => {
             sql = `
                 SELECT 
                     a.id,
+                    a.forma_pagamento, 
                     date(a.data) as data_formatada,
                     COALESCE(a.valor_total, a.valor, 0) as valor_total,
                     a.valor,
@@ -190,7 +194,7 @@ router.get('/', auth, (req, res) => {
                 LEFT JOIN profissionais p ON a.profissional_id = p.id
                 LEFT JOIN servicos s ON a.servico_id = s.id
                 WHERE a.empresa_id = ?
-                    AND LOWER(a.status) IN ('concluido', 'finalizado', 'concluído')
+                    AND LOWER(a.status) IN ('concluido', 'finalizado')
                     AND strftime('%m', a.data) = ?
                     AND strftime('%Y', a.data) = ?
                 ORDER BY a.data DESC
@@ -201,7 +205,7 @@ router.get('/', auth, (req, res) => {
         console.log('📊 SQL Dono:', sql);
         console.log('📊 Params:', params);
 
-        db.all(sql, params, (err, comissoes) => {
+        empresaDb.all(sql, params, (err, comissoes) => {
             if (err) {
                 console.error('❌ Erro no financeiro dono:', err.message);
                 return res.json({ success: false, message: err.message });
@@ -273,98 +277,88 @@ router.get('/', auth, (req, res) => {
 });
 
 // ============================================
-// GET /api/financeiro/receitas
+// GET /api/financeiro - FINANCEIRO DONO
 // ============================================
-router.get('/receitas', auth, (req, res) => {
-    const { mes, ano } = req.query;
-    const empresaId = req.usuario.empresa_id;
+router.get('/', auth, verificarDono, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const mes = req.query.mes || new Date().getMonth() + 1;
+        const ano = req.query.ano || new Date().getFullYear();
 
-    if (!mes || !ano) {
-        return res.json({ success: false, message: 'Mês e ano são obrigatórios' });
-    }
+        console.log(`📊 Financeiro - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}, Role: ${req.usuario.role}`);
 
-    let sql, params;
-    if (isProduction) {
-        sql = `
-            SELECT 
-                a.id,
-                ${formatDate('a.data')} as data_formatada,
-                ${coalesce('a.valor_total', 0)} as valor_total,
-                a.valor,
-                a.comissao,
-                a.servico,
-                a.cliente_id,
-                a.profissional_id,
-                c.nome as cliente_nome,
-                s.nome as servico_nome,
-                p.nome as profissional_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            WHERE a.empresa_id = $1
-                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
-                AND ${extractMonth('a.data')} = $2
-                AND ${extractYear('a.data')} = $3
-            ORDER BY a.data DESC
-        `;
-        params = [empresaId, parseInt(mes), parseInt(ano)];
-    } else {
-        sql = `
-            SELECT 
-                a.id,
-                ${formatDate('a.data')} as data_formatada,
-                ${coalesce('a.valor_total', 0)} as valor_total,
-                a.valor,
-                a.comissao,
-                a.servico,
-                a.cliente_id,
-                a.profissional_id,
-                c.nome as cliente_nome,
-                s.nome as servico_nome,
-                p.nome as profissional_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            LEFT JOIN profissionais p ON a.profissional_id = p.id
-            WHERE a.empresa_id = ?
-                AND ${lower('a.status')} IN ('concluido', 'finalizado', 'concluído')
-                AND ${extractMonth('a.data')} = ?
-                AND ${extractYear('a.data')} = ?
-            ORDER BY a.data DESC
-        `;
-        params = [empresaId, mes.padStart(2, '0'), ano];
-    }
+        const getEmpresaDb = req.getEmpresaDb || require('../config/database').getEmpresaDb;
+        const db = getEmpresaDb(empresaId);
 
-    db.all(sql, params, (err, rows) => {
-        if (err) {
-            console.error('❌ Erro ao buscar receitas:', err);
-            return res.json({ success: false, message: 'Erro ao buscar receitas' });
-        }
+        // 🔥 REMOVER a.forma_pagamento da query
+        const sql = isProduction
+            ? `
+                SELECT 
+                    a.id,
+                    date(a.data) as data_formatada,
+                    COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                    a.valor,
+                    a.comissao,
+                    a.servico,
+                    a.profissional_id,
+                    a.cliente_id,
+                    c.nome as cliente_nome,
+                    p.nome as profissional_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN profissionais p ON a.profissional_id = p.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.empresa_id = $1
+                    AND LOWER(a.status) IN ('concluido', 'finalizado')
+                    AND EXTRACT(MONTH FROM a.data) = $2
+                    AND EXTRACT(YEAR FROM a.data) = $3
+                ORDER BY a.data DESC
+            `
+            : `
+                SELECT 
+                    a.id,
+                    date(a.data) as data_formatada,
+                    COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                    a.valor,
+                    a.comissao,
+                    a.servico,
+                    a.profissional_id,
+                    a.cliente_id,
+                    c.nome as cliente_nome,
+                    p.nome as profissional_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN profissionais p ON a.profissional_id = p.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.empresa_id = ?
+                    AND LOWER(a.status) IN ('concluido', 'finalizado')
+                    AND strftime('%m', a.data) = ?
+                    AND strftime('%Y', a.data) = ?
+                ORDER BY a.data DESC
+            `;
 
-        let total = 0;
-        const receitas = rows.map(row => {
-            const valor = parseFloat(row.valor_total) || parseFloat(row.valor) || 0;
-            total += valor;
-            return {
-                ...row,
-                data: row.data_formatada || row.data,
-                data_formatada: undefined,
-                valor_total: valor,
-                valor: parseFloat(row.valor) || 0,
-                comissao: parseFloat(row.comissao) || 0
-            };
-        });
-
-        res.json({
-            success: true,
-            data: {
-                receitas: receitas,
-                total: total,
-                quantidade: receitas.length
+        db.all(sql, [empresaId, String(mes).padStart(2, '0'), ano], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro no financeiro dono:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
             }
+
+            // Processar dados...
+            res.json({ success: true, data: rows || [] });
         });
-    });
+
+    } catch (error) {
+        console.error('❌ Erro no financeiro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 });
 
 // ============================================
@@ -382,6 +376,8 @@ router.get('/comparativo', auth, (req, res) => {
 
     function getDados(mes, ano) {
         return new Promise((resolve, reject) => {
+            const empresaDb = getEmpresaDb(empresaId);
+
             let sql, params;
 
             if (isProduction) {
@@ -406,7 +402,7 @@ router.get('/comparativo', auth, (req, res) => {
                 params = [empresaId, mes.padStart(2, '0'), ano];
             }
 
-            db.get(sql, params, (err, row) => {
+            empresaDb.get(sql, params, (err, row) => {
                 if (err) {
                     console.error('❌ Erro faturamento:', err);
                     reject(err);
@@ -437,7 +433,7 @@ router.get('/comparativo', auth, (req, res) => {
                     paramsDesp = [empresaId, mes.padStart(2, '0'), ano];
                 }
 
-                db.get(sqlDesp, paramsDesp, (err, despRow) => {
+                empresaDb.get(sqlDesp, paramsDesp, (err, despRow) => {
                     if (err) {
                         console.error('❌ Erro despesas:', err);
                         reject(err);
@@ -480,6 +476,8 @@ router.get('/analise-diaria', auth, (req, res) => {
     const ano = req.query.ano || hoje.getFullYear();
 
     console.log(`📊 Análise Diária - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}`);
+
+    const empresaDb = getEmpresaDb(empresaId);
 
     let sql, params;
 
@@ -531,7 +529,7 @@ router.get('/analise-diaria', auth, (req, res) => {
     console.log('📊 SQL:', sql);
     console.log('📊 Params:', params);
 
-    db.all(sql, params, (err, rows) => {
+    empresaDb.all(sql, params, (err, rows) => {
         if (err) {
             console.error('❌ Erro na análise diária:', err);
             return res.json({ success: false, message: 'Erro ao carregar análise: ' + err.message });
@@ -599,5 +597,129 @@ router.get('/analise-diaria', auth, (req, res) => {
         });
     });
 });
+// ============================================
+// GET /api/financeiro/receitas - RECEITAS
+// ============================================
+router.get('/receitas', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const mes = req.query.mes || String(new Date().getMonth() + 1).padStart(2, '0');
+        const ano = req.query.ano || new Date().getFullYear();
 
+        console.log(`📊 Receitas - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}`);
+
+        const getEmpresaDb = req.getEmpresaDb || require('../config/database').getEmpresaDb;
+        const db = getEmpresaDb(empresaId);
+
+        if (!db) {
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao conectar ao banco'
+            });
+        }
+
+        // 🔥 INCLUIR forma_pagamento na query
+        const sql = isProduction
+            ? `
+                SELECT 
+                    a.id,
+                    a.data,
+                    date(a.data) as data_formatada,
+                    COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                    a.valor,
+                    a.forma_pagamento,
+                    a.servico,
+                    a.cliente_id,
+                    c.nome as cliente_nome,
+                    s.nome as servico_nome,
+                    p.nome as profissional_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                LEFT JOIN profissionais p ON a.profissional_id = p.id
+                WHERE a.empresa_id = $1
+                    AND LOWER(a.status) IN ('concluido', 'finalizado')
+                    AND EXTRACT(MONTH FROM a.data) = $2
+                    AND EXTRACT(YEAR FROM a.data) = $3
+                ORDER BY a.data DESC
+            `
+            : `
+                SELECT 
+                    a.id,
+                    a.data,
+                    date(a.data) as data_formatada,
+                    COALESCE(a.valor_total, a.valor, 0) as valor_total,
+                    a.valor,
+                    a.forma_pagamento,
+                    a.servico,
+                    a.cliente_id,
+                    c.nome as cliente_nome,
+                    s.nome as servico_nome,
+                    p.nome as profissional_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                LEFT JOIN profissionais p ON a.profissional_id = p.id
+                WHERE a.empresa_id = ?
+                    AND LOWER(a.status) IN ('concluido', 'finalizado')
+                    AND strftime('%m', a.data) = ?
+                    AND strftime('%Y', a.data) = ?
+                ORDER BY a.data DESC
+            `;
+
+        db.all(sql, [empresaId, mes, ano], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro ao buscar receitas:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            // 🔥 AGRUPAR POR FORMA DE PAGAMENTO
+            const porPagamento = {
+                'dinheiro': 0,
+                'pix': 0,
+                'debito': 0,
+                'credito': 0,
+                'fiado': 0,
+                'outro': 0
+            };
+            let total = 0;
+
+            for (const row of rows) {
+                const valor = parseFloat(row.valor_total) || 0;
+                total += valor;
+
+                const forma = (row.forma_pagamento || 'outro').toLowerCase();
+                if (porPagamento[forma] !== undefined) {
+                    porPagamento[forma] += valor;
+                } else {
+                    porPagamento['outro'] += valor;
+                }
+            }
+
+            console.log(`📊 ${rows.length} receitas encontradas, Total: R$ ${total}`);
+            console.log('📊 Por pagamento:', porPagamento);
+
+            res.json({
+                success: true,
+                data: {
+                    receitas: rows || [],
+                    total: total,
+                    por_pagamento: porPagamento,
+                    mes: mes,
+                    ano: ano
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar receitas:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
 module.exports = router;

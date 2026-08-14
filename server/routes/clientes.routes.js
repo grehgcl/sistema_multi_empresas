@@ -1,93 +1,94 @@
 ﻿// server/routes/clientes.routes.js
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { db, getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// server/routes/clientes.routes.js
-
 // ============================================
-// GET /api/clientes
+// GET /api/clientes - CORRIGIDO
 // ============================================
 router.get('/', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const { search, grupo, letra } = req.query;
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const { search, grupo, letra } = req.query;
 
-    console.log(`📊 Buscando clientes para empresa ${empresaId}`);
+        console.log(`📊 Buscando clientes para empresa ${empresaId}`);
 
-    // 🔥 CORREÇÃO: Remover vírgula extra antes de ORDER BY
-    let sql = isProduction
-        ? "SELECT * FROM clientes WHERE empresa_id = $1"
-        : "SELECT * FROM clientes WHERE empresa_id = ?";
-    let params = [empresaId];
-    let counter = 2;
+        const empresaDb = getEmpresaDb(empresaId);
 
-    if (search) {
-        const searchTerm = `%${search}%`;
-        sql += isProduction
-            ? ` AND (nome LIKE $${counter} OR telefone LIKE $${counter} OR email LIKE $${counter})`
-            : " AND (nome LIKE ? OR telefone LIKE ? OR email LIKE ?)";
-        params.push(searchTerm, searchTerm, searchTerm);
-        counter += 3;
-    }
-
-    if (grupo && grupo !== '') {
-        sql += isProduction
-            ? ` AND (grupos IS NOT NULL AND grupos != '[]' AND json_extract(grupos, '$') LIKE $${counter})`
-            : " AND (grupos IS NOT NULL AND grupos != '[]' AND grupos LIKE ?)";
-        const grupoSearch = `%${grupo}%`;
-        params.push(grupoSearch);
-        counter++;
-    }
-
-    if (letra && letra !== '') {
-        sql += isProduction
-            ? ` AND nome LIKE $${counter}`
-            : " AND nome LIKE ?";
-        params.push(`${letra}%`);
-        counter++;
-    }
-
-    // 🔥 CORREÇÃO: Garantir que ORDER BY está correto
-    sql += isProduction ? " ORDER BY nome" : " ORDER BY nome";
-
-    console.log('📝 SQL:', sql);
-    console.log('📝 Params:', params);
-
-    db.all(sql, params, (err, clientes) => {
-        if (err) {
-            console.error("❌ Erro ao buscar clientes:", err);
+        if (!empresaDb) {
+            console.error('❌ Banco da empresa não encontrado');
             return res.status(500).json({
                 success: false,
-                message: err.message
+                message: 'Erro ao conectar ao banco da empresa'
             });
         }
 
-        // Processar grupos
-        const clientesComGrupos = clientes.map(c => {
-            let grupos = [];
-            try {
-                if (c.grupos) {
-                    grupos = typeof c.grupos === 'string' ? JSON.parse(c.grupos) : c.grupos;
-                }
-            } catch (e) {
-                grupos = [];
-            }
-            return { ...c, grupos };
-        });
+        let sql = "SELECT rowid as id, * FROM clientes WHERE empresa_id = ?";
+        let params = [empresaId];
 
-        console.log(`✅ ${clientesComGrupos.length} clientes encontrados`);
-        res.json({
-            success: true,
-            data: clientesComGrupos || []
+        if (search) {
+            const searchTerm = `%${search}%`;
+            sql += " AND (nome LIKE ? OR telefone LIKE ? OR email LIKE ?)";
+            params.push(searchTerm, searchTerm, searchTerm);
+        }
+
+        if (grupo && grupo !== '') {
+            sql += " AND (grupos IS NOT NULL AND grupos != '[]' AND grupos LIKE ?)";
+            params.push(`%${grupo}%`);
+        }
+
+        if (letra && letra !== '') {
+            sql += " AND nome LIKE ?";
+            params.push(`${letra}%`);
+        }
+
+        sql += " ORDER BY nome";
+
+        console.log('📝 SQL:', sql);
+        console.log('📝 Params:', params);
+
+        empresaDb.all(sql, params, (err, clientes) => {
+            if (err) {
+                console.error("❌ Erro ao buscar clientes:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            const clientesComGrupos = clientes.map(c => {
+                let grupos = [];
+                try {
+                    if (c.grupos) {
+                        grupos = typeof c.grupos === 'string' ? JSON.parse(c.grupos) : c.grupos;
+                    }
+                } catch (e) {
+                    grupos = [];
+                }
+                const id = c.id || c.rowid || null;
+                return { ...c, id, grupos };
+            });
+
+            console.log(`✅ ${clientesComGrupos.length} clientes encontrados`);
+            res.json({
+                success: true,
+                data: clientesComGrupos || []
+            });
         });
-    });
+    } catch (error) {
+        console.error('❌ Erro na rota /api/clientes:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message || 'Erro interno do servidor'
+        });
+    }
 });
 
 // ============================================
-// POST /api/clientes
+// POST /api/clientes - CORRIGIDO
 // ============================================
 router.post('/', auth, (req, res) => {
     const { nome, telefone, email, grupos } = req.body;
@@ -102,13 +103,12 @@ router.post('/', auth, (req, res) => {
         });
     }
 
+    const empresaDb = getEmpresaDb(empresaId);
     const gruposJson = grupos && grupos.length > 0 ? JSON.stringify(grupos) : '[]';
 
-    const sql = isProduction
-        ? "INSERT INTO clientes (nome, telefone, email, grupos, empresa_id) VALUES ($1, $2, $3, $4, $5)"
-        : "INSERT INTO clientes (nome, telefone, email, grupos, empresa_id) VALUES (?, ?, ?, ?, ?)";
+    const sql = "INSERT INTO clientes (nome, telefone, email, grupos, empresa_id) VALUES (?, ?, ?, ?, ?)";
 
-    db.run(sql, [nome, telefone || '', email || '', gruposJson, empresaId], function (err) {
+    empresaDb.run(sql, [nome, telefone || '', email || '', gruposJson, empresaId], function (err) {
         if (err) {
             console.error("❌ Erro ao criar cliente:", err);
             return res.status(500).json({
@@ -126,7 +126,7 @@ router.post('/', auth, (req, res) => {
 });
 
 // ============================================
-// PUT /api/clientes/:id
+// PUT /api/clientes/:id - CORRIGIDO
 // ============================================
 router.put('/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
@@ -142,13 +142,12 @@ router.put('/:id', auth, verificarDono, (req, res) => {
         });
     }
 
+    const empresaDb = getEmpresaDb(empresaId);
     const gruposJson = grupos && grupos.length > 0 ? JSON.stringify(grupos) : '[]';
 
-    const sql = isProduction
-        ? "UPDATE clientes SET nome = $1, telefone = $2, email = $3, grupos = $4, bloqueado_chatbot = $5 WHERE id = $6 AND empresa_id = $7"
-        : "UPDATE clientes SET nome = ?, telefone = ?, email = ?, grupos = ?, bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?";
+    const sql = "UPDATE clientes SET nome = ?, telefone = ?, email = ?, grupos = ?, bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?";
 
-    db.run(sql, [nome, telefone || '', email || '', gruposJson, bloqueado_chatbot ? 1 : 0, id, empresaId], function (err) {
+    empresaDb.run(sql, [nome, telefone || '', email || '', gruposJson, bloqueado_chatbot ? 1 : 0, id, empresaId], function (err) {
         if (err) {
             console.error("❌ Erro ao atualizar cliente:", err);
             return res.status(500).json({
@@ -172,7 +171,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// DELETE /api/clientes/:id
+// DELETE /api/clientes/:id - CORRIGIDO
 // ============================================
 router.delete('/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
@@ -180,11 +179,10 @@ router.delete('/:id', auth, verificarDono, (req, res) => {
 
     console.log(`🗑️ Deletando cliente ${id}`);
 
-    const sql = isProduction
-        ? "DELETE FROM clientes WHERE id = $1 AND empresa_id = $2"
-        : "DELETE FROM clientes WHERE id = ? AND empresa_id = ?";
+    const empresaDb = getEmpresaDb(empresaId);
+    const sql = "DELETE FROM clientes WHERE id = ? AND empresa_id = ?";
 
-    db.run(sql, [id, empresaId], function (err) {
+    empresaDb.run(sql, [id, empresaId], function (err) {
         if (err) {
             console.error("❌ Erro ao deletar cliente:", err);
             return res.status(500).json({
@@ -208,18 +206,17 @@ router.delete('/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// PUT /api/clientes/:id/bloquear-chatbot
+// PUT /api/clientes/:id/bloquear-chatbot - CORRIGIDO
 // ============================================
 router.put('/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { bloqueado } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    const sql = isProduction
-        ? "UPDATE clientes SET bloqueado_chatbot = $1 WHERE id = $2 AND empresa_id = $3"
-        : "UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?";
+    const empresaDb = getEmpresaDb(empresaId);
+    const sql = "UPDATE clientes SET bloqueado_chatbot = ? WHERE id = ? AND empresa_id = ?";
 
-    db.run(sql, [bloqueado ? 1 : 0, id, empresaId], function (err) {
+    empresaDb.run(sql, [bloqueado ? 1 : 0, id, empresaId], function (err) {
         if (err) {
             console.error("❌ Erro ao atualizar bloqueio:", err);
             return res.status(500).json({
@@ -243,7 +240,7 @@ router.put('/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// PUT /api/clientes/:id/grupos
+// PUT /api/clientes/:id/grupos - CORRIGIDO
 // ============================================
 router.put('/:id/grupos', auth, (req, res) => {
     const { id } = req.params;
@@ -259,13 +256,12 @@ router.put('/:id/grupos', auth, (req, res) => {
         });
     }
 
+    const empresaDb = getEmpresaDb(empresaId);
     const gruposJson = JSON.stringify(grupos);
 
-    const sql = isProduction
-        ? `UPDATE clientes SET grupos = $1 WHERE id = $2 AND empresa_id = $3`
-        : `UPDATE clientes SET grupos = ? WHERE id = ? AND empresa_id = ?`;
+    const sql = `UPDATE clientes SET grupos = ? WHERE id = ? AND empresa_id = ?`;
 
-    db.run(sql, [gruposJson, id, empresaId], function (err) {
+    empresaDb.run(sql, [gruposJson, id, empresaId], function (err) {
         if (err) {
             console.error('❌ Erro ao atualizar grupos:', err);
             return res.status(500).json({
@@ -281,12 +277,9 @@ router.put('/:id/grupos', auth, (req, res) => {
             });
         }
 
-        // Buscar cliente atualizado
-        const sqlSelect = isProduction
-            ? `SELECT id, nome, telefone, email, grupos FROM clientes WHERE id = $1 AND empresa_id = $2`
-            : `SELECT id, nome, telefone, email, grupos FROM clientes WHERE id = ? AND empresa_id = ?`;
+        const sqlSelect = `SELECT id, nome, telefone, email, grupos FROM clientes WHERE id = ? AND empresa_id = ?`;
 
-        db.get(sqlSelect, [id, empresaId], (err, cliente) => {
+        empresaDb.get(sqlSelect, [id, empresaId], (err, cliente) => {
             if (err) {
                 console.error('❌ Erro ao buscar cliente:', err);
                 return res.json({
@@ -317,55 +310,66 @@ router.put('/:id/grupos', auth, (req, res) => {
 });
 
 // ============================================
-// GET /api/clientes/grupos
+// GET /api/clientes/grupos - GRUPOS
 // ============================================
-router.get('/grupos', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
+router.get('/grupos', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        console.log(`📊 Buscando grupos para empresa ${empresaId}`);
 
-    const sql = isProduction
-        ? `SELECT id, grupos FROM clientes WHERE empresa_id = $1`
-        : `SELECT id, grupos FROM clientes WHERE empresa_id = ?`;
+        const getEmpresaDb = req.getEmpresaDb || require('../config/database').getEmpresaDb;
+        const db = getEmpresaDb(empresaId);
 
-    db.all(sql, [empresaId], (err, clientes) => {
-        if (err) {
-            console.error('❌ Erro ao buscar grupos:', err);
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
+        // 🔥 REMOVER grupos - usar apenas a tabela clientes
+        const sql = isProduction
+            ? `SELECT id, nome, telefone, email, bloqueado_chatbot, dias_bloqueio, created_at 
+               FROM clientes 
+               WHERE empresa_id = $1 
+               ORDER BY nome`
+            : `SELECT id, nome, telefone, email, bloqueado_chatbot, dias_bloqueio, created_at 
+               FROM clientes 
+               WHERE empresa_id = ? 
+               ORDER BY nome`;
 
-        const gruposMap = {};
-        clientes.forEach(c => {
-            if (c.grupos) {
-                try {
-                    const grupos = typeof c.grupos === 'string' ? JSON.parse(c.grupos) : c.grupos;
-                    if (Array.isArray(grupos) && grupos.length > 0) {
-                        gruposMap[c.id] = grupos;
-                    }
-                } catch (e) { }
+        db.all(sql, [empresaId], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro ao buscar clientes:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
             }
+
+            // 🔥 Retornar lista vazia de grupos
+            res.json({
+                success: true,
+                data: {
+                    clientes: rows || [],
+                    grupos: [] // Lista vazia de grupos
+                }
+            });
         });
 
-        res.json({
-            success: true,
-            data: gruposMap
+    } catch (error) {
+        console.error('❌ Erro ao buscar grupos:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
         });
-    });
+    }
 });
 
 // ============================================
-// GET /api/clientes/:id/grupos
+// GET /api/clientes/:id/grupos - CORRIGIDO
 // ============================================
 router.get('/:id/grupos', auth, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
+    const empresaDb = getEmpresaDb(empresaId);
 
-    const sql = isProduction
-        ? "SELECT grupos FROM clientes WHERE id = $1 AND empresa_id = $2"
-        : "SELECT grupos FROM clientes WHERE id = ? AND empresa_id = ?";
+    const sql = "SELECT grupos FROM clientes WHERE id = ? AND empresa_id = ?";
 
-    db.get(sql, [id, empresaId], (err, cliente) => {
+    empresaDb.get(sql, [id, empresaId], (err, cliente) => {
         if (err) {
             console.error("❌ Erro ao buscar grupos:", err);
             return res.status(500).json({

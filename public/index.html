@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
@@ -7,17 +7,17 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
-    <title>See&Agende - Gest�o para Sal�es, Barbearias e Est�ticas</title>
+    <title>See&Agende - Gestão para Salões, Barbearias e Estéticas</title>
 
     <!-- CSS GLOBAL -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <link id="landing-css" rel="stylesheet" href="/css/pages/landing.css?v=1">
 
-    <!-- CSS DA P�GINA (CARREGADO VIA JS) - ?? ADICIONADO -->
+    <!-- CSS DA PÁGINA (CARREGADO VIA JS) -->
     <link id="page-css" rel="stylesheet" href="">
 
-    <!-- AOS ANIMA��ES -->
+    <!-- AOS ANIMAÇÕES -->
     <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
 
     <!-- CHART.JS -->
@@ -35,23 +35,23 @@
                 </div>
                 <div class="landing-verse">
                     <i class="fas fa-bible"></i>
-                    <span>"Consagre ao Senhor tudo o que voc� faz, e os seus planos ser�o bem-sucedidos."</span>
-                    <small>� Prov�rbios 16:3</small>
+                    <span>"Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos."</span>
+                    <small>— Provérbios 16:3</small>
                 </div>
-                <h1>Gerencie seu neg�cio com <span>intelig�ncia</span></h1>
-                <p>Agendamento autom�tico, chatbot 24h, controle financeiro e comiss�es em um s� lugar.</p>
+                <h1>Gerencie seu negócio com <span>inteligência</span></h1>
+                <p>Agendamento automático, chatbot 24h, controle financeiro e comissões em um só lugar.</p>
                 <div class="landing-badges">
-                    <span><i class="fas fa-check-circle"></i> 45 dias gr�tis</span>
-                    <span><i class="fas fa-check-circle"></i> Sem cart�o de cr�dito</span>
-                    <span><i class="fas fa-check-circle"></i> Configura��o em 5 min</span>
+                    <span><i class="fas fa-check-circle"></i> 45 dias grátis</span>
+                    <span><i class="fas fa-check-circle"></i> Sem cartão de crédito</span>
+                    <span><i class="fas fa-check-circle"></i> Configuração em 5 min</span>
                 </div>
                 <div class="landing-stats">
                     <div><strong>+1.500</strong> agendamentos</div>
-                    <div><strong>+300</strong> neg�cios</div>
+                    <div><strong>+300</strong> negócios</div>
                     <div><strong>24h</strong> atendimento</div>
                 </div>
                 <div class="landing-footer">
-                    <p>� 2026 See&Agende. Todos os direitos reservados.</p>
+                    <p>© 2026 See&Agende. Todos os direitos reservados.</p>
                 </div>
             </div>
         </div>
@@ -89,7 +89,7 @@
                     <div id="loginMessage" class="error-message"></div>
                     <div class="auth-divider"><span>ou</span></div>
                     <div class="auth-footer">
-                        <p>N�o tem conta? <span onclick="mostrarCadastro()">Cadastre-se gr�tis <i
+                        <p>Não tem conta? <span onclick="mostrarCadastro()">Cadastre-se grátis <i
                                     class="fas fa-arrow-right"></i></span></p>
                     </div>
                 </div>
@@ -98,8 +98,8 @@
                 <div class="auth-box">
                     <div class="auth-header">
                         <i class="fas fa-rocket auth-icon"></i>
-                        <h2>Teste gr�tis por 45 dias</h2>
-                        <p>Sem cart�o de cr�dito. Comece agora!</p>
+                        <h2>Teste grátis por 45 dias</h2>
+                        <p>Sem cartão de crédito. Comece agora!</p>
                     </div>
                     <div class="input-group">
                         <i class="fas fa-user input-icon"></i>
@@ -113,7 +113,7 @@
                     </div>
                     <div class="input-group">
                         <i class="fas fa-lock input-icon"></i>
-                        <input type="password" id="cadastroSenha" placeholder="Crie uma senha (m�nimo 6 caracteres)"
+                        <input type="password" id="cadastroSenha" placeholder="Crie uma senha (mínimo 6 caracteres)"
                             autocomplete="new-password" required>
                         <button type="button" class="toggle-pwd" onclick="togglePassword('cadastroSenha')">
                             <i class="fas fa-eye-slash"></i>
@@ -130,25 +130,25 @@
                     </div>
                     <small
                         style="color:var(--text-muted);font-size:10px;display:block;margin-top:-8px;margin-bottom:8px;padding-left:40px;">
-                        ?? Obrigat�rio para receber notifica��es do WhatsApp
+                        ⚠️ Obrigatório para receber notificações do WhatsApp
                     </small>
                     <div class="auth-terms">
                         <label>
                             <input type="checkbox" id="acceptTerms" checked>
                             <span>Aceito os <a href="#"
-                                    onclick="showToast('Termos de uso dispon�veis em breve.', 'info')">Termos de Uso</a>
+                                    onclick="showToast('Termos de uso disponíveis em breve.', 'info')">Termos de Uso</a>
                                 e <a href="#"
-                                    onclick="showToast('Pol�tica de privacidade dispon�vel em breve.', 'info')">Pol�tica
+                                    onclick="showToast('Política de privacidade disponível em breve.', 'info')">Política
                                     de Privacidade</a></span>
                         </label>
                     </div>
                     <button class="btn-login" onclick="fazerCadastro()">
-                        <i class="fas fa-rocket"></i> Criar conta gr�tis
+                        <i class="fas fa-rocket"></i> Criar conta grátis
                     </button>
                     <div id="cadastroMessage" class="error-message"></div>
                     <div class="auth-divider"><span>ou</span></div>
                     <div class="auth-footer">
-                        <p>J� tem conta? <span onclick="mostrarLogin()">Fa�a login <i
+                        <p>Já tem conta? <span onclick="mostrarLogin()">Faça login <i
                                     class="fas fa-arrow-right"></i></span></p>
                     </div>
                 </div>
@@ -166,7 +166,6 @@
             </div>
         </div>
 
-        <!-- ?? BOT�O HAMBURGUER - S� DENTRO DO APP -->
         <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
             <i class="fas fa-bars"></i>
         </button>
@@ -210,7 +209,7 @@
     <div id="modalEditarEmpresa" class="modal">
         <div class="modal-content glass">
             <span class="close" onclick="fecharModal('modalEditarEmpresa')">&times;</span>
-            <h3>?? Editar Empresa</h3>
+            <h3>✏️ Editar Empresa</h3>
             <form id="formEmpresa">
                 <input type="hidden" id="editEmpresaId">
                 <div class="form-group">
@@ -243,7 +242,7 @@
     <div id="modalUpgrade" class="modal">
         <div class="modal-content glass">
             <span class="close" onclick="fecharModal('modalUpgrade')">&times;</span>
-            <h3>?? Fazer Upgrade</h3>
+            <h3>💎 Fazer Upgrade</h3>
             <div id="upgradeContent"></div>
             <div class="modal-buttons">
                 <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Cancelar</button>
@@ -260,10 +259,7 @@
     ============================================ -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
-    <!-- UI PRIMEIRO (cont�m carregarCSS) -->
     <script src="/js/ui.js"></script>
-
-    <!-- P�GINAS -->
     <script src="/js/ui.js?v=20260804"></script>
     <script src="/js/pages/dashboard.js?v=20260804"></script>
     <script src="/js/pages/clientes.js?v=20260804"></script>
@@ -281,10 +277,6 @@
         let token = null;
         let usuario = null;
 
-        // ========== PART�CULAS ANIMADAS ==========
-        // ... (mantenha o c�digo das part�culas)
-
-        // ========== TOGGLE PASSWORD ==========
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
             const toggleBtn = input.parentElement.querySelector('.toggle-pwd');
@@ -298,19 +290,16 @@
             }
         }
 
-        // ========== TOGGLE MOBILE MENU ==========
         function toggleMobileMenu() {
             document.getElementById('sidebar').classList.toggle('open');
             document.querySelector('.sidebar-overlay').classList.toggle('active');
         }
 
-        // ========== FECHAR MODAL ==========
         function fecharModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) modal.style.display = 'none';
         }
 
-        // ========== MODAL CLIENTE ==========
         function abrirModalCliente() {
             const modal = document.getElementById('modalCliente');
             if (modal) {
@@ -319,7 +308,7 @@
                 document.getElementById('clienteId').value = '';
                 document.getElementById('modalClienteTitle').textContent = 'Novo Cliente';
             } else {
-                showToast('Modal n�o encontrado', 'error');
+                showToast('Modal não encontrado', 'error');
             }
         }
 
@@ -328,9 +317,8 @@
             if (modal) modal.style.display = 'none';
         }
 
-        // ========== A��ES R�PIDAS ==========
         function abrirModalAgendamentoRapido() {
-            console.log('?? A��o r�pida: Novo Agendamento');
+            console.log('⚡ Ação rápida: Novo Agendamento');
             if (typeof window.abrirModalAgendamentoDono === 'function') {
                 if (typeof window.carregarDadosAgendamento === 'function') {
                     window.carregarDadosAgendamento().then(() => {
@@ -349,12 +337,12 @@
                 document.getElementById('modalAgendamentoTitle').textContent = 'Novo Agendamento';
                 carregarSelectsAgendamento();
             } else {
-                showToast('Modal n�o encontrado', 'error');
+                showToast('Modal não encontrado', 'error');
             }
         }
 
         function abrirModalClienteRapido() {
-            console.log('?? A��o r�pida: Novo Cliente');
+            console.log('⚡ Ação rápida: Novo Cliente');
             if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalClienteRapido) {
                 window.abrirModalCliente();
                 return;
@@ -362,7 +350,6 @@
             abrirModalCliente();
         }
 
-        // ========== AUTH ==========
         async function fazerLogin() {
             const email = document.getElementById('loginEmail').value;
             const senha = document.getElementById('loginSenha').value;
@@ -380,7 +367,6 @@
                 console.log('📥 Resposta do login:', data);
 
                 if (data.success) {
-                    // 🔥 CORREÇÃO: Usar a variável GLOBAL
                     const token = data.token || data.data?.token;
                     const usuarioData = data.data?.usuario || data.data;
 
@@ -399,7 +385,6 @@
                         return;
                     }
 
-                    // 🔥 ATUALIZAR A VARIÁVEL GLOBAL
                     window.token = token;
                     window.usuario = usuarioData;
 
@@ -418,7 +403,6 @@
 
                     showToast('Login realizado com sucesso!', 'success');
 
-                    // 🔥 USAR A FUNÇÃO GLOBAL DO UI.JS
                     if (typeof window.mostrarApp === 'function') {
                         window.mostrarApp();
                     } else {
@@ -445,7 +429,7 @@
             const acceptTerms = document.getElementById('acceptTerms').checked;
 
             if (!nome || !email || !senha || !empresa_nome || !telefone) {
-                showToast('Preencha todos os campos obrigat�rios (incluindo telefone)', 'warning');
+                showToast('Preencha todos os campos obrigatórios (incluindo telefone)', 'warning');
                 return;
             }
 
@@ -461,7 +445,7 @@
 
             const telefoneLimpo = telefone.replace(/\D/g, '');
             if (telefoneLimpo.length < 10) {
-                showToast('Digite um telefone v�lido (ex: 41999999999)', 'warning');
+                showToast('Digite um telefone válido (ex: 41999999999)', 'warning');
                 return;
             }
 
@@ -482,7 +466,7 @@
                 hideLoading();
                 if (data.success) {
                     document.getElementById('cadastroMessage').className = 'success-message';
-                    document.getElementById('cadastroMessage').innerHTML = '? ' + data.message;
+                    document.getElementById('cadastroMessage').innerHTML = '✅ ' + data.message;
                     document.getElementById('cadastroMessage').style.display = 'block';
                     showToast(data.message, 'success');
                     setTimeout(() => {
@@ -509,7 +493,6 @@
             token = null;
             usuario = null;
             showToast('Logout realizado com sucesso!', 'info');
-            // ?? USAR A FUN��O DO UI.JS
             if (typeof window.mostrarLanding === 'function') {
                 window.mostrarLanding();
             } else {
@@ -522,65 +505,74 @@
             }
         }
 
-        function carregarMenu() {
-            const usuarioStr = localStorage.getItem('usuario');
-            const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+function carregarMenu() {
+    const usuarioStr = localStorage.getItem('usuario');
+    const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
-            console.log('📋 Carregando menu para:', usuario?.nome);
-            console.log('🔍 Role:', usuario?.role);
+    console.log('📋 Carregando menu para:', usuario?.nome);
+    console.log('🔍 Role:', usuario?.role);
 
-            const sidebar = document.getElementById('sidebar');
-            let botoes = [];
+    const sidebar = document.getElementById('sidebar');
+    
+    if (!usuario) {
+        console.warn('⚠️ Nenhum usuário encontrado');
+        sidebar.innerHTML = '';
+        return;
+    }
 
-            if (!usuario) {
-                console.warn('⚠️ Nenhum usuário encontrado');
-                return;
-            }
+    const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+    const isProfissional = usuario.role === 'profissional';
+    const isDono = usuario.role === 'dono';
 
-            // 🔥 CORREÇÃO: Verificar se é Super Admin corretamente
-            const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
-            const isProfissional = usuario.role === 'profissional';
-            const isDono = usuario.role === 'dono';
+    console.log('🔍 isSuperAdmin:', isSuperAdmin);
+    console.log('🔍 isDono:', isDono);
 
-            console.log('🔍 isSuperAdmin:', isSuperAdmin);
+    let botoes = [];
 
-            if (isSuperAdmin) {
-                // 🔥 SUPER ADMIN - Menu correto (apenas 4 opções)
-                botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
-                    { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
-                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-                    { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
-                ];
-            } else if (isProfissional) {
-                botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
-                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' }
-                ];
-            } else if (isDono) {
-                // Dono - Menu completo
-                botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
-                    { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
-                    { id: 'servicos', nome: 'Serviços', icone: 'fa-clipboard-list', funcao: 'carregarServicos' },
-                    { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
-                    { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
-                    { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
-                    { id: 'whatsapp', nome: '📱 WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-                    { id: 'planos', nome: '💎 Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
-                ];
-            }
+    if (isSuperAdmin) {
+        botoes = [
+            { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
+            { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
+            { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
+            { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
+        ];
+    } else if (isProfissional) {
+        botoes = [
+            { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
+            { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' }
+        ];
+    } else if (isDono) {
+        botoes = [
+            { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
+            { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
+            { id: 'servicos', nome: 'Serviços', icone: 'fa-clipboard-list', funcao: 'carregarServicos' },
+            { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
+            { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
+            { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
+            { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
+            { id: 'planos', nome: 'Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
+        ];
+    }
 
-            // Gerar HTML dos botões
-            sidebar.innerHTML = botoes.map(b =>
-                `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`
-            ).join('');
-
-            // Ativar o botão correto
-            const urlParams = new URLSearchParams(window.location.search);
-            const page = urlParams.get('page') || 'dashboard';
-            ativarBotao(page);
+    // 🔥 GERAR O HTML DO MENU COM O INDICADOR
+    sidebar.innerHTML = botoes.map(b => {
+        // 🔥 ADICIONAR O INDICADOR APENAS PARA WHATSAPP
+        let indicador = '';
+        if (b.id === 'whatsapp') {
+            indicador = `<span id="whatsappStatusIndicator" class="status-dot offline"></span>`;
         }
+        return `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome} ${indicador}</button>`;
+    }).join('');
+
+    // Ativar o botão da página atual
+    const urlParams = new URLSearchParams(window.location.search);
+    const page = urlParams.get('page') || 'dashboard';
+    ativarBotao(page);
+
+    console.log('✅ Menu carregado com sucesso!');
+    console.log('🔍 Elemento WhatsApp:', document.getElementById('whatsappStatusIndicator'));
+}
+
         function ativarBotao(id) {
             document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
             const btn = document.getElementById('btn' + id);
@@ -623,10 +615,8 @@
                 }
             }
 
-            // 🔥 CARREGAR O MENU
             carregarMenu();
 
-            // 🔥 CARREGAR A PÁGINA CORRETA
             const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
             if (isSuperAdmin) {
                 if (typeof carregarDashboard === 'function') carregarDashboard();
@@ -636,15 +626,14 @@
                 if (typeof carregarDashboard === 'function') carregarDashboard();
             }
         }
-        // ========== FECHAR MODAL AO CLICAR FORA ==========
-        window.onclick = function (event) {
+
+        window.onclick = function(event) {
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
             }
         };
 
-        // ========== ENTER KEY ==========
-        document.addEventListener('keydown', function (event) {
+        document.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 if (document.getElementById('loginContainer').style.display !== 'none') {
                     fazerLogin();
@@ -654,8 +643,7 @@
             }
         });
 
-        // ========== FECHAR MODAIS COM ESC ==========
-        document.addEventListener('keydown', function (event) {
+        document.addEventListener('keydown', function(event) {
             if (event.key === 'Escape') {
                 document.querySelectorAll('.modal').forEach(modal => {
                     modal.style.display = 'none';
@@ -663,32 +651,30 @@
             }
         });
 
-        // ========== CORRE��O: CONECTAR O FORMUL�RIO DE CLIENTE ==========
-        document.addEventListener('DOMContentLoaded', function () {
-            console.log('?? Configurando formul�rio de cliente...');
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔧 Configurando formulário de cliente...');
             const form = document.getElementById('formCliente');
             if (form) {
-                console.log('? Formul�rio de cliente encontrado!');
+                console.log('✅ Formulário de cliente encontrado!');
                 const newForm = form.cloneNode(true);
                 form.parentNode.replaceChild(newForm, form);
-                newForm.addEventListener('submit', function (e) {
+                newForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('?? Formul�rio de cliente submetido!');
+                    console.log('📝 Formulário de cliente submetido!');
                     if (typeof window.salvarCliente === 'function') {
                         window.salvarCliente();
                     } else {
-                        console.error('? salvarCliente n�o est� dispon�vel!');
-                        showToast('Erro: fun��o salvarCliente n�o encontrada', 'error');
+                        console.error('❌ salvarCliente não está disponível!');
+                        showToast('Erro: função salvarCliente não encontrada', 'error');
                     }
                 });
-                console.log('? Evento de submit conectado com sucesso!');
+                console.log('✅ Evento de submit conectado com sucesso!');
             } else {
-                console.error('? Formul�rio com id="formCliente" n�o encontrado!');
+                console.error('❌ Formulário com id="formCliente" não encontrado!');
             }
         });
 
-        // ========== INIT ==========
         const savedToken = localStorage.getItem('token');
         const savedUsuario = localStorage.getItem('usuario');
         const savedEmail = localStorage.getItem('rememberEmail');
@@ -697,7 +683,6 @@
             document.getElementById('rememberMe').checked = true;
         }
 
-        // ========== TEMA ESCURO POR PADR�O ==========
         const temaSalvo = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', temaSalvo);
         localStorage.setItem('theme', temaSalvo);
@@ -707,7 +692,6 @@
             usuario = savedUsuario && savedUsuario !== 'undefined' ? JSON.parse(savedUsuario) : null;
             mostrarApp();
         } else {
-            // ?? USAR A FUN��O DO UI.JS
             if (typeof window.mostrarLanding === 'function') {
                 window.mostrarLanding();
             } else {
@@ -719,10 +703,8 @@
                 mostrarLogin();
             }
         }
-        // Forçar recarregamento da versão
-        console.log('✅ index.html versão: 2026-08-04-v2');
+        console.log('✅ index.html versão: 2026-08-13-v3');
     </script>
-
 
 </body>
 

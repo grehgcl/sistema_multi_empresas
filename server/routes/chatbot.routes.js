@@ -380,15 +380,14 @@ router.post('/datas-disponiveis-mes', (req, res) => {
 });
 
 // ============================================
-// POST /api/chatbot/horarios-disponiveis - CORRIGIDO (SQLITE)
+// POST /api/chatbot/horarios-disponiveis - CORRIGIDO
 // ============================================
-router.post('/horarios-disponiveis', (req, res) => {
+router.post('/horarios-disponiveis', async (req, res) => {
     try {
         const { empresaId, profissionalId, data, duracao } = req.body;
 
         console.log(`🔍 Buscando horários para ${data} - Profissional: ${profissionalId || 'todos'} - Duração: ${duracao || 30}min`);
 
-        // 🔥 VALIDAÇÃO DOS DADOS
         if (!empresaId) {
             return res.status(400).json({
                 success: false,
@@ -403,7 +402,6 @@ router.post('/horarios-disponiveis', (req, res) => {
             });
         }
 
-        // 🔥 CONVERTER EMPRESA ID PARA NÚMERO
         const empresaIdNum = parseInt(empresaId);
         if (isNaN(empresaIdNum)) {
             return res.status(400).json({
@@ -413,12 +411,7 @@ router.post('/horarios-disponiveis', (req, res) => {
         }
 
         let profissionalIdNum = null;
-
-        if (profissionalId &&
-            profissionalId !== 'null' &&
-            profissionalId !== 'undefined' &&
-            profissionalId !== '') {
-
+        if (profissionalId && profissionalId !== 'null' && profissionalId !== 'undefined' && profissionalId !== '') {
             if (typeof profissionalId === 'string') {
                 if (!isNaN(profissionalId) && !profissionalId.includes('dono')) {
                     profissionalIdNum = parseInt(profissionalId);
@@ -435,7 +428,6 @@ router.post('/horarios-disponiveis', (req, res) => {
 
         // 🔥 VERIFICAR SE A EMPRESA EXISTE
         const sqlCheckEmpresa = `SELECT id FROM empresas WHERE id = ?`;
-
         db.get(sqlCheckEmpresa, [empresaIdNum], (err, empresa) => {
             if (err) {
                 console.error('❌ Erro ao verificar empresa:', err);
@@ -478,7 +470,7 @@ router.post('/horarios-disponiveis', (req, res) => {
                     });
                 }
 
-                // 🔥 MAPEAR HORÁRIOS OCUPADOS
+                // MAPEAR HORÁRIOS OCUPADOS
                 const ocupados = [];
                 for (let ag of agendamentos) {
                     if (!ag.hora) continue;
@@ -488,15 +480,15 @@ router.post('/horarios-disponiveis', (req, res) => {
                     ocupados.push({ inicio: inicioMin, fim: fimMin });
                 }
 
-                // 🔥 BUSCAR HORÁRIO DE FUNCIONAMENTO
+                // BUSCAR HORÁRIO DE FUNCIONAMENTO
                 const dataObj = new Date(data + 'T00:00:00');
                 const diaSemana = dataObj.getDay();
 
                 const sqlHorario = `
-                    SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos
-                    FROM horarios_funcionamento 
-                    WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1
-                `;
+    SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim
+    FROM horarios_funcionamento 
+    WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1
+`;
 
                 empresaDb.get(sqlHorario, [empresaIdNum, diaSemana], (err, horario) => {
                     if (err) {
@@ -515,28 +507,25 @@ router.post('/horarios-disponiveis', (req, res) => {
                         });
                     }
 
-                    // 🔥 GERAR HORÁRIOS DISPONÍVEIS
+                    // GERAR HORÁRIOS DISPONÍVEIS
                     const inicioMin = horaParaMinutos(horario.hora_inicio);
                     const fimMin = horaParaMinutos(horario.hora_fim);
                     const almocoInicioMin = horaParaMinutos(horario.almoco_inicio || '12:00');
                     const almocoFimMin = horaParaMinutos(horario.almoco_fim || '13:00');
-                    const intervalo = horario.intervalo_minutos || 30;
+                    const intervalo = 30;
 
                     const horariosDisponiveis = [];
 
-                    // 🔥 VERIFICAR DATA ATUAL PARA FILTRAR HORÁRIOS QUE JÁ PASSARAM
                     const hoje = new Date();
                     const hojeStr = hoje.toISOString().split('T')[0];
                     const horaAtual = hoje.getHours();
                     const minutoAtual = hoje.getMinutes();
 
                     for (let minutos = inicioMin; minutos < fimMin; minutos += intervalo) {
-                        // Verificar se está no horário de almoço
                         if (minutos >= almocoInicioMin && minutos < almocoFimMin) {
                             continue;
                         }
 
-                        // Verificar se já passou (se for hoje)
                         if (data === hojeStr) {
                             const horaMinutoAtual = horaAtual * 60 + minutoAtual;
                             if (minutos < horaMinutoAtual) {
@@ -544,12 +533,10 @@ router.post('/horarios-disponiveis', (req, res) => {
                             }
                         }
 
-                        // Verificar se o horário + duração não ultrapassa o fim
                         if (minutos + duracaoMin > fimMin) {
                             continue;
                         }
 
-                        // Verificar se há conflito com agendamentos existentes
                         let conflito = false;
                         for (let ocupado of ocupados) {
                             if (minutos < ocupado.fim && (minutos + duracaoMin) > ocupado.inicio) {
@@ -563,7 +550,6 @@ router.post('/horarios-disponiveis', (req, res) => {
                         }
                     }
 
-                    // 🔥 ORDENAR HORÁRIOS
                     horariosDisponiveis.sort();
 
                     console.log(`✅ ${horariosDisponiveis.length} horários disponíveis para ${data}:`, horariosDisponiveis);

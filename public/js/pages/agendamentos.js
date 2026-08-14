@@ -1,10 +1,38 @@
 ﻿// ============================================
-// PÁGINA AGENDAMENTOS - VERSÃO CORRIGIDA
+// PÁGINA AGENDAMENTOS - VERSÃO COMPLETA COM PAGAMENTO
 // ============================================
 
 let profissionaisList = [];
 let clientesList = [];
 let servicosList = [];
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+function formatarDataBr(dataStr) {
+    if (!dataStr) return '-';
+    try {
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const p = dataStr.split('-');
+            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+        }
+        return dataStr;
+    } catch {
+        return dataStr;
+    }
+}
+
+function escapeHtml(text) {
+    if (!text) return "";
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============================================
+// CARREGAR AGENDAMENTOS - CORRIGIDO COM FILTRO DE IDS
+// ============================================
 
 async function carregarAgendamentos() {
     if (typeof window.carregarCSS === 'function') {
@@ -27,12 +55,36 @@ async function carregarAgendamentos() {
         else profissionaisList = [];
 
         const clientesResult = await clientesRes.json();
-        if (clientesResult.success) clientesList = clientesResult.data || [];
-        else clientesList = [];
+        if (clientesResult.success) {
+            const rawClientes = clientesResult.data || [];
+            clientesList = rawClientes.filter(c => {
+                if (!c.id || c.id === 'null' || c.id === 0 || c.id === 'undefined') {
+                    console.warn(`⚠️ Cliente ignorado (sem ID válido):`, c);
+                    return false;
+                }
+                c.id = parseInt(c.id);
+                return true;
+            });
+            console.log(`✅ ${clientesList.length} clientes carregados (com ID válido)`);
+        } else {
+            clientesList = [];
+        }
 
         const servicosResult = await servicosRes.json();
-        if (servicosResult.success) servicosList = servicosResult.data || [];
-        else servicosList = [];
+        if (servicosResult.success) {
+            const rawServicos = servicosResult.data || [];
+            servicosList = rawServicos.filter(s => {
+                if (!s.id || s.id === 'null' || s.id === 0 || s.id === 'undefined') {
+                    console.warn(`⚠️ Serviço ignorado (sem ID válido):`, s);
+                    return false;
+                }
+                s.id = parseInt(s.id);
+                return true;
+            });
+            console.log(`✅ ${servicosList.length} serviços carregados (com ID válido)`);
+        } else {
+            servicosList = [];
+        }
 
         console.log("Dados carregados:", {
             clientes: clientesList.length,
@@ -163,10 +215,17 @@ async function carregarAgendamentos() {
 }
 
 // ============================================
-// FUNÇÃO PARA RENDERIZAR LINHA DA TABELA
+// RENDERIZAR LINHA DA TABELA - CORRIGIDA
 // ============================================
-
 function renderizarLinhaAgendamento(item) {
+    const agendamentoId = item?.id;
+    console.log('📌 Renderizando agendamento ID:', agendamentoId, 'Item:', item);
+
+    if (!agendamentoId) {
+        console.warn('⚠️ Agendamento sem ID:', item);
+        return `<tr><td colspan="7" style="color:red;">⚠️ Agendamento inválido (sem ID)</td></tr>`;
+    }
+
     const statusMap = {
         'concluido': { class: 'concluido', label: '✅ Concluído' },
         'pendente': { class: 'pendente', label: '⏳ Pendente' },
@@ -175,8 +234,11 @@ function renderizarLinhaAgendamento(item) {
     };
 
     const statusInfo = statusMap[item.status] || statusMap['pendente'];
-    const dataFormatada = item.data ? formatarDataBr(item.data) : '-';
-    const horaFormatada = item.hora || '-';
+    
+    // 🔥 USAR AS FUNÇÕES CORRIGIDAS
+    const dataFormatada = formatarDataBr(item.data);
+    const horaFormatada = formatarHoraBr(item.hora);
+    
     const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
 
     let extrasCount = 0;
@@ -201,7 +263,7 @@ function renderizarLinhaAgendamento(item) {
     const valorExibir = item.valor_total ? parseFloat(item.valor_total) : valorTotal;
 
     return `
-        <tr>
+        <tr data-agendamento-id="${agendamentoId}">
             <td>
                 <div class="cell-data-hora">
                     <span class="data">${dataFormatada}</span>
@@ -250,14 +312,14 @@ function renderizarLinhaAgendamento(item) {
             <td>
                 <div class="actions-cell" style="display:flex;gap:4px;flex-wrap:wrap;">
                     ${podeEditar ? `
-                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${item.id})" title="Editar">
+                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${agendamentoId})" title="Editar">
                             <i class="fas fa-pen"></i>
                         </button>
-                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${item.id})" title="Concluir">
+                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${agendamentoId})" title="Concluir">
                             <i class="fas fa-check"></i>
                         </button>
                     ` : ''}
-                    <button class="btn-icon btn-extra" onclick="abrirModalExtra(${item.id})" title="Serviços Extras" style="
+                    <button class="btn-icon btn-extra" onclick="abrirModalExtra(${agendamentoId})" title="Serviços Extras" style="
                         padding: 4px 10px;
                         border-radius: 6px;
                         border: 1px solid ${extrasCount > 0 ? 'rgba(34,197,94,0.5)' : 'rgba(245,158,11,0.3)'};
@@ -272,7 +334,7 @@ function renderizarLinhaAgendamento(item) {
                         <i class="fas ${extrasCount > 0 ? 'fa-star' : 'fa-plus-circle'}"></i> 
                         ${extrasCount > 0 ? `${extrasCount}` : 'Extras'}
                     </button>
-                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${item.id})" title="Excluir">
+                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${agendamentoId})" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -448,25 +510,26 @@ async function carregarListaAgendamentosComFiltro() {
                         </span>
                     </div>
                     
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;background:var(--bg-hover);padding:10px 14px;border-radius:10px;margin-bottom:12px;width:100%;box-sizing:border-box;">
-                        <div>
-                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">📅 Data</div>
-                            <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${formatarDataBr(item.data)}</div>
-                        </div>
-                        <div>
-                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">⏰ Horário</div>
-                            <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${item.hora || '-'}</div>
-                        </div>
-                        <div>
-                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">👨‍💼 Profissional</div>
-                            <div style="font-weight:500;color:var(--text-primary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.profissional_nome || 'Não atribuído')}</div>
-                        </div>
-                        <div>
-                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">💰 Valor</div>
-                            <div style="font-weight:700;color:#22c55e;font-size:15px;">R$ ${valorTotal.toFixed(2)}</div>
-                            ${extrasCount > 0 ? `<div style="font-size:9px;color:var(--text-muted);">R$ ${valorPrincipal.toFixed(2)} + R$ ${valorExtras.toFixed(2)}</div>` : ''}
-                        </div>
-                    </div>
+                    // Versão Mobile - Cards
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;background:var(--bg-hover);padding:10px 14px;border-radius:10px;margin-bottom:12px;width:100%;box-sizing:border-box;">
+    <div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">📅 Data</div>
+        <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${formatarDataBr(item.data)}</div>
+    </div>
+    <div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">⏰ Horário</div>
+        <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${formatarHoraBr(item.hora)}</div>
+    </div>
+    <div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">👨‍💼 Profissional</div>
+        <div style="font-weight:500;color:var(--text-primary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.profissional_nome || 'Não atribuído')}</div>
+    </div>
+    <div>
+        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">💰 Valor</div>
+        <div style="font-weight:700;color:#22c55e;font-size:15px;">R$ ${valorTotal.toFixed(2)}</div>
+        ${extrasCount > 0 ? `<div style="font-size:9px;color:var(--text-muted);">R$ ${valorPrincipal.toFixed(2)} + R$ ${valorExtras.toFixed(2)}</div>` : ''}
+    </div>
+</div>
                     
                     <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border-color);padding-top:10px;">
                         ${podeEditar ? `
@@ -514,23 +577,93 @@ async function carregarListaAgendamentosComFiltro() {
 }
 
 // ============================================
-// FORMATAR DATA BR - CORRIGIDO (SEM TIMEZONE)
+// FORMATAR DATA BR - CORRIGIDO (ACEITA QUALQUER FORMATO)
 // ============================================
-
-// Substituir a função formatarDataBr por:
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
+    
     try {
-        if (typeof dataStr === 'string' && dataStr.includes('-')) {
-            const p = dataStr.split('-');
-            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+        // Se já for string no formato dd/mm/yyyy, retorna direto
+        if (typeof dataStr === 'string' && dataStr.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+            return dataStr;
         }
+        
+        // Se for string no formato yyyy-mm-dd
+        if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                return partes[2] + '/' + partes[1] + '/' + partes[0];
+            }
+        }
+        
+        // Se for string com formato "Fri Aug 07 2026 ..."
+        if (typeof dataStr === 'string' && dataStr.includes('GMT')) {
+            const match = dataStr.match(/([A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4})/);
+            if (match) {
+                const dataObj = new Date(match[1]);
+                if (!isNaN(dataObj)) {
+                    return dataObj.toLocaleDateString('pt-BR');
+                }
+            }
+        }
+        
+        // Se for string no formato "2026-08-07T00:00:00.000Z"
+        if (typeof dataStr === 'string' && dataStr.includes('T')) {
+            const dataObj = new Date(dataStr);
+            if (!isNaN(dataObj)) {
+                return dataObj.toLocaleDateString('pt-BR');
+            }
+        }
+        
+        // Tentar converter diretamente
+        const dataObj = new Date(dataStr);
+        if (!isNaN(dataObj)) {
+            return dataObj.toLocaleDateString('pt-BR');
+        }
+        
         return dataStr;
     } catch {
         return dataStr;
     }
 }
-
+// ============================================
+// FORMATAR HORA BR - CORRIGIDO
+// ============================================
+function formatarHoraBr(horaStr) {
+    if (!horaStr) return '-';
+    
+    try {
+        // Se já for HH:MM, retorna direto
+        if (typeof horaStr === 'string' && horaStr.match(/^\d{2}:\d{2}$/)) {
+            return horaStr;
+        }
+        
+        // Se for HH:MM:SS, remove os segundos
+        if (typeof horaStr === 'string' && horaStr.match(/^\d{2}:\d{2}:\d{2}$/)) {
+            return horaStr.substring(0, 5);
+        }
+        
+        // Se for "Fri Aug 07 2026 ... 17:00:00" - extrair a última hora
+        if (typeof horaStr === 'string') {
+            // Procurar por padrão HH:MM:SS no final da string
+            const match = horaStr.match(/(\d{2}):(\d{2}):(\d{2})/g);
+            if (match && match.length > 0) {
+                const ultimo = match[match.length - 1];
+                return ultimo.substring(0, 5);
+            }
+        }
+        
+        // Tentar converter via Date
+        const dataObj = new Date(horaStr);
+        if (!isNaN(dataObj)) {
+            return dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        return horaStr;
+    } catch {
+        return horaStr;
+    }
+}
 function escapeHtml(text) {
     if (!text) return "";
     const div = document.createElement("div");
@@ -710,12 +843,16 @@ function fecharModalNovoCliente() {
     if (modal) modal.remove();
 }
 
+// ============================================
+// SALVAR NOVO CLIENTE - CORRIGIDO
+// ============================================
+
 async function salvarNovoCliente(event) {
     event.preventDefault();
 
-    const nome = document.getElementById("novoClienteNome").value;
-    const telefone = document.getElementById("novoClienteTelefone").value;
-    const email = document.getElementById("novoClienteEmail").value;
+    const nome = document.getElementById("novoClienteNome").value.trim();
+    const telefone = document.getElementById("novoClienteTelefone").value.trim();
+    const email = document.getElementById("novoClienteEmail").value.trim();
 
     if (!nome) {
         showToast("Nome é obrigatório", "warning");
@@ -726,6 +863,7 @@ async function salvarNovoCliente(event) {
     const token = localStorage.getItem("token");
 
     try {
+        // 🔥 SALVAR CLIENTE
         const res = await fetch("/api/clientes", {
             method: "POST",
             headers: {
@@ -738,17 +876,51 @@ async function salvarNovoCliente(event) {
         const result = await res.json();
 
         if (result.success) {
+            const novoClienteId = result.data?.id;
+            console.log(`✅ Cliente criado com ID: ${novoClienteId}`);
+
             showToast("Cliente cadastrado com sucesso!", "success");
 
+            // 🔥 RECARREGAR A LISTA DE CLIENTES
             const clientesRes = await fetch("/api/clientes", {
                 headers: { "Authorization": "Bearer " + token }
             });
             const clientesResult = await clientesRes.json();
-            if (clientesResult.success) clientesList = clientesResult.data || [];
 
+            if (clientesResult.success) {
+                // 🔥 FILTRAR CLIENTES COM ID VÁLIDO
+                const rawClientes = clientesResult.data || [];
+                clientesList = rawClientes.filter(c => {
+                    if (!c.id || c.id === 'null' || c.id === 0 || c.id === 'undefined') {
+                        console.warn(`⚠️ Cliente ignorado (sem ID):`, c);
+                        return false;
+                    }
+                    c.id = parseInt(c.id);
+                    return true;
+                });
+                console.log(`✅ ${clientesList.length} clientes carregados`);
+            }
+
+            // 🔥 FECHAR MODAIS E REABRIR
             fecharModalNovoCliente();
             fecharModalAgendamentoDono();
-            abrirModalAgendamentoDono();
+
+            // 🔥 REABRIR O MODAL DE AGENDAMENTO COM OS CLIENTES ATUALIZADOS
+            setTimeout(() => {
+                abrirModalAgendamentoDono();
+
+                // 🔥 SELECIONAR O CLIENTE RECÉM-CRIADO
+                if (novoClienteId) {
+                    setTimeout(() => {
+                        const cliente = clientesList.find(c => c.id === novoClienteId);
+                        if (cliente) {
+                            console.log(`✅ Selecionando cliente criado: ${cliente.nome}`);
+                            selecionarClienteDono(novoClienteId, cliente.nome, cliente.telefone);
+                        }
+                    }, 300);
+                }
+            }, 300);
+
         } else {
             showToast("Erro: " + result.message, "error");
         }
@@ -942,31 +1114,91 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
     }
 }
 
-// public/js/pages/agendamentos.js
-
 // ============================================
 // FUNÇÃO: ABRIR MODAL NOVO AGENDAMENTO - CORRIGIDO
 // ============================================
 async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida = null, profissionalIdPreDefinido = null) {
     const token = localStorage.getItem('token');
 
-    if (!clientesList || clientesList.length === 0) {
-        try { const res = await fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) clientesList = data.data || []; } catch { }
+    // 🔥 FORÇAR RECARREGAR CLIENTES DO SERVIDOR
+    try {
+        console.log('🔄 Carregando clientes do servidor...');
+        const res = await fetch('/api/clientes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const rawClientes = data.data || [];
+            clientesList = rawClientes.filter(c => {
+                if (!c.id || c.id === 'null' || c.id === 0 || c.id === 'undefined') {
+                    console.warn(`⚠️ Cliente ignorado (sem ID):`, c);
+                    return false;
+                }
+                c.id = parseInt(c.id);
+                return true;
+            });
+            console.log(`✅ ${clientesList.length} clientes carregados no modal`);
+        } else {
+            console.error('❌ Erro ao carregar clientes:', data.message);
+            clientesList = [];
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar clientes:', error);
+        clientesList = [];
     }
-    if (!servicosList || servicosList.length === 0) {
-        try { const res = await fetch('/api/servicos', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) servicosList = data.data || []; } catch { }
+
+    // 🔥 FORÇAR RECARREGAR SERVIÇOS DO SERVIDOR
+    try {
+        console.log('🔄 Carregando serviços do servidor...');
+        const res = await fetch('/api/servicos', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            const rawServicos = data.data || [];
+            servicosList = rawServicos.filter(s => {
+                if (!s.id || s.id === 'null' || s.id === 0 || s.id === 'undefined') {
+                    console.warn(`⚠️ Serviço ignorado (sem ID):`, s);
+                    return false;
+                }
+                s.id = parseInt(s.id);
+                // 🔥 GARANTIR QUE O SERVIÇO ESTÁ ATIVO OU MOSTRAR TODOS
+                return true;
+            });
+            console.log(`✅ ${servicosList.length} serviços carregados no modal`);
+        } else {
+            console.error('❌ Erro ao carregar serviços:', data.message);
+            servicosList = [];
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar serviços:', error);
+        servicosList = [];
     }
+
+    // 🔥 RECARREGAR PROFISSIONAIS
     if (!profissionaisList || profissionaisList.length === 0) {
-        try { const res = await fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }); const data = await res.json(); if (data.success) profissionaisList = data.data || []; } catch { }
+        try {
+            const res = await fetch('/api/profissionais', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            const data = await res.json();
+            if (data.success) profissionaisList = data.data || [];
+        } catch (error) {
+            console.error('❌ Erro ao carregar profissionais:', error);
+        }
     }
 
     const clientes = Array.isArray(clientesList) ? clientesList : [];
     const servicos = Array.isArray(servicosList) ? servicosList : [];
     const profissionais = Array.isArray(profissionaisList) ? profissionaisList : [];
     const isMobile = window.innerWidth < 768;
-    const clientesOrdenados = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome));
 
-    // ✅ CORRIGIDO: Mostrar TODOS os serviços, marcando os inativos
+    // 🔥 DEBUG: VERIFICAR SERVIÇOS
+    console.log('📋 Serviços disponíveis para o modal:', servicos);
+
+    // ✅ CORRIGIDO: Mostrar TODOS os serviços
     let servicosOptions = '<option value="">Selecione</option>';
     for (let s of servicos) {
         const isAtivo = (s.ativo == 1 || s.ativo == true);
@@ -978,6 +1210,9 @@ async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida
             ${nomeExibicao} - R$ ${valorExibicao}
         </option>`;
     }
+
+    // 🔥 DEBUG: VERIFICAR SE AS OPÇÕES FORAM GERADAS
+    console.log('📋 Opções de serviços geradas:', servicosOptions.substring(0, 200));
 
     let profissionaisOptions = '<option value="">Não atribuir</option>';
     for (let p of profissionais) {
@@ -998,6 +1233,9 @@ async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida
         dataInicial = `${ano}-${mes}-${dia}`;
     }
 
+    // 🔥 HORÁRIO PRÉ-DEFINIDO
+    const horaPreDefinidaValue = horaPreDefinida || '';
+
     const modalHtml = `
         <div id="modalAgendamentoDono" class="modal" style="display:flex;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:${isMobile ? '8px' : '20px'};">
             <div class="modal-content" style="max-width:${isMobile ? '100%' : '500px'};width:${isMobile ? '100%' : '90%'};max-height:${isMobile ? '98vh' : '90vh'};overflow-y:auto;background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '16px' : '24px'};box-shadow:0 20px 60px rgba(0,0,0,0.4);">
@@ -1005,135 +1243,328 @@ async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida
                     <h3 style="margin:0;font-size:${isMobile ? '16px' : '20px'};"><i class="fas fa-calendar-plus"></i> Novo Agendamento</h3>
                     <button onclick="fecharModalAgendamentoDono()" style="background:transparent;border:none;font-size:24px;cursor:pointer;color:var(--text-muted);">✕</button>
                 </div>
-                ${horaPreDefinida ? `<div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:10px 14px;border-radius:10px;margin-bottom:14px;text-align:center;font-weight:700;"><i class="fas fa-clock"></i> ${formatarDataBr(dataInicial)} às ${horaPreDefinida} ${profissionalIdPreDefinido ? `• ${profissionais.find(p => String(p.id) === String(profissionalIdPreDefinido))?.nome || ''}` : ''}</div>` : ''}
+                ${horaPreDefinidaValue ? `<div style="background:linear-gradient(135deg,#667eea,#764ba2);color:white;padding:10px 14px;border-radius:10px;margin-bottom:14px;text-align:center;font-weight:700;"><i class="fas fa-clock"></i> ${formatarDataBr(dataInicial)} às ${horaPreDefinidaValue} ${profissionalIdPreDefinido ? `• ${profissionais.find(p => String(p.id) === String(profissionalIdPreDefinido))?.nome || ''}` : ''}</div>` : ''}
                 <div style="margin-bottom:12px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
                         <label style="font-size:13px;font-weight:600;">👤 Cliente <span style="color:#ef4444;">*</span></label>
                         <button type="button" onclick="abrirModalNovoCliente()" style="padding:4px 10px;font-size:11px;border-radius:8px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:white;font-weight:600;cursor:pointer;">+ Novo</button>
                     </div>
-                    <div style="position:relative;"><div style="display:flex;align-items:center;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:0 10px;"><i class="fas fa-search" style="color:var(--text-muted);"></i><input type="text" id="buscaClienteDono" class="form-control" placeholder="Digite o nome..." style="border:none;background:transparent;padding:10px 8px;font-size:14px;width:100%;outline:none;" autocomplete="off" oninput="filtrarClientesDono(this.value)"></div><div id="listaSugestoesClientes" style="position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;max-height:200px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.2);margin-top:2px;"></div></div>
-                    <input type="hidden" id="clienteIdDono"><input type="hidden" id="clienteTelefoneDono"><div id="clienteSelecionadoInfo" style="display:none;margin-top:6px;padding:8px 12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;font-size:13px;"><i class="fas fa-check-circle" style="color:#22c55e;"></i> <strong id="clienteSelecionadoNome">-</strong> <span id="clienteSelecionadoTelefone" style="color:var(--text-muted);font-size:11px;"></span><button onclick="limparClienteSelecionado()" style="background:none;border:none;color:#ef4444;cursor:pointer;margin-left:8px;"><i class="fas fa-times"></i></button></div>
+                    <div style="position:relative;">
+                        <div style="display:flex;align-items:center;background:var(--bg-input);border:1px solid var(--border-color);border-radius:8px;padding:0 10px;">
+                            <i class="fas fa-search" style="color:var(--text-muted);"></i>
+                            <input type="text" id="buscaClienteDono" class="form-control" placeholder="Digite o nome..." style="border:none;background:transparent;padding:10px 8px;font-size:14px;width:100%;outline:none;" autocomplete="off" oninput="filtrarClientesDono(this.value)">
+                        </div>
+                        <div id="listaSugestoesClientes" style="position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border-color);border-radius:8px;max-height:200px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 4px 20px rgba(0,0,0,0.2);margin-top:2px;"></div>
+                    </div>
+                    <input type="hidden" id="clienteIdDono">
+                    <input type="hidden" id="clienteTelefoneDono">
+                    <div id="clienteSelecionadoInfo" style="display:none;margin-top:6px;padding:8px 12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;font-size:13px;">
+                        <i class="fas fa-check-circle" style="color:#22c55e;"></i> 
+                        <strong id="clienteSelecionadoNome">-</strong> 
+                        <span id="clienteSelecionadoTelefone" style="color:var(--text-muted);font-size:11px;"></span>
+                        <button onclick="limparClienteSelecionado()" style="background:none;border:none;color:#ef4444;cursor:pointer;margin-left:8px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">📅 Data *</label><input type="date" id="dataAgendamentoDono" class="form-control" value="${dataInicial}" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"></div>
-                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">⏰ Horário *</label><select id="horaAgendamentoDono" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);"><option value="">Carregando...</option></select><input type="hidden" id="horaFixadaDono" value="${horaPreDefinida || ''}"></div>
+                    <div>
+                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">📅 Data *</label>
+                        <input type="date" id="dataAgendamentoDono" class="form-control" value="${dataInicial}" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+                    </div>
+                    <div>
+                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">⏰ Horário *</label>
+                        <select id="horaAgendamentoDono" class="form-control" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+                            <option value="${horaPreDefinidaValue}" selected>${horaPreDefinidaValue || 'Carregando...'}</option>
+                        </select>
+                        <input type="hidden" id="horaFixadaDono" value="${horaPreDefinidaValue}">
+                    </div>
                 </div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">✂ Serviço</label><select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">${servicosOptions}</select><input type="text" id="servicoDescricaoDono" class="form-control" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input);font-size:12px;" placeholder="Ou digite manualmente"></div>
-                    <div><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">💰 Valor</label><input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);font-weight:600;"></div>
+                    <div>
+                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">✂ Serviço</label>
+                        <select id="servicoIdDono" class="form-control" onchange="atualizarValorPorServicoDono()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+                            ${servicosOptions}
+                        </select>
+                        <input type="text" id="servicoDescricaoDono" class="form-control" style="width:100%;margin-top:4px;padding:8px;border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input);font-size:12px;" placeholder="Ou digite manualmente">
+                    </div>
+                    <div>
+                        <label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">💰 Valor</label>
+                        <input type="number" id="valorAgendamentoDono" class="form-control" step="0.01" placeholder="0,00" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);font-weight:600;">
+                    </div>
                 </div>
-                <div style="margin-bottom:14px;"><label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">👨💼 Profissional</label><select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">${profissionaisOptions}</select></div>
-                <div style="background:rgba(102,126,234,0.06);border-radius:8px;padding:8px 12px;margin-bottom:14px;border:1px solid rgba(102,126,234,0.1);font-size:12px;color:var(--text-muted);"><i class="fas fa-clock"></i> <span id="infoDuracaoHorario">⏱ 30min</span></div>
-                <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;"><button type="button" onclick="fecharModalAgendamentoDono()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;">Cancelar</button><button type="button" onclick="salvarAgendamentoDono()" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;"><i class="fas fa-save"></i> Salvar</button></div>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:3px;">👨💼 Profissional</label>
+                    <select id="profissionalIdDono" class="form-control" onchange="carregarHorariosDisponiveisDono(false, null, true)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+                        ${profissionaisOptions}
+                    </select>
+                </div>
+                <div style="background:rgba(102,126,234,0.06);border-radius:8px;padding:8px 12px;margin-bottom:14px;border:1px solid rgba(102,126,234,0.1);font-size:12px;color:var(--text-muted);">
+                    <i class="fas fa-clock"></i> <span id="infoDuracaoHorario">⏱ 30min</span>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;">
+                    <button type="button" onclick="fecharModalAgendamentoDono()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;">
+                        Cancelar
+                    </button>
+                    <button type="button" onclick="salvarAgendamentoDono()" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;">
+                        <i class="fas fa-save"></i> Salvar
+                    </button>
+                </div>
             </div>
         </div>
     `;
-    const old = document.getElementById("modalAgendamentoDono"); if (old) old.remove();
+
+    const old = document.getElementById("modalAgendamentoDono");
+    if (old) old.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     // PRE-SELECIONAR PROFISSIONAL SE VEIO DA AGENDA
     if (profissionalIdPreDefinido) {
         const sel = document.getElementById('profissionalIdDono');
-        if (sel) { sel.value = profissionalIdPreDefinido; }
+        if (sel) {
+            sel.value = profissionalIdPreDefinido;
+        }
     }
 
-    // CARREGAR HORÁRIOS RESPEITANDO O CLICADO
+    // 🔥 CARREGAR HORÁRIOS RESPEITANDO O CLICADO
     setTimeout(() => {
-        carregarHorariosDisponiveisDono(false, horaPreDefinida, true);
-    }, 100);
+        carregarHorariosDisponiveisDono(false, horaPreDefinidaValue, true);
+    }, 200);
 }
+
+// ============================================
+// FUNÇÃO: CARREGAR HORÁRIOS DISPONÍVEIS - CORRIGIDA
+// ============================================
 
 async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null, forcarManterClicado = false) {
     try {
         const dataEl = document.getElementById("dataAgendamentoDono");
         const horaSelect = document.getElementById("horaAgendamentoDono");
         const profEl = document.getElementById("profissionalIdDono");
-        const horaFixadaEl = document.getElementById("horaFixadaDono");
         const servicoSelect = document.getElementById("servicoIdDono");
+        const horaFixadaEl = document.getElementById("horaFixadaDono");
 
-        if (!dataEl || !horaSelect) return;
+        if (!dataEl || !horaSelect) {
+            console.warn('⚠️ Elementos do formulário não encontrados');
+            return;
+        }
+
         const data = dataEl.value;
         const profissional_id = profEl?.value;
         const servicoId = servicoSelect?.value;
 
-        // HORÁRIO QUE TEM QUE SER RESPEITADO
+        // 🔥 GUARDAR O HORÁRIO QUE DEVE SER PRESERVADO
         let horarioObrigatorio = horarioParaRestaurar || horaFixadaEl?.value || (manterHorario ? horaSelect.value : null);
-        if (forcarManterClicado && horaFixadaEl?.value) horarioObrigatorio = horaFixadaEl.value;
+        if (forcarManterClicado && horaFixadaEl?.value) {
+            horarioObrigatorio = horaFixadaEl.value;
+        }
 
+        console.log(`📌 Horário a preservar: ${horarioObrigatorio}`);
+
+        if (!data) {
+            horaSelect.innerHTML = '<option value="">Selecione uma data</option>';
+            return;
+        }
+
+        // 🔥 VERIFICAR SE A DATA NÃO É ANTERIOR
+        const hoje = new Date();
+        const hojeStr = hoje.toISOString().split('T')[0];
+        if (data < hojeStr) {
+            horaSelect.innerHTML = '<option value="">⚠️ Data passou</option>';
+            return;
+        }
+
+        // 🔥 DURAÇÃO DO SERVIÇO
         let duracao = 30;
-        if (servicoId) { const s = servicosList.find(x => x.id == servicoId); if (s) duracao = s.duracao || 30; }
-        const infoDur = document.getElementById('infoDuracaoHorario'); if (infoDur) infoDur.textContent = `⏱ ${duracao}min`;
+        if (servicoId) {
+            const servico = servicosList.find(s => s.id == servicoId);
+            if (servico) {
+                duracao = servico.duracao || 30;
+            }
+        }
 
-        if (!data) return;
+        const infoDur = document.getElementById('infoDuracaoHorario');
+        if (infoDur) {
+            infoDur.textContent = `⏱️ ${duracao}min`;
+        }
 
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+            horaSelect.innerHTML = '<option value="">❌ Sessão expirada</option>';
+            return;
+        }
 
+        // 🔥 PEGAR EMPRESA_ID DO TOKEN
+        let empresaId = null;
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
-            const empresaId = payload.empresa_id;
-            const response = await fetch("/api/chatbot/horarios-disponiveis", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
-                body: JSON.stringify({ empresaId, profissionalId: profissional_id || null, data, duracao })
+            empresaId = payload.empresa_id;
+        } catch (e) {
+            console.error('❌ Erro ao decodificar token:', e);
+            horaSelect.innerHTML = '<option value="">❌ Token inválido</option>';
+            return;
+        }
+
+        if (!empresaId) {
+            horaSelect.innerHTML = '<option value="">❌ Empresa não identificada</option>';
+            return;
+        }
+
+        // 🔥 CHAMAR A API
+        horaSelect.innerHTML = '<option value="">⏳ Carregando...</option>';
+
+        const body = {
+            empresaId: empresaId,
+            profissionalId: profissional_id || null,
+            data: data,
+            duracao: duracao
+        };
+
+        console.log('📤 Buscando horários:', body);
+
+        const response = await fetch("/api/chatbot/horarios-disponiveis", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify(body)
+        });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || 'Erro ao buscar horários');
+        }
+
+        let horarios = result.horarios || result.data || [];
+
+        console.log(`📋 ${horarios.length} horários disponíveis:`, horarios);
+
+        // 🔥 FILTRAR HORÁRIOS QUE JÁ PASSARAM (SE FOR HOJE)
+        if (data === hojeStr) {
+            const horaAtual = hoje.getHours();
+            const minutoAtual = hoje.getMinutes();
+            horarios = horarios.filter(h => {
+                if (!h) return false;
+                const [hNum, mNum] = h.split(':').map(Number);
+                return hNum > horaAtual || (hNum === horaAtual && mNum > minutoAtual);
             });
-            const result = await response.json();
-            let horarios = result.success ? (result.horarios || result.data || []) : [];
+        }
 
-            const hoje = new Date(); const hojeStr = hoje.toISOString().split('T')[0];
-            if (data === hojeStr) {
-                const hAtual = hoje.getHours(); const mAtual = hoje.getMinutes();
-                horarios = horarios.filter(h => { const [hh, mm] = h.split(':').map(Number); return hh > hAtual || (hh === hAtual && mm > mAtual); });
-            }
+        // 🔥 GARANTIR QUE O HORÁRIO OBRIGATÓRIO ESTEJA NA LISTA
+        if (horarioObrigatorio && !horarios.includes(horarioObrigatorio)) {
+            horarios.push(horarioObrigatorio);
+            horarios.sort();
+            console.log(`✅ Horário ${horarioObrigatorio} adicionado à lista`);
+        }
 
-            // 🔥 GARANTE QUE O HORÁRIO CLICADO SEMPRE EXISTE NA LISTA
-            if (horarioObrigatorio && !horarios.includes(horarioObrigatorio)) {
-                horarios.push(horarioObrigatorio);
-                horarios.sort();
+        // 🔥 MONTAR O SELECT
+        if (horarios.length > 0) {
+            let options = '<option value="">Selecione</option>';
+            for (let horaItem of horarios) {
+                if (!horaItem) continue;
+                const isFixado = horaItem === horarioObrigatorio;
+                const sel = isFixado ? 'selected' : '';
+                options += `<option value="${horaItem}" ${sel} ${isFixado ? 'style="font-weight:800;background:rgba(102,126,234,0.15);"' : ''}>
+                    ${horaItem}${isFixado ? ' ⭐' : ''}
+                </option>`;
             }
+            horaSelect.innerHTML = options;
 
-            if (horarios.length > 0) {
-                let options = '<option value="">Selecione</option>';
-                for (let h of horarios) {
-                    const isFixado = h === horarioObrigatorio;
-                    const sel = isFixado ? 'selected' : '';
-                    options += `<option value="${h}" ${sel} ${isFixado ? 'style="font-weight:800;background:rgba(102,126,234,0.15);"' : ''}>${h} ${isFixado ? '⭐' : ''}</option>`;
-                }
-                horaSelect.innerHTML = options;
-                if (horarioObrigatorio) horaSelect.value = horarioObrigatorio;
-            } else {
-                horaSelect.innerHTML = `<option value="${horarioObrigatorio || ''}" selected>${horarioObrigatorio || 'Indisponível'}</option>`;
+            // 🔥 GARANTIR QUE O HORÁRIO OBRIGATÓRIO ESTÁ SELECIONADO
+            if (horarioObrigatorio) {
+                horaSelect.value = horarioObrigatorio;
+                console.log(`✅ Horário selecionado: ${horarioObrigatorio}`);
             }
-        } catch (e) { console.error(e); }
-    } catch (e) { console.error(e); }
+        } else {
+            horaSelect.innerHTML = `<option value="">📭 Sem horários disponíveis</option>`;
+        }
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar horários:', error);
+        const horaSelect = document.getElementById("horaAgendamentoDono");
+        if (horaSelect) {
+            horaSelect.innerHTML = `<option value="">⚠️ ${error.message || 'Erro'}</option>`;
+        }
+        showToast('Erro ao carregar horários disponíveis: ' + (error.message || ''), 'error');
+    }
 }
 
 // ============================================
-// FUNÇÕES DE BUSCA DE CLIENTES
+// FUNÇÃO: FILTRAR CLIENTES - CORRIGIDA
 // ============================================
 
 function filtrarClientesDono(texto) {
     const lista = document.getElementById('listaSugestoesClientes');
-    const clientes = Array.isArray(clientesList) ? clientesList : [];
+
+    if (!lista) {
+        console.warn('⚠️ Lista de sugestões não encontrada');
+        return;
+    }
+
+    // 🔥 GARANTIR QUE clientesList É UM ARRAY
+    let clientes = Array.isArray(clientesList) ? clientesList : [];
+
+    // 🔥 SE NÃO TIVER CLIENTES, TENTAR RECARREGAR
+    if (clientes.length === 0) {
+        console.warn('⚠️ Nenhum cliente disponível, tentando recarregar...');
+        const token = localStorage.getItem('token');
+        fetch('/api/clientes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    clientesList = data.data.filter(c => {
+                        if (!c.id || c.id === 'null' || c.id === 0 || c.id === 'undefined') {
+                            return false;
+                        }
+                        return true;
+                    });
+                    console.log(`✅ Clientes recarregados: ${clientesList.length}`);
+                    // Tentar novamente
+                    filtrarClientesDono(texto);
+                }
+            })
+            .catch(err => console.error('❌ Erro ao recarregar clientes:', err));
+        return;
+    }
+
     const busca = texto.toLowerCase().trim();
 
+    // 🔥 SE A BUSCA ESTIVER VAZIA, OCULTAR A LISTA
     if (!busca || busca.length < 1) {
         lista.style.display = 'none';
         return;
     }
 
-    // Filtrar clientes que correspondem à busca
+    console.log(`🔍 Buscando: "${busca}" em ${clientes.length} clientes`);
+
+    // 🔥 FILTRAR CLIENTES POR NOME, TELEFONE OU EMAIL (QUALQUER PARTE)
     const resultados = clientes.filter(c => {
-        const nomeMatch = c.nome.toLowerCase().includes(busca);
-        const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
-        const emailMatch = c.email && c.email.toLowerCase().includes(busca);
+        if (!c.id || c.id === 'null' || c.id === 0 || c.id === 'undefined') {
+            return false;
+        }
+
+        const nome = (c.nome || '').toLowerCase();
+        const telefone = (c.telefone || '').replace(/\D/g, '');
+        const email = (c.email || '').toLowerCase();
+        const buscaNumeros = busca.replace(/\D/g, '');
+
+        const nomeMatch = nome.includes(busca);
+        const telefoneMatch = buscaNumeros && telefone.includes(buscaNumeros);
+        const emailMatch = email.includes(busca);
+
         return nomeMatch || telefoneMatch || emailMatch;
     });
+
+    console.log(`✅ ${resultados.length} clientes encontrados`);
 
     if (resultados.length === 0) {
         lista.innerHTML = `
             <div style="padding: 10px; color: var(--text-muted); text-align: center; font-size: 13px;">
-                <i class="fas fa-search"></i> Nenhum cliente encontrado<br>
+                <i class="fas fa-search"></i> Nenhum cliente encontrado com "${escapeHtml(busca)}"<br>
                 <button onclick="abrirModalNovoCliente()" style="
                     margin-top: 6px;
                     padding: 4px 14px;
@@ -1152,13 +1583,14 @@ function filtrarClientesDono(texto) {
         return;
     }
 
-    // Limitar a 10 resultados para não sobrecarregar
+    // 🔥 LIMITAR A 10 RESULTADOS
     const exibir = resultados.slice(0, 10);
 
     let html = '';
     for (let c of exibir) {
+        const id = c.id || 0;
         const telefone = c.telefone || '';
-        const telefoneFormatado = telefone ? `📱 ${telefone}` : '';
+
         html += `
             <div class="sugestao-item" style="
                 padding: 8px 12px;
@@ -1171,7 +1603,7 @@ function filtrarClientesDono(texto) {
             "
             onmouseover="this.style.background='var(--bg-hover)'"
             onmouseout="this.style.background='transparent'"
-            onclick="selecionarClienteDono(${c.id}, '${escapeHtml(c.nome)}', '${escapeHtml(telefone)}')">
+            onclick="selecionarClienteDono(${id}, '${escapeHtml(c.nome)}', '${escapeHtml(telefone)}')">
                 <div>
                     <span style="font-weight: 500; color: var(--text-primary);">${escapeHtml(c.nome)}</span>
                     ${telefone ? `<span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">${escapeHtml(telefone)}</span>` : ''}
@@ -1194,25 +1626,91 @@ function filtrarClientesDono(texto) {
     lista.innerHTML = html;
     lista.style.display = 'block';
 }
+// ============================================
+// FUNÇÃO: SELECIONAR CLIENTE - CORRIGIDA
+// ============================================
 
 function selecionarClienteDono(id, nome, telefone) {
+    console.log('🔥🔥🔥 selecionarClienteDono chamado!');
+    console.log('   ID:', id, '| Tipo:', typeof id);
+    console.log('   Nome:', nome);
+    console.log('   Telefone:', telefone);
+
     // Ocultar lista de sugestões
-    document.getElementById('listaSugestoesClientes').style.display = 'none';
+    const lista = document.getElementById('listaSugestoesClientes');
+    if (lista) lista.style.display = 'none';
 
-    // Preencher hidden fields
-    document.getElementById('clienteIdDono').value = id;
-    document.getElementById('clienteTelefoneDono').value = telefone || '';
+    // 🔥 VALIDAR ID
+    if (!id || id === 'null' || id === 'undefined' || id === '') {
+        console.error('❌ ID do cliente inválido:', id);
+        showToast('Erro: cliente sem ID válido', 'error');
+        return;
+    }
 
-    // Preencher campo de busca com o nome selecionado
-    document.getElementById('buscaClienteDono').value = nome;
+    const idNum = parseInt(id);
+    if (isNaN(idNum) || idNum <= 0) {
+        console.error('❌ ID não é um número válido:', id);
+        showToast('Erro: ID do cliente inválido', 'error');
+        return;
+    }
 
-    // Mostrar informação do cliente selecionado
+    // 🔥 PREENCHER O HIDDEN FIELD
+    let hiddenCliente = document.getElementById('clienteIdDono');
+    if (!hiddenCliente) {
+        hiddenCliente = document.createElement('input');
+        hiddenCliente.type = 'hidden';
+        hiddenCliente.id = 'clienteIdDono';
+        const modal = document.getElementById('modalAgendamentoDono');
+        if (modal) modal.appendChild(hiddenCliente);
+    }
+    if (hiddenCliente) {
+        hiddenCliente.value = idNum;
+        console.log('✅ clienteIdDono DEFINIDO como:', hiddenCliente.value);
+    }
+
+    // 🔥 PREENCHER TELEFONE
+    let hiddenTelefone = document.getElementById('clienteTelefoneDono');
+    if (!hiddenTelefone) {
+        hiddenTelefone = document.createElement('input');
+        hiddenTelefone.type = 'hidden';
+        hiddenTelefone.id = 'clienteTelefoneDono';
+        const modal = document.getElementById('modalAgendamentoDono');
+        if (modal) modal.appendChild(hiddenTelefone);
+    }
+    if (hiddenTelefone) {
+        hiddenTelefone.value = telefone || '';
+    }
+
+    // 🔥 PREENCHER CAMPO DE BUSCA
+    const buscaInput = document.getElementById('buscaClienteDono');
+    if (buscaInput) {
+        buscaInput.value = nome;
+    }
+
+    // 🔥 MOSTRAR INFORMAÇÃO DO CLIENTE SELECIONADO
     const infoDiv = document.getElementById('clienteSelecionadoInfo');
-    document.getElementById('clienteSelecionadoNome').textContent = nome;
-    document.getElementById('clienteSelecionadoTelefone').textContent = telefone ? ` (${telefone})` : '';
-    infoDiv.style.display = 'block';
+    if (infoDiv) {
+        const nomeEl = document.getElementById('clienteSelecionadoNome');
+        const telefoneEl = document.getElementById('clienteSelecionadoTelefone');
+        if (nomeEl) nomeEl.textContent = nome;
+        if (telefoneEl) telefoneEl.textContent = telefone ? ` (${telefone})` : '';
+        infoDiv.style.display = 'block';
+    }
 
-    // Atualizar horários (se data já estiver selecionada)
+    // 🔥 VERIFICAR SE O VALOR FOI SALVO
+    setTimeout(() => {
+        const verify = document.getElementById('clienteIdDono');
+        console.log('🔍 VERIFICAÇÃO FINAL: clienteIdDono =', verify?.value);
+        if (!verify?.value || verify.value === 'null' || verify.value === '') {
+            console.warn('⚠️ clienteIdDono não foi salvo, FORÇANDO...');
+            if (verify) {
+                verify.value = idNum;
+                console.log('✅ clienteIdDono FORÇADO para:', idNum);
+            }
+        }
+    }, 300);
+
+    // 🔥 ATUALIZAR HORÁRIOS
     const dataInput = document.getElementById('dataAgendamentoDono');
     if (dataInput && dataInput.value) {
         carregarHorariosDisponiveisDono();
@@ -1227,66 +1725,182 @@ function limparClienteSelecionado() {
     document.getElementById('listaSugestoesClientes').style.display = 'none';
 }
 
+
 // ============================================
-// SALVAR AGENDAMENTO - CORRIGIDO (DATA SEM TIMEZONE)
+// SALVAR AGENDAMENTO - CORRIGIDO (UM CLIENTE)
 // ============================================
+
+let salvando = false;
+let ultimoEnvio = 0;
 
 async function salvarAgendamentoDono() {
-    // 🔥 USAR O ID DO CLIENTE DO HIDDEN FIELD
-    const cliente_id = document.getElementById("clienteIdDono").value;
-    const data = document.getElementById("dataAgendamentoDono").value;
-    const hora = document.getElementById("horaAgendamentoDono").value;
-    const servico_id = document.getElementById("servicoIdDono").value;
-    const servico_descricao = document.getElementById("servicoDescricaoDono").value;
-    const valor = document.getElementById("valorAgendamentoDono").value;
-    const profissional_id = document.getElementById("profissionalIdDono").value;
-
-    if (!cliente_id || !data) {
-        showToast("Selecione um cliente e uma data", "warning");
-        if (!cliente_id) {
-            document.getElementById('buscaClienteDono').focus();
-        }
+    if (salvando) {
+        console.log('⚠️ Agendamento já está sendo salvo, aguarde...');
         return;
     }
 
-    if (!hora || hora === '') {
-        showToast("Selecione um horário", "warning");
+    const agora = Date.now();
+    if (agora - ultimoEnvio < 2000) {
+        console.log('⚠️ Aguarde 2 segundos entre agendamentos');
+        showToast('Aguarde um momento antes de criar outro agendamento', 'warning');
         return;
     }
+    ultimoEnvio = agora;
 
-    // 🔥 VALIDAR SE A DATA/HORA NÃO JÁ PASSOU
-    const agora = new Date();
-    const [ano, mes, dia] = data.split('-').map(Number);
-    const [horaNum, minutoNum] = hora.split(':').map(Number);
-    const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
-
-    if (dataHoraSelecionada < agora) {
-        showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
-        return;
+    salvando = true;
+    const botaoSalvar = document.querySelector('#modalAgendamentoDono button[onclick*="salvarAgendamentoDono"]');
+    if (botaoSalvar) {
+        botaoSalvar.disabled = true;
+        botaoSalvar.textContent = '⏳ Salvando...';
     }
-
-    showLoading();
-
-    const token = localStorage.getItem("token");
-
-    // 🔥 CORREÇÃO: DATA NO FORMATO YYYY-MM-DD (SEM CONVERSÃO)
-    const body = {
-        cliente_id: parseInt(cliente_id),
-        data: data,  // ← Manter como string pura, sem new Date()
-        hora: hora,
-        valor: parseFloat(valor) || 0,
-        profissional_id: profissional_id ? parseInt(profissional_id) : null
-    };
-
-    if (servico_id && servico_id !== '') {
-        body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao && servico_descricao.trim() !== '') {
-        body.servico = servico_descricao.trim();
-    }
-
-    console.log('📤 Enviando agendamento:', body);
 
     try {
+        // 🔥 PEGAR O CLIENTE DO HIDDEN FIELD (APENAS ELE)
+        const hiddenCliente = document.getElementById("clienteIdDono");
+        let cliente_id = hiddenCliente?.value || null;
+
+        console.log('🔍 Cliente ID do hidden:', cliente_id);
+
+        // 🔥 SE O HIDDEN ESTIVER VAZIO, TENTAR PEGAR DA BUSCA
+        if (!cliente_id || cliente_id === 'null' || cliente_id === '' || cliente_id === 'undefined') {
+            const buscaInput = document.getElementById("buscaClienteDono");
+            const nomeCliente = buscaInput?.value?.trim();
+
+            if (nomeCliente) {
+                const clientes = Array.isArray(clientesList) ? clientesList : [];
+                console.log(`🔍 Buscando cliente pelo nome: "${nomeCliente}"`);
+
+                // 🔥 BUSCAR POR NOME EXATO
+                let clienteEncontrado = clientes.find(c =>
+                    c.nome && c.nome.toLowerCase() === nomeCliente.toLowerCase()
+                );
+
+                // 🔥 SE NÃO, BUSCAR POR CONTAINS
+                if (!clienteEncontrado) {
+                    clienteEncontrado = clientes.find(c =>
+                        c.nome && c.nome.toLowerCase().includes(nomeCliente.toLowerCase())
+                    );
+                }
+
+                if (clienteEncontrado && clienteEncontrado.id) {
+                    cliente_id = clienteEncontrado.id;
+                    hiddenCliente.value = cliente_id;
+                    console.log('✅ Cliente encontrado pelo nome:', clienteEncontrado.nome, 'ID:', cliente_id);
+                } else {
+                    console.log('❌ Cliente não encontrado:', nomeCliente);
+                    showToast('Cliente não encontrado. Selecione da lista.', 'warning');
+                    salvando = false;
+                    if (botaoSalvar) {
+                        botaoSalvar.disabled = false;
+                        botaoSalvar.textContent = '💾 Salvar';
+                    }
+                    return;
+                }
+            }
+        }
+
+        // 🔥 VALIDAR SE TEM CLIENTE
+        if (!cliente_id || cliente_id === 'null' || cliente_id === '' || cliente_id === 'undefined') {
+            console.log('❌ Nenhum cliente selecionado');
+            showToast("Selecione um cliente válido", "warning");
+            document.getElementById("buscaClienteDono").focus();
+            salvando = false;
+            if (botaoSalvar) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.textContent = '💾 Salvar';
+            }
+            return;
+        }
+
+        // 🔥 GARANTIR QUE É UM NÚMERO VÁLIDO
+        const clienteIdNum = parseInt(cliente_id);
+        if (isNaN(clienteIdNum) || clienteIdNum <= 0) {
+            console.log('❌ ID inválido:', cliente_id);
+            showToast("ID do cliente inválido", "warning");
+            salvando = false;
+            if (botaoSalvar) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.textContent = '💾 Salvar';
+            }
+            return;
+        }
+
+        // 🔥 PEGAR OS DEMAIS CAMPOS
+        const data = document.getElementById("dataAgendamentoDono").value;
+        const hora = document.getElementById("horaAgendamentoDono").value;
+        const servico_id = document.getElementById("servicoIdDono").value;
+        const servico_descricao = document.getElementById("servicoDescricaoDono").value;
+        const valor = document.getElementById("valorAgendamentoDono").value;
+        const profissional_id = document.getElementById("profissionalIdDono").value;
+
+        if (!data) {
+            showToast("Selecione uma data", "warning");
+            salvando = false;
+            if (botaoSalvar) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.textContent = '💾 Salvar';
+            }
+            return;
+        }
+
+        if (!hora || hora === '') {
+            showToast("Selecione um horário", "warning");
+            salvando = false;
+            if (botaoSalvar) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.textContent = '💾 Salvar';
+            }
+            return;
+        }
+
+        // 🔥 VALIDAR DATA/HORA
+        const agoraData = new Date();
+        const [ano, mes, dia] = data.split('-').map(Number);
+        const [horaNum, minutoNum] = hora.split(':').map(Number);
+        const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
+
+        if (dataHoraSelecionada < agoraData) {
+            showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
+            salvando = false;
+            if (botaoSalvar) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.textContent = '💾 Salvar';
+            }
+            return;
+        }
+
+        showLoading();
+
+        const token = localStorage.getItem("token");
+        if (!token) {
+            showToast("Faça login novamente", "error");
+            salvando = false;
+            if (botaoSalvar) {
+                botaoSalvar.disabled = false;
+                botaoSalvar.textContent = '💾 Salvar';
+            }
+            hideLoading();
+            return;
+        }
+
+        // 🔥 MONTAR O BODY (APENAS UM CLIENTE)
+        const body = {
+            cliente_id: clienteIdNum,
+            data: data,
+            hora: hora,
+            valor: parseFloat(valor) || 0,
+            profissional_id: profissional_id ? parseInt(profissional_id) : null
+        };
+
+        if (servico_id && servico_id !== '' && servico_id !== 'null') {
+            body.servico_id = parseInt(servico_id);
+        } else if (servico_descricao && servico_descricao.trim() !== '') {
+            body.servico = servico_descricao.trim();
+        }
+
+        console.log('📤 Enviando agendamento (APENAS 1 CLIENTE):', body);
+
+        // 🔥 UMA ÚNICA REQUISIÇÃO
         const res = await fetch("/api/agendamentos", {
             method: "POST",
             headers: {
@@ -1297,26 +1911,40 @@ async function salvarAgendamentoDono() {
         });
 
         const result = await res.json();
+        console.log('📥 Resposta:', result);
 
         if (result.success) {
             showToast("✅ Agendamento criado!", "success");
             fecharModalAgendamentoDono();
 
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-
-            if (typeof carregarAgendamentos === 'function') {
-                carregarAgendamentos();
-            }
+            // 🔥 RECARREGAR A LISTA DE AGENDAMENTOS
+            setTimeout(() => {
+                if (typeof carregarListaAgendamentosComFiltro === 'function') {
+                    carregarListaAgendamentosComFiltro();
+                    console.log('✅ Lista de agendamentos recarregada');
+                }
+                if (typeof carregarAgendaInteligente === 'function') {
+                    carregarAgendaInteligente();
+                    console.log('✅ Agenda Inteligente recarregada');
+                }
+                if (typeof carregarDashboard === 'function' && document.getElementById('dashboard')) {
+                    carregarDashboard();
+                    console.log('✅ Dashboard recarregado');
+                }
+            }, 500);
         } else {
-            showToast("❌ Erro: " + result.message, "error");
+            showToast("❌ " + (result.message || 'Erro ao criar agendamento'), "error");
         }
     } catch (error) {
         console.error("❌ Erro:", error);
-        showToast("❌ Erro ao criar agendamento", "error");
+        showToast("❌ Erro ao criar agendamento: " + (error.message || ''), "error");
     }
 
+    salvando = false;
+    if (botaoSalvar) {
+        botaoSalvar.disabled = false;
+        botaoSalvar.textContent = '💾 Salvar';
+    }
     hideLoading();
 }
 
@@ -1342,123 +1970,37 @@ function atualizarValorPorServicoDono() {
 }
 
 // ============================================
-// SALVAR AGENDAMENTO
+// FUNÇÃO: CONCLUIR AGENDAMENTO - CORRIGIDA
 // ============================================
 
-async function salvarAgendamentoDono() {
-    const cliente_id = document.getElementById("clienteIdDono").value;
-    const data = document.getElementById("dataAgendamentoDono").value;
-    const hora = document.getElementById("horaAgendamentoDono").value;
-    const servico_id = document.getElementById("servicoIdDono").value;
-    const servico_descricao = document.getElementById("servicoDescricaoDono").value;
-    const valor = document.getElementById("valorAgendamentoDono").value;
-    const profissional_id = document.getElementById("profissionalIdDono").value;
+function concluirAgendamento(id) {
+    console.log('🔥 Concluir agendamento chamado para ID:', id);
 
-    if (!cliente_id || !data) {
-        showToast("Cliente e data são obrigatórios", "warning");
+    // 🔥 VERIFICAR SE O ID É VÁLIDO
+    if (!id || id === 'null' || id === 'undefined' || id === 0) {
+        console.error('❌ ID do agendamento inválido:', id);
+        showToast('Erro: ID do agendamento não encontrado', 'error');
+
+        // 🔥 TENTAR RECUPERAR O ID DA LISTA
+        const agendamentos = document.querySelectorAll('.agendamento-item');
+        if (agendamentos.length > 0) {
+            // Tentar pegar o ID do primeiro agendamento da lista
+            const primeiroId = agendamentos[0]?.dataset?.id;
+            if (primeiroId) {
+                console.log('📌 Recuperando ID da lista:', primeiroId);
+                abrirModalPagamento(parseInt(primeiroId));
+                return;
+            }
+        }
         return;
     }
 
-    if (!hora || hora === '') {
-        showToast("Selecione um horário", "warning");
-        return;
-    }
-
-    showLoading();
-
-    const token = localStorage.getItem("token");
-    const body = {
-        cliente_id: parseInt(cliente_id),
-        data: data,
-        hora: hora,
-        valor: parseFloat(valor) || 0,
-        profissional_id: profissional_id ? parseInt(profissional_id) : null
-    };
-
-    if (servico_id && servico_id !== '') {
-        body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao && servico_descricao.trim() !== '') {
-        body.servico = servico_descricao.trim();
-    }
-
-    try {
-        const res = await fetch("/api/agendamentos", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-
-        if (result.success) {
-            showToast("✅ Agendamento criado!", "success");
-            fecharModalAgendamentoDono();
-
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-
-            if (typeof carregarAgendamentos === 'function') {
-                carregarAgendamentos();
-            }
-        } else {
-            showToast("❌ Erro: " + result.message, "error");
-        }
-    } catch (error) {
-        console.error("❌ Erro:", error);
-        showToast("❌ Erro ao criar agendamento", "error");
-    }
-
-    hideLoading();
+    // 🔥 ABRIR O MODAL DE PAGAMENTO
+    abrirModalPagamento(parseInt(id));
 }
 
 // ============================================
-// CONCLUIR AGENDAMENTO
-// ============================================
-
-async function concluirAgendamento(id) {
-    if (!confirm("Concluir este agendamento?")) return;
-
-    showLoading();
-    const token = localStorage.getItem("token");
-
-    try {
-        const res = await fetch(`/api/agendamentos/${id}/concluir`, {
-            method: "PUT",
-            headers: { "Authorization": "Bearer " + token }
-        });
-        const result = await res.json();
-
-        if (result.success) {
-            showToast(result.message, "success");
-            carregarAgendamentos();
-
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-
-            if (typeof carregarFinanceiro === "function") {
-                const btnFinanceiro = document.getElementById("btnFinanceiro");
-                if (btnFinanceiro && btnFinanceiro.classList.contains("active")) {
-                    carregarFinanceiro();
-                }
-            }
-        } else {
-            showToast("Erro: " + result.message, "error");
-        }
-    } catch (error) {
-        console.error("Erro:", error);
-        showToast("Erro ao concluir", "error");
-    }
-
-    hideLoading();
-}
-
-// ============================================
-// EXCLUIR AGENDAMENTO
+// EXCLUIR AGENDAMENTO - CORRIGIDO
 // ============================================
 
 async function excluirAgendamento(id) {
@@ -1476,11 +2018,21 @@ async function excluirAgendamento(id) {
 
         if (result.success) {
             showToast("Agendamento removido", "success");
-            carregarAgendamentos();
 
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
+            // 🔥 RECARREGAR A LISTA
+            setTimeout(() => {
+                if (typeof carregarListaAgendamentosComFiltro === 'function') {
+                    carregarListaAgendamentosComFiltro();
+                    console.log('✅ Lista de agendamentos recarregada após exclusão');
+                }
+                if (typeof carregarAgendaInteligente === 'function') {
+                    carregarAgendaInteligente();
+                    console.log('✅ Agenda Inteligente recarregada após exclusão');
+                }
+                if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                    window.atualizarAgendaAposAgendamento();
+                }
+            }, 300);
         } else {
             showToast("Erro: " + result.message, "error");
         }
@@ -1896,13 +2448,20 @@ async function salvarEdicaoAgendamentoDono(id) {
             showToast("✅ Agendamento atualizado!", "success");
             fecharModalEditarAgendamentoDono();
 
-            // 🔥 ATUALIZAR A AGENDA
-            if (typeof carregarAgendamentos === 'function') {
-                carregarAgendamentos();
-            }
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
+            // 🔥 RECARREGAR A LISTA
+            setTimeout(() => {
+                if (typeof carregarListaAgendamentosComFiltro === 'function') {
+                    carregarListaAgendamentosComFiltro();
+                    console.log('✅ Lista de agendamentos recarregada após edição');
+                }
+                if (typeof carregarAgendaInteligente === 'function') {
+                    carregarAgendaInteligente();
+                    console.log('✅ Agenda Inteligente recarregada após edição');
+                }
+                if (typeof window.atualizarAgendaAposAgendamento === 'function') {
+                    window.atualizarAgendaAposAgendamento();
+                }
+            }, 300);
         } else {
             showToast("❌ Erro: " + result.message, "error");
         }
@@ -1931,67 +2490,6 @@ function atualizarValorPorServicoEditDono() {
     }
 }
 
-async function salvarEdicaoAgendamentoDono(id) {
-    const cliente_id = document.getElementById("editClienteIdDono").value;
-    const data = document.getElementById("editDataAgendamentoDono").value;
-    const hora = document.getElementById("editHoraAgendamentoDono").value;
-    const servico_id = document.getElementById("editServicoIdDono").value;
-    const servico_descricao = document.getElementById("editServicoDescricaoDono").value;
-    const valor = document.getElementById("editValorAgendamentoDono").value;
-    const profissional_id = document.getElementById("editProfissionalIdDono").value;
-
-    if (!cliente_id || !data) {
-        showToast("Cliente e data são obrigatórios", "warning");
-        return;
-    }
-
-    showLoading();
-
-    const token = localStorage.getItem("token");
-    const body = {
-        cliente_id: parseInt(cliente_id),
-        data: data,
-        hora: hora,
-        valor: parseFloat(valor) || 0,
-        profissional_id: profissional_id ? parseInt(profissional_id) : null
-    };
-
-    if (servico_id && servico_id !== '') {
-        body.servico_id = parseInt(servico_id);
-    } else if (servico_descricao && servico_descricao.trim() !== '') {
-        body.servico = servico_descricao.trim();
-    }
-
-    try {
-        const res = await fetch(`/api/agendamentos/${id}`, {
-            method: "PUT",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify(body)
-        });
-
-        const result = await res.json();
-
-        if (result.success) {
-            showToast("Agendamento atualizado!", "success");
-            fecharModalEditarAgendamentoDono();
-            carregarAgendamentos();
-
-            if (typeof window.atualizarAgendaAposAgendamento === 'function') {
-                window.atualizarAgendaAposAgendamento();
-            }
-        } else {
-            showToast("Erro: " + result.message, "error");
-        }
-    } catch (error) {
-        console.error("Erro:", error);
-        showToast("Erro ao atualizar", "error");
-    }
-
-    hideLoading();
-}
 // ============================================
 // 🔥 SERVIÇOS EXTRAS - FUNÇÕES
 // ============================================
@@ -2392,6 +2890,309 @@ function salvarExtrasModal(agendamentoId) {
         }
     }
 }
+
+// ============================================
+// 🔥 FUNÇÃO: ABRIR MODAL DE PAGAMENTO
+// ============================================
+
+function abrirModalPagamento(agendamentoId) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('Faça login novamente', 'error');
+        return;
+    }
+
+    // Buscar dados do agendamento
+    fetch('/api/agendamentos', {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (!data.success) {
+                showToast('Erro ao carregar dados', 'error');
+                return;
+            }
+
+            const agendamento = data.data.find(a => a.id === agendamentoId);
+            if (!agendamento) {
+                showToast('Agendamento não encontrado', 'error');
+                return;
+            }
+
+            // Montar modal
+            const modalHtml = `
+            <div id="modalPagamento" style="
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.7);
+                z-index: 99999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 16px;
+            ">
+                <div style="
+                    background: var(--bg-card);
+                    border-radius: 16px;
+                    padding: 24px;
+                    max-width: 420px;
+                    width: 100%;
+                    max-height: 90vh;
+                    overflow-y: auto;
+                ">
+                    <h3 style="margin: 0 0 16px 0;">💰 Forma de Pagamento</h3>
+                    
+                    <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: 8px;">
+                        <p style="margin: 4px 0;"><strong>Cliente:</strong> ${agendamento.cliente_nome || 'N/A'}</p>
+                        <p style="margin: 4px 0;"><strong>Serviço:</strong> ${agendamento.servico_nome || agendamento.servico || 'N/A'}</p>
+                        <p style="margin: 4px 0;"><strong>Valor:</strong> R$ ${(parseFloat(agendamento.valor) || 0).toFixed(2)}</p>
+                    </div>
+                    
+                    <input type="hidden" id="formaPagamentoSelecionada" value="dinheiro">
+                    
+                    <div style="margin-bottom: 16px;">
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('dinheiro')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--primary);
+                            background: rgba(102,126,234,0.1);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">💰 Dinheiro</span>
+                            <span style="margin-left:auto;color:var(--primary);"><i class="fas fa-check-circle"></i></span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('pix')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">📱 Pix</span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('debito')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">💳 Débito</span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('credito')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">💳 Crédito</span>
+                        </div>
+                        <div class="opcao-pagamento" onclick="selecionarFormaPagamento('prazo')" style="
+                            padding: 12px 16px;
+                            border-radius: 10px;
+                            border: 2px solid var(--border-color);
+                            background: var(--bg-hover);
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                            margin-bottom: 8px;
+                        ">
+                            <span style="font-size: 20px;">📝 A Prazo (Fiado)</span>
+                        </div>
+                    </div>
+                    
+                    <div id="prazoContainer" style="display: none; margin-bottom: 16px;">
+                        <label style="display:block;margin-bottom:4px;">Prazo:</label>
+                        <select id="prazoDiasSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+                            <option value="10">10 dias</option>
+                            <option value="15">15 dias</option>
+                            <option value="30">30 dias</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;">
+                        <button onclick="fecharModalPagamento()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;cursor:pointer;">
+                            Cancelar
+                        </button>
+                        <button onclick="salvarFormaPagamento(${agendamentoId})" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;cursor:pointer;">
+                            Salvar e Concluir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+            // Remover modal existente
+            const existing = document.getElementById('modalPagamento');
+            if (existing) existing.remove();
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        })
+        .catch(err => {
+            console.error('❌ Erro:', err);
+            showToast('Erro ao carregar dados', 'error');
+        });
+}
+
+// ============================================
+// 🔥 FUNÇÃO: SELECIONAR FORMA DE PAGAMENTO - CORRIGIDA
+// ============================================
+
+function selecionarFormaPagamento(forma) {
+    console.log('🔥 Selecionando forma:', forma);
+
+    // 🔥 PROCURAR O HIDDEN FIELD
+    let hiddenInput = document.getElementById('formaPagamentoSelecionada');
+
+    // 🔥 SE NÃO EXISTIR, CRIAR
+    if (!hiddenInput) {
+        console.log('⚠️ Hidden field não encontrado, criando...');
+        hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'formaPagamentoSelecionada';
+        hiddenInput.value = 'dinheiro';
+        document.body.appendChild(hiddenInput);
+        console.log('✅ Hidden field criado!');
+    }
+
+    // 🔥 ATUALIZAR O VALOR
+    hiddenInput.value = forma;
+    console.log('✅ Hidden field agora é:', hiddenInput.value);
+
+    // Atualizar visual das opções
+    const opcoes = document.querySelectorAll('.opcao-pagamento');
+    opcoes.forEach(el => {
+        el.style.borderColor = 'var(--border-color)';
+        el.style.background = 'var(--bg-hover)';
+        const check = el.querySelector('.fa-check-circle');
+        if (check) check.remove();
+    });
+
+    // Marcar a opção selecionada
+    const selecionado = document.querySelector(`.opcao-pagamento[onclick*="${forma}"]`);
+    if (selecionado) {
+        selecionado.style.borderColor = 'var(--primary)';
+        selecionado.style.background = 'rgba(102,126,234,0.1)';
+        if (!selecionado.querySelector('.fa-check-circle')) {
+            selecionado.insertAdjacentHTML('beforeend', '<span style="margin-left:auto;color:var(--primary);"><i class="fas fa-check-circle"></i></span>');
+        }
+    }
+
+    // Mostrar/esconder prazo
+    const prazoContainer = document.getElementById('prazoContainer');
+    if (prazoContainer) {
+        prazoContainer.style.display = forma === 'prazo' ? 'block' : 'none';
+    }
+}
+
+// ============================================
+// 🔥 FUNÇÃO: FECHAR MODAL PAGAMENTO
+// ============================================
+
+function fecharModalPagamento() {
+    const modal = document.getElementById('modalPagamento');
+    if (modal) modal.remove();
+}
+
+// ============================================
+// 🔥 FUNÇÃO: SALVAR FORMA DE PAGAMENTO - CORRIGIDA
+// ============================================
+
+async function salvarFormaPagamento(agendamentoId) {
+    // 🔥 PROCURAR O HIDDEN FIELD
+    let hiddenInput = document.getElementById('formaPagamentoSelecionada');
+
+    // 🔥 SE NÃO EXISTIR, CRIAR
+    if (!hiddenInput) {
+        console.log('⚠️ Hidden field não encontrado, criando...');
+        hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'formaPagamentoSelecionada';
+        hiddenInput.value = 'dinheiro';
+        document.body.appendChild(hiddenInput);
+    }
+
+    const formaPagamento = hiddenInput.value || 'dinheiro';
+    console.log('🔥 Forma de pagamento selecionada:', formaPagamento);
+
+    const prazoDias = parseInt(document.getElementById('prazoDiasSelect')?.value || 0);
+
+    if (!formaPagamento) {
+        showToast('Selecione uma forma de pagamento', 'warning');
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const body = {
+            forma_pagamento: formaPagamento,
+            prazo_dias: prazoDias,
+            data_vencimento: null,
+            descricao_pagamento: ''
+        };
+
+        console.log('📤 Enviando pagamento:', body);
+
+        const res = await fetch(`/api/agendamentos/${agendamentoId}/pagamento`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(body)
+        });
+
+        const result = await res.json();
+        console.log('📥 Resposta:', result);
+
+        if (result.success) {
+            fecharModalPagamento();
+            showToast('✅ Pagamento registrado e agendamento concluído!', 'success');
+
+            if (typeof carregarAgendamentos === 'function') {
+                await carregarAgendamentos();
+            }
+            if (typeof carregarFinanceiro === 'function') {
+                const btnFinanceiro = document.getElementById('btnFinanceiro');
+                if (btnFinanceiro && btnFinanceiro.classList.contains('active')) {
+                    await carregarFinanceiro();
+                }
+            }
+        } else {
+            showToast('❌ Erro: ' + (result.message || 'Erro ao salvar'), 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        showToast('❌ Erro ao salvar pagamento', 'error');
+    }
+
+    hideLoading();
+}
+
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -2419,5 +3220,9 @@ window.fecharModalExtras = fecharModalExtras;
 window.adicionarExtraNoModal = adicionarExtraNoModal;
 window.removerExtraDoModal = removerExtraDoModal;
 window.salvarExtrasModal = salvarExtrasModal;
+window.abrirModalPagamento = abrirModalPagamento;
+window.selecionarFormaPagamento = selecionarFormaPagamento;
+window.fecharModalPagamento = fecharModalPagamento;
+window.salvarFormaPagamento = salvarFormaPagamento;
 
 console.log('✅ agendamentos.js carregado com sucesso!');

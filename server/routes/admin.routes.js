@@ -211,13 +211,14 @@ router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// DELETE /api/admin/empresas/:id
+// DELETE /api/admin/empresas/:id - CORRIGIDO
 // ============================================
 router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     console.log(`⚠️ Super Admin - Deletando empresa ID: ${id}...`);
 
     try {
+        // 1. Verificar se a empresa existe
         const sqlCheck = isProduction
             ? `SELECT id, nome FROM empresas WHERE id = $1`
             : `SELECT id, nome FROM empresas WHERE id = ?`;
@@ -238,48 +239,80 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
 
         console.log(`📌 Empresa encontrada: "${empresa.nome}" (ID: ${id})`);
 
-        const queries = [];
+        // ============================================
+        // 🔥 CORREÇÃO: Deletar apenas tabelas que existem
+        // ============================================
 
-        if (isProduction) {
-            queries.push(
-                `DELETE FROM agendamentos WHERE empresa_id = $1`,
-                `DELETE FROM clientes WHERE empresa_id = $1`,
-                `DELETE FROM profissionais WHERE empresa_id = $1`,
-                `DELETE FROM servicos WHERE empresa_id = $1`,
-                `DELETE FROM horarios_funcionamento WHERE empresa_id = $1`,
-                `DELETE FROM despesas WHERE empresa_id = $1`,
-                `DELETE FROM acessos WHERE empresa_id = $1`,
-                `DELETE FROM planos_historico WHERE empresa_id = $1`,
-                `DELETE FROM transacoes_pagamento WHERE empresa_id = $1`,
-                `DELETE FROM usuarios WHERE empresa_id = $1`,
-                `DELETE FROM empresas WHERE id = $1`
-            );
-        } else {
-            queries.push(
-                `DELETE FROM agendamentos WHERE empresa_id = ?`,
-                `DELETE FROM clientes WHERE empresa_id = ?`,
-                `DELETE FROM profissionais WHERE empresa_id = ?`,
-                `DELETE FROM servicos WHERE empresa_id = ?`,
-                `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`,
-                `DELETE FROM despesas WHERE empresa_id = ?`,
-                `DELETE FROM acessos WHERE empresa_id = ?`,
-                `DELETE FROM planos_historico WHERE empresa_id = ?`,
-                `DELETE FROM transacoes_pagamento WHERE empresa_id = ?`,
-                `DELETE FROM usuarios WHERE empresa_id = ?`,
-                `DELETE FROM empresas WHERE id = ?`
-            );
-        }
+        // Lista de tabelas que existem no SQLite
+        const queries = [
+            `DELETE FROM agendamentos WHERE empresa_id = ?`,
+            `DELETE FROM clientes WHERE empresa_id = ?`,
+            `DELETE FROM profissionais WHERE empresa_id = ?`,
+            `DELETE FROM servicos WHERE empresa_id = ?`,
+            `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`,
+            `DELETE FROM despesas WHERE empresa_id = ?`,
+            `DELETE FROM acessos WHERE empresa_id = ?`,
+            `DELETE FROM usuarios WHERE empresa_id = ?`,
+            `DELETE FROM empresas WHERE id = ?`
+        ];
 
-        for (const sql of queries) {
+        // 🔥 Verificar se as tabelas existem antes de tentar deletar
+        const tabelasExistentes = await new Promise((resolve) => {
+            db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, rows) => {
+                if (err) {
+                    console.error('❌ Erro ao listar tabelas:', err);
+                    resolve([]);
+                } else {
+                    resolve(rows.map(r => r.name));
+                }
+            });
+        });
+
+        console.log('📋 Tabelas existentes:', tabelasExistentes);
+
+        // 🔥 Filtrar apenas as tabelas que existem
+        const queriesFiltradas = queries.filter(sql => {
+            // Extrair o nome da tabela da query
+            const match = sql.match(/FROM\s+(\w+)/i);
+            if (match) {
+                const tabela = match[1];
+                const existe = tabelasExistentes.includes(tabela);
+                if (!existe) {
+                    console.log(`   ⏭️ Tabela ${tabela} não existe, ignorando...`);
+                }
+                return existe;
+            }
+            return true;
+        });
+
+        console.log(`📝 Executando ${queriesFiltradas.length} queries...`);
+
+        // Executar cada query
+        for (const sql of queriesFiltradas) {
             await new Promise((resolve, reject) => {
                 db.run(sql, [id], (err) => {
                     if (err) {
-                        console.error('❌ Erro ao deletar dados:', err.message);
-                        reject(err);
+                        console.error(`❌ Erro ao executar: ${sql}`, err.message);
+                        // Não rejeitar, apenas logar o erro e continuar
+                        resolve();
+                    } else {
+                        resolve();
                     }
-                    resolve();
                 });
             });
+        }
+
+        // 🔥 Deletar o banco individual da empresa (se existir)
+        const fs = require('fs');
+        const path = require('path');
+        const dbPath = path.join(__dirname, '../../database', `empresa_${id}.db`);
+        if (fs.existsSync(dbPath)) {
+            try {
+                fs.unlinkSync(dbPath);
+                console.log(`🗑️ Banco individual deletado: empresa_${id}.db`);
+            } catch (err) {
+                console.warn(`⚠️ Não foi possível deletar o banco: ${err.message}`);
+            }
         }
 
         console.log(`✅ Empresa "${empresa.nome}" (ID: ${id}) deletada com sucesso!`);

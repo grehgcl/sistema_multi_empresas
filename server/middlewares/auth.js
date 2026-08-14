@@ -12,16 +12,30 @@ const { db } = require('../config/database');
 
 function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
+    
+    console.log('🔍 Auth - Token recebido:', token ? '✅ Sim' : '❌ Não');
+    
     if (!token) {
-        return res.status(401).json({ success: false, message: 'Token não fornecido' });
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Token não fornecido' 
+        });
     }
+    
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.user = decoded;  // 🔥 USAR req.user
-        req.usuario = decoded; // 🔥 TAMBÉM PARA COMPATIBILIDADE
+        // 🔥 GARANTIR QUE req.user E req.usuario ESTÃO DEFINIDOS
+        req.user = decoded;
+        req.usuario = decoded;
+        console.log('✅ Auth - Usuário autenticado:', req.user.email);
+        console.log('✅ Auth - Empresa ID:', req.user.empresa_id);
         next();
     } catch (err) {
-        return res.status(401).json({ success: false, message: 'Token inválido' });
+        console.error('❌ Auth - Token inválido:', err.message);
+        return res.status(401).json({ 
+            success: false, 
+            message: 'Token inválido' 
+        });
     }
 }
 

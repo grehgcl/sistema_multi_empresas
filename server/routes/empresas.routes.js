@@ -3,8 +3,9 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+// const { db } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
+const { db, getEmpresaDb, centralDb } = require('../config/database');
 
 // 🔥 DEFINIR isProduction
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
@@ -63,62 +64,127 @@ router.get('/plano', auth, (req, res) => {
     });
 });
 
-// ============================================
-// GET /api/empresa/dados
-// ============================================
-router.get('/dados', auth, async (req, res) => {
-    try {
-        const empresaId = req.usuario.empresa_id;
+router.get('/dados', auth, (req, res) => {
+    // 🔥 CORREÇÃO: usar req.user (NÃO req.usuario)
+    const empresaId = req.user?.empresa_id;
+    
+    console.log(`🔍 Buscando dados da empresa: ${empresaId}`);
+    console.log(`👤 Usuario: ${req.user?.email}`);
 
-        console.log("Buscando dados da empresa " + empresaId);
-        console.log("Usuario: " + req.usuario.email);
+    if (!empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Empresa não identificada'
+        });
+    }
 
-        if (!empresaId) {
-            console.error("empresa_id nao encontrado no token!");
-            return res.status(400).json({
+    // Buscar dados da empresa
+    const sql = isProduction
+        ? 'SELECT * FROM empresas WHERE id = $1'
+        : 'SELECT * FROM empresas WHERE id = ?';
+
+    db.get(sql, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('❌ Erro ao buscar dados da empresa:', err.message);
+            return res.status(500).json({
                 success: false,
-                message: 'Empresa nao identificada no token'
+                message: 'Erro ao buscar dados da empresa: ' + err.message
             });
         }
 
-        const sql = isProduction
-            ? "SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, agendamentos_mes, mes_referencia, dias_bloqueio_geral, telefone_dono, endereco, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at, whatsapp_proprio_habilitado, created_at FROM empresas WHERE id = $1"
-            : "SELECT id, nome, plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate, agendamentos_mes, mes_referencia, dias_bloqueio_geral, telefone_dono, endereco, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at, whatsapp_proprio_habilitado, created_at FROM empresas WHERE id = ?";
+        if (!empresa) {
+            console.log(`⚠️ Empresa ${empresaId} não encontrada`);
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
 
-        db.get(sql, [empresaId], (err, empresa) => {
-            if (err) {
-                console.error("Erro ao buscar empresa:", err);
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
+        console.log(`✅ Empresa encontrada: ${empresa.nome}`);
+        res.json({
+            success: true,
+            data: empresa
+        });
+    });
+});
+// ============================================
+// GET /api/empresa/dados-completos - Buscar tudo
+// ============================================
+router.get('/dados-completos', auth, async (req, res) => {
+    try {
+        const empresaId = req.user?.empresa_id;
+        
+        if (!empresaId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Empresa não identificada'
+            });
+        }
 
-            if (!empresa) {
-                console.error("Empresa nao encontrada:", empresaId);
-                return res.status(404).json({
-                    success: false,
-                    message: 'Empresa nao encontrada'
-                });
-            }
-
-            console.log("Empresa encontrada: " + empresa.nome);
-
-            res.json({
-                success: true,
-                data: empresa
+        // Buscar dados da empresa
+        const empresa = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? 'SELECT * FROM empresas WHERE id = $1'
+                : 'SELECT * FROM empresas WHERE id = ?';
+            db.get(sql, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
             });
         });
 
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        // Buscar horários
+        const horarios = await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? 'SELECT * FROM horarios_funcionamento WHERE empresa_id = $1'
+                : 'SELECT * FROM horarios_funcionamento WHERE empresa_id = ?';
+            db.all(sql, [empresaId], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        // Buscar serviços do banco individual
+        const empresaDb = getEmpresaDb(empresaId);
+        const servicos = await new Promise((resolve, reject) => {
+            empresaDb.all('SELECT * FROM servicos WHERE ativo = 1', (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        // Buscar profissionais
+        const profissionais = await new Promise((resolve, reject) => {
+            empresaDb.all('SELECT id, nome, comissao_percent, ativo FROM profissionais WHERE ativo = 1', (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows || []);
+            });
+        });
+
+        res.json({
+            success: true,
+            data: {
+                ...empresa,
+                horarios,
+                servicos,
+                profissionais
+            }
+        });
+
     } catch (error) {
-        console.error("Erro ao buscar dados da empresa:", error);
+        console.error('❌ Erro ao buscar dados completos:', error);
         res.status(500).json({
             success: false,
-            message: error.message || 'Erro ao buscar dados da empresa'
+            message: error.message
         });
     }
 });
-
 // ============================================
 // PUT /api/empresa/dados
 // ============================================

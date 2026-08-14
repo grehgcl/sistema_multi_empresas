@@ -1,5 +1,5 @@
 ﻿// ============================================
-// UI FUNCTIONS - SEE&AGENDE v7.1
+// UI FUNCTIONS - SEE&AGENDE v7.2
 // ============================================
 
 // ============================================
@@ -244,7 +244,6 @@ function forcarCoresHeader() {
         }
 
         if (userBadgeEl) {
-            // 🔥 CORREÇÃO: Usar try/catch e fallback
             let usuario = null;
             try {
                 const usuarioStr = localStorage.getItem('usuario');
@@ -336,24 +335,124 @@ function mostrarCadastro() {
     if (cadastroMsg) cadastroMsg.style.display = 'none';
 }
 
-// ============================================
-// INICIAR UI
-// ============================================
-document.addEventListener('DOMContentLoaded', function () {
-    initResponsiveSidebar();
-    controlarMenu();
-    setTimeout(forcarCoresHeader, 500);
-});
 
-window.addEventListener('storage', function (e) {
-    if (e.key === 'token' || e.key === 'usuario') {
-        controlarMenu();
-        setTimeout(forcarCoresHeader, 500);
+// ============================================
+// ATUALIZAR STATUS DO WHATSAPP NO MENU - CORRIGIDO
+// ============================================
+async function atualizarStatusWhatsApp() {
+    try {
+        const token = localStorage.getItem('token');
+        if (!token || token === 'undefined' || token === 'null') {
+            console.warn('⚠️ Token não encontrado');
+            return;
+        }
+
+        const indicator = document.getElementById('whatsappStatusIndicator');
+        if (!indicator) {
+            console.warn('⚠️ Elemento whatsappStatusIndicator não encontrado');
+            return;
+        }
+
+        // 🔥 VERIFICAR SE É SUPER ADMIN
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+        
+        console.log(`🔄 Atualizando status do WhatsApp... (${isSuperAdmin ? 'Super Admin' : 'Dono'})`);
+
+        const response = await fetch('/api/whatsapp/status', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.status === 401) {
+            console.warn('⚠️ Token expirado ou inválido');
+            indicator.className = 'status-dot offline';
+            indicator.title = '❌ Sessão expirada';
+            indicator.style.background = '#ef4444';
+            indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.4)';
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            indicator.className = 'status-dot';
+
+            if (result.data.connected) {
+                indicator.classList.add('online');
+                indicator.title = isSuperAdmin ? 
+                    `✅ ${result.data.empresa_nome || 'Empresa'} - WhatsApp Conectado` : 
+                    '✅ WhatsApp Conectado';
+                indicator.style.background = '#22c55e';
+                indicator.style.boxShadow = '0 0 12px rgba(34,197,94,0.6)';
+                console.log('🟢 WhatsApp Conectado');
+            } else if (result.data.status === 'connecting') {
+                indicator.classList.add('connecting');
+                indicator.title = '⏳ Conectando...';
+                indicator.style.background = '#f59e0b';
+                indicator.style.boxShadow = '0 0 12px rgba(245,158,11,0.6)';
+                console.log('🟡 WhatsApp Conectando...');
+            } else {
+                indicator.classList.add('offline');
+                indicator.title = isSuperAdmin ? 
+                    `❌ ${result.data.empresa_nome || 'Nenhuma empresa'} - WhatsApp Desconectado` : 
+                    '❌ WhatsApp Desconectado';
+                indicator.style.background = '#ef4444';
+                indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.4)';
+                console.log('🔴 WhatsApp Desconectado');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro ao atualizar status do WhatsApp:', error);
     }
-});
+}
 
 // ============================================
-// GERAR MENU DINÂMICO
+// INICIAR MONITORAMENTO DO WHATSAPP
+// ============================================
+function iniciarMonitoramentoWhatsApp() {
+    let tentativas = 0;
+    const maxTentativas = 15;
+    
+    function verificarERodar() {
+        const indicator = document.getElementById('whatsappStatusIndicator');
+        if (indicator) {
+            console.log('✅ Elemento WhatsApp encontrado, iniciando monitoramento...');
+            // Verificar token antes de chamar
+            const token = localStorage.getItem('token');
+            if (!token) {
+                console.warn('⚠️ Token não encontrado, aguardando...');
+                setTimeout(verificarERodar, 1000);
+                return;
+            }
+            atualizarStatusWhatsApp();
+            if (window.whatsappInterval) {
+                clearInterval(window.whatsappInterval);
+            }
+            window.whatsappInterval = setInterval(atualizarStatusWhatsApp, 30000);
+        } else {
+            tentativas++;
+            if (tentativas < maxTentativas) {
+                console.log(`⏳ Aguardando menu carregar... (${tentativas}/${maxTentativas})`);
+                setTimeout(verificarERodar, 500);
+            } else {
+                console.warn('⚠️ Elemento WhatsApp não encontrado após várias tentativas');
+            }
+        }
+    }
+    
+    verificarERodar();
+}
+
+// ============================================
+// GERAR MENU DINÂMICO - COM INDICADOR WHATSAPP
 // ============================================
 function gerarMenu(usuario) {
     const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
@@ -363,9 +462,8 @@ function gerarMenu(usuario) {
     let menu = '';
 
     if (isSuperAdmin) {
-        // 🔥 SUPER ADMIN - Menu correto
         menu = `
-            <button class="menu-btn active" data-page="dashboard" onclick="executarAcao('carregarDashboard', this)">
+            <button class="menu-btn" data-page="dashboard" onclick="executarAcao('carregarDashboard', this)">
                 <i class="fas fa-chart-pie"></i> Dashboard
             </button>
             <button class="menu-btn" data-page="empresas" onclick="executarAcao('carregarEmpresas', this)">
@@ -373,6 +471,7 @@ function gerarMenu(usuario) {
             </button>
             <button class="menu-btn" data-page="whatsapp" onclick="executarAcao('carregarWhatsappConfig', this)">
                 <i class="fas fa-whatsapp"></i> WhatsApp
+                <span id="whatsappStatusIndicator" class="status-dot offline"></span>
             </button>
             <button class="menu-btn" data-page="planos" onclick="executarAcao('carregarPlanos', this)">
                 <i class="fas fa-crown"></i> Planos
@@ -380,7 +479,7 @@ function gerarMenu(usuario) {
         `;
     } else if (isDono) {
         menu = `
-            <button class="menu-btn active" data-page="dashboard" onclick="executarAcao('carregarDashboard', this)">
+            <button class="menu-btn" data-page="dashboard" onclick="executarAcao('carregarDashboard', this)">
                 <i class="fas fa-chart-pie"></i> Dashboard
             </button>
             <button class="menu-btn" data-page="agendamentos" onclick="executarAcao('carregarAgendamentos', this)">
@@ -400,6 +499,7 @@ function gerarMenu(usuario) {
             </button>
             <button class="menu-btn" data-page="whatsapp" onclick="executarAcao('carregarWhatsappConfig', this)">
                 <i class="fas fa-whatsapp"></i> WhatsApp
+                <span id="whatsappStatusIndicator" class="status-dot offline"></span>
             </button>
             <button class="menu-btn" data-page="planos" onclick="executarAcao('carregarPlanos', this)">
                 <i class="fas fa-crown"></i> Planos
@@ -407,7 +507,7 @@ function gerarMenu(usuario) {
         `;
     } else if (isProfissional) {
         menu = `
-            <button class="menu-btn active" data-page="dashboard" onclick="executarAcao('carregarDashboardProfissional', this)">
+            <button class="menu-btn" data-page="dashboard" onclick="executarAcao('carregarDashboardProfissional', this)">
                 <i class="fas fa-chart-pie"></i> Dashboard
             </button>
             <button class="menu-btn" data-page="agendamentos" onclick="executarAcao('carregarAgendamentosProfissional', this)">
@@ -418,6 +518,32 @@ function gerarMenu(usuario) {
 
     return menu;
 }
+
+// ============================================
+// INICIAR UI
+// ============================================
+document.addEventListener('DOMContentLoaded', function () {
+    initResponsiveSidebar();
+    controlarMenu();
+    setTimeout(forcarCoresHeader, 500);
+
+    // Iniciar monitoramento do WhatsApp se estiver logado
+    const token = localStorage.getItem('token');
+    if (token) {
+        setTimeout(iniciarMonitoramentoWhatsApp, 1500);
+    }
+});
+
+window.addEventListener('storage', function (e) {
+    if (e.key === 'token' || e.key === 'usuario') {
+        controlarMenu();
+        setTimeout(forcarCoresHeader, 500);
+        if (e.key === 'token' && e.newValue) {
+            setTimeout(iniciarMonitoramentoWhatsApp, 1500);
+        }
+    }
+});
+
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -435,5 +561,8 @@ window.formatarDataBr = formatarDataBr;
 window.mostrarLanding = mostrarLanding;
 window.mostrarLogin = mostrarLogin;
 window.mostrarCadastro = mostrarCadastro;
+window.gerarMenu = gerarMenu;
+window.atualizarStatusWhatsApp = atualizarStatusWhatsApp;
+window.iniciarMonitoramentoWhatsApp = iniciarMonitoramentoWhatsApp;
 
-console.log('✅ UI.js carregado com sucesso - v7.1');
+console.log('✅ UI.js carregado com sucesso - v7.2');

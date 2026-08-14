@@ -19,15 +19,12 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
-// 🔥 FORÇAR SQLITE - IGNORAR POSTGRESQL
-process.env.DATABASE_URL = undefined;
-process.env.NODE_ENV = 'development';
-process.env.RENDER = 'false';
+
 // ============================================
 // IMPORTS DAS PARTES EXTRATÍDAS
 // ============================================
 
-const { db, initDatabase, inserirHorariosPadrao } = require('./server/config/database');
+const { db, getEmpresaDb, initDatabase, inserirHorariosPadrao } = require('./server/config/database');
 const {
     auth,
     verificarSuperAdmin,
@@ -44,11 +41,6 @@ const {
     getDiaSemanaFromDate,
     gerarSenhaTemporaria
 } = require('./server/utils/helpers');
-
-// ============================================
-// ROTAS (TUDO EXTRAÍDO!)
-// ============================================
-const routes = require('./server/routes');
 
 // ============================================
 // COMPATIBILIDADE SQLite + PostgreSQL
@@ -108,12 +100,56 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
-// 🔥 ROTAS (TUDO EXTRAÍDO!)
+// 🔥 MIDDLEWARE PARA DISPONIBILIZAR DB NAS ROTAS
+app.use((req, res, next) => {
+    req.db = db;
+    req.getEmpresaDb = getEmpresaDb;
+    next();
+});
+
+// ============================================================
+// ROTAS (TUDO EXTRAÍDO!) - APENAS UMA VEZ!
+// ============================================================
+
+// 🔥 ROTAS PRINCIPAIS (via index.js)
+const routes = require('./server/routes');
 app.use('/api', routes);
 
-// 🔥 ADICIONAR ROTA WHATSAPP TAMBÉM EM /api/empresa/whatsapp PARA COMPATIBILIDADE
+// 🔥 ROTAS INDIVIDUAIS (PARA GARANTIR QUE FUNCIONAM)
+const empresasRoutes = require('./server/routes/empresas.routes');
+app.use('/api/empresa', empresasRoutes);
+
+const chatbotRoutes = require('./server/routes/chatbot.routes');
+app.use('/api/chatbot', chatbotRoutes);
+
+const adminRoutes = require('./server/routes/admin.routes');
+app.use('/api/admin', adminRoutes);
+
+const clientesRoutes = require('./server/routes/clientes.routes');
+app.use('/api/clientes', clientesRoutes);
+
+const servicosRoutes = require('./server/routes/servicos.routes');
+app.use('/api/servicos', servicosRoutes);
+
+const agendamentosRoutes = require('./server/routes/agendamentos.routes');
+app.use('/api/agendamentos', agendamentosRoutes);
+
+const profissionaisRoutes = require('./server/routes/profissionais.routes');
+app.use('/api/profissionais', profissionaisRoutes);
+
+const financeiroRoutes = require('./server/routes/financeiro.routes');
+app.use('/api/financeiro', financeiroRoutes);
+
+const despesasRoutes = require('./server/routes/despesas.routes');
+app.use('/api/despesas', despesasRoutes);
+
+const horariosRoutes = require('./server/routes/horarios.routes');
+app.use('/api/horarios', horariosRoutes);
+
+// WhatsApp
 const whatsappRoutes = require('./server/routes/whatsapp.routes');
 app.use('/api/empresa/whatsapp', whatsappRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // ============================================================
 // FUNÇÕES AUXILIARES
@@ -308,7 +344,136 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
         });
     }
 });
+// ============================================================
+// ROTAS (TUDO EXTRAÍDO!) - VERSÃO CORRIGIDA
+// ============================================================
 
+console.log('📋 REGISTRANDO ROTAS...');
+
+// 1. ROTAS PRINCIPAIS (via index.js)
+try {
+    const routes = require('./server/routes');
+    app.use('/api', routes);
+    console.log('✅ /api registrado via index.js');
+} catch (err) {
+    console.error('❌ Erro ao carregar /api:', err.message);
+}
+
+// 2. CHATBOT - FORÇADO DIRETAMENTE (IGNORANDO O INDEX)
+try {
+    const chatbotRoutes = require('./server/routes/chatbot.routes');
+    app.use('/api/chatbot', chatbotRoutes);
+    console.log('✅ /api/chatbot registrado DIRETAMENTE');
+    
+    // 🔥 VERIFICAR SE A ROTA /horarios-disponiveis EXISTE
+    let hasHorarios = false;
+    if (chatbotRoutes.stack) {
+        chatbotRoutes.stack.forEach(layer => {
+            if (layer.route && layer.route.path === '/horarios-disponiveis') {
+                hasHorarios = true;
+                console.log('   ✅ Rota /horarios-disponiveis ENCONTRADA');
+            }
+        });
+    }
+    if (!hasHorarios) {
+        console.log('   ⚠️ Rota /horarios-disponiveis NÃO encontrada no chatbot.routes.js');
+    }
+} catch (err) {
+    console.error('❌ Erro ao carregar chatbot:', err.message);
+}
+
+// 3. EMPRESAS
+try {
+    const empresasRoutes = require('./server/routes/empresas.routes');
+    app.use('/api/empresa', empresasRoutes);
+    console.log('✅ /api/empresa registrado');
+} catch (err) {
+    console.error('❌ Erro em empresas:', err.message);
+}
+
+// 4. ADMIN
+try {
+    const adminRoutes = require('./server/routes/admin.routes');
+    app.use('/api/admin', adminRoutes);
+    console.log('✅ /api/admin registrado');
+} catch (err) {
+    console.error('❌ Erro em admin:', err.message);
+}
+
+// 5. CLIENTES
+try {
+    const clientesRoutes = require('./server/routes/clientes.routes');
+    app.use('/api/clientes', clientesRoutes);
+    console.log('✅ /api/clientes registrado');
+} catch (err) {
+    console.error('❌ Erro em clientes:', err.message);
+}
+
+// 6. SERVIÇOS
+try {
+    const servicosRoutes = require('./server/routes/servicos.routes');
+    app.use('/api/servicos', servicosRoutes);
+    console.log('✅ /api/servicos registrado');
+} catch (err) {
+    console.error('❌ Erro em servicos:', err.message);
+}
+
+// 7. AGENDAMENTOS
+try {
+    const agendamentosRoutes = require('./server/routes/agendamentos.routes');
+    app.use('/api/agendamentos', agendamentosRoutes);
+    console.log('✅ /api/agendamentos registrado');
+} catch (err) {
+    console.error('❌ Erro em agendamentos:', err.message);
+}
+
+// 8. PROFISSIONAIS
+try {
+    const profissionaisRoutes = require('./server/routes/profissionais.routes');
+    app.use('/api/profissionais', profissionaisRoutes);
+    console.log('✅ /api/profissionais registrado');
+} catch (err) {
+    console.error('❌ Erro em profissionais:', err.message);
+}
+
+// 9. FINANCEIRO
+try {
+    const financeiroRoutes = require('./server/routes/financeiro.routes');
+    app.use('/api/financeiro', financeiroRoutes);
+    console.log('✅ /api/financeiro registrado');
+} catch (err) {
+    console.error('❌ Erro em financeiro:', err.message);
+}
+
+// 10. DESPESAS
+try {
+    const despesasRoutes = require('./server/routes/despesas.routes');
+    app.use('/api/despesas', despesasRoutes);
+    console.log('✅ /api/despesas registrado');
+} catch (err) {
+    console.error('❌ Erro em despesas:', err.message);
+}
+
+// 11. HORÁRIOS
+try {
+    const horariosRoutes = require('./server/routes/horarios.routes');
+    app.use('/api/horarios', horariosRoutes);
+    console.log('✅ /api/horarios registrado');
+} catch (err) {
+    console.error('❌ Erro em horarios:', err.message);
+}
+
+// 12. WHATSAPP
+try {
+    const whatsappRoutes = require('./server/routes/whatsapp.routes');
+    app.use('/api/empresa/whatsapp', whatsappRoutes);
+    app.use('/api/whatsapp', whatsappRoutes);
+    console.log('✅ /api/whatsapp registrado');
+} catch (err) {
+    console.error('❌ Erro em whatsapp:', err.message);
+}
+
+console.log('✅ TODAS AS ROTAS REGISTRADAS!');
 // ============================================================
 // CRIAR EMPRESA DE TESTE
 // ============================================================
@@ -407,6 +572,18 @@ if (process.env.WHATSAPP_ENABLED === 'true') {
 }
 
 // ============================================================
+// JOB DE LEMBRETES DE PAGAMENTO
+// ============================================================
+
+try {
+    const lembretePagamentoJob = require('./server/jobs/lembretes-pagamento');
+    lembretePagamentoJob.start();
+    console.log('✅ Job de lembretes de pagamento iniciado! (executa a cada hora)');
+} catch (error) {
+    console.log('⚠️ Erro ao iniciar job de lembretes de pagamento:', error.message);
+}
+
+// ============================================================
 // KEEP ALIVE (Render)
 // ============================================================
 
@@ -428,6 +605,31 @@ if (process.env.RENDER === 'true') {
 }
 
 // ============================================================
+// ROTA DE TESTE PARA VERIFICAR SE O SERVIDOR ESTÁ RODANDO
+// ============================================================
+
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// ============================================================
+// TRATAMENTO DE ERROS GLOBAL
+// ============================================================
+
+app.use((err, req, res, next) => {
+    console.error('❌ Erro global:', err);
+    res.status(500).json({
+        success: false,
+        message: 'Erro interno do servidor',
+        error: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// ============================================================
 // INICIAR SERVIDOR
 // ============================================================
 
@@ -438,7 +640,7 @@ app.listen(PORT, HOST, () => {
     console.log(`👑 Super Admin: super@admin.com / super123`);
     console.log(`👤 Dono: admin@teste.com / 123456`);
     console.log(`\n📋 PLANOS DISPONÍVEIS:`);
-    console.log(`   Starter: R$ 24,90/mês - 1 profissional`);
+    console.log(`   Starter: R$ 24,90/mês - 1 profesional`);
     console.log(`   Pro: R$ 49,90/mês - 5 profissionais`);
     console.log(`   Business: R$ 99,90/mês - 12 profissionais`);
     console.log(`   Enterprise: R$ 199,90/mês - Profissionais ilimitados`);
@@ -446,3 +648,9 @@ app.listen(PORT, HOST, () => {
     console.log(`\n✅ Todas as rotas foram extraídas para server/routes/`);
     console.log(`📁 Total de arquivos de rotas: 13\n`);
 });
+
+// ============================================================
+// EXPORTAR PARA TESTES
+// ============================================================
+
+module.exports = app;

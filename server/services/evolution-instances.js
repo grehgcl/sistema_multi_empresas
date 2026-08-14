@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // EVOLUTION-INSTANCES.JS - GESTÃO DE INSTÂNCIAS WHATSAPP
 // CORRIGIDO - 31/07/2026
 // ============================================
@@ -217,13 +217,16 @@ class EvolutionInstances {
         }
     }
 
+    // ============================================
+    // OBTER QR CODE - SEM RECRIAR AUTOMATICAMENTE
+    // ============================================
     static async getQrCode(instanceName, empresaId, nomeEmpresa) {
         try {
             console.log(`📱 Obtendo QR Code para ${instanceName}...`);
 
             const api = this.getApiClient();
 
-            // 🔥 Verificar status
+            // 🔥 VERIFICAR STATUS
             const status = await this.getStatus(instanceName);
             console.log(`📊 Status:`, status);
 
@@ -236,57 +239,52 @@ class EvolutionInstances {
                 };
             }
 
-            // 🔥 DELETAR A INSTÂNCIA EXISTENTE
-            console.log(`🔄 Deletando instância ${instanceName}...`);
-            try {
-                await api.delete(`/instance/delete/${instanceName}`);
-                console.log(`✅ Instância deletada`);
-            } catch (err) {
-                console.log(`⚠️ Erro ao deletar:`, err.message);
-            }
-
-            // Aguardar 2 segundos
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            // 🔥 RECRIAR A INSTÂNCIA
-            console.log(`📱 Recriando instância ${instanceName}...`);
-            const createResponse = await api.post('/instance/create', {
-                instanceName: instanceName,
-                qrcode: true,
-                integration: 'WHATSAPP-BAILEYS'
-            });
-
-            console.log(`✅ Instância recriada`);
-            console.log(`📥 Resposta:`, JSON.stringify(createResponse.data, null, 2));
-
-            // 🔥 EXTRAIR QR CODE
-            let qrCode = null;
-            if (createResponse.data?.base64) {
-                qrCode = createResponse.data.base64;
-            } else if (createResponse.data?.qrcode) {
-                qrCode = createResponse.data.qrcode;
-            }
-
-            if (qrCode) {
-                // Atualizar o banco com a nova instância
-                const { db } = require('../config/database');
-                await new Promise((resolve) => {
-                    db.run('UPDATE empresas SET whatsapp_instance = ? WHERE id = ?', [instanceName, empresaId], () => resolve());
-                });
-
+            // 🔥 SE A INSTÂNCIA NÃO EXISTE, RETORNAR ERRO (NÃO CRIAR!)
+            if (status.state === 'not_found' || status.state === 'error') {
+                console.log(`❌ Instância ${instanceName} não encontrada`);
                 return {
-                    success: true,
-                    qrCode: qrCode,
-                    alreadyConnected: false,
-                    message: 'QR Code gerado! Escaneie com o WhatsApp.'
+                    success: false,
+                    message: 'Instância não encontrada. Solicite ao Super Admin.',
+                    code: 'INSTANCE_NOT_FOUND',
+                    qrCode: null
                 };
             }
 
-            return {
-                success: false,
-                message: 'QR Code não disponível. Tente novamente.',
-                qrCode: null
-            };
+            // 🔥 BUSCAR QR CODE DA INSTÂNCIA EXISTENTE
+            try {
+                const qrResponse = await api.get(`/instance/qrcode/${instanceName}`);
+
+                let qrCode = null;
+                if (qrResponse.data?.base64) {
+                    qrCode = qrResponse.data.base64;
+                } else if (qrResponse.data?.qrcode) {
+                    qrCode = qrResponse.data.qrcode;
+                }
+
+                if (qrCode) {
+                    return {
+                        success: true,
+                        qrCode: qrCode,
+                        alreadyConnected: false,
+                        message: 'QR Code gerado! Escaneie com o WhatsApp.'
+                    };
+                }
+
+                return {
+                    success: false,
+                    message: 'QR Code não disponível. Tente novamente.',
+                    qrCode: null
+                };
+
+            } catch (qrError) {
+                console.error('❌ Erro ao buscar QR Code:', qrError.message);
+                return {
+                    success: false,
+                    message: 'QR Code não disponível. Tente novamente.',
+                    code: 'QR_UNAVAILABLE',
+                    qrCode: null
+                };
+            }
 
         } catch (error) {
             console.error('❌ Erro ao buscar QR Code:', error.message);
@@ -297,20 +295,37 @@ class EvolutionInstances {
             };
         }
     }
+    // ============================================
+    // GET STATUS - EVOLUTION INSTANCES
+    // ============================================
     static async getStatus(instanceName) {
         try {
             const api = this.getApiClient();
             console.log(`📊 Verificando status de ${instanceName}...`);
 
             const response = await api.get(`/instance/connectionState/${instanceName}`);
+            console.log('📥 Resposta da Evolution:', JSON.stringify(response.data, null, 2));
 
-            // 🔥 EXTRAIR STATUS CORRETAMENTE
             let state = 'disconnected';
             let number = null;
 
-            if (response.data?.instance?.state) {
-                state = response.data.instance.state;
-                number = response.data.instance?.number || null;
+            if (response.data?.instance) {
+                const inst = response.data.instance;
+                state = inst.state || 'disconnected';
+
+                // 🔥 TENTAR PEGAR O NÚMERO DE VÁRIOS LUGARES
+                number = inst.number ||
+                    inst.ownerJid ||
+                    inst.phoneNumber ||
+                    inst.owner ||
+                    null;
+
+                // 🔥 SE TIVER @s.whatsapp.net, REMOVER
+                if (number && typeof number === 'string' && number.includes('@')) {
+                    number = number.split('@')[0];
+                }
+
+                console.log(`📱 Número extraído: ${number}`);
             } else if (response.data?.state) {
                 state = response.data.state;
                 number = response.data.number || null;
@@ -318,7 +333,7 @@ class EvolutionInstances {
 
             const isConnected = state === 'open' || state === 'connected' || state === 'CONNECTED';
 
-            console.log(`📊 Status: ${state} - Conectado: ${isConnected}`);
+            console.log(`📊 Status: ${state} - Conectado: ${isConnected} - Número: ${number}`);
 
             return {
                 success: true,
@@ -337,30 +352,6 @@ class EvolutionInstances {
                 message: error.message || 'Erro ao verificar status'
             };
         }
-    }
-    // ============================================
-    // VERIFICAR STATUS DA INSTÂNCIA DA EMPRESA
-    // ============================================
-
-    static async getStatusPorEmpresa(empresaId, nomeEmpresa) {
-        const instancia = await this.buscarInstanciaPorEmpresa(empresaId, nomeEmpresa);
-
-        if (!instancia.success) {
-            return {
-                success: true,
-                state: 'not_found',
-                connected: false,
-                message: 'Instância não encontrada'
-            };
-        }
-
-        return {
-            success: true,
-            state: instancia.instance?.connectionStatus || 'disconnected',
-            connected: instancia.connected || false,
-            instanceName: instancia.instanceName,
-            data: instancia.instance
-        };
     }
 
     // ============================================
