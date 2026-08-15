@@ -1,16 +1,23 @@
+# docker-compose.yml
 version: '3.8'
 
 services:
-  wppconnect:
-    image: wppconnect-server/wppconnect-server:latest
-    container_name: wppconnect
+  seeagende:
+    build: .
+    container_name: seeagende
+    restart: always
     ports:
       - "3000:3000"
-    environment:
-      - API_KEY=minha_chave_wpp_2024
     volumes:
-      - wppconnect_data:/app/data
-    restart: unless-stopped
-
-volumes:
-  wppconnect_data:
+      # Persistir os bancos SQLite
+      - ./database:/app/database
+    environment:
+      - NODE_ENV=development
+      - RENDER=false
+      - WHATSAPP_ENABLED=true
+      - WHATSAPP_PROVIDER=evolution
+      - EVOLUTION_API_URL=http://163.176.218.131:8080
+      - EVOLUTION_API_KEY=seeagende2024
+      - BASE_URL=https://seeagende.com.br
+      - JWT_SECRET=8214c229111fbc5747b8a5eeb9cb98e0
+      - PORT=3000

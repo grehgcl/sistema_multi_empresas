@@ -1,324 +1,190 @@
-// server/config/database.js
-const { Pool } = require('pg');
+// server/config/database.js - HÍBRIDO DEFINITIVO (Local + VPS)
+const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
-const sqlite3 = require('sqlite3').verbose();
 
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-const isTest = process.env.NODE_ENV === 'test';
-
-// ============================================
-// CONEXÃO COM BANCO PRINCIPAL
-// ============================================
-
+// Lógica: Se tem DATABASE_URL, é Postgres. Senão, é SQLite.
+const hasPostgres = !!process.env.DATABASE_URL;
 let db;
-let mainDb = null;
-const dbPath = path.join(__dirname, '../../database/barbearia.db');
-const dbDir = path.dirname(dbPath);
+const dbDir = path.join(__dirname, '../../database');
 
-// Criar pasta database se não existir
 if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
 }
 
 // ============================================
-// POSTGRESQL (PRODUÇÃO)
+// FUNÇÃO AUXILIAR: LIMPEZA DE SQL PARA SQLITE
 // ============================================
+function prepareSqlForSQLite(sql) {
+    let cleanSql = sql;
 
-if (isProduction) {
-    console.log('🔵 Conectando ao PostgreSQL (Produção)...');
-    console.log('📡 DATABASE_URL:', process.env.DATABASE_URL ? '✅ Definido' : '❌ NÃO DEFINIDO');
+    // 1. Placeholders: $1, $2, $3 -> ?
+    cleanSql = cleanSql.replace(/\$\d+/g, '?');
 
-    const pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: false
-    });
+    // 2. Funções de Data PG -> SQLite (Regex robusta com \s para espaços)
+    // EXTRACT(MONTH FROM data) ou EXTRACT(MONTH FROM a.data)
+    cleanSql = cleanSql.replace(/EXTRACT\(\s*MONTH\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%m', $1)");
+    cleanSql = cleanSql.replace(/EXTRACT\(\s*YEAR\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%Y', $1)");
+    cleanSql = cleanSql.replace(/EXTRACT\(\s*DAY\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%d', $1)");
 
-    function convertPlaceholders(sql) {
-        if (sql.includes('$1')) return sql;
-        let i = 0;
-        return sql.replace(/\?/g, () => `$${++i}`);
-    }
+    // to_char(data, 'YYYY-MM-DD') -> date(data)
+    cleanSql = cleanSql.replace(/to_char\(\s*([\w\.]+)\s*,\s*'YYYY-MM-DD'\s*\)/gi, "date($1)");
 
-    function getEmpresaDb(empresaId) {
-        return db;
-    }
+    // 3. Booleanos: true/false -> 1/0 (apenas em comparações simples)
+    cleanSql = cleanSql.replace(/=\s*true/gi, '= 1');
+    cleanSql = cleanSql.replace(/=\s*false/gi, '= 0');
+
+    // 4. ILIKE -> LIKE (SQLite não tem ILIKE)
+    cleanSql = cleanSql.replace(/\bILIKE\b/gi, 'LIKE');
+
+    return cleanSql;
+}
+
+if (hasPostgres) {
+    // ============================================
+    // MODO VPS / PRODUÇÃO (PostgreSQL)
+    // ============================================
+    console.log('🔵 Conectando ao PostgreSQL (VPS/Produção)...');
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: false });
 
     db = {
-        get: (sql, params, callback) => {
-            if (typeof params === 'function') {
-                callback = params;
-                params = [];
-            }
-            if (typeof callback !== 'function') {
-                callback = () => { };
-            }
-            if (!Array.isArray(params)) {
-                params = [params];
-            }
-            const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
-            pool.query(sqlFinal, params, (err, result) => {
-                if (err) {
-                    console.error('❌ db.get error:', err.message);
-                    return callback(err);
-                }
-                callback(null, result.rows[0] || null);
+        get: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            
+            // Converte ? para $1, $2 (Postgres)
+            let i = 0;
+            const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
+            
+            pool.query(sqlPg, params, (err, res) => {
+                if (err) console.error('❌ PG Error (get):', err.message);
+                cb(err, res?.rows[0]);
             });
         },
-        all: (sql, params, callback) => {
-            if (typeof params === 'function') {
-                callback = params;
-                params = [];
-            }
-            if (typeof callback !== 'function') {
-                callback = () => { };
-            }
-            if (!Array.isArray(params)) {
-                params = [params];
-            }
-            const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
-            pool.query(sqlFinal, params, (err, result) => {
-                if (err) {
-                    console.error('❌ db.all error:', err.message);
-                    return callback(err);
-                }
-                callback(null, result.rows);
+        all: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+
+            let i = 0;
+            const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
+
+            pool.query(sqlPg, params, (err, res) => {
+                if (err) console.error('❌ PG Error (all):', err.message);
+                cb(err, res?.rows);
             });
         },
-        run: (sql, params, callback) => {
-            if (typeof params === 'function') {
-                callback = params;
-                params = [];
-            }
-            if (typeof callback !== 'function') {
-                callback = () => { };
-            }
-            if (!Array.isArray(params)) {
-                params = [params];
-            }
-            const sqlFinal = sql.includes('?') ? convertPlaceholders(sql) : sql;
-            pool.query(sqlFinal, params, (err, result) => {
-                if (err) {
-                    console.error('❌ db.run error:', err.message);
-                    return callback(err);
-                }
-                callback(null, {
-                    lastID: result.rows[0]?.id || null,
-                    changes: result.rowCount
-                });
+        run: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+
+            let i = 0;
+            const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
+
+            pool.query(sqlPg, params, (err, res) => {
+                if (err) console.error('❌ PG Error (run):', err.message);
+                cb(err, { lastID: res?.rows[0]?.id, changes: res?.rowCount });
             });
         },
-        pool: pool,
-        getEmpresaDb: getEmpresaDb
+        pool: pool
     };
 
-    pool.connect((err, client, done) => {
-        if (err) {
-            console.error('❌ Erro PostgreSQL:', err.message);
-            return;
-        }
-        console.log('✅ PostgreSQL conectado!');
-        done();
-    });
+    // Na VPS, bancos de empresa são SQLite (arquivos .db)
+    db.getEmpresaDb = (empresaId) => {
+        try {
+            const files = fs.readdirSync(dbDir);
+            const file = files.find(f => f.includes(`_${empresaId}.db`));
+            if (file) {
+                const empresaDb = new sqlite3.Database(path.join(dbDir, file));
+                // Retorna um wrapper simples para o banco da empresa
+                return {
+                    get: (sql, p, c) => empresaDb.get(prepareSqlForSQLite(sql), p, c),
+                    all: (sql, p, c) => empresaDb.all(prepareSqlForSQLite(sql), p, c),
+                    run: (sql, p, c) => empresaDb.run(prepareSqlForSQLite(sql), p, c)
+                };
+            }
+        } catch(e) {}
+        return null;
+    };
 
-    module.exports = { db, getEmpresaDb: getEmpresaDb, initDatabase, inserirHorariosPadrao, verificarColunaDiasBloqueio };
-    console.log('✅ database.js carregado (PostgreSQL)');
-    return;
+} else {
+    // ============================================
+    // MODO LOCAL (SQLite Puro)
+    // ============================================
+    console.log('🟢 Conectando ao SQLite (Local)...');
+    const dbPath = path.join(dbDir, 'barbearia.db');
+    const mainDb = new sqlite3.Database(dbPath);
+
+    db = {
+        get: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            
+            const sqlFinal = prepareSqlForSQLite(sql);
+            // console.log('🔍 SQL GET:', sqlFinal); // Debug
+            mainDb.get(sqlFinal, params, (err, row) => {
+                if (err) console.error('❌ SQLite Error (get):', err.message);
+                cb(err, row);
+            });
+        },
+        all: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+
+            const sqlFinal = prepareSqlForSQLite(sql);
+            // console.log('🔍 SQL ALL:', sqlFinal); // Debug
+            mainDb.all(sqlFinal, params, (err, rows) => {
+                if (err) console.error('❌ SQLite Error (all):', err.message);
+                cb(err, rows);
+            });
+        },
+        run: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+
+            const sqlFinal = prepareSqlForSQLite(sql);
+            mainDb.run(sqlFinal, params, function(err) {
+                if (err) console.error('❌ SQLite Error (run):', err.message);
+                cb(err, { lastID: this.lastID, changes: this.changes });
+            });
+        }
+    };
+
+    db.getEmpresaDb = (empresaId) => {
+        try {
+            const files = fs.readdirSync(dbDir);
+            const file = files.find(f => f.includes(`_${empresaId}.db`));
+            if (file) {
+                const empresaDb = new sqlite3.Database(path.join(dbDir, file));
+                return {
+                    get: (sql, p, c) => empresaDb.get(prepareSqlForSQLite(sql), p, c),
+                    all: (sql, p, c) => empresaDb.all(prepareSqlForSQLite(sql), p, c),
+                    run: (sql, p, c) => empresaDb.run(prepareSqlForSQLite(sql), p, c)
+                };
+            }
+        } catch(e) {}
+        return mainDb; // Fallback pro principal se não achar
+    };
 }
 
 // ============================================
-// SQLITE (DESENVOLVIMENTO)
+// FUNÇÕES AUXILIARES (Obrigatórias para o server.js)
 // ============================================
-
-console.log('🟢 Conectando ao SQLite (Desenvolvimento)...');
-console.log(`📁 Banco: ${dbPath}`);
-
-// Banco principal
-mainDb = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        console.error('❌ Erro ao conectar ao SQLite:', err.message);
-    } else {
-        console.log('✅ SQLite conectado!');
-    }
-});
-
-// ============================================
-// CACHE DE BANCOS POR EMPRESA - CORRIGIDO
-// ============================================
-const empresaDbCache = {};
-const nomeBancoCache = {};
-
-function getEmpresaDb(empresaId) {
-    if (!empresaId) {
-        console.warn('⚠️ getEmpresaDb chamado sem empresaId, retornando mainDb');
-        return mainDb;
-    }
-
-    // Verificar se já está no cache de conexão
-    if (empresaDbCache[empresaId]) {
-        return empresaDbCache[empresaId];
-    }
-
-    // 🔥 VERIFICAR SE O NOME DO BANCO JÁ ESTÁ NO CACHE
-    let nomeArquivo = nomeBancoCache[empresaId];
-
-    if (!nomeArquivo) {
-        // 🔥 BUSCAR O NOME DO BANCO DE FORMA INTELIGENTE
-        
-        // 1. Tentar o formato padrão empresa_X.db
-        const caminhoPadrao = path.join(dbDir, `empresa_${empresaId}.db`);
-        if (fs.existsSync(caminhoPadrao)) {
-            nomeArquivo = `empresa_${empresaId}.db`;
-        } else {
-            // 2. Procurar por qualquer arquivo que termine com _ID.db
-            try {
-                const arquivos = fs.readdirSync(dbDir);
-                for (const f of arquivos) {
-                    // Verificar se o arquivo termina com _ID.db
-                    if (f.endsWith(`_${empresaId}.db`)) {
-                        nomeArquivo = f;
-                        break;
-                    }
-                }
-            } catch (err) {
-                console.warn('⚠️ Erro ao ler diretório:', err.message);
-            }
-            
-            // 3. Se ainda não encontrou, tentar buscar pelo nome da empresa
-            if (!nomeArquivo) {
-                try {
-                    // Buscar síncrono o nome da empresa
-                    const empresa = mainDb.get('SELECT nome FROM empresas WHERE id = ?', [empresaId]);
-                    if (empresa && empresa.nome) {
-                        // Gerar nome a partir do nome da empresa
-                        const nomeBase = empresa.nome
-                            .normalize('NFD')
-                            .replace(/[\u0300-\u036f]/g, '')
-                            .replace(/[^a-zA-Z0-9]/g, '_')
-                            .replace(/_+/g, '_')
-                            .replace(/^_|_$/g, '');
-                        
-                        // Tentar com o nome gerado
-                        const caminhoNomeado = path.join(dbDir, `${nomeBase}_${empresaId}.db`);
-                        if (fs.existsSync(caminhoNomeado)) {
-                            nomeArquivo = `${nomeBase}_${empresaId}.db`;
-                        }
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Erro ao buscar nome da empresa:', err.message);
-                }
-            }
-            
-            // 4. Se não encontrou nenhum, criar com o nome padrão
-            if (!nomeArquivo) {
-                console.warn(`⚠️ Banco da empresa ${empresaId} não encontrado, criando novo...`);
-                nomeArquivo = `empresa_${empresaId}.db`;
-                // Criar o banco vazio
-                const novoDbPath = path.join(dbDir, nomeArquivo);
-                const novoDb = new sqlite3.Database(novoDbPath);
-                novoDb.close();
-                console.log(`📁 Banco criado: ${nomeArquivo}`);
-            }
-        }
-        
-        // Salvar no cache
-        nomeBancoCache[empresaId] = nomeArquivo;
-    }
-
-    const dbPathEmpresa = path.join(dbDir, nomeArquivo);
-
-    // Verificar se o banco existe
-    if (!fs.existsSync(dbPathEmpresa)) {
-        console.warn(`⚠️ Banco da empresa ${empresaId} não encontrado: ${dbPathEmpresa}`);
-        // Tentar criar o banco
-        const novoDbPath = path.join(dbDir, `empresa_${empresaId}.db`);
-        const novoDb = new sqlite3.Database(novoDbPath);
-        novoDb.close();
-        console.log(`📁 Banco criado: empresa_${empresaId}.db`);
-        return mainDb;
-    }
-
-    console.log(`📁 Conectando ao banco da empresa ${empresaId}: ${nomeArquivo}`);
-    const empresaDb = new sqlite3.Database(dbPathEmpresa);
-    empresaDbCache[empresaId] = empresaDb;
-    return empresaDb;
-}
-
-// ============================================
-// WRAPPER DO BANCO PRINCIPAL
-// ============================================
-
-db = {
-    get: (sql, params, callback) => {
-        if (typeof params === 'function') {
-            callback = params;
-            params = [];
-        }
-        if (typeof callback !== 'function') {
-            callback = () => {};
-        }
-        if (!Array.isArray(params)) {
-            params = [params];
-        }
-        return mainDb.get(sql, params, callback);
-    },
-    all: (sql, params, callback) => {
-        if (typeof params === 'function') {
-            callback = params;
-            params = [];
-        }
-        if (typeof callback !== 'function') {
-            callback = () => {};
-        }
-        if (!Array.isArray(params)) {
-            params = [params];
-        }
-        return mainDb.all(sql, params, callback);
-    },
-    run: (sql, params, callback) => {
-        if (typeof params === 'function') {
-            callback = params;
-            params = [];
-        }
-        if (typeof callback !== 'function') {
-            callback = () => {};
-        }
-        if (!Array.isArray(params)) {
-            params = [params];
-        }
-        return mainDb.run(sql, params, callback);
-    },
-    getEmpresaDb: getEmpresaDb
-};
-
-console.log('✅ database.js carregado (SQLite com bancos independentes)');
-console.log(`📊 DB disponível? ${typeof mainDb}`);
-console.log(`📊 DB.run é função? ${typeof mainDb?.run === 'function'}`);
-console.log(`📊 DB.get é função? ${typeof mainDb?.get === 'function'}`);
-
-// ============================================
-// FUNÇÕES AUXILIARES
-// ============================================
-
 function initDatabase() {
     console.log('✅ Database inicializado');
 }
 
 function inserirHorariosPadrao() {
-    console.log('✅ Horários padrão inseridos');
+    console.log('✅ Horários padrão verificados');
 }
 
 function verificarColunaDiasBloqueio() {
     console.log('✅ Coluna dias_bloqueio verificada');
 }
 
-// ============================================
-// EXPORTAR
-// ============================================
-
 module.exports = {
     db,
-    getEmpresaDb: getEmpresaDb,
+    getEmpresaDb: db.getEmpresaDb || function() { return null; },
     initDatabase,
     inserirHorariosPadrao,
     verificarColunaDiasBloqueio
