@@ -1,0 +1,223 @@
+/* ============================================
+   AGENDAMENTOS.CSS - ESTILOS COMPLETOS
+   ULTIMA ATUALIZACAO: 31/07/2026
+   ============================================ */
+
+/* ----- HEADER E TÍTULOS ----- */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.page-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.page-title i {
+    color: var(--primary);
+}
+
+.page-subtitle {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 2px;
+}
+
+/* ----- FILTROS ----- */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: var(--bg-card);
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    align-items: flex-end;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 130px;
+}
+
+.filter-group label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.filter-group input,
+.filter-group select {
+    padding: 8px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-size: 13px;
+    width: 100%;
+    font-family: 'Inter', sans-serif;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.filter-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+/* ----- STATS ----- */
+.agendamento-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.stat-mini {
+    background: var(--bg-card);
+    border-radius: 12px;
+    padding: 10px 14px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+}
+
+.stat-mini-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+    display: block;
+}
+
+.stat-mini-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+/* ----- LISTA DE AGENDAMENTOS (CARDS MOBILE) ----- */
+.agendamentos-mobile-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 8px 4px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+/* ----- STATUS BADGE ----- */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.status-badge .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-badge.pendente {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+
+.status-badge.pendente .dot {
+    background: #f59e0b;
+}
+
+.status-badge.concluido {
+    background: rgba(34, 197, 94, 0.12);
+    color: #22c55e;
+}
+
+.status-badge.concluido .dot {
+    background: #22c55e;
+}
+
+.status-badge.agendado {
+    background: rgba(102, 126, 234, 0.12);
+    color: #667eea;
+}
+
+.status-badge.agendado .dot {
+    background: #667eea;
+}
+
+.status-badge.cancelado {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+
+.status-badge.cancelado .dot {
+    background: #ef4444;
+}
+
+/* ----- MOBILE ----- */
+@media (max-width: 768px) {
+    .page-title {
+        font-size: 20px;
+    }
+
+    .filter-bar {
+        flex-direction: column;
+        padding: 12px 16px;
+    }
+
+    .filter-group {
+        min-width: 100%;
+    }
+
+    .filter-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .filter-actions .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .agendamento-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+    }
+
+    .stat-mini-value {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .agendamento-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
