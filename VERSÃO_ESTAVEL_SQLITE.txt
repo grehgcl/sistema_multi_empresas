@@ -1,0 +1,50 @@
+﻿====================================================
+✅✅✅ VERSÃO ESTÁVEL - SQLITE + WHATSAPP ✅✅✅
+====================================================
+
+📅 DATA: 16/08/2026
+📦 VERSÃO: v2.0.0-sqlite-estavel
+🗄️ BANCO: SQLite (funcionando 100%)
+📱 WHATSAPP: Evolution API (funcionando 100%)
+
+🔧 STATUS: TUDO FUNCIONANDO
+
+====================================================
+COMO RESTAURAR ESTA VERSÃO:
+====================================================
+
+1. Clonar o repositório:
+   git clone https://github.com/seu-usuario/seeagende.git
+
+2. Ir para a versão estável:
+   git checkout v2.0.0-sqlite-estavel
+
+3. Instalar dependências:
+   npm install
+
+4. Configurar .env (usar SQLite):
+   NODE_ENV=development
+   RENDER=false
+   WHATSAPP_ENABLED=true
+   WHATSAPP_PROVIDER=evolution
+   EVOLUTION_API_URL=http://163.176.218.131:8080
+   EVOLUTION_API_KEY=seeagende2024
+
+5. Iniciar:
+   npm start
+
+====================================================
+EMPRESAS TESTADAS:
+====================================================
+- Empresa 3 (salaoGreen): ✅ WhatsApp funcionando
+- Instância: emp-3-salaogreen
+- Status: Conectado
+
+====================================================
+⚠️ IMPORTANTE:
+====================================================
+- NÃO MEXER NESTA VERSÃO SEM FAZER BACKUP
+- SEMPRE criar uma branch nova para testes
+- Backup criado em: backup_20260816_015134/
+
+====================================================
