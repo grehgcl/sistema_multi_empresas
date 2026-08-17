@@ -134,7 +134,7 @@ async function send(empresaId, numero, mensagem) {
                 'Content-Type': 'application/json',
                 'apikey': config.evolution.apiKey
             },
-            timeout: 30000
+            timeout: 10000
         });
 
         console.log(`[WHATSAPP] ✅ Mensagem enviada com sucesso para ${finalNumber}`);

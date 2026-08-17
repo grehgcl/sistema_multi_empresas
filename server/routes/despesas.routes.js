@@ -75,30 +75,38 @@ router.get('/', auth, (req, res) => {
     });
 });
 
-// ============================================
-// GET /api/despesas/categorias
-// ============================================
-router.get('/categorias', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-
-    const sql = isProduction
-        ? "SELECT DISTINCT categoria FROM despesas WHERE empresa_id = $1 ORDER BY categoria"
-        : "SELECT DISTINCT categoria FROM despesas WHERE empresa_id = ? ORDER BY categoria";
-
-    db.all(sql, [empresaId], (err, categorias) => {
-        if (err) {
-            console.error("Erro ao buscar categorias:", err);
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
+// Rota /resumo - Versão compatível com Turso
+router.get('/resumo', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        
+        // Buscar total de despesas
+        const sql = `
+            SELECT 
+                COALESCE(SUM(valor), 0) as total,
+                COALESCE(SUM(CASE WHEN pago = 1 THEN valor ELSE 0 END), 0) as pago,
+                COALESCE(SUM(CASE WHEN pago = 0 OR pago IS NULL THEN valor ELSE 0 END), 0) as pendente
+            FROM despesas 
+            WHERE empresa_id = ?
+        `;
+        
+        const result = await db.get(sql, [empresaId]);
+        
         res.json({
             success: true,
-            data: categorias.map(c => c.categoria).filter(c => c)
+            data: {
+                total: result?.total || 0,
+                pago: result?.pago || 0,
+                pendente: result?.pendente || 0
+            }
         });
-    });
+    } catch (error) {
+        console.error('❌ Erro no resumo de despesas:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 });
 
 // server/routes/despesas.routes.js

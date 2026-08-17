@@ -1612,3 +1612,435 @@ window.aplicarFiltroReceitas = aplicarFiltroReceitas;
 window.aplicarFiltrosDespesasTab = aplicarFiltrosDespesasTab;
 
 console.log('✅ Financeiro V2 - Completo com formas de pagamento!');
+// ============================================
+// MODAL DESPESAS - CORREÇÃO
+// ============================================
+
+function abrirModalDespesa() {
+    console.log('📝 Abrindo modal de despesa...');
+    
+    // Verificar se o modal existe
+    let modal = document.getElementById('modalDespesa');
+    
+    if (!modal) {
+        // Criar modal se não existir
+        modal = document.createElement('div');
+        modal.id = 'modalDespesa';
+        modal.className = 'modal';
+        modal.style.display = 'none';
+        modal.style.position = 'fixed';
+        modal.style.zIndex = '1000';
+        modal.style.left = '0';
+        modal.style.top = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.overflow = 'auto';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        
+        modal.innerHTML = `
+            <div style="
+                background-color: var(--bg-card, #1a1a2e);
+                margin: 10% auto;
+                padding: 30px;
+                border-radius: 12px;
+                max-width: 600px;
+                width: 90%;
+                position: relative;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            ">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h3 style="margin: 0; color: var(--text-primary, #fff);">Nova Despesa</h3>
+                    <button onclick="fecharModalDespesa()" style="
+                        background: none;
+                        border: none;
+                        color: var(--text-muted, #999);
+                        font-size: 24px;
+                        cursor: pointer;
+                    ">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="formDespesa">
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Descrição *</label>
+                            <input type="text" id="despesa_descricao" class="form-control" required style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            ">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Categoria</label>
+                            <select id="despesa_categoria" class="form-control" style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            ">
+                                <option value="Aluguel">Aluguel</option>
+                                <option value="Água">Água</option>
+                                <option value="Luz">Luz</option>
+                                <option value="Internet">Internet</option>
+                                <option value="Telefone">Telefone</option>
+                                <option value="Material">Material</option>
+                                <option value="Limpeza">Limpeza</option>
+                                <option value="Manutenção">Manutenção</option>
+                                <option value="Salário">Salário</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Valor *</label>
+                            <input type="number" id="despesa_valor" class="form-control" step="0.01" required style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            ">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Data *</label>
+                            <input type="date" id="despesa_data" class="form-control" required style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            ">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Data Vencimento</label>
+                            <input type="date" id="despesa_vencimento" class="form-control" style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            ">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Forma de Pagamento</label>
+                            <select id="despesa_forma_pagamento" class="form-control" style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            ">
+                                <option value="Dinheiro">Dinheiro</option>
+                                <option value="Pix">Pix</option>
+                                <option value="Débito">Débito</option>
+                                <option value="Crédito">Crédito</option>
+                                <option value="Boleto">Boleto</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">Observação</label>
+                            <textarea id="despesa_observacao" class="form-control" rows="2" style="
+                                width: 100%;
+                                padding: 10px;
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color, #333);
+                                background: var(--bg-input, #1a1a2e);
+                                color: var(--text-primary, #fff);
+                            "></textarea>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 5px; color: var(--text-secondary, #ccc);">
+                                <input type="checkbox" id="despesa_pago"> Já foi pago
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="
+                            width: 100%;
+                            padding: 12px;
+                            border-radius: 8px;
+                            border: none;
+                            background: linear-gradient(135deg, #667eea, #764ba2);
+                            color: white;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">Salvar Despesa</button>
+                    </form>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Adicionar evento de submit
+        document.getElementById('formDespesa').addEventListener('submit', function(e) {
+            e.preventDefault();
+            salvarDespesa();
+        });
+    }
+    
+    // Preencher data atual
+    const hoje = new Date().toISOString().split('T')[0];
+    const dataInput = document.getElementById('despesa_data');
+    const vencimentoInput = document.getElementById('despesa_vencimento');
+    if (dataInput) dataInput.value = hoje;
+    if (vencimentoInput) vencimentoInput.value = hoje;
+    
+    // Limpar campos
+    const descricao = document.getElementById('despesa_descricao');
+    const valor = document.getElementById('despesa_valor');
+    const observacao = document.getElementById('despesa_observacao');
+    const pago = document.getElementById('despesa_pago');
+    if (descricao) descricao.value = '';
+    if (valor) valor.value = '';
+    if (observacao) observacao.value = '';
+    if (pago) pago.checked = false;
+    
+    modal.style.display = 'block';
+}
+
+function fecharModalDespesa() {
+    const modal = document.getElementById('modalDespesa');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+async function salvarDespesa() {
+    try {
+        const descricao = document.getElementById('despesa_descricao').value;
+        const categoria = document.getElementById('despesa_categoria').value;
+        const valor = parseFloat(document.getElementById('despesa_valor').value);
+        const data = document.getElementById('despesa_data').value;
+        const vencimento = document.getElementById('despesa_vencimento').value;
+        const forma_pagamento = document.getElementById('despesa_forma_pagamento').value;
+        const observacao = document.getElementById('despesa_observacao').value;
+        const pago = document.getElementById('despesa_pago').checked ? 1 : 0;
+        
+        if (!descricao || !valor || !data) {
+            if (typeof showToast === 'function') {
+                showToast('Preencha todos os campos obrigatórios', 'error');
+            } else {
+                alert('Preencha todos os campos obrigatórios');
+            }
+            return;
+        }
+        
+        const token = localStorage.getItem('token');
+        const editandoId = window.despesaEditandoId;
+        const url = editandoId ? `/api/despesas/${editandoId}` : '/api/despesas';
+        const method = editandoId ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                descricao,
+                categoria,
+                valor,
+                data,
+                data_vencimento: vencimento || data,
+                forma_pagamento,
+                observacao,
+                pago
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (typeof showToast === 'function') {
+                showToast(editandoId ? 'Despesa atualizada com sucesso!' : 'Despesa salva com sucesso!', 'success');
+            } else {
+                alert(editandoId ? 'Despesa atualizada com sucesso!' : 'Despesa salva com sucesso!');
+            }
+            
+            // Limpar ID de edição
+            window.despesaEditandoId = null;
+            
+            // Resetar título e botão
+            const modalTitle = document.querySelector('#modalDespesa h3');
+            if (modalTitle) modalTitle.textContent = 'Nova Despesa';
+            
+            const btnSubmit = document.querySelector('#formDespesa button[type="submit"]');
+            if (btnSubmit) btnSubmit.textContent = 'Salvar Despesa';
+            
+            fecharModalDespesa();
+            
+            // Recarregar a aba de despesas
+            if (typeof carregarDespesasTab === 'function') {
+                carregarDespesasTab();
+            } else {
+                location.reload();
+            }
+        } else {
+            if (typeof showToast === 'function') {
+                showToast(result.message || 'Erro ao salvar despesa', 'error');
+            } else {
+                alert(result.message || 'Erro ao salvar despesa');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        if (typeof showToast === 'function') {
+            showToast('Erro ao salvar despesa', 'error');
+        } else {
+            alert('Erro ao salvar despesa');
+        }
+    }
+}
+
+function editarDespesa(id) {
+    console.log('📝 Editando despesa ID:', id);
+    
+    if (!id) {
+        console.error('❌ ID da despesa não informado');
+        if (typeof showToast === 'function') {
+            showToast('Erro: ID da despesa não encontrado', 'error');
+        }
+        return;
+    }
+    
+    // Buscar a despesa pelo ID
+    const token = localStorage.getItem('token');
+    fetch(`/api/despesas/${id}`, {
+        headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success && result.data) {
+            const d = result.data;
+            // Preencher o modal com os dados da despesa
+            document.getElementById('despesa_descricao').value = d.descricao || '';
+            document.getElementById('despesa_categoria').value = d.categoria || 'Outros';
+            document.getElementById('despesa_valor').value = d.valor || '';
+            document.getElementById('despesa_data').value = d.data || '';
+            document.getElementById('despesa_vencimento').value = d.data_vencimento || '';
+            document.getElementById('despesa_forma_pagamento').value = d.forma_pagamento || 'Dinheiro';
+            document.getElementById('despesa_observacao').value = d.observacao || '';
+            document.getElementById('despesa_pago').checked = d.pago === 1 || d.pago === true;
+            
+            // Guardar o ID para salvar depois
+            window.despesaEditandoId = id;
+            
+            // Mudar título do modal
+            const modalTitle = document.querySelector('#modalDespesa h3');
+            if (modalTitle) modalTitle.textContent = 'Editar Despesa';
+            
+            // Mudar texto do botão
+            const btnSubmit = document.querySelector('#formDespesa button[type="submit"]');
+            if (btnSubmit) btnSubmit.textContent = 'Atualizar Despesa';
+            
+            // Abrir o modal
+            const modal = document.getElementById('modalDespesa');
+            if (modal) modal.style.display = 'block';
+            
+            if (typeof showToast === 'function') {
+                showToast('Editando despesa...', 'info');
+            }
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('Erro ao carregar despesa', 'error');
+            }
+        }
+    })
+    .catch(error => {
+        console.error('❌ Erro:', error);
+        if (typeof showToast === 'function') {
+            showToast('Erro ao carregar despesa', 'error');
+        }
+    });
+}
+
+async function togglePagoDespesa(id, pago) {
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/despesas/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ pago })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (typeof showToast === 'function') {
+                showToast(pago ? 'Despesa marcada como paga!' : 'Despesa desmarcada!', 'success');
+            }
+            carregarDespesasTab();
+        } else {
+            if (typeof showToast === 'function') {
+                showToast(result.message || 'Erro ao atualizar', 'error');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        if (typeof showToast === 'function') {
+            showToast('Erro ao atualizar despesa', 'error');
+        }
+    }
+}
+
+async function excluirDespesa(id) {
+    console.log('🗑️ Excluindo despesa ID:', id);
+    
+    if (!id) {
+        console.error('❌ ID da despesa não informado');
+        if (typeof showToast === 'function') {
+            showToast('Erro: ID da despesa não encontrado', 'error');
+        }
+        return;
+    }
+    
+    if (!confirm('Tem certeza que deseja excluir esta despesa?')) return;
+    
+    try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/despesas/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + token
+            }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            if (typeof showToast === 'function') {
+                showToast('Despesa excluída com sucesso!', 'success');
+            } else {
+                alert('Despesa excluída com sucesso!');
+            }
+            carregarDespesasTab();
+        } else {
+            if (typeof showToast === 'function') {
+                showToast(result.message || 'Erro ao excluir', 'error');
+            } else {
+                alert(result.message || 'Erro ao excluir');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        if (typeof showToast === 'function') {
+            showToast('Erro ao excluir despesa', 'error');
+        } else {
+            alert('Erro ao excluir despesa');
+        }
+    }
+}
+
+// Adicionar ao escopo global
+window.abrirModalDespesa = abrirModalDespesa;
+window.fecharModalDespesa = fecharModalDespesa;
+window.salvarDespesa = salvarDespesa;
+window.editarDespesa = editarDespesa;
+window.togglePagoDespesa = togglePagoDespesa;
+window.excluirDespesa = excluirDespesa;

@@ -7,15 +7,32 @@ let clientesList = [];
 let servicosList = [];
 
 // ============================================
-// FUNÇÕES AUXILIARES
+// FUNÇÃO PARA FORMATAR DATA CORRETAMENTE
 // ============================================
 
-function formatarDataBr(dataStr) {
+// FUNÇÃO ÚNICA PARA FORMATAR DATA
+function formatarData(dataStr) {
     if (!dataStr) return '-';
     try {
-        if (typeof dataStr === 'string' && dataStr.includes('-')) {
-            const p = dataStr.split('-');
-            if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
+        if (typeof dataStr === 'string' && dataStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+            const partes = dataStr.split('T')[0].split('-');
+            return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        const data = new Date(dataStr);
+        if (!isNaN(data.getTime())) {
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const ano = data.getFullYear();
+            return `${dia}/${mes}/${ano}`;
+        }
+        if (typeof dataStr === 'string' && dataStr.includes(' ')) {
+            const data = new Date(dataStr);
+            if (!isNaN(data.getTime())) {
+                const dia = String(data.getDate()).padStart(2, '0');
+                const mes = String(data.getMonth() + 1).padStart(2, '0');
+                const ano = data.getFullYear();
+                return `${dia}/${mes}/${ano}`;
+            }
         }
         return dataStr;
     } catch {
@@ -23,6 +40,12 @@ function formatarDataBr(dataStr) {
     }
 }
 
+function formatarHora(horaStr) {
+    if (!horaStr) return '';
+    if (horaStr.match(/^\d{2}:\d{2}/)) return horaStr;
+    const match = horaStr.match(/(\d{2}:\d{2})/);
+    return match ? match[1] : horaStr;
+}
 function escapeHtml(text) {
     if (!text) return "";
     const div = document.createElement("div");
@@ -368,7 +391,7 @@ function atualizarEstatisticasAgendamentos(agendamentos) {
 }
 
 // ============================================
-// CARREGAR LISTA COM FILTROS
+// CARREGAR LISTA COM FILTROS - CORRIGIDA
 // ============================================
 
 async function carregarListaAgendamentosComFiltro() {
@@ -407,10 +430,12 @@ async function carregarListaAgendamentosComFiltro() {
             listaFiltrada = listaFiltrada.filter(a => a.profissional_id == profissionalFiltro);
         }
 
+        // 🔥🔥🔥 ORDENAR: Do mais recente para o mais antigo (DATA + HORA) 🔥🔥🔥
         listaFiltrada.sort((a, b) => {
-            if (a.data < b.data) return 1;
-            if (a.data > b.data) return -1;
-            return 0;
+            // Combinar data e hora para ordenação correta
+            const dataA = new Date(`${a.data}T${a.hora || '00:00'}`);
+            const dataB = new Date(`${b.data}T${b.hora || '00:00'}`);
+            return dataB - dataA; // Mais recente primeiro
         });
 
         atualizarEstatisticasAgendamentos(agendamentos);
@@ -440,8 +465,10 @@ async function carregarListaAgendamentosComFiltro() {
             return;
         }
 
+        // ============================================
+        // VERSÃO MOBILE - CARDS
+        // ============================================
         if (isMobile) {
-            // Versão Mobile - Cards
             const tableContainer = tbody.closest('.table-responsive');
             const cardContainer = document.createElement('div');
             cardContainer.className = 'agendamentos-mobile-container';
@@ -495,6 +522,10 @@ async function carregarListaAgendamentosComFiltro() {
                     box-sizing: border-box;
                 `;
 
+                // 🔥 DATA FORMATADA CORRETAMENTE
+                const dataFormatada = formatarData(item.data);
+                const horaFormatada = formatarHora(item.hora);
+
                 card.innerHTML = `
                     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
                         <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
@@ -510,26 +541,25 @@ async function carregarListaAgendamentosComFiltro() {
                         </span>
                     </div>
                     
-                    // Versão Mobile - Cards
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;background:var(--bg-hover);padding:10px 14px;border-radius:10px;margin-bottom:12px;width:100%;box-sizing:border-box;">
-    <div>
-        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">📅 Data</div>
-        <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${formatarDataBr(item.data)}</div>
-    </div>
-    <div>
-        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">⏰ Horário</div>
-        <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${formatarHoraBr(item.hora)}</div>
-    </div>
-    <div>
-        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">👨‍💼 Profissional</div>
-        <div style="font-weight:500;color:var(--text-primary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.profissional_nome || 'Não atribuído')}</div>
-    </div>
-    <div>
-        <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">💰 Valor</div>
-        <div style="font-weight:700;color:#22c55e;font-size:15px;">R$ ${valorTotal.toFixed(2)}</div>
-        ${extrasCount > 0 ? `<div style="font-size:9px;color:var(--text-muted);">R$ ${valorPrincipal.toFixed(2)} + R$ ${valorExtras.toFixed(2)}</div>` : ''}
-    </div>
-</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;background:var(--bg-hover);padding:10px 14px;border-radius:10px;margin-bottom:12px;width:100%;box-sizing:border-box;">
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">📅 Data</div>
+                            <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${dataFormatada}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">⏰ Horário</div>
+                            <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${horaFormatada}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">👨‍💼 Profissional</div>
+                            <div style="font-weight:500;color:var(--text-primary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(item.profissional_nome || 'Não atribuído')}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;">💰 Valor</div>
+                            <div style="font-weight:700;color:#22c55e;font-size:15px;">R$ ${valorTotal.toFixed(2)}</div>
+                            ${extrasCount > 0 ? `<div style="font-size:9px;color:var(--text-muted);">R$ ${valorPrincipal.toFixed(2)} + R$ ${valorExtras.toFixed(2)}</div>` : ''}
+                        </div>
+                    </div>
                     
                     <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border-color);padding-top:10px;">
                         ${podeEditar ? `
@@ -563,7 +593,9 @@ async function carregarListaAgendamentosComFiltro() {
             return;
         }
 
-        // Versão Desktop
+        // ============================================
+        // VERSÃO DESKTOP - TABELA
+        // ============================================
         let html = '';
         for (let item of listaFiltrada) {
             html += renderizarLinhaAgendamento(item);
@@ -3197,6 +3229,9 @@ async function salvarFormaPagamento(agendamentoId) {
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 
+// ============================================
+// EXPORTAR FUNÇÕES GLOBAIS (APENAS UMA VEZ!)
+// ============================================
 window.carregarAgendamentos = carregarAgendamentos;
 window.carregarListaAgendamentosComFiltro = carregarListaAgendamentosComFiltro;
 window.abrirModalAgendamentoDono = abrirModalAgendamentoDono;
@@ -3225,4 +3260,5 @@ window.selecionarFormaPagamento = selecionarFormaPagamento;
 window.fecharModalPagamento = fecharModalPagamento;
 window.salvarFormaPagamento = salvarFormaPagamento;
 
-console.log('✅ agendamentos.js carregado com sucesso!');
+
+console.log('✅ agendamentos.js carregado!');

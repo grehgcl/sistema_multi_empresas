@@ -412,7 +412,7 @@ router.post('/', auth, async (req, res) => {
                                 'Content-Type': 'application/json',
                                 'apikey': EVOLUTION_API_KEY
                             },
-                            timeout: 30000
+                            timeout: 5000
                         }
                     );
 
@@ -764,7 +764,7 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
                                     'Content-Type': 'application/json',
                                     'apikey': EVOLUTION_API_KEY
                                 },
-                                timeout: 30000
+                                timeout: 5000
                             }
                         );
 

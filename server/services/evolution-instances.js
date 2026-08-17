@@ -24,7 +24,7 @@ class EvolutionInstances {
                 'Content-Type': 'application/json',
                 'apikey': apiKey  // ðŸ”¥ ESSA LINHA Ã‰ CRUCIAL!
             },
-            timeout: 30000
+            timeout: 10000
         });
     }
 

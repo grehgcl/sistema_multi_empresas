@@ -1,0 +1,266 @@
+﻿// server/config/database.js - HÍBRIDO DEFINITIVO (SQLite + PostgreSQL + Turso)
+const sqlite3 = require('sqlite3').verbose();
+const { createClient } = require('@libsql/client');
+const path = require('path');
+const fs = require('fs');
+
+// ============================================
+// VERIFICAR QUAL BANCO USAR
+// ============================================
+const useTurso = process.env.USE_TURSO === 'true' && process.env.TURSO_DATABASE_URL;
+const hasPostgres = !!process.env.DATABASE_URL && !useTurso;
+
+let db = null;
+let isTurso = false;
+let isPostgres = false;
+
+// ============================================
+// 1. TURSO (LIBSQL) - PRIORIDADE MÁXIMA
+// ============================================
+if (useTurso) {
+    console.log('🔵 Conectando ao Turso (LibSQL)...');
+    console.log('📡 URL:', process.env.TURSO_DATABASE_URL);
+
+    try {
+        const tursoClient = createClient({
+            url: process.env.TURSO_DATABASE_URL,
+            authToken: process.env.TURSO_AUTH_TOKEN
+        });
+        isTurso = true;
+        console.log('✅ Turso conectado!');
+        
+        // Testar conexão
+        tursoClient.execute('SELECT 1')
+            .then(() => console.log('✅ Conexão com Turso testada com sucesso!'))
+            .catch(err => console.error('❌ Erro ao testar Turso:', err.message));
+        
+        // 🔥 WRAPPER: Converter Turso para a interface do SQLite (com callbacks)
+        db = {
+            // Turso: get (SELECT único) - com callback
+            get: (sql, params, cb) => {
+                if (typeof params === 'function') { cb = params; params = []; }
+                if (!Array.isArray(params)) params = [params];
+                
+                tursoClient.execute({
+                    sql: sql,
+                    args: params
+                })
+                .then(result => {
+                    const rows = result.rows || [];
+                    cb(null, rows.length > 0 ? rows[0] : null);
+                })
+                .catch(err => {
+                    console.error('❌ Turso Error (get):', err.message);
+                    cb(err, null);
+                });
+            },
+            
+            // Turso: all (SELECT múltiplos) - com callback
+            all: (sql, params, cb) => {
+                if (typeof params === 'function') { cb = params; params = []; }
+                if (!Array.isArray(params)) params = [params];
+                
+                tursoClient.execute({
+                    sql: sql,
+                    args: params
+                })
+                .then(result => {
+                    cb(null, result.rows || []);
+                })
+                .catch(err => {
+                    console.error('❌ Turso Error (all):', err.message);
+                    cb(err, null);
+                });
+            },
+            
+            // Turso: run (INSERT, UPDATE, DELETE) - com callback
+            run: (sql, params, cb) => {
+                if (typeof params === 'function') { cb = params; params = []; }
+                if (!Array.isArray(params)) params = [params];
+                
+                tursoClient.execute({
+                    sql: sql,
+                    args: params
+                })
+                .then(result => {
+                    cb(null, { 
+                        lastID: result.lastInsertRowid || 0, 
+                        changes: result.rowsAffected || 0 
+                    });
+                })
+                .catch(err => {
+                    console.error('❌ Turso Error (run):', err.message);
+                    cb(err, null);
+                });
+            },
+            
+            // Turso: exec (criação de tabelas) - com callback
+            exec: (sql, cb) => {
+                tursoClient.execute(sql)
+                .then(() => {
+                    cb(null, { changes: 0 });
+                })
+                .catch(err => {
+                    console.error('❌ Turso Error (exec):', err.message);
+                    cb(err, null);
+                });
+            },
+            
+            // 🔥 Guardar o cliente para uso interno
+            _client: tursoClient
+        };
+        
+    } catch (error) {
+        console.error('❌ Erro ao conectar Turso:', error.message);
+        console.log('🟢 Usando SQLite como fallback...');
+        isTurso = false;
+    }
+}
+
+// ============================================
+// 2. POSTGRESQL
+// ============================================
+if (!isTurso && hasPostgres) {
+    console.log('🔵 Conectando ao PostgreSQL (VPS/Produção)...');
+    const { Pool } = require('pg');
+    const pool = new Pool({ 
+        connectionString: process.env.DATABASE_URL, 
+        ssl: false 
+    });
+    isPostgres = true;
+    
+    db = {
+        get: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            let i = 0;
+            const sqlPg = sql.replace(/\?/g, () => $);
+            pool.query(sqlPg, params, (err, res) => {
+                if (err) console.error('❌ PG Error (get):', err.message);
+                cb(err, res?.rows[0]);
+            });
+        },
+        all: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            let i = 0;
+            const sqlPg = sql.replace(/\?/g, () => $);
+            pool.query(sqlPg, params, (err, res) => {
+                if (err) console.error('❌ PG Error (all):', err.message);
+                cb(err, res?.rows);
+            });
+        },
+        run: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            let i = 0;
+            const sqlPg = sql.replace(/\?/g, () => $);
+            pool.query(sqlPg, params, (err, res) => {
+                if (err) console.error('❌ PG Error (run):', err.message);
+                cb(err, { lastID: res?.rows[0]?.id, changes: res?.rowCount });
+            });
+        },
+        pool: pool
+    };
+}
+
+// ============================================
+// 3. SQLITE (FALLBACK)
+// ============================================
+if (!isTurso && !isPostgres) {
+    console.log('🟢 Conectando ao SQLite (Local)...');
+    const dbDir = path.join(__dirname, '../../database');
+    if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+    }
+
+    const dbPath = path.join(dbDir, 'barbearia.db');
+    const sqliteDb = new sqlite3.Database(dbPath, (err) => {
+        if (err) {
+            console.error('❌ Erro ao conectar SQLite:', err.message);
+        } else {
+            console.log('✅ SQLite conectado');
+        }
+    });
+
+    db = {
+        get: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            sqliteDb.get(sql, params, (err, row) => {
+                if (err) console.error('❌ SQLite Error (get):', err.message);
+                cb(err, row);
+            });
+        },
+        all: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            sqliteDb.all(sql, params, (err, rows) => {
+                if (err) console.error('❌ SQLite Error (all):', err.message);
+                cb(err, rows);
+            });
+        },
+        run: (sql, params, cb) => {
+            if (typeof params === 'function') { cb = params; params = []; }
+            if (!Array.isArray(params)) params = [params];
+            sqliteDb.run(sql, params, function(err) {
+                if (err) console.error('❌ SQLite Error (run):', err.message);
+                cb(err, { lastID: this.lastID, changes: this.changes });
+            });
+        }
+    };
+}
+
+// ============================================
+// FUNÇÃO getEmpresaDb (Compatível com todos)
+// ============================================
+db.getEmpresaDb = (empresaId) => {
+    // Turso: mesmo banco para todas as empresas
+    if (isTurso) {
+        return db;
+    }
+    
+    // SQLite: banco por empresa
+    try {
+        const dbDir = path.join(__dirname, '../../database');
+        const files = fs.readdirSync(dbDir);
+        const file = files.find(f => f.includes(_.db));
+        if (file) {
+            const empresaDb = new sqlite3.Database(path.join(dbDir, file));
+            return {
+                get: (sql, p, c) => empresaDb.get(sql, p, c),
+                all: (sql, p, c) => empresaDb.all(sql, p, c),
+                run: (sql, p, c) => empresaDb.run(sql, p, c)
+            };
+        }
+    } catch(e) {}
+    return db; // Fallback
+};
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+function initDatabase() {
+    console.log('✅ Database inicializado');
+}
+
+function inserirHorariosPadrao(empresaId) {
+    console.log('📅 Inserindo horários padrão para empresa', empresaId);
+}
+
+function verificarColunaDiasBloqueio() {
+    console.log('✅ Coluna dias_bloqueio verificada');
+}
+
+// ============================================
+// EXPORTAR
+// ============================================
+module.exports = {
+    db,
+    getEmpresaDb: db.getEmpresaDb || function() { return db; },
+    initDatabase,
+    inserirHorariosPadrao,
+    verificarColunaDiasBloqueio,
+    isTurso,
+    isPostgres
+};

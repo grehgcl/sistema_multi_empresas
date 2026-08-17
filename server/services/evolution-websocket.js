@@ -1,4 +1,4 @@
-// server/services/evolution-websocket.js
+﻿// server/services/evolution-websocket.js
 const WebSocket = require('ws');
 
 class EvolutionWebSocket {
@@ -70,7 +70,7 @@ class EvolutionWebSocket {
                 if (!this.qrCode) {
                     reject(new Error('Timeout - QR Code não recebido'));
                 }
-            }, 30000);
+            }, 5000);
         });
     }
 

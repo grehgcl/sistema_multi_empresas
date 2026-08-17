@@ -13,6 +13,7 @@
     "teste:off": "node scripts/toggle-plano-teste.js off"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "@wppconnect-team/wppconnect": "^2.2.1",
     "axios": "^1.18.1",
     "bcryptjs": "^2.4.3",
