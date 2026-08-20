@@ -111,6 +111,31 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static('public'));
 
+// ============================================================
+// 🚀 PWA - ARQUIVOS ESTÁTICOS DA RAIZ
+// ============================================================
+app.use(express.static(__dirname));
+
+app.get('/manifest.json', (req, res) => {
+    res.sendFile(__dirname + '/manifest.json');
+});
+
+app.get('/sw.js', (req, res) => {
+    res.sendFile(__dirname + '/sw.js');
+});
+
+app.get('/icons/:file', (req, res) => {
+    const fs = require('fs');
+    const filePath = __dirname + '/public/icons/' + req.params.file;
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).json({ error: 'Icon not found' });
+    }
+});
+
+console.log('✅ PWA configurado: manifest.json e sw.js servidos da raiz');
+
 // 🔥 MIDDLEWARE PARA DISPONIBILIZAR DB NAS ROTAS
 app.use((req, res, next) => {
     req.db = db;

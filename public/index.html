@@ -9,7 +9,18 @@
     <meta name="format-detection" content="telephone=no">
     <title>See&Agende - Gestão para Salões, Barbearias e Estéticas</title>
 
-    <!-- CSS GLOBAL -->
+    <!-- ============================================ -->
+    <!-- PWA CONFIG                                   -->
+    <!-- ============================================ -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+
+    <!-- ============================================ -->
+    <!-- CSS GLOBAL                                   -->
+    <!-- ============================================ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <link id="landing-css" rel="stylesheet" href="/css/pages/landing.css?v=1">
@@ -26,6 +37,9 @@
 
 <body>
 
+    <!-- ============================================ -->
+    <!-- LANDING PAGE                                -->
+    <!-- ============================================ -->
     <div id="landingContainer" class="landing-split">
         <div class="landing-left">
             <div class="landing-content">
@@ -56,6 +70,9 @@
             </div>
         </div>
         <div class="landing-right">
+            <!-- ============================================ -->
+            <!-- LOGIN                                       -->
+            <!-- ============================================ -->
             <div id="loginContainer" class="auth-container active">
                 <div class="auth-box">
                     <div class="auth-header">
@@ -94,6 +111,10 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ============================================ -->
+            <!-- CADASTRO                                    -->
+            <!-- ============================================ -->
             <div id="cadastroContainer" class="auth-container" style="display:none">
                 <div class="auth-box">
                     <div class="auth-header">
@@ -156,6 +177,9 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
+    <!-- APP PRINCIPAL                               -->
+    <!-- ============================================ -->
     <div id="app" class="app" style="display:none">
         <div class="header header-glass">
             <h2><i class="fas fa-eye"></i> See&Agende</h2>
@@ -178,6 +202,9 @@
         </div>
     </div>
 
+    <!-- ============================================ -->
+    <!-- MODALS                                      -->
+    <!-- ============================================ -->
     <!-- MODAL CLIENTE -->
     <div id="modalCliente" class="modal">
         <div class="modal-content glass">
@@ -250,13 +277,12 @@
         </div>
     </div>
 
-
     <canvas id="particlesCanvas"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;"></canvas>
 
-    <!-- ============================================
-    SCRIPTS
-    ============================================ -->
+    <!-- ============================================ -->
+    <!-- SCRIPTS                                     -->
+    <!-- ============================================ -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
     <script src="/js/ui.js"></script>
@@ -420,98 +446,98 @@
             }
         }
 
-// ============================================
-// FAZER CADASTRO - VERSÃO CORRIGIDA
-// ============================================
+        // ============================================
+        // FAZER CADASTRO - VERSÃO CORRIGIDA
+        // ============================================
 
-function fazerCadastro() {
-    const nome = document.getElementById('cadastroNome')?.value?.trim();
-    const email = document.getElementById('cadastroEmail')?.value?.trim();
-    const senha = document.getElementById('cadastroSenha')?.value;
-    const empresa_nome = document.getElementById('cadastroEmpresa')?.value?.trim();
-    const telefone = document.getElementById('cadastroTelefone')?.value?.trim();
+        function fazerCadastro() {
+            const nome = document.getElementById('cadastroNome')?.value?.trim();
+            const email = document.getElementById('cadastroEmail')?.value?.trim();
+            const senha = document.getElementById('cadastroSenha')?.value;
+            const empresa_nome = document.getElementById('cadastroEmpresa')?.value?.trim();
+            const telefone = document.getElementById('cadastroTelefone')?.value?.trim();
 
-    console.log('📝 Tentando cadastro...');
+            console.log('📝 Tentando cadastro...');
 
-    // Validação
-    if (!nome || !email || !senha || !empresa_nome || !telefone) {
-        showToast('⚠️ Preencha todos os campos', 'warning');
-        return;
-    }
-
-    if (senha.length < 6) {
-        showToast('⚠️ A senha deve ter pelo menos 6 caracteres', 'warning');
-        return;
-    }
-
-    const telefoneLimpo = telefone.replace(/\D/g, '');
-    if (telefoneLimpo.length < 10) {
-        showToast('⚠️ Telefone inválido (mínimo 10 dígitos)', 'warning');
-        return;
-    }
-
-    // Mostrar loading
-    const btn = document.querySelector('#cadastroContainer button[type="button"]');
-    const originalText = btn?.textContent || 'Cadastrar';
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '⏳ Cadastrando...';
-    }
-
-    fetch('/api/auth/cadastro', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            nome: nome,
-            email: email,
-            senha: senha,
-            empresa_nome: empresa_nome,
-            telefone: telefoneLimpo
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('📥 Resposta do cadastro:', data);
-
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = originalText;
-        }
-
-        if (!data.success) {
-            showToast(data.message || '❌ Erro ao cadastrar', 'error');
-            return;
-        }
-
-        showToast('✅ Cadastro realizado com sucesso! Faça login.', 'success');
-
-        // 🔥 CORREÇÃO: Redirecionar para login (NÃO tentar login automático)
-        setTimeout(() => {
-            // Ir para tela de login
-            document.getElementById('loginContainer').style.display = 'block';
-            document.getElementById('cadastroContainer').style.display = 'none';
-            
-            // Preencher email automaticamente
-            const loginEmail = document.getElementById('loginEmail');
-            if (loginEmail) {
-                loginEmail.value = email;
+            // Validação
+            if (!nome || !email || !senha || !empresa_nome || !telefone) {
+                showToast('⚠️ Preencha todos os campos', 'warning');
+                return;
             }
-            
-            showToast('✅ Cadastro realizado! Faça login.', 'success');
-        }, 1500);
 
-    })
-    .catch(error => {
-        console.error('❌ Erro no cadastro:', error);
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = originalText;
+            if (senha.length < 6) {
+                showToast('⚠️ A senha deve ter pelo menos 6 caracteres', 'warning');
+                return;
+            }
+
+            const telefoneLimpo = telefone.replace(/\D/g, '');
+            if (telefoneLimpo.length < 10) {
+                showToast('⚠️ Telefone inválido (mínimo 10 dígitos)', 'warning');
+                return;
+            }
+
+            // Mostrar loading
+            const btn = document.querySelector('#cadastroContainer button[type="button"]');
+            const originalText = btn?.textContent || 'Cadastrar';
+            if (btn) {
+                btn.disabled = true;
+                btn.textContent = '⏳ Cadastrando...';
+            }
+
+            fetch('/api/auth/cadastro', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nome: nome,
+                        email: email,
+                        senha: senha,
+                        empresa_nome: empresa_nome,
+                        telefone: telefoneLimpo
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📥 Resposta do cadastro:', data);
+
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }
+
+                    if (!data.success) {
+                        showToast(data.message || '❌ Erro ao cadastrar', 'error');
+                        return;
+                    }
+
+                    showToast('✅ Cadastro realizado com sucesso! Faça login.', 'success');
+
+                    // 🔥 CORREÇÃO: Redirecionar para login (NÃO tentar login automático)
+                    setTimeout(() => {
+                        // Ir para tela de login
+                        document.getElementById('loginContainer').style.display = 'block';
+                        document.getElementById('cadastroContainer').style.display = 'none';
+
+                        // Preencher email automaticamente
+                        const loginEmail = document.getElementById('loginEmail');
+                        if (loginEmail) {
+                            loginEmail.value = email;
+                        }
+
+                        showToast('✅ Cadastro realizado! Faça login.', 'success');
+                    }, 1500);
+
+                })
+                .catch(error => {
+                    console.error('❌ Erro no cadastro:', error);
+                    if (btn) {
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }
+                    showToast('❌ Erro ao conectar com o servidor', 'error');
+                });
         }
-        showToast('❌ Erro ao conectar com o servidor', 'error');
-    });
-}
 
         function logout() {
             localStorage.clear();
@@ -530,73 +556,73 @@ function fazerCadastro() {
             }
         }
 
-function carregarMenu() {
-    const usuarioStr = localStorage.getItem('usuario');
-    const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+        function carregarMenu() {
+            const usuarioStr = localStorage.getItem('usuario');
+            const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
-    console.log('📋 Carregando menu para:', usuario?.nome);
-    console.log('🔍 Role:', usuario?.role);
+            console.log('📋 Carregando menu para:', usuario?.nome);
+            console.log('🔍 Role:', usuario?.role);
 
-    const sidebar = document.getElementById('sidebar');
-    
-    if (!usuario) {
-        console.warn('⚠️ Nenhum usuário encontrado');
-        sidebar.innerHTML = '';
-        return;
-    }
+            const sidebar = document.getElementById('sidebar');
 
-    const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
-    const isProfissional = usuario.role === 'profissional';
-    const isDono = usuario.role === 'dono';
+            if (!usuario) {
+                console.warn('⚠️ Nenhum usuário encontrado');
+                sidebar.innerHTML = '';
+                return;
+            }
 
-    console.log('🔍 isSuperAdmin:', isSuperAdmin);
-    console.log('🔍 isDono:', isDono);
+            const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+            const isProfissional = usuario.role === 'profissional';
+            const isDono = usuario.role === 'dono';
 
-    let botoes = [];
+            console.log('🔍 isSuperAdmin:', isSuperAdmin);
+            console.log('🔍 isDono:', isDono);
 
-    if (isSuperAdmin) {
-        botoes = [
-            { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
-            { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
-            { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-            { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
-        ];
-    } else if (isProfissional) {
-        botoes = [
-            { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
-            { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' }
-        ];
-    } else if (isDono) {
-        botoes = [
-            { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
-            { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
-            { id: 'servicos', nome: 'Serviços', icone: 'fa-clipboard-list', funcao: 'carregarServicos' },
-            { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
-            { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
-            { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
-            { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-            { id: 'planos', nome: 'Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
-        ];
-    }
+            let botoes = [];
 
-    // 🔥 GERAR O HTML DO MENU COM O INDICADOR
-    sidebar.innerHTML = botoes.map(b => {
-        // 🔥 ADICIONAR O INDICADOR APENAS PARA WHATSAPP
-        let indicador = '';
-        if (b.id === 'whatsapp') {
-            indicador = `<span id="whatsappStatusIndicator" class="status-dot offline"></span>`;
+            if (isSuperAdmin) {
+                botoes = [
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
+                    { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
+                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
+                    { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
+                ];
+            } else if (isProfissional) {
+                botoes = [
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
+                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' }
+                ];
+            } else if (isDono) {
+                botoes = [
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
+                    { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
+                    { id: 'servicos', nome: 'Serviços', icone: 'fa-clipboard-list', funcao: 'carregarServicos' },
+                    { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
+                    { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
+                    { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
+                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
+                    { id: 'planos', nome: 'Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
+                ];
+            }
+
+            // 🔥 GERAR O HTML DO MENU COM O INDICADOR
+            sidebar.innerHTML = botoes.map(b => {
+                // 🔥 ADICIONAR O INDICADOR APENAS PARA WHATSAPP
+                let indicador = '';
+                if (b.id === 'whatsapp') {
+                    indicador = `<span id="whatsappStatusIndicator" class="status-dot offline"></span>`;
+                }
+                return `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome} ${indicador}</button>`;
+            }).join('');
+
+            // Ativar o botão da página atual
+            const urlParams = new URLSearchParams(window.location.search);
+            const page = urlParams.get('page') || 'dashboard';
+            ativarBotao(page);
+
+            console.log('✅ Menu carregado com sucesso!');
+            console.log('🔍 Elemento WhatsApp:', document.getElementById('whatsappStatusIndicator'));
         }
-        return `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome} ${indicador}</button>`;
-    }).join('');
-
-    // Ativar o botão da página atual
-    const urlParams = new URLSearchParams(window.location.search);
-    const page = urlParams.get('page') || 'dashboard';
-    ativarBotao(page);
-
-    console.log('✅ Menu carregado com sucesso!');
-    console.log('🔍 Elemento WhatsApp:', document.getElementById('whatsappStatusIndicator'));
-}
 
         function ativarBotao(id) {
             document.querySelectorAll('.sidebar button').forEach(btn => btn.classList.remove('active'));
@@ -729,6 +755,24 @@ function carregarMenu() {
             }
         }
         console.log('✅ index.html versão: 2026-08-13-v3');
+    </script>
+
+    <!-- ============================================ -->
+    <!-- REGISTRAR SERVICE WORKER (PWA)              -->
+    <!-- ============================================ -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                        console.log('✅ Service Worker registrado com sucesso!');
+                        console.log('📱 PWA instalado no navegador!');
+                    })
+                    .catch(function(error) {
+                        console.log('❌ Erro ao registrar Service Worker:', error);
+                    });
+            });
+        }
     </script>
 
 </body>
