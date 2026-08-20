@@ -2004,7 +2004,12 @@ function concluirAgendamento(id) {
 // ============================================
 
 async function excluirAgendamento(id) {
-    if (!confirm("Excluir este agendamento?")) return;
+    const confirmado = await showConfirm(
+        'Deseja realmente excluir este agendamento?\n\nEsta ação não poderá ser desfeita!',
+        '🗑️ Excluir Agendamento',
+        { confirmText: '✅ Sim, Excluir', cancelText: '❌ Cancelar', icon: '🗑️' }
+    );
+    if (!confirmado) return;
 
     showLoading();
     const token = localStorage.getItem("token");
@@ -2824,58 +2829,91 @@ function adicionarExtraNoModal(agendamentoId) {
         });
 }
 
-function removerExtraDoModal(agendamentoId, servicoId) {
-    if (!confirm('Remover este serviço extra?')) return;
+// ============================================
+// REMOVER EXTRA DO MODAL - CORRIGIDO
+// ============================================
+
+async function removerExtraDoModal(agendamentoId, servicoId) {
+    // 1. CONFIRMAR REMOÇÃO
+    const confirmado = await showConfirm(
+        'Deseja remover este serviço extra do agendamento?',
+        '🧹 Remover Serviço Extra',
+        { 
+            confirmText: '✅ Sim, Remover', 
+            cancelText: '❌ Cancelar', 
+            icon: '🧹' 
+        }
+    );
+    
+    if (!confirmado) return;
+
+    // 2. VALIDAR DADOS
+    if (!agendamentoId || !servicoId) {
+        showToast('Dados inválidos', 'error');
+        return;
+    }
 
     const token = localStorage.getItem('token');
+    if (!token) {
+        showToast('Faça login novamente', 'error');
+        return;
+    }
 
-    fetch('/api/agendamentos', {
-        headers: { 'Authorization': 'Bearer ' + token }
-    })
-        .then(res => res.json())
-        .then(data => {
-            const agendamento = data.data.find(a => a.id === agendamentoId);
-            if (!agendamento) {
-                showToast('Agendamento não encontrado', 'error');
-                return;
-            }
-
-            let extrasList = [];
-            if (agendamento.servicos_extras) {
-                try {
-                    extrasList = typeof agendamento.servicos_extras === 'string' ?
-                        JSON.parse(agendamento.servicos_extras) : agendamento.servicos_extras;
-                } catch (e) {
-                    extrasList = [];
-                }
-            }
-
-            const novosExtras = extrasList.filter(e => e.servico_id !== servicoId);
-
-            return fetch(`/api/agendamentos/${agendamentoId}/extras`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
-                body: JSON.stringify({ servicos_extras: novosExtras })
-            });
-        })
-        .then(res => res.json())
-        .then(result => {
-            if (result.success) {
-                showToast('Serviço extra removido!', 'success');
-                fecharModalExtras();
-                abrirModalExtra(agendamentoId);
-                carregarAgendamentos();
-            } else {
-                showToast('Erro ao remover extra', 'error');
-            }
-        })
-        .catch(err => {
-            console.error('❌ Erro:', err);
-            showToast('Erro ao remover extra', 'error');
+    try {
+        // 3. BUSCAR AGENDAMENTO
+        const resAgendamento = await fetch('/api/agendamentos', {
+            headers: { 'Authorization': 'Bearer ' + token }
         });
+
+        const dataAgendamento = await resAgendamento.json();
+        const agendamento = dataAgendamento.data.find(a => a.id === agendamentoId);
+
+        if (!agendamento) {
+            showToast('Agendamento não encontrado', 'error');
+            return;
+        }
+
+        // 4. FILTRAR EXTRAS
+        let extrasList = [];
+        if (agendamento.servicos_extras) {
+            try {
+                extrasList = typeof agendamento.servicos_extras === 'string' ?
+                    JSON.parse(agendamento.servicos_extras) : agendamento.servicos_extras;
+            } catch (e) {
+                extrasList = [];
+            }
+        }
+
+        const novosExtras = extrasList.filter(e => e.servico_id !== servicoId);
+
+        // 5. ATUALIZAR AGENDAMENTO
+        const response = await fetch(`/api/agendamentos/${agendamentoId}/extras`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ servicos_extras: novosExtras })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showToast('✅ Serviço extra removido!', 'success');
+            
+            // 6. RECARREGAR
+            if (typeof fecharModalExtras === 'function') fecharModalExtras();
+            if (typeof abrirModalExtra === 'function') abrirModalExtra(agendamentoId);
+            if (typeof carregarAgendamentos === 'function') carregarAgendamentos();
+            
+        } else {
+            showToast(result.message || '❌ Erro ao remover extra', 'error');
+        }
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        showToast('Erro ao remover extra: ' + error.message, 'error');
+    }
 }
 
 function salvarExtrasModal(agendamentoId) {

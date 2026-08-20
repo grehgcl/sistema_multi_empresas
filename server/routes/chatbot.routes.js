@@ -1,32 +1,54 @@
 ﻿// ============================================
-// ROTAS DE CHATBOT
+// ROTAS DE CHATBOT - SEE&AGENDE
 // ============================================
+
 const express = require('express');
 const router = express.Router();
 const { db, getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
 
 // ============================================
 // FUNÇÕES AUXILIARES
 // ============================================
 
-// Converter hora (HH:MM) para minutos
 function horaParaMinutos(hora) {
     if (!hora) return 0;
     const partes = hora.split(':');
     return parseInt(partes[0]) * 60 + parseInt(partes[1]);
 }
 
-// Converter minutos para hora (HH:MM)
 function minutosParaHora(minutos) {
     const h = String(Math.floor(minutos / 60)).padStart(2, '0');
     const m = String(minutos % 60).padStart(2, '0');
     return `${h}:${m}`;
 }
 
-// Gerar horários do dia (excluindo almoço)
 function gerarHorariosDoDia(inicio, fim, almocoInicio, almocoFim) {
     const horarios = [];
     const inicioMin = horaParaMinutos(inicio);
@@ -44,6 +66,7 @@ function gerarHorariosDoDia(inicio, fim, almocoInicio, almocoFim) {
 // ============================================
 // GET /api/chatbot/link/:empresaId
 // ============================================
+
 router.get('/link/:empresaId', auth, verificarDono, (req, res) => {
     const { empresaId } = req.params;
     const baseUrl = process.env.BASE_URL || 'https://seeagende.com.br';
@@ -56,6 +79,7 @@ router.get('/link/:empresaId', auth, verificarDono, (req, res) => {
 // ============================================
 // GET /api/chatbot/empresa/:id
 // ============================================
+
 router.get('/empresa/:id', (req, res) => {
     const { id } = req.params;
 
@@ -70,26 +94,19 @@ router.get('/empresa/:id', (req, res) => {
 // ============================================
 // GET /api/chatbot/servicos/:empresaId
 // ============================================
+
 router.get('/servicos/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
-    let sql;
-    if (isProduction) {
-        sql = `SELECT id, nome, descricao, valor, duracao 
-               FROM servicos 
-               WHERE empresa_id = $1 
-               AND (ativo IS NULL OR ativo = true OR ativo = 't')
-               ORDER BY nome`;
-    } else {
-        sql = `SELECT id, nome, descricao, valor, duracao 
-               FROM servicos 
-               WHERE empresa_id = ? 
-               AND (ativo IS NULL OR ativo = 1 OR ativo = 'true')
-               ORDER BY nome`;
-    }
+    const sql = `
+        SELECT id, nome, descricao, valor, duracao 
+        FROM servicos 
+        WHERE empresa_id = ? 
+        AND (ativo IS NULL OR ativo = 1 OR ativo = 'true')
+        ORDER BY nome
+    `;
 
-    console.log(`🔍 Buscando serviços para empresa ${empresaId} (${isProduction ? 'PostgreSQL' : 'SQLite'})`);
-    console.log(`📝 SQL: ${sql}`);
+    console.log(`🔍 Buscando serviços para empresa ${empresaId}`);
 
     db.all(sql, [empresaId], (err, servicos) => {
         if (err) {
@@ -98,10 +115,6 @@ router.get('/servicos/:empresaId', (req, res) => {
         }
 
         console.log(`✅ ${servicos.length} serviços encontrados para empresa ${empresaId}`);
-        servicos.forEach(s => {
-            console.log(`  - ${s.nome}: R$ ${s.valor} (${s.duracao}min)`);
-        });
-
         res.json({ success: true, servicos });
     });
 });
@@ -109,12 +122,15 @@ router.get('/servicos/:empresaId', (req, res) => {
 // ============================================
 // GET /api/chatbot/profissionais/:empresaId
 // ============================================
+
 router.get('/profissionais/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
-    const sql = isProduction
-        ? 'SELECT id, nome FROM profissionais WHERE empresa_id = $1 AND ativo = true ORDER BY nome'
-        : 'SELECT id, nome FROM profissionais WHERE empresa_id = ? AND ativo = 1 ORDER BY nome';
+    const sql = `
+        SELECT id, nome FROM profissionais 
+        WHERE empresa_id = ? AND ativo = 1 
+        ORDER BY nome
+    `;
 
     db.all(sql, [empresaId], (err, profissionais) => {
         if (err) {
@@ -128,21 +144,26 @@ router.get('/profissionais/:empresaId', (req, res) => {
 // ============================================
 // GET /api/chatbot/dono/:empresaId
 // ============================================
+
 router.get('/dono/:empresaId', (req, res) => {
     const { empresaId } = req.params;
 
-    db.get('SELECT id, nome FROM usuarios WHERE empresa_id = ? AND role = "dono" LIMIT 1',
-        [empresaId], (err, dono) => {
+    db.get(
+        'SELECT id, nome FROM usuarios WHERE empresa_id = ? AND role = "dono" LIMIT 1',
+        [empresaId],
+        (err, dono) => {
             if (err || !dono) {
                 return res.json({ success: false });
             }
             res.json({ success: true, dono });
-        });
+        }
+    );
 });
 
 // ============================================
 // POST /api/chatbot/cliente/buscar
 // ============================================
+
 router.post('/cliente/buscar', (req, res) => {
     const { telefone, empresaId } = req.body;
 
@@ -153,9 +174,10 @@ router.post('/cliente/buscar', (req, res) => {
     const telefoneLimpo = String(telefone).replace(/\D/g, '');
     console.log(`🔍 Buscando cliente com telefone: ${telefoneLimpo} (empresa: ${empresaId})`);
 
-    db.all(`SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, false) as bloqueado_chatbot 
-            FROM clientes 
-            WHERE empresa_id = ?`,
+    db.all(
+        `SELECT id, nome, telefone, email, COALESCE(bloqueado_chatbot, 0) as bloqueado_chatbot 
+         FROM clientes 
+         WHERE empresa_id = ?`,
         [empresaId],
         (err, clientes) => {
             if (err) {
@@ -195,10 +217,12 @@ router.post('/cliente/buscar', (req, res) => {
                 dataLimite.setDate(dataLimite.getDate() - 20);
                 const dataLimiteStr = dataLimite.toISOString().split('T')[0];
 
-                db.get(`SELECT id FROM agendamentos 
-                        WHERE cliente_id = ? AND data >= ? AND status != 'cancelado' 
-                        LIMIT 1`,
-                    [clienteEncontrado.id, dataLimiteStr], (err, agendamento) => {
+                db.get(
+                    `SELECT id FROM agendamentos 
+                     WHERE cliente_id = ? AND data >= ? AND status != 'cancelado' 
+                     LIMIT 1`,
+                    [clienteEncontrado.id, dataLimiteStr],
+                    (err, agendamento) => {
                         res.json({
                             success: true,
                             cliente: {
@@ -210,23 +234,28 @@ router.post('/cliente/buscar', (req, res) => {
                             },
                             temAgendamentoRecente: !!agendamento
                         });
-                    });
+                    }
+                );
             } else {
                 res.json({ success: true, cliente: null });
             }
-        });
+        }
+    );
 });
 
 // ============================================
 // POST /api/chatbot/cliente/criar
 // ============================================
+
 router.post('/cliente/criar', (req, res) => {
     const { nome, telefone, email, empresaId } = req.body;
 
     const telefonePadrao = telefone.replace(/\D/g, '');
 
-    db.get('SELECT id FROM clientes WHERE telefone = ? AND empresa_id = ?',
-        [telefonePadrao, empresaId], (err, clienteExistente) => {
+    db.get(
+        'SELECT id FROM clientes WHERE telefone = ? AND empresa_id = ?',
+        [telefonePadrao, empresaId],
+        (err, clienteExistente) => {
             if (err) return res.json({ success: false, message: err.message });
 
             if (clienteExistente) {
@@ -238,8 +267,10 @@ router.post('/cliente/criar', (req, res) => {
                 });
             }
 
-            db.run('INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)',
-                [nome, telefonePadrao, email || null, empresaId], function (err) {
+            db.run(
+                'INSERT INTO clientes (nome, telefone, email, empresa_id) VALUES (?, ?, ?, ?)',
+                [nome, telefonePadrao, email || null, empresaId],
+                function (err) {
                     if (err) return res.json({ success: false, message: err.message });
                     res.json({
                         success: true,
@@ -247,13 +278,16 @@ router.post('/cliente/criar', (req, res) => {
                         bloqueado: false,
                         temAgendamentoRecente: false
                     });
-                });
-        });
+                }
+            );
+        }
+    );
 });
 
 // ============================================
 // POST /api/chatbot/datas-disponiveis-mes
 // ============================================
+
 router.post('/datas-disponiveis-mes', (req, res) => {
     const { empresaId, mes, ano, profissionalId } = req.body;
 
@@ -278,24 +312,19 @@ router.post('/datas-disponiveis-mes', (req, res) => {
         }
     }
 
-    let sqlAgendamentos = isProduction
-        ? `SELECT data, profissional_id, hora 
-           FROM agendamentos 
-           WHERE empresa_id = $1 
-           AND status != 'cancelado'
-           AND EXTRACT(YEAR FROM data) = $2 
-           AND EXTRACT(MONTH FROM data) = $3`
-        : `SELECT data, profissional_id, hora 
-           FROM agendamentos 
-           WHERE empresa_id = ? 
-           AND status != 'cancelado'
-           AND strftime('%Y', data) = ? 
-           AND strftime('%m', data) = ?`;
+    let sqlAgendamentos = `
+        SELECT data, profissional_id, hora 
+        FROM agendamentos 
+        WHERE empresa_id = ? 
+        AND status != 'cancelado'
+        AND strftime('%Y', data) = ? 
+        AND strftime('%m', data) = ?
+    `;
 
     let params = [empresaId, anoSolicitado.toString(), mesSolicitado.toString().padStart(2, '0')];
 
     if (profissionalIdNum && profissionalIdNum > 0) {
-        sqlAgendamentos += isProduction ? ` AND profissional_id = $4` : ` AND profissional_id = ?`;
+        sqlAgendamentos += ` AND profissional_id = ?`;
         params.push(profissionalIdNum);
     }
 
@@ -319,7 +348,7 @@ router.post('/datas-disponiveis-mes', (req, res) => {
         db.all(
             `SELECT dia_semana, hora_inicio, hora_fim, almoco_inicio, almoco_fim 
              FROM horarios_funcionamento 
-             WHERE empresa_id = ? AND aberto = true`,
+             WHERE empresa_id = ? AND aberto = 1`,
             [empresaId],
             (err, horariosFuncionamento) => {
                 if (err) {
@@ -380,8 +409,9 @@ router.post('/datas-disponiveis-mes', (req, res) => {
 });
 
 // ============================================
-// POST /api/chatbot/horarios-disponiveis - CORRIGIDO
+// POST /api/chatbot/horarios-disponiveis
 // ============================================
+
 router.post('/horarios-disponiveis', async (req, res) => {
     try {
         const { empresaId, profissionalId, data, duracao } = req.body;
@@ -423,10 +453,10 @@ router.post('/horarios-disponiveis', async (req, res) => {
 
         const duracaoMin = parseInt(duracao) || 30;
 
-        // 🔥 USAR BANCO DA EMPRESA
+        // USAR BANCO DA EMPRESA
         const empresaDb = getEmpresaDb(empresaIdNum);
 
-        // 🔥 VERIFICAR SE A EMPRESA EXISTE
+        // VERIFICAR SE A EMPRESA EXISTE
         const sqlCheckEmpresa = `SELECT id FROM empresas WHERE id = ?`;
         db.get(sqlCheckEmpresa, [empresaIdNum], (err, empresa) => {
             if (err) {
@@ -444,7 +474,7 @@ router.post('/horarios-disponiveis', async (req, res) => {
                 });
             }
 
-            // 🔥 BUSCAR AGENDAMENTOS EXISTENTES NO BANCO DA EMPRESA
+            // BUSCAR AGENDAMENTOS EXISTENTES NO BANCO DA EMPRESA
             let sqlAgendamentos = `
                 SELECT a.hora, a.profissional_id, COALESCE(s.duracao, 30) as servico_duracao
                 FROM agendamentos a
@@ -485,10 +515,10 @@ router.post('/horarios-disponiveis', async (req, res) => {
                 const diaSemana = dataObj.getDay();
 
                 const sqlHorario = `
-    SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim
-    FROM horarios_funcionamento 
-    WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1
-`;
+                    SELECT hora_inicio, hora_fim, almoco_inicio, almoco_fim
+                    FROM horarios_funcionamento 
+                    WHERE empresa_id = ? AND dia_semana = ? AND aberto = 1
+                `;
 
                 empresaDb.get(sqlHorario, [empresaIdNum, diaSemana], (err, horario) => {
                     if (err) {
@@ -571,9 +601,11 @@ router.post('/horarios-disponiveis', async (req, res) => {
         });
     }
 });
+
 // ============================================
 // POST /api/chatbot/agendar
 // ============================================
+
 router.post('/agendar', async (req, res) => {
     try {
         const { clienteId, servicoId, profissionalId, data, hora, empresaId, valor, servicoNome } = req.body;
@@ -591,9 +623,7 @@ router.post('/agendar', async (req, res) => {
         if (valorFinal === 0 && servicoId) {
             console.log(`🔍 Buscando valor do serviço ID ${servicoId} para empresa ${empresaId}`);
 
-            const sqlServico = isProduction
-                ? 'SELECT nome, valor, duracao FROM servicos WHERE id = $1 AND empresa_id = $2'
-                : 'SELECT nome, valor, duracao FROM servicos WHERE id = ? AND empresa_id = ?';
+            const sqlServico = `SELECT nome, valor, duracao FROM servicos WHERE id = ? AND empresa_id = ?`;
 
             try {
                 const servico = await new Promise((resolve, reject) => {
@@ -626,108 +656,53 @@ router.post('/agendar', async (req, res) => {
             nomeFinal = servicoNome || 'Serviço não identificado';
         }
 
-        let novoAgendamentoId;
+        const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
+                           VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
+        const params = [clienteId, data, hora, servicoId, nomeFinal, valorFinal, duracaoFinal, empresaId, profissionalId];
 
-        if (isProduction) {
-            const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                               VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendente', $8, $9) RETURNING id`;
-            const params = [clienteId, data, hora, servicoId, nomeFinal, valorFinal, duracaoFinal, empresaId, profissionalId];
+        console.log('📝 SQL:', sqlInsert);
+        console.log('📝 Params:', params);
 
-            console.log('📝 SQL (PostgreSQL):', sqlInsert);
-            console.log('📝 Params:', params);
-
-            if (typeof db.query === 'function') {
-                const result = await db.query(sqlInsert, params);
-                novoAgendamentoId = result.rows[0].id;
-            } else {
-                const result = await new Promise((resolve, reject) => {
-                    db.get(sqlInsert.replace(/\$[0-9]+/g, '?'), params, (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
-                });
-                novoAgendamentoId = result?.id;
-            }
-        } else {
-            const sqlInsert = `INSERT INTO agendamentos (cliente_id, data, hora, servico_id, servico, valor, duracao, status, empresa_id, profissional_id) 
-                               VALUES (?, ?, ?, ?, ?, ?, ?, 'pendente', ?, ?)`;
-            const params = [clienteId, data, hora, servicoId, nomeFinal, valorFinal, duracaoFinal, empresaId, profissionalId];
-
-            console.log('📝 SQL (SQLite):', sqlInsert);
-            console.log('📝 Params:', params);
-
-            await new Promise((resolve, reject) => {
-                db.run(sqlInsert, params, function (err) {
-                    if (err) {
-                        console.error('❌ Erro no db.run:', err);
-                        reject(err);
-                    } else {
-                        novoAgendamentoId = this.lastID;
-                        console.log(`✅ Agendamento inserido com ID: ${novoAgendamentoId}`);
-                        resolve();
-                    }
-                });
+        const result = await new Promise((resolve, reject) => {
+            db.run(sqlInsert, params, function (err) {
+                if (err) {
+                    console.error('❌ Erro no db.run:', err);
+                    reject(err);
+                } else {
+                    console.log(`✅ Agendamento inserido com ID: ${this.lastID}`);
+                    resolve({ id: this.lastID });
+                }
             });
-        }
+        });
+
+        const novoAgendamentoId = result.id;
 
         console.log(`✅ CHATBOT - Agendamento criado! ID: ${novoAgendamentoId}, Valor: R$ ${valorFinal}`);
 
         // Buscar dados da empresa
-        let empresa;
-        if (isProduction) {
-            const sqlEmp = 'SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = $1';
-            if (typeof db.query === 'function') {
-                const resEmp = await db.query(sqlEmp, [empresaId]);
-                empresa = resEmp.rows[0];
-            } else {
-                empresa = await new Promise((resolve, reject) => {
-                    db.get(sqlEmp.replace('$1', '?'), [empresaId], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
-                });
-            }
-        } else {
-            empresa = await new Promise((resolve, reject) => {
-                db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
+        const empresa = await new Promise((resolve, reject) => {
+            db.get('SELECT id, nome, telefone_dono, endereco FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
             });
-        }
+        });
 
         console.log('🏢 Empresa encontrada:', empresa?.nome || 'Não encontrada');
 
         // Buscar dados do cliente
-        let cliente;
-        if (isProduction) {
-            const sqlCli = 'SELECT nome, telefone FROM clientes WHERE id = $1';
-            if (typeof db.query === 'function') {
-                const resCli = await db.query(sqlCli, [clienteId]);
-                cliente = resCli.rows[0];
-            } else {
-                cliente = await new Promise((resolve, reject) => {
-                    db.get(sqlCli.replace('$1', '?'), [clienteId], (err, row) => {
-                        if (err) reject(err);
-                        else resolve(row);
-                    });
-                });
-            }
-        } else {
-            cliente = await new Promise((resolve, reject) => {
-                db.get('SELECT nome, telefone FROM clientes WHERE id = ?', [clienteId], (err, row) => {
-                    if (err) reject(err);
-                    else resolve(row);
-                });
+        const cliente = await new Promise((resolve, reject) => {
+            db.get('SELECT nome, telefone FROM clientes WHERE id = ?', [clienteId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
             });
-        }
+        });
 
         console.log('👤 Cliente encontrado:', cliente?.nome || 'Não encontrado');
 
         // Enviar WhatsApp
         if (cliente && cliente.telefone) {
             try {
-                const { enviarConfirmacao } = require('../../services/whatsapp');
+                const { enviarConfirmacao } = require('../services/whatsapp');
 
                 await enviarConfirmacao({
                     cliente: cliente,
@@ -764,12 +739,11 @@ router.post('/agendar', async (req, res) => {
 // ============================================
 // GET /api/chatbot/servico/:id
 // ============================================
+
 router.get('/servico/:id', (req, res) => {
     const { id } = req.params;
 
-    const sql = isProduction
-        ? 'SELECT id, nome, valor, duracao FROM servicos WHERE id = $1'
-        : 'SELECT id, nome, valor, duracao FROM servicos WHERE id = ?';
+    const sql = 'SELECT id, nome, valor, duracao FROM servicos WHERE id = ?';
 
     console.log(`🔍 Buscando serviço ID ${id}`);
 

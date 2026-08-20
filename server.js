@@ -21,6 +21,17 @@ const axios = require('axios');
 const jwt = require('jsonwebtoken');
 
 // ============================================
+// CARREGAR JOBS
+// ============================================
+
+// Job de lembretes de pagamento (fiado)
+try {
+    require('./server/jobs/lembretes-pagamento');
+    console.log('✅ Job de lembretes de pagamento carregado');
+} catch (error) {
+    console.error('❌ Erro ao carregar job de lembretes de pagamento:', error.message);
+}
+// ============================================
 // IMPORTS DAS PARTES EXTRATÍDAS
 // ============================================
 
@@ -150,16 +161,26 @@ app.use('/api/horarios', horariosRoutes);
 const whatsappRoutes = require('./server/routes/whatsapp.routes');
 app.use('/api/empresa/whatsapp', whatsappRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+// ============================================
+// ROTAS DE FIADOS
+// ============================================
+const fiadosRoutes = require('./server/routes/fiados.routes');
+app.use('/api/fiados', fiadosRoutes);
 
-// ============================================================
-// FUNÇÕES AUXILIARES
-// ============================================================
+// ============================================
+// FUNÇÃO AUXILIAR
+// ============================================
 
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
-        const data = new Date(dataStr + 'T00:00:00');
-        return data.toLocaleDateString('pt-BR');
+        if (typeof dataStr === 'string' && dataStr.includes('-')) {
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                return partes[2] + '/' + partes[1] + '/' + partes[0];
+            }
+        }
+        return dataStr;
     } catch {
         return dataStr;
     }
@@ -193,9 +214,9 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
             ? `SELECT a.hora, a.id, s.duracao as servico_duracao
                FROM agendamentos a
                LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.empresa_id = $1 
-               AND a.data = $2 
-               AND a.profissional_id = $3 
+               WHERE a.empresa_id = ? 
+               AND a.data = ? 
+               AND a.profissional_id = ? 
                AND a.status != 'cancelado'`
             : `SELECT a.hora, a.id, s.duracao as servico_duracao
                FROM agendamentos a
@@ -210,8 +231,8 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
             ? `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
                FROM agendamentos a
                LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.empresa_id = $1 
-               AND a.data = $2 
+               WHERE a.empresa_id = ? 
+               AND a.data = ? 
                AND a.status != 'cancelado'`
             : `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
                FROM agendamentos a
@@ -317,7 +338,7 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
     } else if (existing) {
         console.log('🔄 Atualizando senha do Super Admin...');
         const sqlUpdate = isProduction
-            ? `UPDATE usuarios SET senha = $1 WHERE email = 'super@admin.com'`
+            ? `UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`
             : `UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`;
 
         db.run(sqlUpdate, [superAdminSenha], function (err) {
@@ -331,7 +352,7 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
         console.log('🔍 Criando Super Admin...');
         const sqlInsert = isProduction
             ? `INSERT INTO usuarios (nome, email, senha, role) 
-               VALUES ($1, $2, $3, 'superadmin')`
+               VALUES (?, ?, ?, 'superadmin')`
             : `INSERT INTO usuarios (nome, email, senha, role) 
                VALUES (?, ?, ?, 'superadmin')`;
 
@@ -524,7 +545,7 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
                     if (!existingDono) {
                         const sqlInsertDono = isProduction
                             ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
-                               VALUES ($1, $2, $3, 'dono', $4)`
+                               VALUES (?, ?, ?, 'dono', ?)`
                             : `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
                                VALUES (?, ?, ?, 'dono', ?)`;
 

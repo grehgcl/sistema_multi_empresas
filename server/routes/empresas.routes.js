@@ -7,8 +7,35 @@ const router = express.Router();
 const { auth, verificarDono } = require('../middlewares/auth');
 const { db, getEmpresaDb, centralDb } = require('../config/database');
 
-// 🔥 DEFINIR isProduction
+
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `${formatDate('${field}')}` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
+
+// ============================================
+
 
 // ============================================
 // GET /api/empresa/plano
@@ -17,7 +44,7 @@ router.get('/plano', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
 
     const sql = isProduction
-        ? "SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate FROM empresas WHERE id = $1"
+        ? "SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate FROM empresas WHERE id = ?"
         : "SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate FROM empresas WHERE id = ?";
 
     db.get(sql, [empresaId], (err, empresa) => {
@@ -80,7 +107,7 @@ router.get('/dados', auth, (req, res) => {
 
     // Buscar dados da empresa
     const sql = isProduction
-        ? 'SELECT * FROM empresas WHERE id = $1'
+        ? 'SELECT * FROM empresas WHERE id = ?'
         : 'SELECT * FROM empresas WHERE id = ?';
 
     db.get(sql, [empresaId], (err, empresa) => {
@@ -124,7 +151,7 @@ router.get('/dados-completos', auth, async (req, res) => {
         // Buscar dados da empresa
         const empresa = await new Promise((resolve, reject) => {
             const sql = isProduction
-                ? 'SELECT * FROM empresas WHERE id = $1'
+                ? 'SELECT * FROM empresas WHERE id = ?'
                 : 'SELECT * FROM empresas WHERE id = ?';
             db.get(sql, [empresaId], (err, row) => {
                 if (err) reject(err);
@@ -142,7 +169,7 @@ router.get('/dados-completos', auth, async (req, res) => {
         // Buscar horários
         const horarios = await new Promise((resolve, reject) => {
             const sql = isProduction
-                ? 'SELECT * FROM horarios_funcionamento WHERE empresa_id = $1'
+                ? 'SELECT * FROM horarios_funcionamento WHERE empresa_id = ?'
                 : 'SELECT * FROM horarios_funcionamento WHERE empresa_id = ?';
             db.all(sql, [empresaId], (err, rows) => {
                 if (err) reject(err);
@@ -202,7 +229,7 @@ router.put('/dados', auth, verificarDono, (req, res) => {
     }
 
     const sql = isProduction
-        ? "UPDATE empresas SET nome = $1, telefone_dono = $2, endereco = $3 WHERE id = $4"
+        ? "UPDATE empresas SET nome = ?, telefone_dono = ?, endereco = ? WHERE id = ?"
         : "UPDATE empresas SET nome = ?, telefone_dono = ?, endereco = ? WHERE id = ?";
 
     db.run(sql, [nome.trim(), telefone_dono.trim(), endereco ? endereco.trim() : '', empresaId], function (err) {
@@ -232,7 +259,7 @@ router.put('/endereco', auth, verificarDono, (req, res) => {
     console.log("Atualizando endereco:", { empresaId, endereco });
 
     const sql = isProduction
-        ? "UPDATE empresas SET endereco = $1 WHERE id = $2"
+        ? "UPDATE empresas SET endereco = ? WHERE id = ?"
         : "UPDATE empresas SET endereco = ? WHERE id = ?";
 
     db.run(sql, [endereco || '', empresaId], function (err) {
@@ -267,7 +294,7 @@ router.put('/telefone-dono', auth, verificarDono, (req, res) => {
     }
 
     const sql = isProduction
-        ? "UPDATE empresas SET telefone_dono = $1 WHERE id = $2"
+        ? "UPDATE empresas SET telefone_dono = ? WHERE id = ?"
         : "UPDATE empresas SET telefone_dono = ? WHERE id = ?";
 
     db.run(sql, [telefone.trim(), empresaId], function (err) {
@@ -301,7 +328,7 @@ router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
     }
 
     const sql = isProduction
-        ? "UPDATE empresas SET dias_bloqueio_geral = $1 WHERE id = $2"
+        ? "UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?"
         : "UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?";
 
     db.run(sql, [dias_bloqueio, empresaId], function (err) {
@@ -329,7 +356,7 @@ router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
     const diasBloqueioFinal = parseInt(dias_bloqueio) || 0;
 
     const sql = isProduction
-        ? `UPDATE empresas SET dias_bloqueio_geral = $1 WHERE id = $2`
+        ? `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`
         : `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`;
 
     db.run(sql, [diasBloqueioFinal, empresaId], function (err) {

@@ -420,73 +420,98 @@
             }
         }
 
-        async function fazerCadastro() {
-            const nome = document.getElementById('cadastroNome').value;
-            const email = document.getElementById('cadastroEmail').value;
-            const senha = document.getElementById('cadastroSenha').value;
-            const empresa_nome = document.getElementById('cadastroEmpresa').value;
-            const telefone = document.getElementById('cadastroTelefone').value;
-            const acceptTerms = document.getElementById('acceptTerms').checked;
+// ============================================
+// FAZER CADASTRO - VERSÃO CORRIGIDA
+// ============================================
 
-            if (!nome || !email || !senha || !empresa_nome || !telefone) {
-                showToast('Preencha todos os campos obrigatórios (incluindo telefone)', 'warning');
-                return;
-            }
+function fazerCadastro() {
+    const nome = document.getElementById('cadastroNome')?.value?.trim();
+    const email = document.getElementById('cadastroEmail')?.value?.trim();
+    const senha = document.getElementById('cadastroSenha')?.value;
+    const empresa_nome = document.getElementById('cadastroEmpresa')?.value?.trim();
+    const telefone = document.getElementById('cadastroTelefone')?.value?.trim();
 
-            if (senha.length < 6) {
-                showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
-                return;
-            }
+    console.log('📝 Tentando cadastro...');
 
-            if (!acceptTerms) {
-                showToast('Aceite os Termos de Uso para continuar', 'warning');
-                return;
-            }
+    // Validação
+    if (!nome || !email || !senha || !empresa_nome || !telefone) {
+        showToast('⚠️ Preencha todos os campos', 'warning');
+        return;
+    }
 
-            const telefoneLimpo = telefone.replace(/\D/g, '');
-            if (telefoneLimpo.length < 10) {
-                showToast('Digite um telefone válido (ex: 41999999999)', 'warning');
-                return;
-            }
+    if (senha.length < 6) {
+        showToast('⚠️ A senha deve ter pelo menos 6 caracteres', 'warning');
+        return;
+    }
 
-            showLoading();
-            try {
-                const res = await fetch('/api/auth/cadastro', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        nome,
-                        email,
-                        senha,
-                        empresa_nome,
-                        telefone: telefoneLimpo
-                    })
-                });
-                const data = await res.json();
-                hideLoading();
-                if (data.success) {
-                    document.getElementById('cadastroMessage').className = 'success-message';
-                    document.getElementById('cadastroMessage').innerHTML = '✅ ' + data.message;
-                    document.getElementById('cadastroMessage').style.display = 'block';
-                    showToast(data.message, 'success');
-                    setTimeout(() => {
-                        if (typeof window.mostrarLogin === 'function') {
-                            window.mostrarLogin();
-                        } else {
-                            mostrarLogin();
-                        }
-                    }, 3000);
-                } else {
-                    document.getElementById('cadastroMessage').className = 'error-message';
-                    document.getElementById('cadastroMessage').innerHTML = data.message;
-                    document.getElementById('cadastroMessage').style.display = 'block';
-                    showToast(data.message, 'error');
-                }
-            } catch (error) {
-                hideLoading();
-                showToast('Erro ao cadastrar', 'error');
-            }
+    const telefoneLimpo = telefone.replace(/\D/g, '');
+    if (telefoneLimpo.length < 10) {
+        showToast('⚠️ Telefone inválido (mínimo 10 dígitos)', 'warning');
+        return;
+    }
+
+    // Mostrar loading
+    const btn = document.querySelector('#cadastroContainer button[type="button"]');
+    const originalText = btn?.textContent || 'Cadastrar';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Cadastrando...';
+    }
+
+    fetch('/api/auth/cadastro', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            nome: nome,
+            email: email,
+            senha: senha,
+            empresa_nome: empresa_nome,
+            telefone: telefoneLimpo
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('📥 Resposta do cadastro:', data);
+
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
         }
+
+        if (!data.success) {
+            showToast(data.message || '❌ Erro ao cadastrar', 'error');
+            return;
+        }
+
+        showToast('✅ Cadastro realizado com sucesso! Faça login.', 'success');
+
+        // 🔥 CORREÇÃO: Redirecionar para login (NÃO tentar login automático)
+        setTimeout(() => {
+            // Ir para tela de login
+            document.getElementById('loginContainer').style.display = 'block';
+            document.getElementById('cadastroContainer').style.display = 'none';
+            
+            // Preencher email automaticamente
+            const loginEmail = document.getElementById('loginEmail');
+            if (loginEmail) {
+                loginEmail.value = email;
+            }
+            
+            showToast('✅ Cadastro realizado! Faça login.', 'success');
+        }, 1500);
+
+    })
+    .catch(error => {
+        console.error('❌ Erro no cadastro:', error);
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+        showToast('❌ Erro ao conectar com o servidor', 'error');
+    });
+}
 
         function logout() {
             localStorage.clear();

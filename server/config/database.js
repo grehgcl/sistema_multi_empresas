@@ -18,17 +18,17 @@ if (!fs.existsSync(dbDir)) {
 function prepareSqlForSQLite(sql) {
     let cleanSql = sql;
 
-    // 1. Placeholders: $1, $2, $3 -> ?
+    // 1. Placeholders: ?, ?, ? -> ?
     cleanSql = cleanSql.replace(/\$\d+/g, '?');
 
     // 2. Funções de Data PG -> SQLite (Regex robusta com \s para espaços)
     // EXTRACT(MONTH FROM data) ou EXTRACT(MONTH FROM a.data)
-    cleanSql = cleanSql.replace(/EXTRACT\(\s*MONTH\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%m', $1)");
-    cleanSql = cleanSql.replace(/EXTRACT\(\s*YEAR\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%Y', $1)");
-    cleanSql = cleanSql.replace(/EXTRACT\(\s*DAY\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%d', $1)");
+    cleanSql = cleanSql.replace(/EXTRACT\(\s*MONTH\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%m', ?)");
+    cleanSql = cleanSql.replace(/EXTRACT\(\s*YEAR\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%Y', ?)");
+    cleanSql = cleanSql.replace(/EXTRACT\(\s*DAY\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%d', ?)");
 
-    // to_char(data, 'YYYY-MM-DD') -> date(data)
-    cleanSql = cleanSql.replace(/to_char\(\s*([\w\.]+)\s*,\s*'YYYY-MM-DD'\s*\)/gi, "date($1)");
+    // ${formatDate('data')} -> date(data)
+    cleanSql = cleanSql.replace(/to_char\(\s*([\w\.]+)\s*,\s*'YYYY-MM-DD'\s*\)/gi, "date(?)");
 
     // 3. Booleanos: true/false -> 1/0 (apenas em comparações simples)
     cleanSql = cleanSql.replace(/=\s*true/gi, '= 1');
@@ -53,7 +53,7 @@ if (hasPostgres) {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
             
-            // Converte ? para $1, $2 (Postgres)
+            // Converte ? para ?, ? (Postgres)
             let i = 0;
             const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
             
@@ -156,6 +156,35 @@ if (hasPostgres) {
             const file = files.find(f => f.includes(`_${empresaId}.db`));
             if (file) {
                 const empresaDb = new sqlite3.Database(path.join(dbDir, file));
+
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `${formatDate('${field}')}` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
+
+// ============================================
+
                 return {
                     get: (sql, p, c) => empresaDb.get(prepareSqlForSQLite(sql), p, c),
                     all: (sql, p, c) => empresaDb.all(prepareSqlForSQLite(sql), p, c),

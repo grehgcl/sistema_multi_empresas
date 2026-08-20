@@ -1,193 +1,308 @@
 ﻿// ============================================
-// ROTAS DE DESPESAS
+// ROTAS DE DESPESAS - VERSÃO SIMPLIFICADA
 // ============================================
+
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
-// server/routes/despesas.routes.js
-
 // ============================================
-// GET /api/despesas
+// GET /api/despesas - CORRIGIDO
 // ============================================
+
 router.get('/', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const { mes, ano, categoria, search } = req.query;
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const { mes, ano, categoria, search } = req.query;
 
-    let sql = isProduction
-        ? "SELECT * FROM despesas WHERE empresa_id = $1"
-        : "SELECT * FROM despesas WHERE empresa_id = ?";
-    let params = [empresaId];
-    let counter = 2;
+        console.log(`📊 Buscando despesas - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}`);
 
-    // 🔥 CORREÇÃO: Usar EXTRACT no PostgreSQL
-    if (mes) {
-        sql += isProduction
-            ? ` AND EXTRACT(MONTH FROM data) = $${counter}`
-            : " AND strftime('%m', data) = ?";
-        params.push(mes);
-        counter++;
-    }
-
-    if (ano) {
-        sql += isProduction
-            ? ` AND EXTRACT(YEAR FROM data) = $${counter}`
-            : " AND strftime('%Y', data) = ?";
-        params.push(ano);
-        counter++;
-    }
-
-    if (categoria) {
-        sql += isProduction
-            ? ` AND categoria = $${counter}`
-            : " AND categoria = ?";
-        params.push(categoria);
-        counter++;
-    }
-
-    if (search) {
-        const searchTerm = `%${search}%`;
-        sql += isProduction
-            ? ` AND (descricao LIKE $${counter} OR observacao LIKE $${counter + 1})`
-            : " AND (descricao LIKE ? OR observacao LIKE ?)";
-        params.push(searchTerm, searchTerm);
-        counter += 2;
-    }
-
-    sql += isProduction ? " ORDER BY data DESC" : " ORDER BY data DESC";
-
-    db.all(sql, params, (err, despesas) => {
-        if (err) {
-            console.error("❌ Erro ao buscar despesas:", err);
+        const db = getEmpresaDb(empresaId);
+        if (!db) {
             return res.status(500).json({
                 success: false,
-                message: err.message
+                message: 'Erro ao conectar ao banco da empresa'
             });
         }
 
-        res.json({
-            success: true,
-            data: despesas || []
+        // 🔥 QUERY SEM FILTRO DE DATA (retorna TUDO)
+        let sql = `SELECT * FROM despesas WHERE empresa_id = ?`;
+        let params = [empresaId];
+
+        // 🔥 SÓ FILTRAR POR DATA SE MES E ANO FOREM FORNECIDOS
+        if (mes && ano && mes !== '' && ano !== '') {
+            const mesFormatado = mes.padStart(2, '0');
+            // Usar LIKE para comparar data (já que é TEXT)
+            sql += ` AND data LIKE ? AND data LIKE ?`;
+            params.push(`%${mesFormatado}%`);
+            params.push(`%${ano}%`);
+        }
+
+        if (categoria && categoria !== '') {
+            sql += ` AND categoria = ?`;
+            params.push(categoria);
+        }
+
+        if (search && search !== '') {
+            const searchTerm = `%${search}%`;
+            sql += ` AND (descricao LIKE ? OR observacao LIKE ?)`;
+            params.push(searchTerm, searchTerm);
+        }
+
+        sql += ` ORDER BY data DESC, id DESC`;
+
+        console.log('📝 SQL:', sql);
+        console.log('📝 Params:', params);
+
+        db.all(sql, params, (err, despesas) => {
+            if (err) {
+                console.error("❌ Erro ao buscar despesas:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            let totalGeral = 0;
+            let totalPago = 0;
+            let totalPendente = 0;
+
+            for (const d of despesas) {
+                const valor = parseFloat(d.valor) || 0;
+                totalGeral += valor;
+                if (d.pago === 1 || d.pago === true) {
+                    totalPago += valor;
+                } else {
+                    totalPendente += valor;
+                }
+            }
+
+            console.log(`✅ ${despesas.length} despesas encontradas`);
+
+            res.json({
+                success: true,
+                data: despesas || [],
+                totais: {
+                    total: totalGeral,
+                    pago: totalPago,
+                    pendente: totalPendente
+                }
+            });
         });
-    });
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
+// ============================================
+// GET /api/despesas/resumo - CORRIGIDO
+// ============================================
+
+router.get('/resumo', auth, (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const { mes, ano } = req.query;
+
+        console.log(`📊 Resumo despesas - Empresa: ${empresaId}, Mês: ${mes}, Ano: ${ano}`);
+
+        const db = getEmpresaDb(empresaId);
+        if (!db) {
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao conectar ao banco da empresa'
+            });
+        }
+
+        // 🔥 USAR MÊS/ANO ATUAL SE NÃO FORNECIDO
+        const hoje = new Date();
+        const mesAtual = mes || String(hoje.getMonth() + 1).padStart(2, '0');
+        const anoAtual = ano || hoje.getFullYear();
+
+        // 🔥 SEMPRE FILTRAR POR MÊS/ANO
+        const sql = `
+            SELECT 
+                SUM(valor) as total,
+                COUNT(*) as quantidade,
+                COALESCE(categoria, 'Outras') as categoria
+            FROM despesas 
+            WHERE empresa_id = ? 
+            AND data LIKE ?
+            AND data LIKE ?
+            GROUP BY categoria
+            ORDER BY total DESC
+        `;
+
+        const params = [empresaId, `%${mesAtual}%`, `%${anoAtual}%`];
+
+        console.log('📝 SQL:', sql);
+        console.log('📝 Params:', params);
+
+        db.all(sql, params, (err, resumo) => {
+            if (err) {
+                console.error("❌ Erro ao buscar resumo:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            const total = resumo.reduce((acc, r) => acc + (r.total || 0), 0);
+
+            res.json({
+                success: true,
+                data: {
+                    total: total,
+                    categorias: resumo || []
+                }
+            });
+        });
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 });
 
 // ============================================
 // GET /api/despesas/categorias
 // ============================================
+
 router.get('/categorias', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const db = getEmpresaDb(empresaId);
 
-    const sql = isProduction
-        ? "SELECT DISTINCT categoria FROM despesas WHERE empresa_id = $1 ORDER BY categoria"
-        : "SELECT DISTINCT categoria FROM despesas WHERE empresa_id = ? ORDER BY categoria";
-
-    db.all(sql, [empresaId], (err, categorias) => {
-        if (err) {
-            console.error("Erro ao buscar categorias:", err);
+        if (!db) {
             return res.status(500).json({
                 success: false,
-                message: err.message
+                message: 'Erro ao conectar ao banco da empresa'
             });
         }
 
-        res.json({
-            success: true,
-            data: categorias.map(c => c.categoria).filter(c => c)
+        const sql = `SELECT DISTINCT categoria FROM despesas WHERE empresa_id = ? AND categoria IS NOT NULL AND categoria != '' ORDER BY categoria`;
+
+        db.all(sql, [empresaId], (err, categorias) => {
+            if (err) {
+                console.error("❌ Erro ao buscar categorias:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            res.json({
+                success: true,
+                data: categorias.map(c => c.categoria).filter(c => c)
+            });
         });
-    });
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
 });
 
-// server/routes/despesas.routes.js
-
 // ============================================
-// GET /api/despesas/resumo
+// GET /api/despesas/:id
 // ============================================
-router.get('/resumo', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const { mes, ano } = req.query;
 
-    // 🔥 CORREÇÃO: Usar EXTRACT no PostgreSQL e strftime no SQLite
-    const sql = isProduction
-        ? `SELECT 
-            SUM(valor) as total,
-            COUNT(*) as quantidade,
-            categoria
-           FROM despesas 
-           WHERE empresa_id = $1 
-           AND EXTRACT(MONTH FROM data) = $2
-           AND EXTRACT(YEAR FROM data) = $3
-           GROUP BY categoria
-           ORDER BY total DESC`
-        : `SELECT 
-            SUM(valor) as total,
-            COUNT(*) as quantidade,
-            categoria
-           FROM despesas 
-           WHERE empresa_id = ? 
-           AND strftime('%m', data) = ? 
-           AND strftime('%Y', data) = ?
-           GROUP BY categoria
-           ORDER BY total DESC`;
+router.get('/:id', auth, (req, res) => {
+    try {
+        const { id } = req.params;
+        const empresaId = req.usuario.empresa_id;
 
-    db.all(sql, [empresaId, mes, ano], (err, resumo) => {
-        if (err) {
-            console.error("❌ Erro ao buscar resumo:", err);
+        const db = getEmpresaDb(empresaId);
+        if (!db) {
             return res.status(500).json({
                 success: false,
-                message: err.message
+                message: 'Erro ao conectar ao banco da empresa'
             });
         }
 
-        const total = resumo.reduce((acc, r) => acc + (r.total || 0), 0);
+        db.get(
+            `SELECT * FROM despesas WHERE id = ? AND empresa_id = ?`,
+            [id, empresaId],
+            (err, despesa) => {
+                if (err) {
+                    console.error("❌ Erro ao buscar despesa:", err);
+                    return res.status(500).json({
+                        success: false,
+                        message: err.message
+                    });
+                }
 
-        res.json({
-            success: true,
-            data: {
-                total: total,
-                categorias: resumo || []
+                if (!despesa) {
+                    return res.status(404).json({
+                        success: false,
+                        message: 'Despesa não encontrada'
+                    });
+                }
+
+                res.json({
+                    success: true,
+                    data: despesa
+                });
             }
+        );
+
+    } catch (error) {
+        console.error('❌ Erro:', error);
+        res.status(500).json({
+            success: false,
+            message: error.message
         });
-    });
+    }
 });
 
 // ============================================
 // POST /api/despesas
 // ============================================
-// server/routes/despesas.routes.js - POST
-router.post('/', auth, (req, res) => {
+
+router.post('/', auth, verificarDono, (req, res) => {
     const { descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao } = req.body;
     const empresaId = req.usuario.empresa_id;
 
     if (!descricao || !valor || !data) {
         return res.status(400).json({
             success: false,
-            message: 'Descricao, valor e data sao obrigatorios'
+            message: 'Descrição, valor e data são obrigatórios'
         });
     }
 
-    const sql = isProduction
-        ? `INSERT INTO despesas 
-           (descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao, empresa_id) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
-        : `INSERT INTO despesas 
-           (descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao, empresa_id) 
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const db = getEmpresaDb(empresaId);
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sql = `INSERT INTO despesas 
+                 (empresa_id, descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao) 
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`;
 
     db.run(sql, [
+        empresaId,
         descricao,
         categoria || 'Outras',
         parseFloat(valor),
         data,
-        data_vencimento || data,
+        data_vencimento || null,
         pago ? 1 : 0,
         forma_pagamento || 'Dinheiro',
-        observacao || '',
-        empresaId
-    ], function (err) {
+        observacao || ''
+    ], function(err) {
         if (err) {
             console.error("❌ Erro ao criar despesa:", err);
             return res.status(500).json({
@@ -199,14 +314,8 @@ router.post('/', auth, (req, res) => {
         const id = this.lastID;
         console.log(`✅ Despesa criada com ID: ${id}`);
 
-        // 🔥 Buscar a despesa criada para retornar
-        const sqlSelect = isProduction
-            ? "SELECT * FROM despesas WHERE id = $1"
-            : "SELECT * FROM despesas WHERE id = ?";
-
-        db.get(sqlSelect, [id], (err, despesa) => {
+        db.get(`SELECT * FROM despesas WHERE id = ?`, [id], (err, despesa) => {
             if (err) {
-                console.error('❌ Erro ao buscar despesa:', err);
                 return res.json({
                     success: true,
                     message: 'Despesa criada com sucesso!',
@@ -226,7 +335,8 @@ router.post('/', auth, (req, res) => {
 // ============================================
 // PUT /api/despesas/:id
 // ============================================
-router.put('/:id', auth, (req, res) => {
+
+router.put('/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { descricao, categoria, valor, data, data_vencimento, pago, forma_pagamento, observacao } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -234,34 +344,37 @@ router.put('/:id', auth, (req, res) => {
     if (!descricao || !valor || !data) {
         return res.status(400).json({
             success: false,
-            message: 'Descricao, valor e data sao obrigatorios'
+            message: 'Descrição, valor e data são obrigatórios'
         });
     }
 
-    const sql = isProduction
-        ? `UPDATE despesas 
-           SET descricao = $1, categoria = $2, valor = $3, data = $4, 
-               data_vencimento = $5, pago = $6, forma_pagamento = $7, observacao = $8
-           WHERE id = $9 AND empresa_id = $10`
-        : `UPDATE despesas 
-           SET descricao = ?, categoria = ?, valor = ?, data = ?, 
-               data_vencimento = ?, pago = ?, forma_pagamento = ?, observacao = ?
-           WHERE id = ? AND empresa_id = ?`;
+    const db = getEmpresaDb(empresaId);
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sql = `UPDATE despesas 
+                 SET descricao = ?, categoria = ?, valor = ?, data = ?, 
+                     data_vencimento = ?, pago = ?, forma_pagamento = ?, observacao = ?
+                 WHERE id = ? AND empresa_id = ?`;
 
     db.run(sql, [
         descricao,
         categoria || 'Outras',
         parseFloat(valor),
         data,
-        data_vencimento || data,
+        data_vencimento || null,
         pago ? 1 : 0,
         forma_pagamento || 'Dinheiro',
         observacao || '',
         id,
         empresaId
-    ], function (err) {
+    ], function(err) {
         if (err) {
-            console.error("Erro ao atualizar despesa:", err);
+            console.error("❌ Erro ao atualizar despesa:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
@@ -271,13 +384,23 @@ router.put('/:id', auth, (req, res) => {
         if (this.changes === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Despesa nao encontrada'
+                message: 'Despesa não encontrada'
             });
         }
 
-        res.json({
-            success: true,
-            message: 'Despesa atualizada com sucesso!'
+        db.get(`SELECT * FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], (err, despesa) => {
+            if (err) {
+                return res.json({
+                    success: true,
+                    message: 'Despesa atualizada com sucesso!'
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Despesa atualizada com sucesso!',
+                data: despesa
+            });
         });
     });
 });
@@ -285,33 +408,48 @@ router.put('/:id', auth, (req, res) => {
 // ============================================
 // DELETE /api/despesas/:id
 // ============================================
-router.delete('/:id', auth, (req, res) => {
+
+router.delete('/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 
-    const sql = isProduction
-        ? "DELETE FROM despesas WHERE id = $1 AND empresa_id = $2"
-        : "DELETE FROM despesas WHERE id = ? AND empresa_id = ?";
+    const db = getEmpresaDb(empresaId);
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
 
-    db.run(sql, [id, empresaId], function (err) {
+    db.get(`SELECT id FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], (err, row) => {
         if (err) {
-            console.error("Erro ao deletar despesa:", err);
+            console.error("❌ Erro ao verificar despesa:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
             });
         }
 
-        if (this.changes === 0) {
+        if (!row) {
             return res.status(404).json({
                 success: false,
-                message: 'Despesa nao encontrada'
+                message: 'Despesa não encontrada'
             });
         }
 
-        res.json({
-            success: true,
-            message: 'Despesa deletada com sucesso!'
+        db.run(`DELETE FROM despesas WHERE id = ? AND empresa_id = ?`, [id, empresaId], function(err) {
+            if (err) {
+                console.error("❌ Erro ao excluir despesa:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            res.json({
+                success: true,
+                message: 'Despesa excluída com sucesso!'
+            });
         });
     });
 });

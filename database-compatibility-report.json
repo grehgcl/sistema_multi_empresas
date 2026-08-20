@@ -1,0 +1,6310 @@
+{
+  "timestamp": "2026-08-18T20:51:08.044Z",
+  "totalFiles": 264,
+  "results": [
+    {
+      "file": ".vscode\\extensions.json",
+      "ext": ".json",
+      "size": 84,
+      "lines": 5,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\admin.js",
+      "ext": ".js",
+      "size": 6497,
+      "lines": 140,
+      "sqlite": {
+        "score": 9.285714285714286,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\agendamentos.js",
+      "ext": ".js",
+      "size": 41897,
+      "lines": 982,
+      "sqlite": {
+        "score": 1.5274949083503053,
+        "placeholders": 9,
+        "functions": 3,
+        "specific": 3,
+        "total": 15
+      },
+      "postgres": {
+        "score": 4.786150712830957,
+        "placeholders": 40,
+        "functions": 4,
+        "specific": 3,
+        "total": 47
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\auth.js",
+      "ext": ".js",
+      "size": 16514,
+      "lines": 338,
+      "sqlite": {
+        "score": 5.9171597633136095,
+        "placeholders": 19,
+        "functions": 1,
+        "specific": 0,
+        "total": 20
+      },
+      "postgres": {
+        "score": 7.988165680473374,
+        "placeholders": 25,
+        "functions": 2,
+        "specific": 0,
+        "total": 27
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\chatbot.js",
+      "ext": ".js",
+      "size": 33060,
+      "lines": 742,
+      "sqlite": {
+        "score": 2.2911051212938007,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 5.121293800539083,
+        "placeholders": 33,
+        "functions": 3,
+        "specific": 2,
+        "total": 38
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\clientes.js",
+      "ext": ".js",
+      "size": 9646,
+      "lines": 251,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\financeiro.js",
+      "ext": ".js",
+      "size": 2003,
+      "lines": 63,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\horarios.js",
+      "ext": ".js",
+      "size": 4720,
+      "lines": 98,
+      "sqlite": {
+        "score": 13.26530612244898,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 19.387755102040817,
+        "placeholders": 19,
+        "functions": 0,
+        "specific": 0,
+        "total": 19
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\planos.js",
+      "ext": ".js",
+      "size": 14308,
+      "lines": 353,
+      "sqlite": {
+        "score": 10.19830028328612,
+        "placeholders": 36,
+        "functions": 0,
+        "specific": 0,
+        "total": 36
+      },
+      "postgres": {
+        "score": 17.28045325779037,
+        "placeholders": 47,
+        "functions": 14,
+        "specific": 0,
+        "total": 61
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\profissionais.js",
+      "ext": ".js",
+      "size": 7419,
+      "lines": 175,
+      "sqlite": {
+        "score": 6.285714285714286,
+        "placeholders": 11,
+        "functions": 0,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 12.571428571428571,
+        "placeholders": 21,
+        "functions": 1,
+        "specific": 0,
+        "total": 22
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\servicos.js",
+      "ext": ".js",
+      "size": 5847,
+      "lines": 150,
+      "sqlite": {
+        "score": 6.666666666666666,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "postgres": {
+        "score": 13.333333333333332,
+        "placeholders": 19,
+        "functions": 1,
+        "specific": 0,
+        "total": 20
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_clientes_2026-07-02_11-57\\routes_backup\\whatsapp.js",
+      "ext": ".js",
+      "size": 1734,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\admin.js",
+      "ext": ".js",
+      "size": 6497,
+      "lines": 140,
+      "sqlite": {
+        "score": 9.285714285714286,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\agendamentos.js",
+      "ext": ".js",
+      "size": 41897,
+      "lines": 982,
+      "sqlite": {
+        "score": 1.5274949083503053,
+        "placeholders": 9,
+        "functions": 3,
+        "specific": 3,
+        "total": 15
+      },
+      "postgres": {
+        "score": 4.786150712830957,
+        "placeholders": 40,
+        "functions": 4,
+        "specific": 3,
+        "total": 47
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\auth.js",
+      "ext": ".js",
+      "size": 16514,
+      "lines": 338,
+      "sqlite": {
+        "score": 5.9171597633136095,
+        "placeholders": 19,
+        "functions": 1,
+        "specific": 0,
+        "total": 20
+      },
+      "postgres": {
+        "score": 7.988165680473374,
+        "placeholders": 25,
+        "functions": 2,
+        "specific": 0,
+        "total": 27
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\chatbot.js",
+      "ext": ".js",
+      "size": 33060,
+      "lines": 742,
+      "sqlite": {
+        "score": 2.2911051212938007,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 5.121293800539083,
+        "placeholders": 33,
+        "functions": 3,
+        "specific": 2,
+        "total": 38
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\clientes.js",
+      "ext": ".js",
+      "size": 8855,
+      "lines": 237,
+      "sqlite": {
+        "score": 3.375527426160337,
+        "placeholders": 4,
+        "functions": 2,
+        "specific": 2,
+        "total": 8
+      },
+      "postgres": {
+        "score": 5.485232067510548,
+        "placeholders": 10,
+        "functions": 2,
+        "specific": 1,
+        "total": 13
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\financeiro.js",
+      "ext": ".js",
+      "size": 2003,
+      "lines": 63,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\horarios.js",
+      "ext": ".js",
+      "size": 4720,
+      "lines": 98,
+      "sqlite": {
+        "score": 13.26530612244898,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 19.387755102040817,
+        "placeholders": 19,
+        "functions": 0,
+        "specific": 0,
+        "total": 19
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\planos.js",
+      "ext": ".js",
+      "size": 14308,
+      "lines": 353,
+      "sqlite": {
+        "score": 10.19830028328612,
+        "placeholders": 36,
+        "functions": 0,
+        "specific": 0,
+        "total": 36
+      },
+      "postgres": {
+        "score": 17.28045325779037,
+        "placeholders": 47,
+        "functions": 14,
+        "specific": 0,
+        "total": 61
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\profissionais.js",
+      "ext": ".js",
+      "size": 7419,
+      "lines": 175,
+      "sqlite": {
+        "score": 6.285714285714286,
+        "placeholders": 11,
+        "functions": 0,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 12.571428571428571,
+        "placeholders": 21,
+        "functions": 1,
+        "specific": 0,
+        "total": 22
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\servicos.js",
+      "ext": ".js",
+      "size": 5847,
+      "lines": 150,
+      "sqlite": {
+        "score": 6.666666666666666,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "postgres": {
+        "score": 13.333333333333332,
+        "placeholders": 19,
+        "functions": 1,
+        "specific": 0,
+        "total": 20
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_empresas_2026-07-02_11-58\\routes_backup\\whatsapp.js",
+      "ext": ".js",
+      "size": 1734,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\admin.js",
+      "ext": ".js",
+      "size": 6497,
+      "lines": 140,
+      "sqlite": {
+        "score": 9.285714285714286,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\agendamentos.js",
+      "ext": ".js",
+      "size": 41897,
+      "lines": 982,
+      "sqlite": {
+        "score": 1.5274949083503053,
+        "placeholders": 9,
+        "functions": 3,
+        "specific": 3,
+        "total": 15
+      },
+      "postgres": {
+        "score": 4.786150712830957,
+        "placeholders": 40,
+        "functions": 4,
+        "specific": 3,
+        "total": 47
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\auth.js",
+      "ext": ".js",
+      "size": 2046,
+      "lines": 66,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\chatbot.js",
+      "ext": ".js",
+      "size": 33060,
+      "lines": 742,
+      "sqlite": {
+        "score": 2.2911051212938007,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 5.121293800539083,
+        "placeholders": 33,
+        "functions": 3,
+        "specific": 2,
+        "total": 38
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\clientes.js",
+      "ext": ".js",
+      "size": 9646,
+      "lines": 251,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\financeiro.js",
+      "ext": ".js",
+      "size": 2003,
+      "lines": 63,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\planos.js",
+      "ext": ".js",
+      "size": 14308,
+      "lines": 353,
+      "sqlite": {
+        "score": 10.19830028328612,
+        "placeholders": 36,
+        "functions": 0,
+        "specific": 0,
+        "total": 36
+      },
+      "postgres": {
+        "score": 17.28045325779037,
+        "placeholders": 47,
+        "functions": 14,
+        "specific": 0,
+        "total": 61
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\profissionais.js",
+      "ext": ".js",
+      "size": 7419,
+      "lines": 175,
+      "sqlite": {
+        "score": 6.285714285714286,
+        "placeholders": 11,
+        "functions": 0,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 12.571428571428571,
+        "placeholders": 21,
+        "functions": 1,
+        "specific": 0,
+        "total": 22
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\servicos.js",
+      "ext": ".js",
+      "size": 1260,
+      "lines": 37,
+      "sqlite": {
+        "score": 10.810810810810809,
+        "placeholders": 4,
+        "functions": 0,
+        "specific": 0,
+        "total": 4
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_horarios_2026-07-02_11-54\\routes_backup\\whatsapp.js",
+      "ext": ".js",
+      "size": 1734,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\admin.js",
+      "ext": ".js",
+      "size": 6497,
+      "lines": 140,
+      "sqlite": {
+        "score": 9.285714285714286,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\agendamentos.js",
+      "ext": ".js",
+      "size": 41897,
+      "lines": 982,
+      "sqlite": {
+        "score": 1.5274949083503053,
+        "placeholders": 9,
+        "functions": 3,
+        "specific": 3,
+        "total": 15
+      },
+      "postgres": {
+        "score": 4.786150712830957,
+        "placeholders": 40,
+        "functions": 4,
+        "specific": 3,
+        "total": 47
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\auth.js",
+      "ext": ".js",
+      "size": 2046,
+      "lines": 66,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\chatbot.js",
+      "ext": ".js",
+      "size": 33060,
+      "lines": 742,
+      "sqlite": {
+        "score": 2.2911051212938007,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 5.121293800539083,
+        "placeholders": 33,
+        "functions": 3,
+        "specific": 2,
+        "total": 38
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\clientes.js",
+      "ext": ".js",
+      "size": 9646,
+      "lines": 251,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\financeiro.js",
+      "ext": ".js",
+      "size": 2003,
+      "lines": 63,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\servicos.js",
+      "ext": ".js",
+      "size": 1260,
+      "lines": 37,
+      "sqlite": {
+        "score": 10.810810810810809,
+        "placeholders": 4,
+        "functions": 0,
+        "specific": 0,
+        "total": 4
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_planos_2026-07-02_11-51\\routes_backup\\whatsapp.js",
+      "ext": ".js",
+      "size": 1734,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\admin.js",
+      "ext": ".js",
+      "size": 6497,
+      "lines": 140,
+      "sqlite": {
+        "score": 9.285714285714286,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\agendamentos.js",
+      "ext": ".js",
+      "size": 41897,
+      "lines": 982,
+      "sqlite": {
+        "score": 1.5274949083503053,
+        "placeholders": 9,
+        "functions": 3,
+        "specific": 3,
+        "total": 15
+      },
+      "postgres": {
+        "score": 4.786150712830957,
+        "placeholders": 40,
+        "functions": 4,
+        "specific": 3,
+        "total": 47
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\auth.js",
+      "ext": ".js",
+      "size": 2046,
+      "lines": 66,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\chatbot.js",
+      "ext": ".js",
+      "size": 33060,
+      "lines": 742,
+      "sqlite": {
+        "score": 2.2911051212938007,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 5.121293800539083,
+        "placeholders": 33,
+        "functions": 3,
+        "specific": 2,
+        "total": 38
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\clientes.js",
+      "ext": ".js",
+      "size": 9646,
+      "lines": 251,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\financeiro.js",
+      "ext": ".js",
+      "size": 2003,
+      "lines": 63,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\planos.js",
+      "ext": ".js",
+      "size": 14308,
+      "lines": 353,
+      "sqlite": {
+        "score": 10.19830028328612,
+        "placeholders": 36,
+        "functions": 0,
+        "specific": 0,
+        "total": 36
+      },
+      "postgres": {
+        "score": 17.28045325779037,
+        "placeholders": 47,
+        "functions": 14,
+        "specific": 0,
+        "total": 61
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\servicos.js",
+      "ext": ".js",
+      "size": 1260,
+      "lines": 37,
+      "sqlite": {
+        "score": 10.810810810810809,
+        "placeholders": 4,
+        "functions": 0,
+        "specific": 0,
+        "total": 4
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_profissionais_2026-07-02_11-53\\routes_backup\\whatsapp.js",
+      "ext": ".js",
+      "size": 1734,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\admin.js",
+      "ext": ".js",
+      "size": 6497,
+      "lines": 140,
+      "sqlite": {
+        "score": 9.285714285714286,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\agendamentos.js",
+      "ext": ".js",
+      "size": 41897,
+      "lines": 982,
+      "sqlite": {
+        "score": 1.5274949083503053,
+        "placeholders": 9,
+        "functions": 3,
+        "specific": 3,
+        "total": 15
+      },
+      "postgres": {
+        "score": 4.786150712830957,
+        "placeholders": 40,
+        "functions": 4,
+        "specific": 3,
+        "total": 47
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\auth.js",
+      "ext": ".js",
+      "size": 16514,
+      "lines": 338,
+      "sqlite": {
+        "score": 5.9171597633136095,
+        "placeholders": 19,
+        "functions": 1,
+        "specific": 0,
+        "total": 20
+      },
+      "postgres": {
+        "score": 7.988165680473374,
+        "placeholders": 25,
+        "functions": 2,
+        "specific": 0,
+        "total": 27
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\chatbot.js",
+      "ext": ".js",
+      "size": 33060,
+      "lines": 742,
+      "sqlite": {
+        "score": 2.2911051212938007,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 5.121293800539083,
+        "placeholders": 33,
+        "functions": 3,
+        "specific": 2,
+        "total": 38
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\clientes.js",
+      "ext": ".js",
+      "size": 9646,
+      "lines": 251,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\financeiro.js",
+      "ext": ".js",
+      "size": 2003,
+      "lines": 63,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\horarios.js",
+      "ext": ".js",
+      "size": 4720,
+      "lines": 98,
+      "sqlite": {
+        "score": 13.26530612244898,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "postgres": {
+        "score": 19.387755102040817,
+        "placeholders": 19,
+        "functions": 0,
+        "specific": 0,
+        "total": 19
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\planos.js",
+      "ext": ".js",
+      "size": 14308,
+      "lines": 353,
+      "sqlite": {
+        "score": 10.19830028328612,
+        "placeholders": 36,
+        "functions": 0,
+        "specific": 0,
+        "total": 36
+      },
+      "postgres": {
+        "score": 17.28045325779037,
+        "placeholders": 47,
+        "functions": 14,
+        "specific": 0,
+        "total": 61
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\profissionais.js",
+      "ext": ".js",
+      "size": 7419,
+      "lines": 175,
+      "sqlite": {
+        "score": 6.285714285714286,
+        "placeholders": 11,
+        "functions": 0,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 12.571428571428571,
+        "placeholders": 21,
+        "functions": 1,
+        "specific": 0,
+        "total": 22
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\servicos.js",
+      "ext": ".js",
+      "size": 1260,
+      "lines": 37,
+      "sqlite": {
+        "score": 10.810810810810809,
+        "placeholders": 4,
+        "functions": 0,
+        "specific": 0,
+        "total": 4
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "backup_servicos_2026-07-02_11-56\\routes_backup\\whatsapp.js",
+      "ext": ".js",
+      "size": 1734,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\package-lock.json",
+      "ext": ".json",
+      "size": 222895,
+      "lines": 6077,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\package.json",
+      "ext": ".json",
+      "size": 1157,
+      "lines": 46,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\chatbot.js",
+      "ext": ".js",
+      "size": 59914,
+      "lines": 1499,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\agendamentos-profissional.js",
+      "ext": ".js",
+      "size": 17594,
+      "lines": 422,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\agendamentos.js",
+      "ext": ".js",
+      "size": 144961,
+      "lines": 3228,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\clientes.js",
+      "ext": ".js",
+      "size": 161019,
+      "lines": 3267,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0.030609121518212427,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\configuracoes.js",
+      "ext": ".js",
+      "size": 92224,
+      "lines": 1877,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\dashboard-profissional.js",
+      "ext": ".js",
+      "size": 6402,
+      "lines": 160,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\dashboard.js",
+      "ext": ".js",
+      "size": 64705,
+      "lines": 1204,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\empresas.js",
+      "ext": ".js",
+      "size": 89364,
+      "lines": 1462,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\financeiro.js",
+      "ext": ".js",
+      "size": 92165,
+      "lines": 1614,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\planos.js",
+      "ext": ".js",
+      "size": 46789,
+      "lines": 1005,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\servicos.js",
+      "ext": ".js",
+      "size": 29142,
+      "lines": 650,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages\\whatsapp-config.js",
+      "ext": ".js",
+      "size": 18570,
+      "lines": 462,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\ui.js",
+      "ext": ".js",
+      "size": 21307,
+      "lines": 568,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\adicionar-colunas-fiado.js",
+      "ext": ".js",
+      "size": 1403,
+      "lines": 39,
+      "sqlite": {
+        "score": 5.128205128205129,
+        "placeholders": 0,
+        "functions": 2,
+        "specific": 0,
+        "total": 2
+      },
+      "postgres": {
+        "score": 2.5641025641025643,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\adicionar-intervalo-minutos.js",
+      "ext": ".js",
+      "size": 1705,
+      "lines": 51,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\apagar-tudo-empresa5.js",
+      "ext": ".js",
+      "size": 1801,
+      "lines": 50,
+      "sqlite": {
+        "score": 2,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-aberto.js",
+      "ext": ".js",
+      "size": 1972,
+      "lines": 56,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-agendamento-bug.js",
+      "ext": ".js",
+      "size": 7484,
+      "lines": 204,
+      "sqlite": {
+        "score": 0.4901960784313726,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-banco-empresa.js",
+      "ext": ".js",
+      "size": 3740,
+      "lines": 102,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 1.9607843137254903,
+        "placeholders": 2,
+        "functions": 0,
+        "specific": 0,
+        "total": 2
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-chatbot.js",
+      "ext": ".js",
+      "size": 2132,
+      "lines": 60,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 1.6666666666666665,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-clientes-faltantes.js",
+      "ext": ".js",
+      "size": 4788,
+      "lines": 123,
+      "sqlite": {
+        "score": 4.878048780487805,
+        "placeholders": 4,
+        "functions": 2,
+        "specific": 0,
+        "total": 6
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-clientes-null-empresa15.js",
+      "ext": ".js",
+      "size": 2703,
+      "lines": 76,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-clientes-null-empresa5.js",
+      "ext": ".js",
+      "size": 4893,
+      "lines": 116,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-clientes-null.js",
+      "ext": ".js",
+      "size": 2632,
+      "lines": 72,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-colunas-faltantes.js",
+      "ext": ".js",
+      "size": 2158,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 7.017543859649122,
+        "placeholders": 0,
+        "functions": 4,
+        "specific": 0,
+        "total": 4
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-config.js",
+      "ext": ".js",
+      "size": 2052,
+      "lines": 55,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-dashboard.js",
+      "ext": ".js",
+      "size": 1824,
+      "lines": 40,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-despesas-final.js",
+      "ext": ".js",
+      "size": 1260,
+      "lines": 39,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 5.128205128205129,
+        "placeholders": 2,
+        "functions": 0,
+        "specific": 0,
+        "total": 2
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-despesas-final2.js",
+      "ext": ".js",
+      "size": 1564,
+      "lines": 46,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 4.347826086956522,
+        "placeholders": 2,
+        "functions": 0,
+        "specific": 0,
+        "total": 2
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-despesas-query.js",
+      "ext": ".js",
+      "size": 2390,
+      "lines": 52,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 17.307692307692307,
+        "placeholders": 1,
+        "functions": 6,
+        "specific": 2,
+        "total": 9
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-despesas.js",
+      "ext": ".js",
+      "size": 1922,
+      "lines": 53,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-empresa-id.js",
+      "ext": ".js",
+      "size": 2684,
+      "lines": 75,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 2.6666666666666665,
+        "placeholders": 2,
+        "functions": 0,
+        "specific": 0,
+        "total": 2
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-financeiro.js",
+      "ext": ".js",
+      "size": 4311,
+      "lines": 117,
+      "sqlite": {
+        "score": 3.418803418803419,
+        "placeholders": 0,
+        "functions": 2,
+        "specific": 2,
+        "total": 4
+      },
+      "postgres": {
+        "score": 0.8547008547008548,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-horarios-empresa.js",
+      "ext": ".js",
+      "size": 4327,
+      "lines": 101,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-horarios-todas-empresas.js",
+      "ext": ".js",
+      "size": 4222,
+      "lines": 98,
+      "sqlite": {
+        "score": 1.020408163265306,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 2.040816326530612,
+        "placeholders": 0,
+        "functions": 2,
+        "specific": 0,
+        "total": 2
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-servicos-ativos.js",
+      "ext": ".js",
+      "size": 998,
+      "lines": 29,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-status-agendamento.js",
+      "ext": ".js",
+      "size": 2500,
+      "lines": 68,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\corrigir-todos.js",
+      "ext": ".js",
+      "size": 2471,
+      "lines": 65,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\criar-agendamentos-teste.js",
+      "ext": ".js",
+      "size": 6027,
+      "lines": 151,
+      "sqlite": {
+        "score": 7.9470198675496695,
+        "placeholders": 12,
+        "functions": 0,
+        "specific": 0,
+        "total": 12
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\criar-banco-completo.js",
+      "ext": ".js",
+      "size": 9436,
+      "lines": 234,
+      "sqlite": {
+        "score": 9.401709401709402,
+        "placeholders": 1,
+        "functions": 21,
+        "specific": 0,
+        "total": 22
+      },
+      "postgres": {
+        "score": 4.273504273504274,
+        "placeholders": 0,
+        "functions": 10,
+        "specific": 0,
+        "total": 10
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\criar-horarios-completo.js",
+      "ext": ".js",
+      "size": 6394,
+      "lines": 154,
+      "sqlite": {
+        "score": 7.142857142857143,
+        "placeholders": 7,
+        "functions": 4,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\criar-horarios.js",
+      "ext": ".js",
+      "size": 3812,
+      "lines": 92,
+      "sqlite": {
+        "score": 9.782608695652176,
+        "placeholders": 7,
+        "functions": 2,
+        "specific": 0,
+        "total": 9
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\forcar-coluna-intervalo.js",
+      "ext": ".js",
+      "size": 8617,
+      "lines": 180,
+      "sqlite": {
+        "score": 2.2222222222222223,
+        "placeholders": 1,
+        "functions": 3,
+        "specific": 0,
+        "total": 4
+      },
+      "postgres": {
+        "score": 2.2222222222222223,
+        "placeholders": 0,
+        "functions": 4,
+        "specific": 0,
+        "total": 4
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\limpar-agendamentos.js",
+      "ext": ".js",
+      "size": 4780,
+      "lines": 124,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\limpar-cliente-9078.js",
+      "ext": ".js",
+      "size": 2167,
+      "lines": 60,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\migrar-agendamentos-empresa5.js",
+      "ext": ".js",
+      "size": 4679,
+      "lines": 111,
+      "sqlite": {
+        "score": 18.91891891891892,
+        "placeholders": 21,
+        "functions": 0,
+        "specific": 0,
+        "total": 21
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\migrar-usuarios-vps.js",
+      "ext": ".js",
+      "size": 2141,
+      "lines": 61,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 16.393442622950822,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\migrate-vps.js",
+      "ext": ".js",
+      "size": 3054,
+      "lines": 89,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 19.10112359550562,
+        "placeholders": 15,
+        "functions": 2,
+        "specific": 0,
+        "total": 17
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\verificar-agendamentos.js",
+      "ext": ".js",
+      "size": 6991,
+      "lines": 169,
+      "sqlite": {
+        "score": 0.591715976331361,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts\\verificar-bancos-empresas.js",
+      "ext": ".js",
+      "size": 7792,
+      "lines": 212,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\config\\whatsapp.js",
+      "ext": ".js",
+      "size": 1178,
+      "lines": 36,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs\\email-cron.js",
+      "ext": ".js",
+      "size": 1494,
+      "lines": 54,
+      "sqlite": {
+        "score": 1.8518518518518516,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs\\lembretes-pagamento.js",
+      "ext": ".js",
+      "size": 8390,
+      "lines": 223,
+      "sqlite": {
+        "score": 4.484304932735426,
+        "placeholders": 5,
+        "functions": 3,
+        "specific": 2,
+        "total": 10
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs\\lembretes.js",
+      "ext": ".js",
+      "size": 6109,
+      "lines": 147,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs\\reset-contador.js",
+      "ext": ".js",
+      "size": 2772,
+      "lines": 78,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 3.8461538461538463,
+        "placeholders": 3,
+        "functions": 0,
+        "specific": 0,
+        "total": 3
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\middlewares\\auth.js",
+      "ext": ".js",
+      "size": 14637,
+      "lines": 385,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 3.3766233766233764,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\admin.routes.js",
+      "ext": ".js",
+      "size": 50930,
+      "lines": 1262,
+      "sqlite": {
+        "score": 3.0110935023771788,
+        "placeholders": 11,
+        "functions": 17,
+        "specific": 10,
+        "total": 38
+      },
+      "postgres": {
+        "score": 3.8827258320126785,
+        "placeholders": 41,
+        "functions": 4,
+        "specific": 4,
+        "total": 49
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\agendamentos.routes.js",
+      "ext": ".js",
+      "size": 44694,
+      "lines": 1113,
+      "sqlite": {
+        "score": 2.6055705300988317,
+        "placeholders": 16,
+        "functions": 9,
+        "specific": 4,
+        "total": 29
+      },
+      "postgres": {
+        "score": 1.3477088948787062,
+        "placeholders": 15,
+        "functions": 0,
+        "specific": 0,
+        "total": 15
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\auth.routes.js",
+      "ext": ".js",
+      "size": 16261,
+      "lines": 423,
+      "sqlite": {
+        "score": 7.092198581560284,
+        "placeholders": 15,
+        "functions": 15,
+        "specific": 0,
+        "total": 30
+      },
+      "postgres": {
+        "score": 1.6548463356973997,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\chatbot.routes.js",
+      "ext": ".js",
+      "size": 31934,
+      "lines": 790,
+      "sqlite": {
+        "score": 2.151898734177215,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 3.4177215189873418,
+        "placeholders": 22,
+        "functions": 3,
+        "specific": 2,
+        "total": 27
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\clientes.routes.js",
+      "ext": ".js",
+      "size": 13333,
+      "lines": 404,
+      "sqlite": {
+        "score": 2.722772277227723,
+        "placeholders": 11,
+        "functions": 0,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 0.24752475247524752,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\despesas.routes.js",
+      "ext": ".js",
+      "size": 10096,
+      "lines": 319,
+      "sqlite": {
+        "score": 7.836990595611285,
+        "placeholders": 17,
+        "functions": 4,
+        "specific": 4,
+        "total": 25
+      },
+      "postgres": {
+        "score": 10.971786833855798,
+        "placeholders": 27,
+        "functions": 4,
+        "specific": 4,
+        "total": 35
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\empresas.routes.js",
+      "ext": ".js",
+      "size": 12476,
+      "lines": 345,
+      "sqlite": {
+        "score": 0.5797101449275363,
+        "placeholders": 2,
+        "functions": 0,
+        "specific": 0,
+        "total": 2
+      },
+      "postgres": {
+        "score": 4.63768115942029,
+        "placeholders": 16,
+        "functions": 0,
+        "specific": 0,
+        "total": 16
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\financeiro.routes.js",
+      "ext": ".js",
+      "size": 29011,
+      "lines": 725,
+      "sqlite": {
+        "score": 4.137931034482759,
+        "placeholders": 0,
+        "functions": 15,
+        "specific": 15,
+        "total": 30
+      },
+      "postgres": {
+        "score": 6.068965517241379,
+        "placeholders": 22,
+        "functions": 11,
+        "specific": 11,
+        "total": 44
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\horarios.routes.js",
+      "ext": ".js",
+      "size": 7996,
+      "lines": 201,
+      "sqlite": {
+        "score": 11.940298507462686,
+        "placeholders": 24,
+        "functions": 0,
+        "specific": 0,
+        "total": 24
+      },
+      "postgres": {
+        "score": 8.955223880597014,
+        "placeholders": 18,
+        "functions": 0,
+        "specific": 0,
+        "total": 18
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\index.js",
+      "ext": ".js",
+      "size": 1555,
+      "lines": 37,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\pagamento.routes.js",
+      "ext": ".js",
+      "size": 29817,
+      "lines": 728,
+      "sqlite": {
+        "score": 8.241758241758243,
+        "placeholders": 53,
+        "functions": 5,
+        "specific": 2,
+        "total": 60
+      },
+      "postgres": {
+        "score": 12.5,
+        "placeholders": 60,
+        "functions": 31,
+        "specific": 0,
+        "total": 91
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\planos.routes.js",
+      "ext": ".js",
+      "size": 25525,
+      "lines": 632,
+      "sqlite": {
+        "score": 3.6392405063291138,
+        "placeholders": 17,
+        "functions": 4,
+        "specific": 2,
+        "total": 23
+      },
+      "postgres": {
+        "score": 5.8544303797468356,
+        "placeholders": 35,
+        "functions": 2,
+        "specific": 0,
+        "total": 37
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\profissionais.routes.js",
+      "ext": ".js",
+      "size": 21017,
+      "lines": 577,
+      "sqlite": {
+        "score": 2.0797227036395145,
+        "placeholders": 10,
+        "functions": 1,
+        "specific": 1,
+        "total": 12
+      },
+      "postgres": {
+        "score": 3.8128249566724435,
+        "placeholders": 20,
+        "functions": 1,
+        "specific": 1,
+        "total": 22
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\servicos.routes.js",
+      "ext": ".js",
+      "size": 8720,
+      "lines": 249,
+      "sqlite": {
+        "score": 4.016064257028113,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes\\whatsapp.routes.js",
+      "ext": ".js",
+      "size": 35517,
+      "lines": 968,
+      "sqlite": {
+        "score": 0.7231404958677687,
+        "placeholders": 5,
+        "functions": 2,
+        "specific": 0,
+        "total": 7
+      },
+      "postgres": {
+        "score": 2.5826446280991737,
+        "placeholders": 23,
+        "functions": 2,
+        "specific": 0,
+        "total": 25
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services\\email.js",
+      "ext": ".js",
+      "size": 16718,
+      "lines": 425,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services\\evolution-instances.js",
+      "ext": ".js",
+      "size": 25980,
+      "lines": 710,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services\\evolution-websocket.js",
+      "ext": ".js",
+      "size": 2712,
+      "lines": 88,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services\\mercadopago.js",
+      "ext": ".js",
+      "size": 10344,
+      "lines": 272,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services\\whatsapp.js",
+      "ext": ".js",
+      "size": 11541,
+      "lines": 311,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\utils\\constants.js",
+      "ext": ".js",
+      "size": 884,
+      "lines": 23,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\utils\\helpers.js",
+      "ext": ".js",
+      "size": 5421,
+      "lines": 154,
+      "sqlite": {
+        "score": 1.948051948051948,
+        "placeholders": 1,
+        "functions": 2,
+        "specific": 0,
+        "total": 3
+      },
+      "postgres": {
+        "score": 5.844155844155844,
+        "placeholders": 6,
+        "functions": 3,
+        "specific": 0,
+        "total": 9
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server.js",
+      "ext": ".js",
+      "size": 24057,
+      "lines": 663,
+      "sqlite": {
+        "score": 3.3182503770739062,
+        "placeholders": 7,
+        "functions": 10,
+        "specific": 5,
+        "total": 22
+      },
+      "postgres": {
+        "score": 3.770739064856712,
+        "placeholders": 13,
+        "functions": 9,
+        "specific": 3,
+        "total": 25
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "docs\\DEV_GUIDE.md",
+      "ext": ".md",
+      "size": 18385,
+      "lines": 284,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "docs\\ESTRUTURA.md",
+      "ext": ".md",
+      "size": 10580,
+      "lines": 254,
+      "sqlite": {
+        "score": 1.968503937007874,
+        "placeholders": 0,
+        "functions": 5,
+        "specific": 0,
+        "total": 5
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "docs\\IA_CONTEXT.md",
+      "ext": ".md",
+      "size": 16791,
+      "lines": 258,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "docs\\PROJETO.md",
+      "ext": ".md",
+      "size": 1250,
+      "lines": 26,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "exportacao\\comparativo.json",
+      "ext": ".json",
+      "size": 15437,
+      "lines": 770,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "exportacao\\dados.json",
+      "ext": ".json",
+      "size": 51644,
+      "lines": 1937,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 2.632937532266392,
+        "placeholders": 18,
+        "functions": 33,
+        "specific": 0,
+        "total": 51
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "exportacao\\estrutura.json",
+      "ext": ".json",
+      "size": 17392,
+      "lines": 936,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 1.1752136752136753,
+        "placeholders": 0,
+        "functions": 11,
+        "specific": 0,
+        "total": 11
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "exportacao\\migracao_postgresql.sql",
+      "ext": ".sql",
+      "size": 26129,
+      "lines": 412,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 16.990291262135923,
+        "placeholders": 18,
+        "functions": 52,
+        "specific": 0,
+        "total": 70
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "exportacao\\migracao_postgresql_corrigido.sql",
+      "ext": ".sql",
+      "size": 23150,
+      "lines": 415,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 17.59036144578313,
+        "placeholders": 18,
+        "functions": 55,
+        "specific": 0,
+        "total": 73
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "package-lock.json",
+      "ext": ".json",
+      "size": 235324,
+      "lines": 6427,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "package.json",
+      "ext": ".json",
+      "size": 1157,
+      "lines": 46,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\chatbot.js",
+      "ext": ".js",
+      "size": 59914,
+      "lines": 1499,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\agendamentos-profissional.js",
+      "ext": ".js",
+      "size": 17594,
+      "lines": 422,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\agendamentos.js",
+      "ext": ".js",
+      "size": 144961,
+      "lines": 3228,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\clientes.js",
+      "ext": ".js",
+      "size": 161019,
+      "lines": 3267,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0.030609121518212427,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\configuracoes.js",
+      "ext": ".js",
+      "size": 92224,
+      "lines": 1877,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\dashboard-profissional.js",
+      "ext": ".js",
+      "size": 6402,
+      "lines": 160,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\dashboard.js",
+      "ext": ".js",
+      "size": 64705,
+      "lines": 1204,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\empresas.js",
+      "ext": ".js",
+      "size": 89364,
+      "lines": 1462,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\financeiro.js",
+      "ext": ".js",
+      "size": 108929,
+      "lines": 1971,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\planos.js",
+      "ext": ".js",
+      "size": 46789,
+      "lines": 1005,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\servicos.js",
+      "ext": ".js",
+      "size": 29142,
+      "lines": 650,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\pages\\whatsapp-config.js",
+      "ext": ".js",
+      "size": 18570,
+      "lines": 462,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "public\\js\\ui.js",
+      "ext": ".js",
+      "size": 21307,
+      "lines": 568,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "README.md",
+      "ext": ".md",
+      "size": 1993,
+      "lines": 40,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\adicionar-coluna-grupos-todas.js",
+      "ext": ".js",
+      "size": 1548,
+      "lines": 48,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\adicionar-colunas-faltantes.js",
+      "ext": ".js",
+      "size": 1200,
+      "lines": 36,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\adicionar-colunas-pagamento-agendamentos.js",
+      "ext": ".js",
+      "size": 3204,
+      "lines": 89,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\adicionar-intervalo-todas-empresas.js",
+      "ext": ".js",
+      "size": 3413,
+      "lines": 96,
+      "sqlite": {
+        "score": 8.333333333333334,
+        "placeholders": 8,
+        "functions": 0,
+        "specific": 0,
+        "total": 8
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\analisar-arquivos.js",
+      "ext": ".js",
+      "size": 5957,
+      "lines": 184,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\analisar-sistema-completo.js",
+      "ext": ".js",
+      "size": 8539,
+      "lines": 226,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\analisar-whatsapp.js",
+      "ext": ".js",
+      "size": 11875,
+      "lines": 308,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\atualizar-senhas.js",
+      "ext": ".js",
+      "size": 3170,
+      "lines": 82,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 4.878048780487806,
+        "placeholders": 3,
+        "functions": 1,
+        "specific": 0,
+        "total": 4
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\atualizar-valor-total.js",
+      "ext": ".js",
+      "size": 555,
+      "lines": 17,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\atualizar-whatsapp.js",
+      "ext": ".js",
+      "size": 1090,
+      "lines": 32,
+      "sqlite": {
+        "score": 3.125,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\buscar-agendamentos-sandro.js",
+      "ext": ".js",
+      "size": 1637,
+      "lines": 53,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 3.7735849056603774,
+        "placeholders": 0,
+        "functions": 2,
+        "specific": 0,
+        "total": 2
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\buscar-agendamentos-studio.js",
+      "ext": ".js",
+      "size": 1846,
+      "lines": 59,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 6.779661016949152,
+        "placeholders": 3,
+        "functions": 1,
+        "specific": 0,
+        "total": 4
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\buscar-agendamentos.js",
+      "ext": ".js",
+      "size": 1754,
+      "lines": 57,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\buscar-clientes-sandro.js",
+      "ext": ".js",
+      "size": 476,
+      "lines": 14,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 7.142857142857143,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\buscar-sandro.js",
+      "ext": ".js",
+      "size": 1465,
+      "lines": 33,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\corrigir-empresa-17.js",
+      "ext": ".js",
+      "size": 2654,
+      "lines": 80,
+      "sqlite": {
+        "score": 1.25,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\corrigir-empresas-null.js",
+      "ext": ".js",
+      "size": 18972,
+      "lines": 489,
+      "sqlite": {
+        "score": 6.134969325153374,
+        "placeholders": 15,
+        "functions": 15,
+        "specific": 0,
+        "total": 30
+      },
+      "postgres": {
+        "score": 1.4314928425357873,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\corrigir-instancia.js",
+      "ext": ".js",
+      "size": 1165,
+      "lines": 33,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\corrigir-nomes-bancos.js",
+      "ext": ".js",
+      "size": 4073,
+      "lines": 117,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\criar-banco-15.js",
+      "ext": ".js",
+      "size": 5880,
+      "lines": 169,
+      "sqlite": {
+        "score": 13.017751479289943,
+        "placeholders": 8,
+        "functions": 14,
+        "specific": 0,
+        "total": 22
+      },
+      "postgres": {
+        "score": 4.142011834319527,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\criar-empresa-15.js",
+      "ext": ".js",
+      "size": 8894,
+      "lines": 210,
+      "sqlite": {
+        "score": 10.952380952380953,
+        "placeholders": 8,
+        "functions": 15,
+        "specific": 0,
+        "total": 23
+      },
+      "postgres": {
+        "score": 3.333333333333333,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\criar-horarios-empresas-faltantes.js",
+      "ext": ".js",
+      "size": 2860,
+      "lines": 88,
+      "sqlite": {
+        "score": 11.363636363636363,
+        "placeholders": 8,
+        "functions": 2,
+        "specific": 0,
+        "total": 10
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\criar-tabela-agendamentos-faltantes.js",
+      "ext": ".js",
+      "size": 2298,
+      "lines": 66,
+      "sqlite": {
+        "score": 3.0303030303030303,
+        "placeholders": 0,
+        "functions": 2,
+        "specific": 0,
+        "total": 2
+      },
+      "postgres": {
+        "score": 1.5151515151515151,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\criar-tabelas-mysql.js",
+      "ext": ".js",
+      "size": 8567,
+      "lines": 239,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 2.9288702928870296,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\criar-tabelas-todas-empresas.js",
+      "ext": ".js",
+      "size": 7057,
+      "lines": 211,
+      "sqlite": {
+        "score": 9.478672985781989,
+        "placeholders": 8,
+        "functions": 12,
+        "specific": 0,
+        "total": 20
+      },
+      "postgres": {
+        "score": 2.3696682464454972,
+        "placeholders": 0,
+        "functions": 5,
+        "specific": 0,
+        "total": 5
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\deletar-empresa-17.js",
+      "ext": ".js",
+      "size": 2570,
+      "lines": 76,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\deletar-empresa-null.js",
+      "ext": ".js",
+      "size": 880,
+      "lines": 32,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\deletar-empresas-null.js",
+      "ext": ".js",
+      "size": 1388,
+      "lines": 49,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\deletar-gregorio.js",
+      "ext": ".js",
+      "size": 2890,
+      "lines": 82,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\deletar-usuario-empresa-17.js",
+      "ext": ".js",
+      "size": 2846,
+      "lines": 83,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\desabilitar-whatsapp.js",
+      "ext": ".js",
+      "size": 904,
+      "lines": 22,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\diagnosticar-bancos.js",
+      "ext": ".js",
+      "size": 11357,
+      "lines": 303,
+      "sqlite": {
+        "score": 0.33003300330033003,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\diagnosticar-estrutura.js",
+      "ext": ".js",
+      "size": 2131,
+      "lines": 58,
+      "sqlite": {
+        "score": 3.4482758620689657,
+        "placeholders": 1,
+        "functions": 1,
+        "specific": 0,
+        "total": 2
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\diagnosticar-rotas.js",
+      "ext": ".js",
+      "size": 1633,
+      "lines": 38,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\diagnosticar-sistema.js",
+      "ext": ".js",
+      "size": 7939,
+      "lines": 183,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\diagnostico-mysql.js",
+      "ext": ".js",
+      "size": 10033,
+      "lines": 286,
+      "sqlite": {
+        "score": 4.895104895104895,
+        "placeholders": 0,
+        "functions": 12,
+        "specific": 2,
+        "total": 14
+      },
+      "postgres": {
+        "score": 5.244755244755245,
+        "placeholders": 0,
+        "functions": 10,
+        "specific": 5,
+        "total": 15
+      },
+      "issues": [
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Usar wrapper de compatibilidade ou padronizar",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\excluir-agendamentos-studio.js",
+      "ext": ".js",
+      "size": 6175,
+      "lines": 146,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\faturamento.js",
+      "ext": ".js",
+      "size": 1291,
+      "lines": 39,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 7.6923076923076925,
+        "placeholders": 3,
+        "functions": 0,
+        "specific": 0,
+        "total": 3
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\fix-dates.js",
+      "ext": ".js",
+      "size": 2054,
+      "lines": 54,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\importar-agendamentos-vps.js",
+      "ext": ".js",
+      "size": 5622,
+      "lines": 179,
+      "sqlite": {
+        "score": 5.5865921787709505,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\keep_alive.js",
+      "ext": ".js",
+      "size": 4001,
+      "lines": 117,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\limpar-empresas-null.js",
+      "ext": ".js",
+      "size": 1745,
+      "lines": 58,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\limpar-projeto-com-backup.js",
+      "ext": ".js",
+      "size": 10912,
+      "lines": 338,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\limpar-usuarios-duplicados.js",
+      "ext": ".js",
+      "size": 2305,
+      "lines": 80,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\limpar-usuarios-null.js",
+      "ext": ".js",
+      "size": 1690,
+      "lines": 55,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\listar-bancos.js",
+      "ext": ".js",
+      "size": 711,
+      "lines": 27,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrar-agendamentos-para-empresas.js",
+      "ext": ".js",
+      "size": 3984,
+      "lines": 104,
+      "sqlite": {
+        "score": 17.307692307692307,
+        "placeholders": 17,
+        "functions": 1,
+        "specific": 0,
+        "total": 18
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrar-extras.js",
+      "ext": ".js",
+      "size": 1681,
+      "lines": 47,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrar-sandro-v2.js",
+      "ext": ".js",
+      "size": 5006,
+      "lines": 153,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 19.6078431372549,
+        "placeholders": 28,
+        "functions": 2,
+        "specific": 0,
+        "total": 30
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrar-sandro.js",
+      "ext": ".js",
+      "size": 5281,
+      "lines": 156,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 21.153846153846153,
+        "placeholders": 31,
+        "functions": 2,
+        "specific": 0,
+        "total": 33
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrar-simples.js",
+      "ext": ".js",
+      "size": 3549,
+      "lines": 114,
+      "sqlite": {
+        "score": 9.649122807017545,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 4,
+        "total": 11
+      },
+      "postgres": {
+        "score": 12.280701754385966,
+        "placeholders": 0,
+        "functions": 8,
+        "specific": 6,
+        "total": 14
+      },
+      "issues": [
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Usar wrapper de compatibilidade ou padronizar",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\migrar-usuarios-vps.js",
+      "ext": ".js",
+      "size": 2141,
+      "lines": 61,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 16.393442622950822,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrar-whatsapp-coluna.js",
+      "ext": ".js",
+      "size": 939,
+      "lines": 27,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\migrate-vps.js",
+      "ext": ".js",
+      "size": 3054,
+      "lines": 89,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 19.10112359550562,
+        "placeholders": 15,
+        "functions": 2,
+        "specific": 0,
+        "total": 17
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\recriar-banco-17.js",
+      "ext": ".js",
+      "size": 6123,
+      "lines": 174,
+      "sqlite": {
+        "score": 13.793103448275863,
+        "placeholders": 9,
+        "functions": 15,
+        "specific": 0,
+        "total": 24
+      },
+      "postgres": {
+        "score": 4.022988505747127,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\recriar-tabela-empresas.js",
+      "ext": ".js",
+      "size": 6417,
+      "lines": 153,
+      "sqlite": {
+        "score": 14.379084967320262,
+        "placeholders": 19,
+        "functions": 3,
+        "specific": 0,
+        "total": 22
+      },
+      "postgres": {
+        "score": 0.6535947712418301,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\recriar-tabelas-17.js",
+      "ext": ".js",
+      "size": 7414,
+      "lines": 203,
+      "sqlite": {
+        "score": 11.822660098522167,
+        "placeholders": 9,
+        "functions": 15,
+        "specific": 0,
+        "total": 24
+      },
+      "postgres": {
+        "score": 3.4482758620689653,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "scripts\\remover-scripts-desnecessarios.js",
+      "ext": ".js",
+      "size": 4177,
+      "lines": 145,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\renomear-bancos.js",
+      "ext": ".js",
+      "size": 2393,
+      "lines": 80,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-agendamentos-empresas.js",
+      "ext": ".js",
+      "size": 1509,
+      "lines": 44,
+      "sqlite": {
+        "score": 2.2727272727272725,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-agendamentos-principal.js",
+      "ext": ".js",
+      "size": 1127,
+      "lines": 36,
+      "sqlite": {
+        "score": 2.7777777777777777,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-agendamentos.js",
+      "ext": ".js",
+      "size": 6991,
+      "lines": 169,
+      "sqlite": {
+        "score": 0.591715976331361,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-banco-15.js",
+      "ext": ".js",
+      "size": 1474,
+      "lines": 46,
+      "sqlite": {
+        "score": 2.173913043478261,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-bancos-empresas.js",
+      "ext": ".js",
+      "size": 7792,
+      "lines": 212,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-bancos.js",
+      "ext": ".js",
+      "size": 1158,
+      "lines": 37,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-empresas.js",
+      "ext": ".js",
+      "size": 786,
+      "lines": 26,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-horarios-empresas.js",
+      "ext": ".js",
+      "size": 1626,
+      "lines": 48,
+      "sqlite": {
+        "score": 2.0833333333333335,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-rota-chatbot.js",
+      "ext": ".js",
+      "size": 901,
+      "lines": 24,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "scripts\\verificar-tabelas-empresa.js",
+      "ext": ".js",
+      "size": 1189,
+      "lines": 38,
+      "sqlite": {
+        "score": 2.631578947368421,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\jobs\\email-cron.js",
+      "ext": ".js",
+      "size": 1494,
+      "lines": 54,
+      "sqlite": {
+        "score": 1.8518518518518516,
+        "placeholders": 0,
+        "functions": 1,
+        "specific": 0,
+        "total": 1
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\jobs\\lembretes-pagamento.js",
+      "ext": ".js",
+      "size": 8390,
+      "lines": 223,
+      "sqlite": {
+        "score": 4.484304932735426,
+        "placeholders": 5,
+        "functions": 3,
+        "specific": 2,
+        "total": 10
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\jobs\\lembretes.js",
+      "ext": ".js",
+      "size": 6109,
+      "lines": 147,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\jobs\\reset-contador.js",
+      "ext": ".js",
+      "size": 2772,
+      "lines": 78,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 3.8461538461538463,
+        "placeholders": 3,
+        "functions": 0,
+        "specific": 0,
+        "total": 3
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\middlewares\\auth.js",
+      "ext": ".js",
+      "size": 14637,
+      "lines": 385,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 3.3766233766233764,
+        "placeholders": 13,
+        "functions": 0,
+        "specific": 0,
+        "total": 13
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\routes\\admin.routes.js",
+      "ext": ".js",
+      "size": 50930,
+      "lines": 1262,
+      "sqlite": {
+        "score": 3.0110935023771788,
+        "placeholders": 11,
+        "functions": 17,
+        "specific": 10,
+        "total": 38
+      },
+      "postgres": {
+        "score": 3.8827258320126785,
+        "placeholders": 41,
+        "functions": 4,
+        "specific": 4,
+        "total": 49
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "server\\routes\\agendamentos.routes.js",
+      "ext": ".js",
+      "size": 44694,
+      "lines": 1113,
+      "sqlite": {
+        "score": 2.6055705300988317,
+        "placeholders": 16,
+        "functions": 9,
+        "specific": 4,
+        "total": 29
+      },
+      "postgres": {
+        "score": 1.3477088948787062,
+        "placeholders": 15,
+        "functions": 0,
+        "specific": 0,
+        "total": 15
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\routes\\auth.routes.js",
+      "ext": ".js",
+      "size": 16261,
+      "lines": 423,
+      "sqlite": {
+        "score": 7.092198581560284,
+        "placeholders": 15,
+        "functions": 15,
+        "specific": 0,
+        "total": 30
+      },
+      "postgres": {
+        "score": 1.6548463356973997,
+        "placeholders": 0,
+        "functions": 7,
+        "specific": 0,
+        "total": 7
+      },
+      "issues": [
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Possui sintaxe para ambos os bancos mas não tem wrapper de compatibilidade"
+      ],
+      "recommendations": [
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Adicionar verificação isProduction ou criar wrapper"
+      ]
+    },
+    {
+      "file": "server\\routes\\chatbot.routes.js",
+      "ext": ".js",
+      "size": 31934,
+      "lines": 790,
+      "sqlite": {
+        "score": 2.151898734177215,
+        "placeholders": 13,
+        "functions": 2,
+        "specific": 2,
+        "total": 17
+      },
+      "postgres": {
+        "score": 3.4177215189873418,
+        "placeholders": 22,
+        "functions": 3,
+        "specific": 2,
+        "total": 27
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "server\\routes\\clientes.routes.js",
+      "ext": ".js",
+      "size": 13333,
+      "lines": 404,
+      "sqlite": {
+        "score": 2.722772277227723,
+        "placeholders": 11,
+        "functions": 0,
+        "specific": 0,
+        "total": 11
+      },
+      "postgres": {
+        "score": 0.24752475247524752,
+        "placeholders": 1,
+        "functions": 0,
+        "specific": 0,
+        "total": 1
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\routes\\despesas.routes.js",
+      "ext": ".js",
+      "size": 10096,
+      "lines": 319,
+      "sqlite": {
+        "score": 7.836990595611285,
+        "placeholders": 17,
+        "functions": 4,
+        "specific": 4,
+        "total": 25
+      },
+      "postgres": {
+        "score": 10.971786833855798,
+        "placeholders": 27,
+        "functions": 4,
+        "specific": 4,
+        "total": 35
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "server\\routes\\empresas.routes.js",
+      "ext": ".js",
+      "size": 12476,
+      "lines": 345,
+      "sqlite": {
+        "score": 0.5797101449275363,
+        "placeholders": 2,
+        "functions": 0,
+        "specific": 0,
+        "total": 2
+      },
+      "postgres": {
+        "score": 4.63768115942029,
+        "placeholders": 16,
+        "functions": 0,
+        "specific": 0,
+        "total": 16
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\routes\\financeiro.routes.js",
+      "ext": ".js",
+      "size": 23536,
+      "lines": 658,
+      "sqlite": {
+        "score": 6.382978723404255,
+        "placeholders": 0,
+        "functions": 21,
+        "specific": 21,
+        "total": 42
+      },
+      "postgres": {
+        "score": 1.21580547112462,
+        "placeholders": 0,
+        "functions": 4,
+        "specific": 4,
+        "total": 8
+      },
+      "issues": [
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "server\\routes\\horarios.routes.js",
+      "ext": ".js",
+      "size": 7996,
+      "lines": 201,
+      "sqlite": {
+        "score": 11.940298507462686,
+        "placeholders": 24,
+        "functions": 0,
+        "specific": 0,
+        "total": 24
+      },
+      "postgres": {
+        "score": 8.955223880597014,
+        "placeholders": 18,
+        "functions": 0,
+        "specific": 0,
+        "total": 18
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\routes\\index.js",
+      "ext": ".js",
+      "size": 1555,
+      "lines": 37,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\routes\\pagamento.routes.js",
+      "ext": ".js",
+      "size": 29817,
+      "lines": 728,
+      "sqlite": {
+        "score": 8.241758241758243,
+        "placeholders": 53,
+        "functions": 5,
+        "specific": 2,
+        "total": 60
+      },
+      "postgres": {
+        "score": 12.5,
+        "placeholders": 60,
+        "functions": 31,
+        "specific": 0,
+        "total": 91
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\routes\\planos.routes.js",
+      "ext": ".js",
+      "size": 25525,
+      "lines": 632,
+      "sqlite": {
+        "score": 3.6392405063291138,
+        "placeholders": 17,
+        "functions": 4,
+        "specific": 2,
+        "total": 23
+      },
+      "postgres": {
+        "score": 5.8544303797468356,
+        "placeholders": 35,
+        "functions": 2,
+        "specific": 0,
+        "total": 37
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\routes\\profissionais.routes.js",
+      "ext": ".js",
+      "size": 21017,
+      "lines": 577,
+      "sqlite": {
+        "score": 2.0797227036395145,
+        "placeholders": 10,
+        "functions": 1,
+        "specific": 1,
+        "total": 12
+      },
+      "postgres": {
+        "score": 3.8128249566724435,
+        "placeholders": 20,
+        "functions": 1,
+        "specific": 1,
+        "total": 22
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    },
+    {
+      "file": "server\\routes\\servicos.routes.js",
+      "ext": ".js",
+      "size": 8720,
+      "lines": 249,
+      "sqlite": {
+        "score": 4.016064257028113,
+        "placeholders": 10,
+        "functions": 0,
+        "specific": 0,
+        "total": 10
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\routes\\whatsapp.routes.js",
+      "ext": ".js",
+      "size": 36484,
+      "lines": 968,
+      "sqlite": {
+        "score": 0.7231404958677687,
+        "placeholders": 5,
+        "functions": 2,
+        "specific": 0,
+        "total": 7
+      },
+      "postgres": {
+        "score": 2.5826446280991737,
+        "placeholders": 23,
+        "functions": 2,
+        "specific": 0,
+        "total": 25
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server\\services\\email.js",
+      "ext": ".js",
+      "size": 16718,
+      "lines": 425,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\services\\evolution-instances.js",
+      "ext": ".js",
+      "size": 26689,
+      "lines": 710,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\services\\evolution-websocket.js",
+      "ext": ".js",
+      "size": 2712,
+      "lines": 88,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\services\\mercadopago.js",
+      "ext": ".js",
+      "size": 10344,
+      "lines": 272,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\services\\whatsapp.js",
+      "ext": ".js",
+      "size": 11541,
+      "lines": 311,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\utils\\constants.js",
+      "ext": ".js",
+      "size": 884,
+      "lines": 23,
+      "sqlite": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "postgres": {
+        "score": 0,
+        "placeholders": 0,
+        "functions": 0,
+        "specific": 0,
+        "total": 0
+      },
+      "issues": [],
+      "recommendations": []
+    },
+    {
+      "file": "server\\utils\\helpers.js",
+      "ext": ".js",
+      "size": 5421,
+      "lines": 154,
+      "sqlite": {
+        "score": 1.948051948051948,
+        "placeholders": 1,
+        "functions": 2,
+        "specific": 0,
+        "total": 3
+      },
+      "postgres": {
+        "score": 5.844155844155844,
+        "placeholders": 6,
+        "functions": 3,
+        "specific": 0,
+        "total": 9
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL"
+      ]
+    },
+    {
+      "file": "server.js",
+      "ext": ".js",
+      "size": 24057,
+      "lines": 663,
+      "sqlite": {
+        "score": 3.3182503770739062,
+        "placeholders": 7,
+        "functions": 10,
+        "specific": 5,
+        "total": 22
+      },
+      "postgres": {
+        "score": 3.770739064856712,
+        "placeholders": 13,
+        "functions": 9,
+        "specific": 3,
+        "total": 25
+      },
+      "issues": [
+        "Contém placeholders PostgreSQL ($1, $2) em arquivo SQLite",
+        "Contém placeholders SQLite (?) em arquivo PostgreSQL",
+        "Mistura EXTRACT (PG) e strftime (SQLite) no mesmo arquivo"
+      ],
+      "recommendations": [
+        "Substituir $1, $2 por ? para compatibilidade SQLite",
+        "Substituir ? por $1, $2 para compatibilidade PostgreSQL",
+        "Usar wrapper de compatibilidade ou padronizar"
+      ]
+    }
+  ],
+  "summary": {
+    "sqlite": 114,
+    "postgres": 104,
+    "both": 75,
+    "issues": 75
+  }
+}

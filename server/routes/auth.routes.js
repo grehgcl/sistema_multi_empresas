@@ -1,4 +1,9 @@
-﻿// server/routes/auth.routes.js - VERSÃO SIMPLIFICADA (após recriar tabela)
+﻿// ============================================
+// ROTAS DE AUTENTICAÇÃO - SEE&AGENDE
+// COMPATÍVEL SQLite e PostgreSQL
+// ULTIMA ATUALIZACAO: 19/08/2026
+// ============================================
+
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/database');
@@ -10,10 +15,63 @@ const sqlite3 = require('sqlite3').verbose();
 const fs = require('fs');
 
 // ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+// 🔥 FUNÇÃO PARA DATA/HORA ATUAL (COMPATÍVEL)
+function getCurrentTimestamp() {
+    return isProduction ? 'NOW()' : "datetime('now')";
+}
+
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
+
+// ============================================
+// FUNÇÃO: GERAR NOME DO ARQUIVO DO BANCO
+// ============================================
+
+function gerarNomeBanco(nomeEmpresa, empresaId) {
+    let nome = nomeEmpresa
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .replace(/_+/g, '_')
+        .replace(/^_|_$/g, '');
+
+    if (!nome || nome.length < 2) {
+        nome = `empresa`;
+    }
+
+    return `${nome}_${empresaId}.db`;
+}
+
+// ============================================
 // POST /api/auth/login
 // ============================================
+
 router.post('/login', (req, res) => {
     const { email, senha } = req.body;
+
+    console.log(`🔑 Tentando login: ${email}`);
 
     if (!email || !senha) {
         return res.status(400).json({
@@ -22,7 +80,7 @@ router.post('/login', (req, res) => {
         });
     }
 
-    // Super Admin
+    // Super Admin (hardcoded)
     if (email === 'super@admin.com' && senha === 'super123') {
         const token = jwt.sign(
             { id: 1, email: 'super@admin.com', role: 'super_admin' },
@@ -42,8 +100,18 @@ router.post('/login', (req, res) => {
         });
     }
 
-    // Buscar usuário
-    db.get('SELECT * FROM usuarios WHERE email = ?', [email], async (err, user) => {
+    // Buscar usuário no banco
+    const sql = isProduction
+        ? `SELECT u.*, e.nome as empresa_nome, e.whatsapp_instance, e.whatsapp_connected
+           FROM usuarios u
+           LEFT JOIN empresas e ON u.empresa_id = e.id
+           WHERE u.email = $1`
+        : `SELECT u.*, e.nome as empresa_nome, e.whatsapp_instance, e.whatsapp_connected
+           FROM usuarios u
+           LEFT JOIN empresas e ON u.empresa_id = e.id
+           WHERE u.email = ?`;
+
+    db.get(sql, [email], async (err, user) => {
         if (err) {
             console.error('❌ Erro ao buscar usuário:', err);
             return res.status(500).json({ success: false, message: 'Erro ao buscar usuário' });
@@ -53,17 +121,16 @@ router.post('/login', (req, res) => {
             return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
         }
 
-        const senhaValida = await bcrypt.compare(senha, user.senha);
-        if (!senhaValida) {
-            return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
-        }
-
-        db.get('SELECT * FROM empresas WHERE id = ?', [user.empresa_id], (err, empresa) => {
-            if (err) {
-                console.error('❌ Erro ao buscar empresa:', err);
-                return res.status(500).json({ success: false, message: 'Erro ao buscar empresa' });
+        try {
+            const senhaValida = await bcrypt.compare(senha, user.senha);
+            if (!senhaValida) {
+                return res.status(401).json({ success: false, message: 'Credenciais inválidas' });
             }
 
+            // Remover senha
+            const { senha: _, ...usuarioSemSenha } = user;
+
+            // Gerar token
             const token = jwt.sign(
                 {
                     id: user.id,
@@ -75,43 +142,40 @@ router.post('/login', (req, res) => {
                 { expiresIn: '7d' }
             );
 
+            // Registrar acesso
+            const ip = req.ip || req.connection?.remoteAddress || null;
+            const userAgent = req.headers['user-agent'] || null;
+
+            if (user.empresa_id) {
+                const sqlAcesso = isProduction
+                    ? `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent, created_at) 
+                       VALUES ($1, $2, $3, $4, ${getCurrentTimestamp()})`
+                    : `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent, created_at) 
+                       VALUES (?, ?, ?, ?, datetime('now'))`;
+                db.run(sqlAcesso, [user.id, user.empresa_id, ip, userAgent], (err) => {
+                    if (err) console.error('❌ Erro ao registrar acesso:', err);
+                });
+            }
+
+            console.log(`✅ Login realizado: ${user.nome} (${user.role})`);
+
             res.json({
                 success: true,
-                data: {
-                    id: user.id,
-                    nome: user.nome,
-                    email: user.email,
-                    role: user.role,
-                    empresa_id: user.empresa_id,
-                    empresa_nome: empresa?.nome || null
-                },
+                data: usuarioSemSenha,
                 token: token
             });
-        });
+
+        } catch (error) {
+            console.error('❌ Erro no login:', error);
+            res.status(500).json({ success: false, message: 'Erro interno do servidor' });
+        }
     });
 });
 
 // ============================================
-// FUNÇÃO: GERAR NOME DO ARQUIVO DO BANCO
+// POST /api/auth/cadastro - CORRIGIDO PARA BOOLEAN
 // ============================================
-function gerarNomeBanco(nomeEmpresa, empresaId) {
-    let nome = nomeEmpresa
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9]/g, '_')
-        .replace(/_+/g, '_')
-        .replace(/^_|_$/g, '');
 
-    if (!nome || nome.length < 2) {
-        nome = `empresa`;
-    }
-
-    return `${nome}_${empresaId}.db`;
-}
-
-// ============================================
-// POST /api/auth/cadastro - VERSÃO SIMPLIFICADA
-// ============================================
 router.post('/cadastro', async (req, res) => {
     const { nome, email, senha, empresa_nome, telefone } = req.body;
 
@@ -140,14 +204,17 @@ router.post('/cadastro', async (req, res) => {
     if (telefoneLimpo.length < 10) {
         return res.status(400).json({
             success: false,
-            message: 'Telefone inválido'
+            message: 'Telefone inválido (mínimo 10 dígitos)'
         });
     }
 
     try {
-        // 1. Verificar email
+        // 1. Verificar se email já existe
         const usuarioExistente = await new Promise((resolve) => {
-            db.get('SELECT id FROM usuarios WHERE email = ?', [email], (err, row) => {
+            const sql = isProduction
+                ? `SELECT id FROM usuarios WHERE email = $1`
+                : `SELECT id FROM usuarios WHERE email = ?`;
+            db.get(sql, [email], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar email:', err);
                     resolve(null);
@@ -164,42 +231,94 @@ router.post('/cadastro', async (req, res) => {
             });
         }
 
-        // ============================================
-        // 2. CRIAR EMPRESA (AGORA FUNCIONA!)
-        // ============================================
-        console.log('📝 Criando empresa no banco principal...');
+        // 2. Criar empresa
+        console.log('📝 Criando empresa...');
 
-        const sqlEmpresa = `
-            INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, telefone_dono, whatsapp_proprio_habilitado) 
-            VALUES (?, 'trial', 1, datetime('now', '+45 days'), ?, 0)
-        `;
+        const trialExpira = new Date();
+        trialExpira.setDate(trialExpira.getDate() + 45);
+        const trialExpiraStr = trialExpira.toISOString().split('T')[0];
 
         let empresaId = null;
 
-        await new Promise((resolve, reject) => {
-            db.run(sqlEmpresa, [empresa_nome, telefoneLimpo], function(err) {
-                if (err) {
-                    console.error('❌ Erro ao criar empresa:', err);
-                    reject(err);
-                } else {
-                    empresaId = this.lastID;
-                    console.log(`   ✅ Empresa criada com ID: ${empresaId}`);
-                    resolve();
-                }
-            });
-        });
+        // 🔥 CORREÇÃO: USAR BOOLEAN NO POSTGRESQL
+        if (isProduction) {
+            // PostgreSQL - Usar FALSE em vez de 0
+            const sqlEmpresa = `
+                INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, telefone_dono, whatsapp_proprio_habilitado, created_at) 
+                VALUES ($1, 'trial', 1, $2, $3, FALSE, NOW()) 
+                RETURNING id
+            `;
 
-        if (!empresaId || isNaN(empresaId) || empresaId <= 0) {
-            throw new Error(`ID da empresa inválido: ${empresaId}`);
+            const result = await new Promise((resolve, reject) => {
+                db.get(sqlEmpresa, [empresa_nome, trialExpiraStr, telefoneLimpo], (err, row) => {
+                    if (err) {
+                        console.error('❌ Erro ao criar empresa (PG):', err);
+                        reject(err);
+                    } else {
+                        console.log('📊 Resultado PG:', row);
+                        resolve(row);
+                    }
+                });
+            });
+
+            empresaId = result?.id;
+            console.log(`   📊 Empresa ID retornado: ${empresaId}`);
+
+        } else {
+            // SQLite - Usar 0 (inteiro)
+            const sqlEmpresa = `
+                INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, telefone_dono, whatsapp_proprio_habilitado, created_at) 
+                VALUES (?, 'trial', 1, ?, ?, 0, datetime('now'))
+            `;
+
+            await new Promise((resolve, reject) => {
+                db.run(sqlEmpresa, [empresa_nome, trialExpiraStr, telefoneLimpo], function(err) {
+                    if (err) {
+                        console.error('❌ Erro ao criar empresa (SQLite):', err);
+                        reject(err);
+                    } else {
+                        empresaId = this.lastID;
+                        console.log(`   📊 Empresa ID (lastID): ${empresaId}`);
+                        resolve();
+                    }
+                });
+            });
         }
 
-        console.log(`   ✅ ID da empresa confirmado: ${empresaId}`);
+        // Verificar se o ID foi gerado
+        if (!empresaId || isNaN(empresaId) || empresaId <= 0) {
+            console.error('❌ ID da empresa inválido:', empresaId);
+            
+            const empresaBuscada = await new Promise((resolve) => {
+                const sql = isProduction
+                    ? `SELECT id FROM empresas WHERE nome = $1 ORDER BY created_at DESC LIMIT 1`
+                    : `SELECT id FROM empresas WHERE nome = ? ORDER BY created_at DESC LIMIT 1`;
+                db.get(sql, [empresa_nome], (err, row) => {
+                    if (err) {
+                        console.error('❌ Erro ao buscar empresa:', err);
+                        resolve(null);
+                    } else {
+                        resolve(row);
+                    }
+                });
+            });
 
-        // ============================================
-        // 3. VERIFICAR EMPRESA
-        // ============================================
+            if (empresaBuscada) {
+                empresaId = empresaBuscada.id;
+                console.log(`   🔄 Empresa encontrada pelo nome! ID: ${empresaId}`);
+            } else {
+                throw new Error(`Não foi possível obter o ID da empresa: ${empresaId}`);
+            }
+        }
+
+        console.log(`   ✅ Empresa criada/confirmada com ID: ${empresaId}`);
+
+        // 3. Verificar empresa
         const empresaVerificada = await new Promise((resolve) => {
-            db.get('SELECT id, nome FROM empresas WHERE id = ?', [empresaId], (err, row) => {
+            const sql = isProduction
+                ? `SELECT id, nome FROM empresas WHERE id = $1`
+                : `SELECT id, nome FROM empresas WHERE id = ?`;
+            db.get(sql, [empresaId], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar empresa:', err);
                     resolve(null);
@@ -215,9 +334,7 @@ router.post('/cadastro', async (req, res) => {
 
         console.log(`   ✅ Empresa verificada: ${empresaVerificada.nome} (ID: ${empresaVerificada.id})`);
 
-        // ============================================
-        // 4. CRIAR BANCO INDIVIDUAL
-        // ============================================
+        // 4. Criar banco individual (SQLite)
         const dbDir = path.join(__dirname, '../../database');
         if (!fs.existsSync(dbDir)) {
             fs.mkdirSync(dbDir, { recursive: true });
@@ -296,6 +413,10 @@ router.post('/cadastro', async (req, res) => {
                     prazo_dias INTEGER,
                     data_vencimento TEXT,
                     descricao_pagamento TEXT,
+                    lembrete_cobranca_enviado INTEGER DEFAULT 0,
+                    lembrete_cobranca_enviado_em TEXT,
+                    ultimo_lembrete_cobranca_tipo TEXT,
+                    motivo_cancelamento TEXT,
                     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (cliente_id) REFERENCES clientes(id),
                     FOREIGN KEY (servico_id) REFERENCES servicos(id),
@@ -371,19 +492,23 @@ router.post('/cadastro', async (req, res) => {
             });
         });
 
-        // ============================================
-        // 6. CRIAR USUÁRIO
-        // ============================================
+        // 6. Criar usuário (DONO)
         console.log('📝 Criando usuário DONO...');
 
         const senhaHash = bcrypt.hashSync(senha, 10);
-        const sqlUsuario = `
-            INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone) 
-            VALUES (?, ?, ?, 'dono', ?, ?)
-        `;
+
+        const sqlUsuario = isProduction
+            ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone, created_at) 
+               VALUES ($1, $2, $3, 'dono', $4, $5, NOW())`
+            : `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone, created_at) 
+               VALUES (?, ?, ?, 'dono', ?, ?, datetime('now'))`;
+
+        const paramsUsuario = isProduction
+            ? [nome, email, senhaHash, empresaId, telefoneLimpo]
+            : [nome, email, senhaHash, empresaId, telefoneLimpo];
 
         await new Promise((resolve, reject) => {
-            db.run(sqlUsuario, [nome, email, senhaHash, empresaId, telefoneLimpo], function(err) {
+            db.run(sqlUsuario, paramsUsuario, function(err) {
                 if (err) {
                     console.error('❌ Erro ao criar usuário:', err);
                     reject(err);
@@ -416,6 +541,66 @@ router.post('/cadastro', async (req, res) => {
         res.status(500).json({
             success: false,
             message: error.message || 'Erro ao realizar cadastro'
+        });
+    }
+});
+
+// ============================================
+// POST /api/auth/verificar - VERIFICAR TOKEN
+// ============================================
+
+router.post('/verificar', (req, res) => {
+    const { token } = req.body;
+
+    if (!token) {
+        return res.status(401).json({
+            success: false,
+            message: 'Token não fornecido'
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        
+        const sql = isProduction
+            ? `SELECT u.*, e.nome as empresa_nome
+               FROM usuarios u
+               LEFT JOIN empresas e ON u.empresa_id = e.id
+               WHERE u.id = $1`
+            : `SELECT u.*, e.nome as empresa_nome
+               FROM usuarios u
+               LEFT JOIN empresas e ON u.empresa_id = e.id
+               WHERE u.id = ?`;
+
+        db.get(sql, [decoded.id], (err, user) => {
+            if (err) {
+                console.error('❌ Erro ao verificar token:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro ao verificar token'
+                });
+            }
+
+            if (!user) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Usuário não encontrado'
+                });
+            }
+
+            const { senha: _, ...usuarioSemSenha } = user;
+
+            res.json({
+                success: true,
+                usuario: usuarioSemSenha
+            });
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao verificar token:', error);
+        res.status(401).json({
+            success: false,
+            message: 'Token inválido ou expirado'
         });
     }
 });

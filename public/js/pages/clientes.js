@@ -1,11 +1,10 @@
 // ============================================
-// CLIENTES.JS - VERSÃO CRM COMPLETA + MOBILE BLINDADO
-// ULTIMA ATUALIZACAO: 28/07/2026
-// CORREÇÃO: REMOÇÃO DE FUNÇÕES DUPLICADAS + BUSCA MOBILE MELHORADA
+// CLIENTES.JS - CRM COMPLETO + OTIMIZADO
+// ULTIMA ATUALIZACAO: 19/08/2026
 // ============================================
 
 // ============================================
-// FUNÇÕES DE COMPATIBILIDADE POSTGRESQL
+// FUNÇÕES DE COMPATIBILIDADE
 // ============================================
 
 function isAberto(valor) {
@@ -39,30 +38,23 @@ function escapeHtml(text) {
 
 function formatarDataBr(data) {
     if (!data) return '';
-    const d = new Date(data + 'T00:00:00');
-    return d.toLocaleDateString('pt-BR');
+    try {
+        const d = new Date(data + 'T00:00:00');
+        return d.toLocaleDateString('pt-BR');
+    } catch {
+        return data;
+    }
 }
-
-// ============================================
-// FUNÇÕES DE LIMPEZA
-// ============================================
 
 function limparNome(nome) {
     if (!nome) return 'Contato';
-
     let limpo = String(nome)
         .replace(/[^\w\sÀ-ú]/g, ' ')
         .replace(/\s+/g, ' ')
         .replace(/[0-9]/g, '')
         .trim();
-
-    if (!limpo || limpo.length < 2) {
-        return 'Contato';
-    }
-
-    return limpo.split(' ').map(palavra =>
-        palavra.charAt(0).toUpperCase() + palavra.slice(1).toLowerCase()
-    ).join(' ');
+    if (!limpo || limpo.length < 2) return 'Contato';
+    return limpo.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join(' ');
 }
 
 function limparTelefone(telefone) {
@@ -75,63 +67,32 @@ function limparTelefone(telefone) {
 // ============================================
 
 let clientesCompletos = [];
+let clientesFiltradosCache = [];
 let filtroClientes = 'todos';
 let filtroGrupo = 'todos';
 let termoBuscaClientes = '';
+let letraSelecionada = '';
 let promocaoEmAndamento = false;
 let carregandoClientes = false;
 let gruposClientes = [];
 let clienteEditandoGrupos = null;
 let gruposSelecionadosTemp = [];
 let timeoutBusca = null;
-let resizeTimeoutClientes = null;
-let ultimoResizeClientes = 0;
 let envioLock = false;
 let carregandoBackground = false;
+let clientesAgendamentosCache = {};
+
 // ============================================
 // PREVENIR RECARREGAMENTOS NO MOBILE
 // ============================================
 
-// 🔥 PREVINE QUE O TOQUE NO INPUT DISPARE RECARGA
-document.addEventListener('DOMContentLoaded', function () {
+document.addEventListener('DOMContentLoaded', function() {
     const input = document.getElementById('buscaClientesInput');
     if (input) {
-        input.addEventListener('focus', function (e) {
-            e.stopPropagation();
-            console.log('📱 Input focado, evitando recarga');
-        }, { passive: true });
-
-        input.addEventListener('click', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
-
-        input.addEventListener('touchstart', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
+        input.addEventListener('focus', e => e.stopPropagation(), { passive: true });
+        input.addEventListener('click', e => e.stopPropagation(), { passive: true });
+        input.addEventListener('touchstart', e => e.stopPropagation(), { passive: true });
     }
-});
-
-// OU usa MutationObserver para capturar quando o input for criado
-const observerInput = new MutationObserver(function () {
-    const input = document.getElementById('buscaClientesInput');
-    if (input && !input._eventosAdicionados) {
-        input._eventosAdicionados = true;
-        input.addEventListener('focus', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
-        input.addEventListener('click', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
-        input.addEventListener('touchstart', function (e) {
-            e.stopPropagation();
-        }, { passive: true });
-        console.log('✅ Eventos de prevenção adicionados ao input');
-    }
-});
-
-observerInput.observe(document.body, {
-    childList: true,
-    subtree: true
 });
 
 // ============================================
@@ -287,10 +248,8 @@ function excluirGrupoCliente(grupo) {
     showToast(`Grupo "${grupo}" removido deste cliente`, 'info');
 }
 
-// public/js/pages/clientes.js
-
 // ============================================
-// TOGGLE GRUPO CLIENTE - CORRIGIDO
+// TOGGLE GRUPO CLIENTE
 // ============================================
 
 function toggleGrupoCliente(grupo) {
@@ -301,19 +260,15 @@ function toggleGrupoCliente(grupo) {
     }
 
     const isSelected = btn.textContent.includes('✅');
-    console.log(`🔄 Toggle grupo: ${grupo} → ${isSelected ? 'removendo' : 'adicionando'}`);
 
     if (isSelected) {
-        // Remover grupo
         btn.textContent = `☐ ${grupo}`;
         btn.style.background = 'var(--bg-hover)';
         btn.style.color = 'var(--text-secondary)';
         btn.style.borderColor = 'var(--border-color)';
         btn.style.fontWeight = '500';
         gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
-        console.log(`❌ Grupo removido: ${grupo}`, gruposSelecionadosTemp);
     } else {
-        // Adicionar grupo
         btn.textContent = `✅ ${grupo}`;
         btn.style.background = 'rgba(139,92,246,0.15)';
         btn.style.color = '#8b5cf6';
@@ -322,10 +277,8 @@ function toggleGrupoCliente(grupo) {
         if (!gruposSelecionadosTemp.includes(grupo)) {
             gruposSelecionadosTemp.push(grupo);
         }
-        console.log(`✅ Grupo adicionado: ${grupo}`, gruposSelecionadosTemp);
     }
 
-    // 🔥 ATUALIZAR A LISTA DE GRUPOS ATUAIS
     if (clienteEditandoGrupos) {
         atualizarGruposAtuais(clienteEditandoGrupos);
     }
@@ -383,8 +336,8 @@ function criarNovoGrupo() {
 
             atualizarGruposAtuais(clienteId);
 
-            const input = document.getElementById('novoGrupoInput');
-            if (input) input.value = '';
+            const input2 = document.getElementById('novoGrupoInput');
+            if (input2) input2.value = '';
 
             showToast(`Grupo "${nome}" criado e adicionado! ✅`, 'success');
         }, 150);
@@ -440,19 +393,12 @@ function atualizarGruposAtuais(clienteId) {
 // SALVAR GRUPOS DO CLIENTE
 // ============================================
 
-// public/js/pages/clientes.js
-
-// ============================================
-// SALVAR GRUPOS DO CLIENTE - CORRIGIDO
-// ============================================
-
 async function salvarGruposCliente() {
     if (!clienteEditandoGrupos) {
         showToast('❌ Nenhum cliente selecionado', 'error');
         return;
     }
 
-    // 🔥 VERIFICAR SE TEM GRUPOS SELECIONADOS
     console.log('📝 Salvando grupos para cliente:', clienteEditandoGrupos);
     console.log('📝 Grupos selecionados:', gruposSelecionadosTemp);
 
@@ -460,7 +406,6 @@ async function salvarGruposCliente() {
     const token = localStorage.getItem('token');
 
     try {
-        // 🔥 CORREÇÃO: Enviar os grupos como array
         const res = await fetch(`/api/clientes/${clienteEditandoGrupos}/grupos`, {
             method: 'PUT',
             headers: {
@@ -468,7 +413,7 @@ async function salvarGruposCliente() {
                 'Authorization': 'Bearer ' + token
             },
             body: JSON.stringify({
-                grupos: gruposSelecionadosTemp // ← Array de grupos
+                grupos: gruposSelecionadosTemp
             })
         });
 
@@ -478,20 +423,14 @@ async function salvarGruposCliente() {
         if (data.success) {
             showToast('✅ Grupos atualizados com sucesso!', 'success');
 
-            // 🔥 ATUALIZAR O CLIENTE LOCALMENTE
             const clienteIndex = clientesCompletos.findIndex(c => c.id === clienteEditandoGrupos);
             if (clienteIndex !== -1) {
                 clientesCompletos[clienteIndex].grupos = [...gruposSelecionadosTemp];
-                console.log(`✅ Cliente atualizado: ${clientesCompletos[clienteIndex].nome} → Grupos:`, gruposSelecionadosTemp);
             }
 
-            // 🔥 FECHAR MODAL E RECARREGAR
             fecharModalGrupos();
-
-            // 🔥 RECARREGAR A LISTA PARA MOSTRAR AS MUDANÇAS
             await carregarClientes();
 
-            // 🔥 SE TIVER FILTRO DE GRUPO ATIVO, REAPLICAR
             if (filtroGrupo !== 'todos') {
                 setTimeout(() => {
                     setFiltroGrupo(filtroGrupo);
@@ -533,30 +472,11 @@ function setFiltroGrupo(grupo) {
             return true;
         });
 
-        atualizarListaClientes(clientesFiltrados);
+        renderizarClientes(clientesCompletos);
         atualizarBotoesFiltro();
 
         console.log(`✅ Filtro aplicado: ${clientesFiltrados.length} clientes encontrados`);
     }, 100);
-}
-
-// ============================================
-// APLICAR FILTRO DO GRUPO ATUAL
-// ============================================
-
-function aplicarFiltroGrupoAtual() {
-    if (filtroGrupo === 'todos') return;
-
-    const botoes = document.querySelectorAll('[onclick*="setFiltroGrupo"]');
-    for (let btn of botoes) {
-        const onclick = btn.getAttribute('onclick');
-        if (onclick && onclick.includes(`'${filtroGrupo}'`)) {
-            btn.click();
-            return;
-        }
-    }
-
-    carregarClientes();
 }
 
 // ============================================
@@ -572,35 +492,7 @@ function aplicarFiltrosClientes() {
         return;
     }
 
-    let clientesFiltrados = clientesCompletos;
-
-    if (termoBuscaClientes) {
-        const busca = termoBuscaClientes.toLowerCase().trim();
-        clientesFiltrados = clientesFiltrados.filter(c => {
-            const nomeMatch = c.nome.toLowerCase().includes(busca);
-            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
-            const emailMatch = c.email && c.email.toLowerCase().includes(busca);
-            return nomeMatch || telefoneMatch || emailMatch;
-        });
-    }
-
-    if (filtroClientes === 'vip') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
-    } else if (filtroClientes === 'sumidos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
-    } else if (filtroClientes === 'frequentes') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
-    } else if (filtroClientes === 'novos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
-    }
-
-    if (filtroGrupo !== 'todos') {
-        clientesFiltrados = clientesFiltrados.filter(c =>
-            c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
-        );
-    }
-
-    atualizarListaClientes(clientesFiltrados);
+    renderizarClientes(clientesCompletos);
     atualizarBotoesFiltro();
 }
 
@@ -609,43 +501,7 @@ function aplicarFiltrosClientes() {
 // ============================================
 
 function renderizarListaClientes() {
-    const content = document.getElementById('content');
-    if (!content || !content.innerHTML.includes('👥 Clientes')) {
-        return;
-    }
-
-    const isMobile = window.innerWidth < 768;
-
-    let clientesFiltrados = clientesCompletos;
-
-    if (termoBuscaClientes) {
-        const busca = termoBuscaClientes.toLowerCase().trim();
-        clientesFiltrados = clientesFiltrados.filter(c => {
-            const nomeMatch = c.nome.toLowerCase().includes(busca);
-            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
-            const emailMatch = c.email && c.email.toLowerCase().includes(busca);
-            return nomeMatch || telefoneMatch || emailMatch;
-        });
-    }
-
-    if (filtroClientes === 'vip') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
-    } else if (filtroClientes === 'sumidos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
-    } else if (filtroClientes === 'frequentes') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
-    } else if (filtroClientes === 'novos') {
-        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
-    }
-
-    if (filtroGrupo !== 'todos') {
-        clientesFiltrados = clientesFiltrados.filter(c =>
-            c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
-        );
-    }
-
-    atualizarListaClientes(clientesFiltrados);
-    atualizarBotoesFiltro();
+    renderizarClientes(clientesCompletos);
 }
 
 // ============================================
@@ -696,7 +552,7 @@ async function carregarClientesBackground() {
 
         const [resClientes, resAgendamentos, resGrupos] = await Promise.all([
             fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/agendamentos?limit=500', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/clientes/grupos', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
@@ -706,32 +562,37 @@ async function carregarClientesBackground() {
         }
 
         const dataClientes = await resClientes.json();
-        const dataAgendamentos = await resAgendamentos.json();
-        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: {} };
+        const dataAgendamentos = resAgendamentos.ok ? await resAgendamentos.json() : { data: [] };
+        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: { clientes: [], grupos: [] } };
 
         const clientes = dataClientes.data || [];
         const agendamentos = dataAgendamentos.data || [];
         const gruposMap = dataGrupos.data || {};
 
+        const agendamentosPorCliente = new Map();
+        for (const a of agendamentos) {
+            if (!agendamentosPorCliente.has(a.cliente_id)) {
+                agendamentosPorCliente.set(a.cliente_id, []);
+            }
+            agendamentosPorCliente.get(a.cliente_id).push(a);
+        }
+
         clientesCompletos = clientes.map(cliente => {
-            const ags = agendamentos.filter(a => a.cliente_id === cliente.id);
+            const ags = agendamentosPorCliente.get(cliente.id) || [];
             const agsConcluidos = ags.filter(a => a.status === 'concluido');
 
             let valorTotal = 0;
-            agsConcluidos.forEach(a => {
+            for (const a of agsConcluidos) {
                 valorTotal += parseFloat(a.valor_total) || parseFloat(a.valor) || 0;
-            });
+            }
 
             const ticketMedio = agsConcluidos.length > 0 ? valorTotal / agsConcluidos.length : 0;
 
             let ultimaVisita = null;
+            let diasDesdeUltima = null;
             if (agsConcluidos.length > 0) {
                 const datas = agsConcluidos.map(a => new Date(a.data + 'T00:00:00'));
                 ultimaVisita = new Date(Math.max(...datas));
-            }
-
-            let diasDesdeUltima = null;
-            if (ultimaVisita) {
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
                 const diffTime = hoje - ultimaVisita;
@@ -755,10 +616,24 @@ async function carregarClientesBackground() {
                 icone = '🌱';
             }
 
-            const grupos = gruposMap[cliente.id] || [];
+            let grupos = [];
+            if (cliente.grupos) {
+                try {
+                    grupos = typeof cliente.grupos === 'string' ? JSON.parse(cliente.grupos) : cliente.grupos;
+                } catch (e) {
+                    grupos = [];
+                }
+            }
 
             return {
-                ...cliente,
+                id: cliente.id,
+                nome: cliente.nome || 'Cliente',
+                telefone: cliente.telefone || '',
+                email: cliente.email || '',
+                grupos: grupos,
+                bloqueado_chatbot: cliente.bloqueado_chatbot || 0,
+                dias_bloqueio: cliente.dias_bloqueio || null,
+                created_at: cliente.created_at,
                 total_agendamentos: ags.length,
                 total_concluidos: agsConcluidos.length,
                 valor_total: valorTotal,
@@ -766,14 +641,23 @@ async function carregarClientesBackground() {
                 ultima_visita: ultimaVisita,
                 dias_sem_visita: diasDesdeUltima,
                 classificacao: classificacao,
-                icone: icone,
-                grupos: grupos
+                icone: icone
             };
         });
 
         clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
 
-        aplicarFiltrosClientes();
+        const gruposSet = new Set();
+        for (const c of clientesCompletos) {
+            if (c.grupos && Array.isArray(c.grupos)) {
+                for (const g of c.grupos) {
+                    if (g) gruposSet.add(g);
+                }
+            }
+        }
+        gruposClientes = Array.from(gruposSet).sort();
+
+        renderizarClientes(clientesCompletos);
 
         console.log(`✅ Background: ${clientesCompletos.length} clientes atualizados`);
 
@@ -783,11 +667,10 @@ async function carregarClientesBackground() {
 
     carregandoBackground = false;
 }
-// ============================================
-// BUSCA POR ÍNDICE ALFABÉTICO (A-Z)
-// ============================================
 
-let letraSelecionada = '';
+// ============================================
+// FILTRAR POR LETRA (A-Z)
+// ============================================
 
 function filtrarPorLetra(letra) {
     console.log(`🔍 Filtrando por letra: ${letra}`);
@@ -801,39 +684,40 @@ function filtrarPorLetra(letra) {
         }
     });
 
-    // Se clicou na mesma letra, limpa o filtro
     if (letra === 'todos') {
+        localStorage.removeItem('letraSelecionada');
         letraSelecionada = '';
         termoBuscaClientes = '';
         const input = document.getElementById('buscaClientesInput');
         if (input) input.value = '';
-        carregarClientes();
+        renderizarClientes(clientesCompletos);
         return;
     }
 
-    // Filtrar clientes pela letra
-    if (clientesCompletos.length > 0) {
-        const clientesFiltrados = clientesCompletos.filter(c => {
-            const nome = c.nome.toLowerCase();
-            return nome.startsWith(letra.toLowerCase());
-        });
-
-        atualizarListaClientes(clientesFiltrados);
-        atualizarStatsClientes(clientesFiltrados);
+    localStorage.setItem('letraSelecionada', letra);
+    
+    if (termoBuscaClientes) {
+        termoBuscaClientes = '';
+        const input = document.getElementById('buscaClientesInput');
+        if (input) input.value = '';
     }
+
+    renderizarClientes(clientesCompletos);
 }
 
 function limparFiltroLetra() {
     letraSelecionada = '';
+    localStorage.removeItem('letraSelecionada');
     const botoesLetras = document.querySelectorAll('.letra-btn');
     botoesLetras.forEach(btn => btn.classList.remove('active'));
     termoBuscaClientes = '';
     const input = document.getElementById('buscaClientesInput');
     if (input) input.value = '';
-    carregarClientes();
+    renderizarClientes(clientesCompletos);
 }
+
 // ============================================
-// CARREGAR CLIENTES (PRINCIPAL) - COM FILTRO DE LETRA SALVO
+// CARREGAR CLIENTES (PRINCIPAL)
 // ============================================
 
 async function carregarClientes() {
@@ -860,56 +744,46 @@ async function carregarClientes() {
 
         const [resClientes, resAgendamentos, resGrupos] = await Promise.all([
             fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/agendamentos?limit=500', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/clientes/grupos', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
-        if (!resClientes.ok || !resAgendamentos.ok) {
-            throw new Error('Erro ao buscar dados do servidor');
+        if (!resClientes.ok) {
+            throw new Error('Erro ao buscar clientes');
         }
 
         const dataClientes = await resClientes.json();
-        const dataAgendamentos = await resAgendamentos.json();
-        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: {} };
+        const dataAgendamentos = resAgendamentos.ok ? await resAgendamentos.json() : { data: [] };
+        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: { clientes: [], grupos: [] } };
 
         const clientes = dataClientes.data || [];
         const agendamentos = dataAgendamentos.data || [];
-        const gruposMap = dataGrupos.data || {};
+
+        const agendamentosPorCliente = new Map();
+        for (const a of agendamentos) {
+            if (!agendamentosPorCliente.has(a.cliente_id)) {
+                agendamentosPorCliente.set(a.cliente_id, []);
+            }
+            agendamentosPorCliente.get(a.cliente_id).push(a);
+        }
 
         clientesCompletos = clientes.map(cliente => {
-            const ags = agendamentos.filter(a => a.cliente_id === cliente.id);
+            const ags = agendamentosPorCliente.get(cliente.id) || [];
             const agsConcluidos = ags.filter(a => a.status === 'concluido');
             const agsPendentes = ags.filter(a => a.status === 'pendente' || a.status === 'agendado');
 
-            const totalAgendamentos = ags.length;
-            const totalConcluidos = agsConcluidos.length;
-
             let valorTotal = 0;
-            agsConcluidos.forEach(a => {
+            for (const a of agsConcluidos) {
                 valorTotal += parseFloat(a.valor_total) || parseFloat(a.valor) || 0;
-            });
+            }
 
-            const ticketMedio = totalConcluidos > 0 ? valorTotal / totalConcluidos : 0;
+            const ticketMedio = agsConcluidos.length > 0 ? valorTotal / agsConcluidos.length : 0;
 
             let ultimaVisita = null;
+            let diasDesdeUltima = null;
             if (agsConcluidos.length > 0) {
                 const datas = agsConcluidos.map(a => new Date(a.data + 'T00:00:00'));
                 ultimaVisita = new Date(Math.max(...datas));
-            }
-
-            const servicosCount = {};
-            agsConcluidos.forEach(a => {
-                const servico = a.servico_nome || a.servico || 'Outro';
-                servicosCount[servico] = (servicosCount[servico] || 0) + 1;
-            });
-
-            const servicosOrdenados = Object.entries(servicosCount)
-                .sort((a, b) => b[1] - a[1])
-                .slice(0, 3)
-                .map(([nome, count]) => ({ nome, count }));
-
-            let diasDesdeUltima = null;
-            if (ultimaVisita) {
                 const hoje = new Date();
                 hoje.setHours(0, 0, 0, 0);
                 const diffTime = hoje - ultimaVisita;
@@ -919,246 +793,277 @@ async function carregarClientes() {
             let classificacao = 'regular';
             let icone = '👤';
 
-            if (totalConcluidos >= 10 && valorTotal >= 500) {
+            if (agsConcluidos.length >= 10 && valorTotal >= 500) {
                 classificacao = 'vip';
                 icone = '⭐';
-            } else if (totalConcluidos >= 5) {
+            } else if (agsConcluidos.length >= 5) {
                 classificacao = 'frequente';
                 icone = '🔥';
             } else if (diasDesdeUltima !== null && diasDesdeUltima > 60) {
                 classificacao = 'sumido';
                 icone = '😴';
-            } else if (totalConcluidos <= 1) {
+            } else if (agsConcluidos.length <= 1) {
                 classificacao = 'novo';
                 icone = '🌱';
             }
 
-            const grupos = gruposMap[cliente.id] || [];
+            let grupos = [];
+            if (cliente.grupos) {
+                try {
+                    grupos = typeof cliente.grupos === 'string' ? JSON.parse(cliente.grupos) : cliente.grupos;
+                } catch (e) {
+                    grupos = [];
+                }
+            }
 
             return {
-                ...cliente,
-                total_agendamentos: totalAgendamentos,
-                total_concluidos: totalConcluidos,
+                id: cliente.id,
+                nome: cliente.nome || 'Cliente',
+                telefone: cliente.telefone || '',
+                email: cliente.email || '',
+                grupos: grupos,
+                bloqueado_chatbot: cliente.bloqueado_chatbot || 0,
+                dias_bloqueio: cliente.dias_bloqueio || null,
+                created_at: cliente.created_at,
+                total_agendamentos: ags.length,
+                total_concluidos: agsConcluidos.length,
                 pendentes: agsPendentes.length,
                 valor_total: valorTotal,
                 ticket_medio: ticketMedio,
                 ultima_visita: ultimaVisita,
                 dias_sem_visita: diasDesdeUltima,
-                servicos_frequentes: servicosOrdenados,
                 classificacao: classificacao,
-                icone: icone,
-                grupos: grupos
+                icone: icone
             };
         });
 
         clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
 
-        const isMobile = window.innerWidth < 768;
-
-        // ==========================================
-        // 🔥 APLICAR FILTRO DE LETRA SALVO DO LOCALSTORAGE
-        // ==========================================
-        const letraSalva = localStorage.getItem('letraSelecionada') || '';
-        let clientesFiltrados = [...clientesCompletos];
-
-        // 🔥 SE TIVER LETRA SELECIONADA, APLICAR O FILTRO PRIMEIRO
-        if (letraSalva && letraSalva !== 'todos') {
-            clientesFiltrados = clientesFiltrados.filter(c => {
-                const nome = (c.nome || '').toLowerCase();
-                return nome.startsWith(letraSalva.toLowerCase());
-            });
-            letraSelecionada = letraSalva;
-            console.log(`🔍 Filtro de letra aplicado: ${letraSalva} → ${clientesFiltrados.length} clientes`);
-        }
-
-        // 🔥 DEPOIS APLICAR BUSCA POR TEXTO (se houver)
-        if (termoBuscaClientes) {
-            const busca = termoBuscaClientes.toLowerCase().trim();
-            clientesFiltrados = clientesFiltrados.filter(c => {
-                const nomeMatch = c.nome.toLowerCase().includes(busca);
-                const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
-                const emailMatch = c.email && c.email.toLowerCase().includes(busca);
-                return nomeMatch || telefoneMatch || emailMatch;
-            });
-        }
-
-        // 🔥 FILTROS POR CLASSIFICAÇÃO
-        if (filtroClientes === 'vip') {
-            clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
-        } else if (filtroClientes === 'sumidos') {
-            clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
-        } else if (filtroClientes === 'frequentes') {
-            clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
-        } else if (filtroClientes === 'novos') {
-            clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
-        }
-
-        // 🔥 FILTRO POR GRUPO
-        if (filtroGrupo !== 'todos') {
-            clientesFiltrados = clientesFiltrados.filter(c =>
-                c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
-            );
-        }
-
-        const totalClientes = clientesCompletos.length;
-        const vipCount = clientesCompletos.filter(c => c.classificacao === 'vip').length;
-        const sumidosCount = clientesCompletos.filter(c => c.classificacao === 'sumido').length;
-        const frequentesCount = clientesCompletos.filter(c => c.classificacao === 'frequente').length;
-        const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
-        const totalGasto = clientesCompletos.reduce((acc, c) => acc + c.valor_total, 0);
-        const novosCount = clientesCompletos.filter(c => c.classificacao === 'novo').length;
-
-        // ==========================================
-        // RENDERIZAÇÃO HTML
-        // ==========================================
-        let html = `<div class="fade-in" style="padding-bottom: 80px;">`;
-
-        html += `
-            <div class="dashboard-header">
-                <div>
-                    <h2 class="page-title" style="font-size: ${isMobile ? '18px' : '24px'};">👥 Clientes</h2>
-                    ${!isMobile ? `<p class="page-subtitle"><i class="fas fa-users"></i> Gerencie seus clientes e acompanhe métricas importantes</p>` : ''}
-                </div>
-                <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
-                    <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px; max-width: 100%;">
-    <input type="text" id="buscaClientesInput" 
-           placeholder="🔍 Buscar por nome..." 
-           style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
-           oninput="buscarClientes()"
-           onsearch="buscarClientes()"
-           autocomplete="off"
-           value="${escapeHtml(termoBuscaClientes)}"
-           enterkeyhint="search"
-    >
-    <button onclick="limparBuscaClientes();" 
-            style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" 
-            id="btnLimparBusca">
-        <i class="fas fa-times-circle"></i>
-    </button>
-</div>
-                    
-                    <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'};">
-                        <i class="fas fa-bullhorn"></i> ${isMobile ? '' : 'Promoção'}
-                    </button>
-                    
-                    ${!isMobile ? `
-                    <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 6px 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
-                        <i class="fas fa-file-csv"></i> Importar
-                    </button>
-                    ` : ''}
-                    
-                    <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
-                        <i class="fas fa-plus"></i> ${isMobile ? '' : 'Novo'}
-                    </button>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
-                <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">📊 Todos (${totalClientes})</button>
-                <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">⭐ VIP (${vipCount})</button>
-                <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🔥 Frequentes (${frequentesCount})</button>
-                <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">😴 Sumidos (${sumidosCount})</button>
-                <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🌱 Novos (${novosCount})</button>
-                
-                <button onclick="apagarTodosClientes()" class="btn btn-danger" style="margin-left: auto; white-space: nowrap; font-size: ${isMobile ? '9px' : '11px'}; padding: 3px 10px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border: none; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
-                    <i class="fas fa-trash-alt"></i> ${isMobile ? '' : 'Apagar Todos'}
-                </button>
-            </div>`;
-
-        // FILTROS POR GRUPO
-        const gruposDisponiveis = new Set();
-        clientesCompletos.forEach(c => {
+        const gruposSet = new Set();
+        for (const c of clientesCompletos) {
             if (c.grupos && Array.isArray(c.grupos)) {
-                c.grupos.forEach(g => gruposDisponiveis.add(g));
+                for (const g of c.grupos) {
+                    if (g) gruposSet.add(g);
+                }
             }
-        });
-        const gruposArray = Array.from(gruposDisponiveis);
-
-        if (gruposArray.length > 0) {
-            html += `
-                <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color);">
-                    <span style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-right: 4px;">
-                        <i class="fas fa-tags" style="color: #8b5cf6;"></i> Grupos:
-                    </span>
-                    ${gruposArray.map(g => `
-                        <button onclick="setFiltroGrupo('${g}')" 
-                                class="btn ${filtroGrupo === g ? 'btn-primary' : 'btn-outline'}" 
-                                style="font-size: 10px; padding: 3px 10px; border-color: #8b5cf6; color: ${filtroGrupo === g ? '#fff' : '#8b5cf6'};">
-                            🏷️ ${g}
-                        </button>
-                    `).join('')}
-                    ${filtroGrupo !== 'todos' ? `
-                        <button onclick="setFiltroGrupo('todos')" class="btn btn-outline" style="font-size: 10px; padding: 3px 10px; border-color: #ef4444; color: #ef4444;">
-                            <i class="fas fa-times"></i> Limpar
-                        </button>
-                    ` : ''}
-                </div>
-            `;
         }
+        gruposClientes = Array.from(gruposSet).sort();
 
-        // ==========================================
-        // 🔥 ÍNDICE ALFABÉTICO (A-Z) - COM ESTADO SALVO
-        // ==========================================
-        const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        const letraAtiva = localStorage.getItem('letraSelecionada') || '';
+        renderizarClientes(clientesCompletos);
 
-        html += `
-            <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color); justify-content: center; position: sticky; top: 0; background: var(--bg-primary); z-index: 10; padding: 8px 4px;">
-                <button onclick="limparFiltroLetra()" 
-                        class="letra-btn ${!letraAtiva || letraAtiva === 'todos' ? 'active' : ''}" 
-                        data-letra="todos"
-                        style="padding: 4px 10px; border-radius: 20px; border: 2px solid ${!letraAtiva || letraAtiva === 'todos' ? 'transparent' : 'var(--border-color)'}; background: ${!letraAtiva || letraAtiva === 'todos' ? 'var(--gradient)' : 'var(--bg-card)'}; color: ${!letraAtiva || letraAtiva === 'todos' ? 'white' : 'var(--text-secondary)'}; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; user-select: none;">
-                    📋 Todos
-                </button>
-                ${letras.map(letra => `
-                    <button onclick="filtrarPorLetra('${letra}')" 
-                            class="letra-btn ${letraAtiva === letra ? 'active' : ''}" 
-                            data-letra="${letra}"
-                            style="padding: 4px 10px; border-radius: 20px; border: 2px solid ${letraAtiva === letra ? 'transparent' : 'var(--border-color)'}; background: ${letraAtiva === letra ? 'var(--gradient)' : 'var(--bg-card)'}; color: ${letraAtiva === letra ? 'white' : 'var(--text-secondary)'}; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; user-select: none;">
-                        ${letra}
+        console.log(`✅ ${clientesCompletos.length} clientes carregados`);
+
+    } catch (error) {
+        console.error("❌ Erro ao carregar clientes:", error);
+        document.getElementById('content').innerHTML = `
+            <div class="card" style="padding: 20px;">
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 32px; color: #ef4444;"></i>
+                    <h4 style="font-size: 14px; margin: 8px 0;">Erro ao carregar clientes</h4>
+                    <p style="font-size: 12px; color: var(--text-muted);">${error.message}</p>
+                    <button class="btn btn-primary btn-sm" onclick="carregarClientes()" style="font-size: 11px; padding: 4px 12px; margin-top: 8px;">
+                        <i class="fas fa-sync"></i> Tentar Novamente
                     </button>
-                `).join('')}
+                </div>
             </div>
         `;
+    }
 
-        // STATS MINI - DESKTOP
-        if (!isMobile) {
-            html += `
+    carregandoClientes = false;
+    hideLoading();
+}
+
+// ============================================
+// RENDERIZAR CLIENTES
+// ============================================
+
+function renderizarClientes(clientes) {
+    const isMobile = window.innerWidth < 768;
+    const content = document.getElementById('content');
+
+    let clientesFiltrados = [...clientes];
+
+    // Filtro por letra
+    const letraSalva = localStorage.getItem('letraSelecionada') || '';
+    if (letraSalva && letraSalva !== 'todos') {
+        clientesFiltrados = clientesFiltrados.filter(c => 
+            c.nome.toLowerCase().startsWith(letraSalva.toLowerCase())
+        );
+        letraSelecionada = letraSalva;
+    }
+
+    // Filtro por busca (apenas se não estiver no mobile com campo de busca)
+    if (termoBuscaClientes && !isMobile) {
+        const busca = termoBuscaClientes.toLowerCase().trim();
+        clientesFiltrados = clientesFiltrados.filter(c => {
+            const nomeMatch = c.nome.toLowerCase().includes(busca);
+            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(busca);
+            const emailMatch = c.email && c.email.toLowerCase().includes(busca);
+            return nomeMatch || telefoneMatch || emailMatch;
+        });
+    }
+
+    // Filtro por classificação
+    if (filtroClientes === 'vip') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
+    } else if (filtroClientes === 'sumidos') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'sumido');
+    } else if (filtroClientes === 'frequentes') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip');
+    } else if (filtroClientes === 'novos') {
+        clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
+    }
+
+    // Filtro por grupo
+    if (filtroGrupo !== 'todos') {
+        clientesFiltrados = clientesFiltrados.filter(c =>
+            c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
+        );
+    }
+
+    clientesFiltradosCache = clientesFiltrados;
+
+    // Estatísticas
+    const totalClientes = clientes.length;
+    const vipCount = clientes.filter(c => c.classificacao === 'vip').length;
+    const sumidosCount = clientes.filter(c => c.classificacao === 'sumido').length;
+    const frequentesCount = clientes.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip').length;
+    const novosCount = clientes.filter(c => c.classificacao === 'novo').length;
+    const comWhatsApp = clientes.filter(c => c.telefone && c.telefone.trim() !== '').length;
+
+    // ==========================================
+    // HTML
+    // ==========================================
+    let html = `<div class="fade-in" style="padding-bottom: 80px;">`;
+
+    // Header
+    html += `
+        <div class="dashboard-header">
+            <div>
+                <h2 class="page-title" style="font-size: ${isMobile ? '18px' : '24px'};">👥 Clientes</h2>
+                ${!isMobile ? `<p class="page-subtitle"><i class="fas fa-users"></i> Gerencie seus clientes e acompanhe métricas importantes</p>` : ''}
+            </div>
+            <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+                ${!isMobile ? `
+                <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px;">
+                    <input type="text" id="buscaClientesInput" 
+                           placeholder="🔍 Buscar por nome..." 
+                           style="border: none; background: transparent; padding: 6px 8px; font-size: 12px; width: 100%; outline: none; color: var(--text-primary);"
+                           oninput="buscarClientes()"
+                           onsearch="buscarClientes()"
+                           autocomplete="off"
+                           value="${escapeHtml(termoBuscaClientes)}"
+                           enterkeyhint="search">
+                    <button onclick="limparBuscaClientes();" 
+                            style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 4px 8px; font-size: 14px; display: ${termoBuscaClientes ? 'block' : 'none'};" 
+                            id="btnLimparBusca">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </div>
+                ` : ''}
+                
+                <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'};">
+                    <i class="fas fa-bullhorn"></i> ${isMobile ? '' : 'Promoção'}
+                </button>
+                
+                ${!isMobile ? `
+                <button class="btn btn-success" onclick="abrirModalImportarCSV()" style="background: linear-gradient(135deg, #22c55e, #16a34a); color: white; padding: 6px 14px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-size: 13px;">
+                    <i class="fas fa-file-csv"></i> Importar
+                </button>
+                ` : ''}
+                
+                <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
+                    <i class="fas fa-plus"></i> ${isMobile ? '' : 'Novo'}
+                </button>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
+            <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">📊 Todos (${totalClientes})</button>
+            <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">⭐ VIP (${vipCount})</button>
+            <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🔥 Frequentes (${frequentesCount})</button>
+            <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">😴 Sumidos (${sumidosCount})</button>
+            <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🌱 Novos (${novosCount})</button>
+        </div>`;
+
+    // Filtro por grupos
+    if (gruposClientes.length > 0) {
+        html += `
+            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color);">
+                <span style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-right: 4px;">
+                    <i class="fas fa-tags" style="color: #8b5cf6;"></i> Grupos:
+                </span>
+                ${gruposClientes.map(g => `
+                    <button onclick="setFiltroGrupo('${g}')" 
+                            class="btn ${filtroGrupo === g ? 'btn-primary' : 'btn-outline'}" 
+                            style="font-size: 10px; padding: 3px 10px; border-color: #8b5cf6; color: ${filtroGrupo === g ? '#fff' : '#8b5cf6'};">
+                        🏷️ ${g}
+                    </button>
+                `).join('')}
+                ${filtroGrupo !== 'todos' ? `
+                    <button onclick="setFiltroGrupo('todos')" class="btn btn-outline" style="font-size: 10px; padding: 3px 10px; border-color: #ef4444; color: #ef4444;">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                ` : ''}
+            </div>
+        `;
+    }
+
+    // Índice A-Z
+    const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    const letraAtiva = localStorage.getItem('letraSelecionada') || '';
+
+    html += `
+        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color); justify-content: center; position: sticky; top: 0; background: var(--bg-primary); z-index: 10; padding: 8px 4px;">
+            <button onclick="limparFiltroLetra()" 
+                    class="letra-btn ${!letraAtiva || letraAtiva === 'todos' ? 'active' : ''}" 
+                    data-letra="todos"
+                    style="padding: 4px 10px; border-radius: 20px; border: 2px solid ${!letraAtiva || letraAtiva === 'todos' ? 'transparent' : 'var(--border-color)'}; background: ${!letraAtiva || letraAtiva === 'todos' ? 'var(--gradient)' : 'var(--bg-card)'}; color: ${!letraAtiva || letraAtiva === 'todos' ? 'white' : 'var(--text-secondary)'}; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; user-select: none;">
+                📋 Todos
+            </button>
+            ${letras.map(letra => `
+                <button onclick="filtrarPorLetra('${letra}')" 
+                        class="letra-btn ${letraAtiva === letra ? 'active' : ''}" 
+                        data-letra="${letra}"
+                        style="padding: 4px 10px; border-radius: 20px; border: 2px solid ${letraAtiva === letra ? 'transparent' : 'var(--border-color)'}; background: ${letraAtiva === letra ? 'var(--gradient)' : 'var(--bg-card)'}; color: ${letraAtiva === letra ? 'white' : 'var(--text-secondary)'}; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; touch-action: manipulation; user-select: none;">
+                    ${letra}
+                </button>
+            `).join('')}
+        </div>
+    `;
+
+    // Stats
+    if (!isMobile) {
+        html += `
             <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px;">
                 <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid var(--border-color);">
                     <div style="font-size: 24px; font-weight: 700; color: var(--text-primary);">${clientesFiltrados.length}</div>
                     <div style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-top: 2px;">📊 Total</div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Clientes cadastrados</div>
                 </div>
                 <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #f59e0b; box-shadow: 0 2px 8px rgba(245,158,11,0.15);">
                     <div style="font-size: 24px; font-weight: 700; color: #f59e0b;">${vipCount}</div>
                     <div style="font-size: 13px; font-weight: 600; color: #f59e0b; margin-top: 2px;">⭐ VIP</div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">+10 atendimentos / +R$500</div>
                 </div>
                 <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #22c55e; box-shadow: 0 2px 8px rgba(34,197,94,0.15);">
                     <div style="font-size: 24px; font-weight: 700; color: #22c55e;">${frequentesCount}</div>
                     <div style="font-size: 13px; font-weight: 600; color: #22c55e; margin-top: 2px;">🔥 Frequentes</div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">+5 atendimentos</div>
                 </div>
                 <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #ef4444; box-shadow: 0 2px 8px rgba(239,68,68,0.15);">
                     <div style="font-size: 24px; font-weight: 700; color: #ef4444;">${sumidosCount}</div>
                     <div style="font-size: 13px; font-weight: 600; color: #ef4444; margin-top: 2px;">😴 Sumidos</div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">+60 dias sem visitar</div>
                 </div>
                 <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #667eea; box-shadow: 0 2px 8px rgba(102,126,234,0.15);">
                     <div style="font-size: 24px; font-weight: 700; color: #667eea;">${novosCount}</div>
                     <div style="font-size: 13px; font-weight: 600; color: #667eea; margin-top: 2px;">🌱 Novos</div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">1º atendimento</div>
                 </div>
                 <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 12px; text-align: center; border: 2px solid #25D366; box-shadow: 0 2px 8px rgba(37,211,102,0.15);">
                     <div style="font-size: 24px; font-weight: 700; color: #25D366;">${comWhatsApp}</div>
                     <div style="font-size: 13px; font-weight: 600; color: #25D366; margin-top: 2px;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">Com telefone cadastrado</div>
                 </div>
-            </div>`;
-        } else {
-            // STATS MINI - MOBILE
-            html += `
+            </div>
+        `;
+    } else {
+        html += `
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px;">
                 <div style="background: var(--bg-card); border-radius: 10px; padding: 10px 8px; text-align: center; border: 1px solid var(--border-color);">
                     <div style="font-size: 18px; font-weight: 700; color: var(--text-primary);">${clientesFiltrados.length}</div>
@@ -1184,541 +1089,26 @@ async function carregarClientes() {
                     <div style="font-size: 18px; font-weight: 700; color: #25D366;">${comWhatsApp}</div>
                     <div style="font-size: 9px; font-weight: 600; color: #25D366;"><i class="fab fa-whatsapp"></i> WhatsApp</div>
                 </div>
-            </div>`;
-        }
-
-        html += `
-            <div class="card" style="padding: ${isMobile ? '10px' : '16px'};">
-        `;
-
-        if (clientesFiltrados.length > 0 || termoBuscaClientes || (letraSalva && letraSalva !== 'todos')) {
-            const letraExibida = letraSalva && letraSalva !== 'todos' ? letraSalva : '';
-            html += `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: ${isMobile ? '10px' : '12px'}; color: var(--text-muted); border-bottom: 1px solid var(--border-color); margin-bottom: 10px;">
-                    <span>
-                        ${letraExibida ? `🔍 "${letraExibida}" → ` : ''}
-                        ${termoBuscaClientes ? `🔍 "${escapeHtml(termoBuscaClientes)}" → ` : ''}
-                        ${filtroGrupo !== 'todos' ? `🏷️ "${filtroGrupo}" → ` : ''}
-                        <strong>${clientesFiltrados.length}</strong> de ${clientesCompletos.length}
-                    </span>
-                </div>
-            `;
-        }
-
-        if (clientesFiltrados.length === 0) {
-            html += `
-                <div class="empty-state" style="padding: 20px; text-align: center;">
-                    <i class="fas fa-user-plus" style="font-size: 32px; color: var(--text-muted);"></i>
-                    <h4 style="font-size: 14px; margin: 8px 0;">${termoBuscaClientes || (letraSalva && letraSalva !== 'todos') ? 'Nenhum cliente encontrado' : 'Nenhum cliente'}</h4>
-                    <button class="btn btn-primary btn-sm" onclick="${termoBuscaClientes || (letraSalva && letraSalva !== 'todos') ? 'limparBuscaClientes()' : 'setFiltroClientes(\'todos\')'}" style="font-size: 11px; padding: 4px 12px;">
-                        <i class="fas fa-undo"></i> ${termoBuscaClientes || (letraSalva && letraSalva !== 'todos') ? 'Limpar Busca' : 'Mostrar Todos'}
-                    </button>
-                </div>
-            `;
-        } else if (isMobile) {
-            // RENDERIZAÇÃO MOBILE (CARDS)
-            html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
-            for (let c of clientesFiltrados) {
-                const isBloqueado = c.bloqueado_chatbot === 1;
-                const telefone = c.telefone || '';
-                const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
-                const inicial = c.nome ? c.nome.charAt(0).toUpperCase() : '?';
-                const cores = {
-                    vip: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#f59e0b' },
-                    frequente: { bg: 'rgba(34,197,94,0.15)', border: '#22c55e', text: '#22c55e' },
-                    sumido: { bg: 'rgba(239,68,68,0.15)', border: '#ef4444', text: '#ef4444' },
-                    novo: { bg: 'rgba(102,126,234,0.15)', border: '#667eea', text: '#667eea' },
-                    regular: { bg: 'rgba(107,114,128,0.1)', border: '#6b7280', text: '#6b7280' }
-                };
-                const cor = cores[c.classificacao] || cores.regular;
-
-                const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
-                    `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:8px;color:#8b5cf6;margin:1px;">${g}</span>`
-                ).join(' ') : '';
-
-                html += `
-                    <div style="background: var(--bg-card); border-radius: 12px; padding: 12px; border: 1px solid ${cor.border};">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                                <div style="width:32px;height:32px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;">${inicial}</div>
-                                <div style="flex:1;min-width:0;">
-                                    <div style="font-size:13px;font-weight:600;color:var(--text-primary);">
-                                        ${escapeHtml(String(c.nome || 'Cliente'))}
-                                        <span style="font-size:11px;">${c.icone || ''}</span>
-                                    </div>
-                                    <div style="font-size:10px;color:var(--text-muted);">
-                                        ${c.telefone ? `📱 ${escapeHtml(String(c.telefone))}` : 'Sem telefone'}
-                                    </div>
-                                    <div style="font-size:8px;margin-top:2px;">${gruposLabels}</div>
-                                </div>
-                            </div>
-                            <span style="padding:1px 8px;border-radius:10px;font-size:9px;font-weight:600;background:${cor.bg};color:${cor.text};border:1px solid ${cor.border};white-space:nowrap;">
-                                ${c.classificacao}
-                            </span>
-                        </div>
-                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:var(--bg-hover);border-radius:6px;padding:6px;margin:6px 0;">
-                            <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:var(--text-primary);">${c.total_concluidos}</div><div style="font-size:8px;color:var(--text-muted);">Atend.</div></div>
-                            <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</div><div style="font-size:8px;color:var(--text-muted);">Ticket</div></div>
-                            <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size:8px;color:var(--text-muted);">Última</div></div>
-                        </div>
-                        <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding-top:6px;border-top:1px solid var(--border-color);">
-                            ${whatsappLink !== '#' ? `<a href="${whatsappLink}" target="_blank" style="text-align:center;padding:4px;border-radius:6px;background:rgba(37,211,102,0.1);color:#25D366;font-size:12px;text-decoration:none;"><i class="fab fa-whatsapp"></i></a>` : '<div></div>'}
-                            <button onclick="editarCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(102,126,234,0.1);color:#667eea;border:none;font-size:12px;"><i class="fas fa-pen"></i></button>
-                            <button onclick="verHistoricoCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(139,92,246,0.1);color:#8b5cf6;border:none;font-size:12px;"><i class="fas fa-history"></i></button>
-                            <button onclick="abrirModalGrupos(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(139,92,246,0.1);color:#8b5cf6;border:none;font-size:12px;" title="Grupos"><i class="fas fa-tags"></i></button>
-                            ${isBloqueado ? `<button onclick="desbloquearChatbot(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(34,197,94,0.1);color:#22c55e;border:none;font-size:12px;"><i class="fas fa-unlock"></i></button>` : `<button onclick="bloquearChatbot(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;font-size:12px;"><i class="fas fa-lock"></i></button>`}
-                            <button onclick="excluirCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;font-size:12px;"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                `;
-            }
-            html += `</div>`;
-        } else {
-            // RENDERIZAÇÃO DESKTOP (TABELA)
-            const cores = {
-                vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
-                frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-                sumido: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
-                novo: { bg: 'rgba(102,126,234,0.15)', text: '#667eea' },
-                regular: { bg: 'rgba(107,114,128,0.1)', text: '#6b7280' }
-            };
-
-            html += `
-            <div class="table-responsive" style="overflow-x: auto;">
-                <table class="data-table" style="width: 100%; min-width: 800px; font-size: 13px;">
-                    <thead>
-                        <tr>
-                            <th style="padding: 6px 8px;">#</th>
-                            <th style="padding: 6px 8px;">Cliente</th>
-                            <th style="padding: 6px 8px;">Telefone</th>
-                            <th style="padding: 6px 8px;">Class.</th>
-                            <th style="padding: 6px 8px;">Grupos</th>
-                            <th style="padding: 6px 8px; text-align:center;">Atend.</th>
-                            <th style="padding: 6px 8px; text-align:center;">Ticket</th>
-                            <th style="padding: 6px 8px; text-align:center;">Última</th>
-                            <th style="padding: 6px 8px; text-align:center;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-            for (let c of clientesFiltrados) {
-                const isBloqueado = c.bloqueado_chatbot === 1;
-                const telefone = c.telefone || '';
-                const cor = cores[c.classificacao] || cores.regular;
-
-                const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
-                    `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:9px;color:#8b5cf6;margin:1px;display:inline-block;">${g}</span>`
-                ).join(' ') : '';
-
-                html += `
-                    <tr>
-                        <td style="padding: 6px 8px; text-align:center;">${c.id}</td>
-                        <td style="padding: 6px 8px;">
-                            <strong>${escapeHtml(String(c.nome || 'Cliente'))}</strong> 
-                            <span style="font-size:14px;">${c.icone || ''}</span>
-                        </td>
-                        <td style="padding: 6px 8px;">
-                            ${telefone ? escapeHtml(String(telefone)) : '-'}
-                            ${telefone ? `<a href="https://wa.me/55${telefone.replace(/\D/g, '')}" target="_blank" style="color:#25D366;text-decoration:none;margin-left:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
-                        </td>
-                        <td style="padding: 6px 8px;">
-                            <span style="padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};">
-                                ${c.icone || ''} ${c.classificacao}
-                            </span>
-                        </td>
-                        <td style="padding: 6px 8px; font-size:10px;">
-                            ${gruposLabels || '-'}
-                        </td>
-                        <td style="padding: 6px 8px; text-align:center;">${c.total_concluidos}</td>
-                        <td style="padding: 6px 8px; text-align:center;font-weight:600;color:#22c55e;">
-                            R$ ${formatMoney(c.ticket_medio)}
-                        </td>
-                        <td style="padding: 6px 8px; text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">
-                            ${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}
-                        </td>
-                        <td style="padding: 6px 8px;">
-                            <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
-                                <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
-                                    <i class="fas fa-pen"></i>
-                                </button>
-                                <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
-                                    <i class="fas fa-history"></i>
-                                </button>
-                                <button class="btn-icon" onclick="abrirModalGrupos(${c.id})" title="Grupos" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
-                                    <i class="fas fa-tags"></i>
-                                </button>
-                                ${isBloqueado ?
-                        `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;border:none;background:rgba(34,197,94,0.1);border-radius:4px;cursor:pointer;color:#22c55e;">
-                                    <i class="fas fa-unlock"></i>
-                                </button>` :
-                        `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
-                                    <i class="fas fa-lock"></i>
-                                </button>`
-                    }
-                                <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>`;
-            }
-            html += `</tbody></table></div>`;
-        }
-
-        html += `</div></div>`;
-
-        document.getElementById('content').innerHTML = html;
-        window.scrollTo(0, 0);
-
-        console.log(`✅ Clientes renderizados: ${clientesFiltrados.length} de ${clientesCompletos.length}`);
-
-    } catch (error) {
-        console.error("❌ Erro ao carregar clientes:", error);
-        document.getElementById('content').innerHTML = `
-            <div class="card" style="padding: 20px;">
-                <div style="text-align: center; padding: 20px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 32px; color: #ef4444;"></i>
-                    <h4 style="font-size: 14px; margin: 8px 0;">Erro ao carregar clientes</h4>
-                    <p style="font-size: 12px; color: var(--text-muted);">${error.message}</p>
-                    <button class="btn btn-primary btn-sm" onclick="carregarClientes()" style="font-size: 11px; padding: 4px 12px; margin-top: 8px;">
-                        <i class="fas fa-sync"></i> Tentar Novamente
-                    </button>
-                </div>
             </div>
         `;
     }
 
-    carregandoClientes = false;
-    hideLoading();
-}
-// ============================================
-// BUSCAR CLIENTES - CORRIGIDO PARA MOBILE
-// ============================================
-
-function buscarClientes() {
-    const input = document.getElementById('buscaClientesInput');
-    if (!input) return;
-
-    const termo = input.value.toLowerCase().trim();
-    termoBuscaClientes = termo;
-
-    // Se houver letra selecionada, limpar
-    if (letraSelecionada) {
-        letraSelecionada = '';
-        const botoesLetras = document.querySelectorAll('.letra-btn');
-        botoesLetras.forEach(btn => btn.classList.remove('active'));
-    }
-
-    console.log(`🔍 Buscando: "${termo}"`);
-
-    const btnLimpar = document.getElementById('btnLimparBusca');
-    if (btnLimpar) {
-        btnLimpar.style.display = termo ? 'block' : 'none';
-    }
-
-    if (timeoutBusca) {
-        clearTimeout(timeoutBusca);
-        timeoutBusca = null;
-    }
-
-    if (!termo) {
-        carregarClientes();
-        return;
-    }
-
-    if (clientesCompletos.length > 0) {
-        const clientesFiltrados = clientesCompletos.filter(c => {
-            const nomeMatch = c.nome.toLowerCase().includes(termo);
-            const telefoneMatch = c.telefone && c.telefone.replace(/\D/g, '').includes(termo);
-            const emailMatch = c.email && c.email.toLowerCase().includes(termo);
-            return nomeMatch || telefoneMatch || emailMatch;
-        });
-
-        console.log(`✅ Encontrados ${clientesFiltrados.length} clientes`);
-
-        atualizarListaClientes(clientesFiltrados);
-        atualizarStatsClientes(clientesFiltrados);
-    } else {
-        carregarClientes();
-    }
-}
-function buscarClientesBotao() {
-    console.log('🔍 Busca via botão acionada!');
-    if (window.event) {
-        window.event.stopPropagation?.();
-        window.event.preventDefault?.();
-    }
-
-    const input = document.getElementById('buscaClientesInput');
-    if (input) {
-        // 🔥 EVITA O FOQUE FORÇADO QUE PODE CAUSAR RECARGA
-        setTimeout(() => {
-            buscarClientes();
-        }, 50);
-    } else {
-        buscarClientes();
-    }
-}
-
-function limparBuscaClientes() {
-    const input = document.getElementById('buscaClientesInput');
-    if (input) {
-        input.value = '';
-    }
-
-    termoBuscaClientes = '';
-    letraSelecionada = '';
-
-    // Limpar botões de letra
-    const botoesLetras = document.querySelectorAll('.letra-btn');
-    botoesLetras.forEach(btn => btn.classList.remove('active'));
-
-    // Ativar o botão "Todos"
-    const btnTodos = document.querySelector('.letra-btn[data-letra="todos"]');
-    if (btnTodos) btnTodos.classList.add('active');
-
-    const btnLimpar = document.getElementById('btnLimparBusca');
-    if (btnLimpar) {
-        btnLimpar.style.display = 'none';
-    }
-
-    if (timeoutBusca) {
-        clearTimeout(timeoutBusca);
-        timeoutBusca = null;
-    }
-
-    carregarClientes();
-}
-// ============================================
-// ATUALIZAR STATS DOS CLIENTES
-// ============================================
-
-function atualizarStatsClientes(clientesFiltrados) {
-    const totalExibidos = clientesFiltrados.length;
-    const totalClientes = clientesCompletos.length;
-
-    const contador = document.getElementById('contadorBuscaClientes');
-    if (contador) {
-        contador.innerHTML = `
-            ${termoBuscaClientes ? `🔍 "${escapeHtml(termoBuscaClientes)}" → ` : ''}
-            ${filtroGrupo !== 'todos' ? `🏷️ "${filtroGrupo}" → ` : ''}
-            <strong>${totalExibidos}</strong> de <strong>${totalClientes}</strong> clientes
-        `;
-    }
-
-    const totalEl = document.getElementById('totalClientes');
-    if (totalEl) totalEl.textContent = totalExibidos;
-
-    const vipCount = clientesFiltrados.filter(c => c.classificacao === 'vip').length;
-    const vipEl = document.querySelector('.stat-mini-value[style*="color: #f59e0b"]');
-    if (vipEl) vipEl.textContent = vipCount;
-
-    const freqCount = clientesFiltrados.filter(c => c.classificacao === 'frequente').length;
-    const freqEl = document.querySelector('.stat-mini-value[style*="color: #22c55e"]');
-    if (freqEl && freqEl.parentElement?.querySelector('.stat-mini-label')?.textContent.includes('Frequentes')) {
-        freqEl.textContent = freqCount;
-    }
-
-    const sumidosCount = clientesFiltrados.filter(c => c.classificacao === 'sumido').length;
-    const sumidosEl = document.querySelector('.stat-mini-value[style*="color: #ef4444"]');
-    if (sumidosEl) sumidosEl.textContent = sumidosCount;
-
-    const novosCount = clientesFiltrados.filter(c => c.classificacao === 'novo').length;
-    const novosEl = document.querySelector('.stat-mini-value[style*="color: #667eea"]');
-    if (novosEl) novosEl.textContent = novosCount;
-
-    const whatsCount = clientesFiltrados.filter(c => c.telefone && c.telefone.trim() !== '').length;
-    const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
-    if (whatsEl) whatsEl.textContent = whatsCount;
-}
-
-// ============================================
-// SET FILTRO CLIENTES
-// ============================================
-
-function setFiltroClientes(filtro) {
-    filtroClientes = filtro;
-    if (filtroGrupo !== 'todos') {
-        filtroGrupo = 'todos';
-    }
-
-    if (window._filtroTimeout) {
-        clearTimeout(window._filtroTimeout);
-    }
-
-    aplicarFiltrosClientes();
-
-    window._filtroTimeout = setTimeout(() => {
-        carregarClientesBackground();
-    }, 1000);
-}
-
-// ============================================
-// FORCAR ATUALIZAÇÃO DOS GRUPOS
-// ============================================
-
-async function forcarAtualizacaoGrupos() {
-    console.log('🔄 Forçando atualização dos grupos...');
-
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
-    try {
-        const res = await fetch('/api/clientes/grupos', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            const gruposMap = data.data || {};
-
-            clientesCompletos.forEach(c => {
-                if (gruposMap[c.id]) {
-                    c.grupos = gruposMap[c.id];
-                } else {
-                    c.grupos = [];
-                }
-            });
-
-            console.log('✅ Grupos atualizados localmente');
-            aplicarFiltrosClientes();
-        }
-    } catch (error) {
-        console.error('❌ Erro ao forçar atualização:', error);
-    }
-}
-
-// ============================================
-// ATUALIZAR LISTA DE CLIENTES - COM SUPORTE A FILTRO DE LETRA
-// ============================================
-
-function atualizarListaClientes(clientesFiltrados) {
-    const content = document.getElementById('content');
-    if (!content || !content.innerHTML.includes('👥 Clientes')) return;
-
-    const isMobile = window.innerWidth < 768;
-
-    const totalExibidos = clientesFiltrados.length;
-    const totalClientes = clientesCompletos.length;
-
-    // 🔥 PEGAR A LETRA SELECIONADA DO LOCALSTORAGE
-    const letraAtiva = localStorage.getItem('letraSelecionada') || '';
-
-    // 🔥 ATUALIZAR O CONTADOR COM A LETRA SELECIONADA
-    const contador = document.getElementById('contadorBuscaClientes');
-    if (contador) {
-        let texto = '';
-        if (letraAtiva && letraAtiva !== 'todos') {
-            texto = `🔍 "${letraAtiva}" → `;
-        } else if (termoBuscaClientes) {
-            texto = `🔍 "${escapeHtml(termoBuscaClientes)}" → `;
-        } else if (filtroGrupo !== 'todos') {
-            texto = `🏷️ "${filtroGrupo}" → `;
-        }
-        contador.innerHTML = `
-            ${texto}
-            <strong>${totalExibidos}</strong> de <strong>${totalClientes}</strong> clientes
-        `;
-    }
-
-    // 🔥 ATUALIZAR OS BOTÕES DE LETRA (MANTER O ESTADO)
-    const botoesLetras = document.querySelectorAll('.letra-btn');
-    botoesLetras.forEach(btn => {
-        btn.classList.remove('active');
-        btn.style.background = 'var(--bg-card)';
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.borderColor = 'var(--border-color)';
-
-        if (btn.dataset.letra === letraAtiva) {
-            btn.classList.add('active');
-            btn.style.background = 'var(--gradient)';
-            btn.style.color = 'white';
-            btn.style.borderColor = 'var(--primary)';
-        }
-        if (!letraAtiva && btn.dataset.letra === 'todos') {
-            btn.classList.add('active');
-            btn.style.background = 'var(--gradient)';
-            btn.style.color = 'white';
-            btn.style.borderColor = 'transparent';
-        }
-        if (letraAtiva === 'todos' && btn.dataset.letra === 'todos') {
-            btn.classList.add('active');
-            btn.style.background = 'var(--gradient)';
-            btn.style.color = 'white';
-            btn.style.borderColor = 'transparent';
-        }
-    });
-
-    const totalEl = document.getElementById('totalClientes');
-    if (totalEl) totalEl.textContent = totalExibidos;
-
-    const vipCount = clientesFiltrados.filter(c => c.classificacao === 'vip').length;
-    const vipEl = document.querySelector('.stat-mini-value[style*="color: #f59e0b"]');
-    if (vipEl) vipEl.textContent = vipCount;
-
-    const freqCount = clientesFiltrados.filter(c => c.classificacao === 'frequente').length;
-    const freqEl = document.querySelector('.stat-mini-value[style*="color: #22c55e"]');
-    if (freqEl && freqEl.parentElement?.querySelector('.stat-mini-label')?.textContent.includes('Frequentes')) {
-        freqEl.textContent = freqCount;
-    }
-
-    const sumidosCount = clientesFiltrados.filter(c => c.classificacao === 'sumido').length;
-    const sumidosEl = document.querySelector('.stat-mini-value[style*="color: #ef4444"]');
-    if (sumidosEl) sumidosEl.textContent = sumidosCount;
-
-    const novosCount = clientesFiltrados.filter(c => c.classificacao === 'novo').length;
-    const novosEl = document.querySelector('.stat-mini-value[style*="color: #667eea"]');
-    if (novosEl) novosEl.textContent = novosCount;
-
-    const whatsCount = clientesFiltrados.filter(c => c.telefone && c.telefone.trim() !== '').length;
-    const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
-    if (whatsEl) whatsEl.textContent = whatsCount;
-
-    const btnTodos = document.querySelector('button[onclick*="setFiltroClientes(\'todos\')"]');
-    if (btnTodos) btnTodos.textContent = `📊 Todos (${totalClientes})`;
-
-    const btnVip = document.querySelector('button[onclick*="setFiltroClientes(\'vip\')"]');
-    if (btnVip) btnVip.textContent = `⭐ VIP (${clientesCompletos.filter(c => c.classificacao === 'vip').length})`;
-
-    const btnFreq = document.querySelector('button[onclick*="setFiltroClientes(\'frequentes\')"]');
-    if (btnFreq) btnFreq.textContent = `🔥 Frequentes (${clientesCompletos.filter(c => c.classificacao === 'frequente' || c.classificacao === 'vip').length})`;
-
-    const btnSumidos = document.querySelector('button[onclick*="setFiltroClientes(\'sumidos\')"]');
-    if (btnSumidos) btnSumidos.textContent = `😴 Sumidos (${clientesCompletos.filter(c => c.classificacao === 'sumido').length})`;
-
-    const btnNovos = document.querySelector('button[onclick*="setFiltroClientes(\'novos\')"]');
-    if (btnNovos) btnNovos.textContent = `🌱 Novos (${clientesCompletos.filter(c => c.classificacao === 'novo').length})`;
-
-    let container = document.getElementById('listaClientesContainer');
-    if (!container) {
-        const card = content.querySelector('.card');
-        if (card) {
-            const oldContent = card.innerHTML;
-            const oldContainer = card.querySelector('#listaClientesContainer');
-            if (oldContainer) {
-                card.innerHTML = oldContainer.innerHTML;
-            }
-            card.innerHTML = `<div id="listaClientesContainer">${card.innerHTML}</div>`;
-            container = document.getElementById('listaClientesContainer');
-        }
-        if (!container) return;
-    }
-
-    let html = '';
+    html += `<div class="card" style="padding: ${isMobile ? '10px' : '16px'};">`;
 
     if (clientesFiltrados.length === 0) {
-        html = `
+        html += `
             <div class="empty-state" style="padding: 20px; text-align: center;">
                 <i class="fas fa-user-plus" style="font-size: 32px; color: var(--text-muted);"></i>
                 <h4 style="font-size: 14px; margin: 8px 0;">Nenhum cliente encontrado</h4>
-                <p style="font-size: 12px; color: var(--text-muted);">Tente buscar por outro nome, telefone ou email</p>
                 <button class="btn btn-primary btn-sm" onclick="limparBuscaClientes()" style="font-size: 11px; padding: 4px 12px;">
                     <i class="fas fa-undo"></i> Limpar Busca
                 </button>
             </div>
         `;
     } else if (isMobile) {
-        html = `<div style="display:flex;flex-direction:column;gap:8px;">`;
-        for (let c of clientesFiltrados) {
+        // MOBILE - CARDS
+        html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+        for (const c of clientesFiltrados) {
             const isBloqueado = c.bloqueado_chatbot === 1;
             const telefone = c.telefone || '';
             const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
@@ -1743,11 +1133,11 @@ function atualizarListaClientes(clientesFiltrados) {
                             <div style="width:32px;height:32px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;">${inicial}</div>
                             <div style="flex:1;min-width:0;">
                                 <div style="font-size:13px;font-weight:600;color:var(--text-primary);">
-                                    ${escapeHtml(String(c.nome || 'Cliente'))}
+                                    ${escapeHtml(c.nome)}
                                     <span style="font-size:11px;">${c.icone || ''}</span>
                                 </div>
                                 <div style="font-size:10px;color:var(--text-muted);">
-                                    ${c.telefone ? `📱 ${escapeHtml(String(c.telefone))}` : 'Sem telefone'}
+                                    ${c.telefone ? `📱 ${escapeHtml(c.telefone)}` : 'Sem telefone'}
                                 </div>
                                 <div style="font-size:8px;margin-top:2px;">${gruposLabels}</div>
                             </div>
@@ -1774,6 +1164,7 @@ function atualizarListaClientes(clientesFiltrados) {
         }
         html += `</div>`;
     } else {
+        // DESKTOP - TABELA
         const cores = {
             vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
             frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
@@ -1782,7 +1173,7 @@ function atualizarListaClientes(clientesFiltrados) {
             regular: { bg: 'rgba(107,114,128,0.1)', text: '#6b7280' }
         };
 
-        html = `
+        html += `
             <div class="table-responsive" style="overflow-x: auto;">
                 <table class="data-table" style="width: 100%; min-width: 800px; font-size: 13px;">
                     <thead>
@@ -1798,274 +1189,137 @@ function atualizarListaClientes(clientesFiltrados) {
                             <th style="padding: 6px 8px; text-align:center;">Ações</th>
                         </tr>
                     </thead>
-                    <tbody>`;
-        for (let c of clientesFiltrados) {
-            const isBloqueado = c.bloqueado_chatbot === 1;
-            const telefone = c.telefone || '';
-            const cor = cores[c.classificacao] || cores.regular;
-
-            const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
-                `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:9px;color:#8b5cf6;margin:1px;display:inline-block;">${g}</span>`
-            ).join(' ') : '';
-
-            html += `
-                <tr>
-                    <td style="padding: 6px 8px; text-align:center;">${c.id}</td>
-                    <td style="padding: 6px 8px;">
-                        <strong>${escapeHtml(String(c.nome || 'Cliente'))}</strong> 
-                        <span style="font-size:14px;">${c.icone || ''}</span>
-                    </td>
-                    <td style="padding: 6px 8px;">
-                        ${telefone ? escapeHtml(String(telefone)) : '-'}
-                        ${telefone ? `<a href="https://wa.me/55${telefone.replace(/\D/g, '')}" target="_blank" style="color:#25D366;text-decoration:none;margin-left:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
-                    </td>
-                    <td style="padding: 6px 8px;">
-                        <span style="padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};">
-                            ${c.icone || ''} ${c.classificacao}
-                        </span>
-                    </td>
-                    <td style="padding: 6px 8px; font-size:10px;">
-                        ${gruposLabels || '-'}
-                    </td>
-                    <td style="padding: 6px 8px; text-align:center;">${c.total_concluidos}</td>
-                    <td style="padding: 6px 8px; text-align:center;font-weight:600;color:#22c55e;">
-                        R$ ${formatMoney(c.ticket_medio)}
-                    </td>
-                    <td style="padding: 6px 8px; text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">
-                        ${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}
-                    </td>
-                    <td style="padding: 6px 8px;">
-                        <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
-                            <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
-                                <i class="fas fa-pen"></i>
-                            </button>
-                            <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
-                                <i class="fas fa-history"></i>
-                            </button>
-                            <button class="btn-icon" onclick="abrirModalGrupos(${c.id})" title="Grupos" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
-                                <i class="fas fa-tags"></i>
-                            </button>
-                            ${isBloqueado ?
-                    `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;border:none;background:rgba(34,197,94,0.1);border-radius:4px;cursor:pointer;color:#22c55e;">
-                                    <i class="fas fa-unlock"></i>
-                                </button>` :
-                    `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
-                                    <i class="fas fa-lock"></i>
-                                </button>`
-                }
-                            <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>`;
-        }
-        html += `</tbody></table></div>`;
-    }
-
-    container.innerHTML = html;
-
-    const buscaInput = document.getElementById('buscaClientesInput');
-    if (buscaInput && termoBuscaClientes) {
-        buscaInput.focus();
-        const len = buscaInput.value.length;
-        buscaInput.setSelectionRange(len, len);
-    }
-}
-// ============================================
-// PREVENIR RECARREGAMENTOS NO MOBILE
-// ============================================
-
-document.addEventListener('touchstart', function (e) {
-    if (e.target && e.target.id === 'buscaClientesInput') {
-        console.log('📱 Toque no input de busca');
-        if (window._touchTimeout) {
-            clearTimeout(window._touchTimeout);
-        }
-        window._touchTimeout = setTimeout(() => { }, 2000);
-    }
-}, { passive: true });
-
-// ============================================
-// REDIMENSIONAMENTO - CORRIGIDO PARA MOBILE
-// ============================================
-
-window.addEventListener('resize', function () {
-    const content = document.getElementById('content');
-    if (!content || !content.innerHTML.includes('👥 Clientes')) {
-        return;
-    }
-
-    // 🔥 SE TIVER LETRA SELECIONADA OU BUSCA ATIVA, NÃO RECARREGAR
-    if (termoBuscaClientes && termoBuscaClientes.length > 0) {
-        console.log('📱 Busca ativa, ignorando resize');
-        return;
-    }
-
-    if (letraSelecionada) {
-        console.log('📱 Filtro de letra ativo, ignorando resize');
-        return;
-    }
-
-    const agora = Date.now();
-    if (agora - ultimoResizeClientes < 500) {
-        return;
-    }
-    ultimoResizeClientes = agora;
-
-    clearTimeout(resizeTimeoutClientes);
-    resizeTimeoutClientes = setTimeout(function () {
-        if (!termoBuscaClientes && !letraSelecionada && !carregandoClientes) {
-            console.log('📱 Recarregando clientes após resize...');
-            carregarClientes();
-        }
-    }, 500);
-});
-
-// ============================================
-// APAGAR TODOS OS CLIENTES
-// ============================================
-
-async function apagarTodosClientes() {
-    if (!confirm('🛑 ATENÇÃO: Você tem certeza que deseja apagar TODOS os clientes?\n\nEsta ação apagará também todos os agendamentos vinculados e não poderá ser desfeita!')) {
-        return;
-    }
-
-    if (!confirm('🛑 ÚLTIMA CONFIRMAÇÃO: Tem certeza absoluta?')) {
-        return;
-    }
-
-    showLoading();
-    const token = localStorage.getItem('token');
-
-    try {
-        const resClientes = await fetch('/api/clientes', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const dataClientes = await resClientes.json();
-        const clientes = dataClientes.data || [];
-
-        if (clientes.length === 0) {
-            showToast('✅ Nenhum cliente para apagar', 'info');
-            hideLoading();
-            return;
-        }
-
-        let excluidos = 0;
-        let erros = 0;
-
-        for (let cliente of clientes) {
-            try {
-                const resDelete = await fetch(`/api/clientes/${cliente.id}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': 'Bearer ' + token }
-                });
-                const data = await resDelete.json();
-                if (data.success) {
-                    excluidos++;
-                } else {
-                    erros++;
-                }
-            } catch (e) {
-                erros++;
-            }
-        }
-
-        hideLoading();
-
-        if (excluidos > 0) {
-            showToast(`✅ ${excluidos} clientes removidos! ${erros > 0 ? `⚠️ ${erros} erros` : ''}`, erros > 0 ? 'warning' : 'success');
-            clientesCompletos = [];
-            filtroClientes = 'todos';
-            filtroGrupo = 'todos';
-            termoBuscaClientes = '';
-            await carregarClientes();
-        } else {
-            showToast('❌ Falha ao excluir clientes', 'error');
-        }
-    } catch (error) {
-        console.error('❌ Erro ao apagar todos:', error);
-        hideLoading();
-        showToast('Erro ao conectar com o servidor', 'error');
-    }
-}
-
-// ============================================
-// VER HISTÓRICO DO CLIENTE
-// ============================================
-
-async function verHistoricoCliente(id) {
-    const token = localStorage.getItem('token');
-
-    try {
-        const res = await fetch('/api/agendamentos', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        const agendamentos = data.data || [];
-        const ags = agendamentos.filter(a => a.cliente_id === id);
-
-        if (ags.length === 0) {
-            showToast('📋 Este cliente ainda não tem agendamentos', 'info');
-            return;
-        }
-
-        const cliente = clientesCompletos.find(c => c.id === id);
-
-        let html = `
-            <div id="modalHistorico" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
-                <div class="modal-content" style="max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin: 0;">📋 Histórico de ${escapeHtml(cliente?.nome || 'Cliente')}</h3>
-                        <button onclick="fecharModalHistorico()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
-                        <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700;">${ags.length}</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">Total</div>
-                        </div>
-                        <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${ags.filter(a => a.status === 'concluido').length}</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">✅ Concluídos</div>
-                        </div>
-                        <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
-                            <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${ags.filter(a => a.status === 'pendente' || a.status === 'agendado').length}</div>
-                            <div style="font-size: 10px; color: var(--text-muted);">⏳ Pendentes</div>
-                        </div>
-                    </div>
-                    <div style="max-height: 300px; overflow-y: auto;">
-                        ${ags.sort((a, b) => new Date(b.data) - new Date(a.data)).map(a => `
-                            <div style="display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px;">
-                                <span>📅 ${formatarDataBr(a.data)} ${a.hora || ''}</span>
-                                <span>✂️ ${escapeHtml(a.servico_nome || a.servico || 'N/A')}</span>
-                                <span style="font-weight: 600; color: ${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">${a.status || 'pendente'}</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
-                        <button onclick="fecharModalHistorico()" style="padding: 8px 24px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: 600; cursor: pointer;">Fechar</button>
-                    </div>
-                </div>
+                    <tbody>
+                        ${clientesFiltrados.map(c => {
+                            const isBloqueado = c.bloqueado_chatbot === 1;
+                            const telefone = c.telefone || '';
+                            const cor = cores[c.classificacao] || cores.regular;
+                            const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
+                                `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:9px;color:#8b5cf6;margin:1px;display:inline-block;">${g}</span>`
+                            ).join(' ') : '';
+                            return `
+                                <tr>
+                                    <td style="padding: 6px 8px; text-align:center;">${c.id}</td>
+                                    <td style="padding: 6px 8px;">
+                                        <strong>${escapeHtml(c.nome)}</strong> 
+                                        <span style="font-size:14px;">${c.icone || ''}</span>
+                                    </td>
+                                    <td style="padding: 6px 8px;">
+                                        ${telefone ? escapeHtml(telefone) : '-'}
+                                        ${telefone ? `<a href="https://wa.me/55${telefone.replace(/\D/g, '')}" target="_blank" style="color:#25D366;text-decoration:none;margin-left:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
+                                    </td>
+                                    <td style="padding: 6px 8px;">
+                                        <span style="padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};">
+                                            ${c.icone || ''} ${c.classificacao}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 6px 8px; font-size:10px;">
+                                        ${gruposLabels || '-'}
+                                    </td>
+                                    <td style="padding: 6px 8px; text-align:center;">${c.total_concluidos}</td>
+                                    <td style="padding: 6px 8px; text-align:center;font-weight:600;color:#22c55e;">
+                                        R$ ${formatMoney(c.ticket_medio)}
+                                    </td>
+                                    <td style="padding: 6px 8px; text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">
+                                        ${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}
+                                    </td>
+                                    <td style="padding: 6px 8px;">
+                                        <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
+                                            <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
+                                                <i class="fas fa-pen"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
+                                                <i class="fas fa-history"></i>
+                                            </button>
+                                            <button class="btn-icon" onclick="abrirModalGrupos(${c.id})" title="Grupos" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
+                                                <i class="fas fa-tags"></i>
+                                            </button>
+                                            ${isBloqueado ?
+                                                `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;border:none;background:rgba(34,197,94,0.1);border-radius:4px;cursor:pointer;color:#22c55e;">
+                                                    <i class="fas fa-unlock"></i>
+                                                </button>` :
+                                                `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
+                                                    <i class="fas fa-lock"></i>
+                                                </button>`
+                                            }
+                                            <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
             </div>
         `;
-
-        const existing = document.getElementById('modalHistorico');
-        if (existing) existing.remove();
-        document.body.insertAdjacentHTML('beforeend', html);
-
-    } catch (error) {
-        console.error('❌ Erro ao buscar histórico:', error);
-        showToast('Erro ao carregar histórico', 'error');
     }
-}
 
-function fecharModalHistorico() {
-    const modal = document.getElementById('modalHistorico');
-    if (modal) modal.remove();
+    html += `</div></div>`;
+
+    content.innerHTML = html;
+    window.scrollTo(0, 0);
+
+    console.log(`✅ Clientes renderizados: ${clientesFiltrados.length} de ${clientes.length}`);
 }
 
 // ============================================
-// CRUD DE CLIENTES
+// SET FILTRO CLIENTES
+// ============================================
+
+function setFiltroClientes(filtro) {
+    filtroClientes = filtro;
+    if (filtroGrupo !== 'todos') filtroGrupo = 'todos';
+    renderizarClientes(clientesCompletos);
+}
+
+// ============================================
+// BUSCAR CLIENTES (APENAS DESKTOP)
+// ============================================
+
+function buscarClientes() {
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+        console.log('📱 Busca mobile desativada (apenas desktop)');
+        return;
+    }
+
+    const input = document.getElementById('buscaClientesInput');
+    if (!input) return;
+    termoBuscaClientes = input.value.toLowerCase().trim();
+
+    if (termoBuscaClientes) {
+        localStorage.removeItem('letraSelecionada');
+        letraSelecionada = '';
+    }
+
+    const btnLimpar = document.getElementById('btnLimparBusca');
+    if (btnLimpar) btnLimpar.style.display = termoBuscaClientes ? 'block' : 'none';
+
+    if (timeoutBusca) clearTimeout(timeoutBusca);
+    timeoutBusca = setTimeout(() => renderizarClientes(clientesCompletos), 300);
+}
+
+function limparBuscaClientes() {
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+        console.log('📱 Busca mobile desativada (apenas desktop)');
+        return;
+    }
+
+    const input = document.getElementById('buscaClientesInput');
+    if (input) input.value = '';
+    termoBuscaClientes = '';
+    localStorage.removeItem('letraSelecionada');
+    letraSelecionada = '';
+    const btnLimpar = document.getElementById('btnLimparBusca');
+    if (btnLimpar) btnLimpar.style.display = 'none';
+    renderizarClientes(clientesCompletos);
+}
+
+// ============================================
+// FUNÇÕES CRUD
 // ============================================
 
 function abrirModalCliente() {
@@ -2276,31 +1530,41 @@ async function atualizarCliente(id) {
     }
 }
 
-async function excluirCliente(id) {
-    if (!confirm('Excluir este cliente? Esta ação não poderá ser desfeita.')) return;
+// ============================================
+// EXCLUIR CLIENTE - CORRIGIDO
+// ============================================
 
-    showLoading();
-    const token = localStorage.getItem('token');
+async function excluirCliente(id) {
+    const confirmado = await showConfirm(
+        'Deseja realmente excluir este cliente?\n\nEsta ação não poderá ser desfeita!',
+        '👤 Excluir Cliente',
+        { 
+            confirmText: '✅ Sim, Excluir', 
+            cancelText: '❌ Cancelar', 
+            icon: '👤',
+            confirmClass: 'btn-danger'
+        }
+    );
+    
+    if (!confirmado) return;
 
     try {
-        const res = await fetch('/api/clientes/' + id, {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/clientes/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': 'Bearer ' + token }
         });
-        const data = await res.json();
 
-        hideLoading();
-
-        if (data.success) {
-            showToast('Cliente removido com sucesso!', 'success');
-            await carregarClientes();
+        const result = await response.json();
+        if (result.success) {
+            showToast('✅ Cliente excluído com sucesso!', 'success');
+            carregarClientes();
         } else {
-            showToast(data.message || 'Erro ao excluir cliente', 'error');
+            showToast(result.message || '❌ Erro ao excluir cliente', 'error');
         }
     } catch (error) {
         console.error('❌ Erro:', error);
-        hideLoading();
-        showToast('Erro ao excluir cliente', 'error');
+        showToast('❌ Erro ao excluir cliente', 'error');
     }
 }
 
@@ -2365,6 +1629,148 @@ async function desbloquearChatbot(id) {
         console.error('❌ Erro:', error);
         hideLoading();
         showToast('Erro ao desbloquear cliente', 'error');
+    }
+}
+
+// ============================================
+// VER HISTÓRICO DO CLIENTE
+// ============================================
+
+async function verHistoricoCliente(id) {
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch('/api/agendamentos', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const data = await res.json();
+        const agendamentos = data.data || [];
+        const ags = agendamentos.filter(a => a.cliente_id === id);
+
+        if (ags.length === 0) {
+            showToast('📋 Este cliente ainda não tem agendamentos', 'info');
+            return;
+        }
+
+        const cliente = clientesCompletos.find(c => c.id === id);
+
+        let html = `
+            <div id="modalHistorico" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+                <div class="modal-content" style="max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <h3 style="margin: 0;">📋 Histórico de ${escapeHtml(cliente?.nome || 'Cliente')}</h3>
+                        <button onclick="fecharModalHistorico()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 16px;">
+                        <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700;">${ags.length}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">Total</div>
+                        </div>
+                        <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: #22c55e;">${ags.filter(a => a.status === 'concluido').length}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">✅ Concluídos</div>
+                        </div>
+                        <div style="background: var(--bg-hover); border-radius: 8px; padding: 10px; text-align: center;">
+                            <div style="font-size: 20px; font-weight: 700; color: #f59e0b;">${ags.filter(a => a.status === 'pendente' || a.status === 'agendado').length}</div>
+                            <div style="font-size: 10px; color: var(--text-muted);">⏳ Pendentes</div>
+                        </div>
+                    </div>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        ${ags.sort((a, b) => new Date(b.data) - new Date(a.data)).map(a => `
+                            <div style="display: flex; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-size: 13px;">
+                                <span>📅 ${formatarDataBr(a.data)} ${a.hora || ''}</span>
+                                <span>✂️ ${escapeHtml(a.servico_nome || a.servico || 'N/A')}</span>
+                                <span style="font-weight: 600; color: ${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">${a.status || 'pendente'}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div style="margin-top: 16px; display: flex; justify-content: flex-end;">
+                        <button onclick="fecharModalHistorico()" style="padding: 8px 24px; border: none; border-radius: 8px; background: var(--primary); color: white; font-weight: 600; cursor: pointer;">Fechar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const existing = document.getElementById('modalHistorico');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', html);
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar histórico:', error);
+        showToast('Erro ao carregar histórico', 'error');
+    }
+}
+
+function fecharModalHistorico() {
+    const modal = document.getElementById('modalHistorico');
+    if (modal) modal.remove();
+}
+
+// ============================================
+// APAGAR TODOS OS CLIENTES
+// ============================================
+
+async function apagarTodosClientes() {
+    if (!confirm('🛑 ATENÇÃO: Você tem certeza que deseja apagar TODOS os clientes?\n\nEsta ação apagará também todos os agendamentos vinculados e não poderá ser desfeita!')) {
+        return;
+    }
+
+    if (!confirm('🛑 ÚLTIMA CONFIRMAÇÃO: Tem certeza absoluta?')) {
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const resClientes = await fetch('/api/clientes', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const dataClientes = await resClientes.json();
+        const clientes = dataClientes.data || [];
+
+        if (clientes.length === 0) {
+            showToast('✅ Nenhum cliente para apagar', 'info');
+            hideLoading();
+            return;
+        }
+
+        let excluidos = 0;
+        let erros = 0;
+
+        for (let cliente of clientes) {
+            try {
+                const resDelete = await fetch(`/api/clientes/${cliente.id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await resDelete.json();
+                if (data.success) {
+                    excluidos++;
+                } else {
+                    erros++;
+                }
+            } catch (e) {
+                erros++;
+            }
+        }
+
+        hideLoading();
+
+        if (excluidos > 0) {
+            showToast(`✅ ${excluidos} clientes removidos! ${erros > 0 ? `⚠️ ${erros} erros` : ''}`, erros > 0 ? 'warning' : 'success');
+            clientesCompletos = [];
+            filtroClientes = 'todos';
+            filtroGrupo = 'todos';
+            termoBuscaClientes = '';
+            await carregarClientes();
+        } else {
+            showToast('❌ Falha ao excluir clientes', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao apagar todos:', error);
+        hideLoading();
+        showToast('Erro ao conectar com o servidor', 'error');
     }
 }
 
@@ -2903,78 +2309,131 @@ Venha aproveitar nossa promoção imperdível!
     }, 100);
 }
 
+// ============================================
+// FILTRAR CLIENTES NA PROMOÇÃO - CORRIGIDO
+// ============================================
+
 function filtrarClientesPromocao() {
-    const filtroGrupo = document.getElementById('filtroGrupoPromocao')?.value || 'todos';
-    const termoBusca = document.getElementById('buscaClientePromocao')?.value?.toLowerCase().trim() || '';
+    try {
+        const filtroGrupo = document.getElementById('filtroGrupoPromocao')?.value || 'todos';
+        const termoBusca = document.getElementById('buscaClientePromocao')?.value?.toLowerCase().trim() || '';
 
-    const container = document.getElementById('listaClientesPromocao');
-    const items = container.querySelectorAll('.cliente-item');
-
-    let visiveis = 0;
-
-    for (let item of items) {
-        const checkbox = item.querySelector('input[type="checkbox"]');
-        if (!checkbox) continue;
-
-        const nome = (item.dataset.nome || '').toLowerCase();
-        const telefone = item.dataset.telefone || '';
-        const gruposData = item.dataset.grupos || '';
-        const gruposArray = gruposData ? gruposData.split(',').filter(g => g.trim() !== '') : [];
-
-        let mostrar = true;
-
-        if (filtroGrupo !== 'todos') {
-            if (!gruposArray.includes(filtroGrupo)) {
-                mostrar = false;
-            }
+        const container = document.getElementById('listaClientesPromocao');
+        if (!container) {
+            console.log('⚠️ Container listaClientesPromocao não encontrado');
+            return;
         }
 
-        if (mostrar && termoBusca) {
-            const nomeMatch = nome.includes(termoBusca);
-            const telefoneMatch = telefone.includes(termoBusca);
-            if (!nomeMatch && !telefoneMatch) {
-                mostrar = false;
-            }
+        const items = container.querySelectorAll('.cliente-item');
+        if (!items || items.length === 0) {
+            return;
         }
 
-        item.style.display = mostrar ? 'flex' : 'none';
-        if (mostrar) visiveis++;
+        let visiveis = 0;
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            if (!checkbox) continue;
+
+            const nome = (item.dataset.nome || '').toLowerCase();
+            const telefone = item.dataset.telefone || '';
+            const gruposData = item.dataset.grupos || '';
+            const gruposArray = gruposData ? gruposData.split(',').filter(g => g.trim() !== '') : [];
+
+            let mostrar = true;
+
+            if (filtroGrupo !== 'todos') {
+                if (!gruposArray.includes(filtroGrupo)) {
+                    mostrar = false;
+                }
+            }
+
+            if (mostrar && termoBusca) {
+                const nomeMatch = nome.includes(termoBusca);
+                const telefoneMatch = telefone.includes(termoBusca);
+                if (!nomeMatch && !telefoneMatch) {
+                    mostrar = false;
+                }
+            }
+
+            item.style.display = mostrar ? 'flex' : 'none';
+            if (mostrar) visiveis++;
+        }
+
+        atualizarContadorSelecionados();
+    } catch (error) {
+        console.error('❌ Erro ao filtrar clientes:', error);
     }
-
-    atualizarContadorSelecionados();
 }
+
+// ============================================
+// SELECIONAR TODOS OS CLIENTES - CORRIGIDO
+// ============================================
 
 function selecionarTodosClientes(selecionar) {
-    const container = document.getElementById('listaClientesPromocao');
-    const items = container.querySelectorAll('.cliente-item');
+    try {
+        const container = document.getElementById('listaClientesPromocao');
+        if (!container) {
+            console.log('⚠️ Container listaClientesPromocao não encontrado');
+            return;
+        }
 
-    for (let item of items) {
-        if (item.style.display !== 'none') {
-            const checkbox = item.querySelector('input[type="checkbox"]');
-            if (checkbox) {
-                checkbox.checked = selecionar;
+        const items = container.querySelectorAll('.cliente-item');
+        if (!items || items.length === 0) return;
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.style.display !== 'none') {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = selecionar;
+                }
             }
         }
+        atualizarContadorSelecionados();
+    } catch (error) {
+        console.error('❌ Erro ao selecionar todos:', error);
     }
-    atualizarContadorSelecionados();
 }
 
-function atualizarContadorSelecionados() {
-    const container = document.getElementById('listaClientesPromocao');
-    const items = container.querySelectorAll('.cliente-item');
+// ============================================
+// ATUALIZAR CONTADOR DE SELECIONADOS - CORRIGIDO
+// ============================================
 
-    let selecionados = 0;
-    for (let item of items) {
-        if (item.style.display !== 'none') {
-            const checkbox = item.querySelector('input[type="checkbox"]');
-            if (checkbox && checkbox.checked) {
-                selecionados++;
+function atualizarContadorSelecionados() {
+    try {
+        const container = document.getElementById('listaClientesPromocao');
+        if (!container) {
+            console.log('⚠️ Container listaClientesPromocao não encontrado');
+            return;
+        }
+
+        const items = container.querySelectorAll('.cliente-item');
+        if (!items || items.length === 0) {
+            const contador = document.getElementById('contadorSelecionados');
+            if (contador) contador.textContent = '0';
+            return;
+        }
+
+        let selecionados = 0;
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.style.display !== 'none') {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    selecionados++;
+                }
             }
         }
-    }
 
-    const contador = document.getElementById('contadorSelecionados');
-    if (contador) contador.textContent = selecionados;
+        const contador = document.getElementById('contadorSelecionados');
+        if (contador) {
+            contador.textContent = selecionados;
+        }
+    } catch (error) {
+        console.error('❌ Erro ao atualizar contador:', error);
+    }
 }
 
 function fecharModalPromocao() {
@@ -2982,10 +2441,6 @@ function fecharModalPromocao() {
     if (modal) modal.remove();
     promocaoEmAndamento = false;
 }
-
-// ============================================
-// NORMALIZAR NÚMERO
-// ============================================
 
 function normalizarNumero(telefone) {
     if (!telefone) return '';
@@ -3009,10 +2464,6 @@ function normalizarNumero(telefone) {
 
     return numero;
 }
-
-// ============================================
-// ENVIAR PROMOÇÃO - CORRIGIDO
-// ============================================
 
 async function enviarPromocao() {
     if (promocaoEmAndamento || envioLock) {
@@ -3082,7 +2533,6 @@ async function enviarPromocao() {
     const progressoStatus = document.getElementById('progressoStatus');
 
     const token = localStorage.getItem('token');
-    // 🔥 PEGAR O ID DA EMPRESA DO USUÁRIO
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
     const empresaId = usuario.empresa_id;
 
@@ -3146,9 +2596,6 @@ async function enviarPromocao() {
 
             console.log(`📤 Enviando para ${cliente.nome} (${telefone}) - Empresa: ${empresaId}`);
 
-            // ============================================
-            // 🔥 CORREÇÃO: ENVIAR EMPRESA_ID
-            // ============================================
             const response = await fetch('/api/whatsapp/enviar', {
                 method: 'POST',
                 headers: {
@@ -3156,7 +2603,7 @@ async function enviarPromocao() {
                     'Authorization': 'Bearer ' + token
                 },
                 body: JSON.stringify({
-                    empresa_id: empresaId,   // ← 🔥 ADICIONADO!
+                    empresa_id: empresaId,
                     numero: telefone,
                     mensagem: mensagemFinal
                 }),
@@ -3215,17 +2662,66 @@ async function enviarPromocao() {
         }
     }, 5000);
 }
+// ============================================
+// FORÇAR ATUALIZAÇÃO DOS GRUPOS
+// ============================================
 
+async function forcarAtualizacaoGrupos() {
+    console.log('🔄 Forçando atualização dos grupos...');
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    try {
+        const res = await fetch('/api/clientes/grupos', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            const clientes = data.data?.clientes || [];
+            const grupos = data.data?.grupos || [];
+
+            // Atualizar grupos locais
+            const gruposMap = {};
+            for (const c of clientes) {
+                gruposMap[c.id] = c.grupos || [];
+            }
+
+            clientesCompletos.forEach(c => {
+                if (gruposMap[c.id]) {
+                    c.grupos = gruposMap[c.id];
+                } else {
+                    c.grupos = [];
+                }
+            });
+
+            // Atualizar lista de grupos
+            gruposClientes = grupos;
+
+            console.log('✅ Grupos atualizados localmente');
+            renderizarClientes(clientesCompletos);
+            showToast('✅ Grupos atualizados com sucesso!', 'success');
+        } else {
+            showToast('❌ Erro ao atualizar grupos', 'error');
+        }
+    } catch (error) {
+        console.error('❌ Erro ao forçar atualização:', error);
+        showToast('❌ Erro ao conectar com o servidor', 'error');
+    }
+}
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 
 window.carregarClientes = carregarClientes;
 window.buscarClientes = buscarClientes;
-window.buscarClientesBotao = buscarClientesBotao;
 window.limparBuscaClientes = limparBuscaClientes;
 window.setFiltroClientes = setFiltroClientes;
 window.setFiltroGrupo = setFiltroGrupo;
+window.filtrarPorLetra = filtrarPorLetra;
+window.limparFiltroLetra = limparFiltroLetra;
+window.renderizarClientes = renderizarClientes;
 window.apagarTodosClientes = apagarTodosClientes;
 window.abrirModalCliente = abrirModalCliente;
 window.fecharModalCliente = fecharModalCliente;
@@ -3261,7 +2757,5 @@ window.aplicarFiltrosClientes = aplicarFiltrosClientes;
 window.carregarClientesBackground = carregarClientesBackground;
 window.renderizarListaClientes = renderizarListaClientes;
 window.forcarAtualizacaoGrupos = forcarAtualizacaoGrupos;
-window.filtrarPorLetra = filtrarPorLetra;
-window.limparFiltroLetra = limparFiltroLetra;
 
-console.log('✅ clientes.js carregado (CRM COMPLETO + MOBILE + GRUPOS + LIMPEZA DE NOMES)');
+console.log('✅ clientes.js carregado (OTIMIZADO - SEM LUPA NO MOBILE)');

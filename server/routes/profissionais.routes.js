@@ -1,43 +1,68 @@
 ﻿// ============================================
-// ROTAS DE PROFISSIONAIS
+// ROTAS DE PROFISSIONAIS - SEE&AGENDE
 // ============================================
+
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 const bcrypt = require('bcryptjs');
 
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// server/routes/profissionais.routes.js
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
 
 // ============================================
-// GET /api/profissionais
+// GET /api/profissionais - LISTAR PROFISSIONAIS
 // ============================================
+
 router.get('/', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { ativo } = req.query;
 
     console.log(`📊 Buscando profissionais para empresa ${empresaId}`);
 
-    // 🔥 CORREÇÃO: Remover vírgula extra antes de ORDER BY
-    let sql = isProduction
-        ? "SELECT * FROM profissionais WHERE empresa_id = $1"
-        : "SELECT * FROM profissionais WHERE empresa_id = ?";
+    const db = getEmpresaDb(empresaId);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    let sql = `SELECT * FROM profissionais WHERE empresa_id = ?`;
     let params = [empresaId];
-    let counter = 2;
 
     if (ativo !== undefined && ativo !== '') {
         const ativoValue = ativo === 'true' || ativo === '1' ? 1 : 0;
-        sql += isProduction
-            ? ` AND ativo = $${counter}`
-            : " AND ativo = ?";
+        sql += ` AND ativo = ?`;
         params.push(ativoValue);
-        counter++;
     }
 
-    // 🔥 CORREÇÃO: Garantir que ORDER BY está correto
-    sql += isProduction ? " ORDER BY nome" : " ORDER BY nome";
+    sql += ` ORDER BY nome`;
 
     console.log('📝 SQL:', sql);
     console.log('📝 Params:', params);
@@ -60,27 +85,81 @@ router.get('/', auth, (req, res) => {
 });
 
 // ============================================
-// POST /api/profissionais
+// GET /api/profissionais/:id - BUSCAR PROFISSIONAL
 // ============================================
+
+router.get('/:id', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const { id } = req.params;
+
+    console.log(`🔍 Buscando profissional ${id} para empresa ${empresaId}`);
+
+    const db = getEmpresaDb(empresaId);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sql = `SELECT * FROM profissionais WHERE id = ? AND empresa_id = ?`;
+
+    db.get(sql, [id, empresaId], (err, profissional) => {
+        if (err) {
+            console.error("❌ Erro ao buscar profissional:", err);
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        if (!profissional) {
+            return res.status(404).json({
+                success: false,
+                message: 'Profissional não encontrado'
+            });
+        }
+
+        res.json({
+            success: true,
+            data: profissional
+        });
+    });
+});
+
+// ============================================
+// POST /api/profissionais - CRIAR PROFISSIONAL
+// ============================================
+
 router.post('/', auth, verificarDono, (req, res) => {
     const { nome, email, senha, comissao_percent, telefone } = req.body;
     const empresaId = req.usuario.empresa_id;
 
+    console.log(`📝 Criando profissional para empresa ${empresaId}:`, { nome, email });
+
     if (!nome || !email || !senha) {
         return res.status(400).json({
             success: false,
-            message: 'Nome, email e senha sao obrigatorios'
+            message: 'Nome, email e senha são obrigatórios'
         });
     }
 
-    // Verificar se email ja existe
-    const checkSql = isProduction
-        ? "SELECT id FROM profissionais WHERE email =  AND empresa_id = "
-        : "SELECT id FROM profissionais WHERE email = ? AND empresa_id = ?";
+    const db = getEmpresaDb(empresaId);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    // Verificar se email já existe
+    const checkSql = `SELECT id FROM profissionais WHERE email = ? AND empresa_id = ?`;
 
     db.get(checkSql, [email, empresaId], (err, existing) => {
         if (err) {
-            console.error("Erro ao verificar email:", err);
+            console.error("❌ Erro ao verificar email:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
@@ -90,20 +169,19 @@ router.post('/', auth, verificarDono, (req, res) => {
         if (existing) {
             return res.status(400).json({
                 success: false,
-                message: 'Email ja cadastrado para esta empresa'
+                message: 'Email já cadastrado para esta empresa'
             });
         }
 
         const salt = bcrypt.genSaltSync(10);
         const senhaHash = bcrypt.hashSync(senha, salt);
 
-        const sql = isProduction
-            ? "INSERT INTO profissionais (nome, email, senha, comissao_percent, telefone, ativo, empresa_id) VALUES (, , , , , 1, )"
-            : "INSERT INTO profissionais (nome, email, senha, comissao_percent, telefone, ativo, empresa_id) VALUES (?, ?, ?, ?, ?, 1, ?)";
+        const sql = `INSERT INTO profissionais (nome, email, senha, comissao_percent, telefone, ativo, empresa_id) 
+                     VALUES (?, ?, ?, ?, ?, 1, ?)`;
 
         db.run(sql, [nome, email, senhaHash, comissao_percent || 30, telefone || '', empresaId], function (err) {
             if (err) {
-                console.error("Erro ao criar profissional:", err);
+                console.error("❌ Erro ao criar profissional:", err);
                 return res.status(500).json({
                     success: false,
                     message: err.message
@@ -119,11 +197,10 @@ router.post('/', auth, verificarDono, (req, res) => {
     });
 });
 
-// server/routes/profissionais.routes.js
+// ============================================
+// PUT /api/profissionais/:id - ATUALIZAR PROFISSIONAL
+// ============================================
 
-// ============================================
-// PUT /api/profissionais/:id
-// ============================================
 router.put('/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
@@ -131,7 +208,16 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 
     console.log('📝 Atualizando profissional:', { id, nome, email, telefone, comissao_percent, ativo, temSenha: !!senha });
 
-    // 🔥 CORREÇÃO: Validar apenas se os campos forem enviados
+    const db = getEmpresaDb(empresaId);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    // Validar campos
     if (nome !== undefined && !nome) {
         return res.status(400).json({
             success: false,
@@ -146,10 +232,8 @@ router.put('/:id', auth, verificarDono, (req, res) => {
         });
     }
 
-    // 🔥 Buscar profissional atual
-    const sqlSelect = isProduction
-        ? "SELECT * FROM profissionais WHERE id = $1 AND empresa_id = $2"
-        : "SELECT * FROM profissionais WHERE id = ? AND empresa_id = ?";
+    // Buscar profissional atual
+    const sqlSelect = `SELECT * FROM profissionais WHERE id = ? AND empresa_id = ?`;
 
     db.get(sqlSelect, [id, empresaId], (err, profissional) => {
         if (err) {
@@ -167,33 +251,26 @@ router.put('/:id', auth, verificarDono, (req, res) => {
             });
         }
 
-        // 🔥 Usar valores existentes se não forem enviados
+        // Usar valores existentes se não forem enviados
         const nomeFinal = nome !== undefined ? nome : profissional.nome;
         const emailFinal = email !== undefined ? email : profissional.email;
         const telefoneFinal = telefone !== undefined ? telefone : profissional.telefone;
         const comissaoFinal = comissao_percent !== undefined ? comissao_percent : profissional.comissao_percent;
         const ativoFinal = ativo !== undefined ? ativo : profissional.ativo;
 
-        let sql = isProduction
-            ? `UPDATE profissionais 
-               SET nome = $1, email = $2, telefone = $3, comissao_percent = $4, ativo = $5`
-            : `UPDATE profissionais 
-               SET nome = ?, email = ?, telefone = ?, comissao_percent = ?, ativo = ?`;
+        let sql = `UPDATE profissionais 
+                   SET nome = ?, email = ?, telefone = ?, comissao_percent = ?, ativo = ?`;
         let params = [nomeFinal, emailFinal, telefoneFinal || '', parseFloat(comissaoFinal) || 30, ativoFinal ? 1 : 0];
 
-        // 🔥 Se senha foi enviada, incluir no update
+        // Se senha foi enviada, incluir no update
         if (senha && senha.length > 0) {
-            const bcrypt = require('bcryptjs');
             const salt = bcrypt.genSaltSync(10);
             const senhaHash = bcrypt.hashSync(senha, salt);
-
-            sql += isProduction ? `, senha = $6` : `, senha = ?`;
+            sql += `, senha = ?`;
             params.push(senhaHash);
         }
 
-        sql += isProduction
-            ? ` WHERE id = $${params.length + 1} AND empresa_id = $${params.length + 2}`
-            : ` WHERE id = ? AND empresa_id = ?`;
+        sql += ` WHERE id = ? AND empresa_id = ?`;
         params.push(id, empresaId);
 
         console.log('📝 SQL:', sql);
@@ -215,10 +292,9 @@ router.put('/:id', auth, verificarDono, (req, res) => {
                 });
             }
 
-            // 🔥 Buscar profissional atualizado
-            const sqlSelectUpdated = isProduction
-                ? "SELECT id, nome, email, telefone, comissao_percent, ativo, created_at FROM profissionais WHERE id = $1 AND empresa_id = $2"
-                : "SELECT id, nome, email, telefone, comissao_percent, ativo, created_at FROM profissionais WHERE id = ? AND empresa_id = ?";
+            // Buscar profissional atualizado
+            const sqlSelectUpdated = `SELECT id, nome, email, telefone, comissao_percent, ativo, created_at 
+                                      FROM profissionais WHERE id = ? AND empresa_id = ?`;
 
             db.get(sqlSelectUpdated, [id, empresaId], (err, profissionalAtualizado) => {
                 if (err) {
@@ -240,12 +316,15 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// POST /api/profissionais/:id/reset-senha
+// POST /api/profissionais/:id/reset-senha - RESETAR SENHA
 // ============================================
+
 router.post('/:id/reset-senha', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const { senha } = req.body;
     const empresaId = req.usuario.empresa_id;
+
+    console.log(`🔑 Resetando senha do profissional ${id}`);
 
     if (!senha || senha.length < 4) {
         return res.status(400).json({
@@ -254,16 +333,23 @@ router.post('/:id/reset-senha', auth, verificarDono, (req, res) => {
         });
     }
 
+    const db = getEmpresaDb(empresaId);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
     const salt = bcrypt.genSaltSync(10);
     const senhaHash = bcrypt.hashSync(senha, salt);
 
-    const sql = isProduction
-        ? "UPDATE profissionais SET senha =  WHERE id =  AND empresa_id = "
-        : "UPDATE profissionais SET senha = ? WHERE id = ? AND empresa_id = ?";
+    const sql = `UPDATE profissionais SET senha = ? WHERE id = ? AND empresa_id = ?`;
 
     db.run(sql, [senhaHash, id, empresaId], function (err) {
         if (err) {
-            console.error("Erro ao resetar senha:", err);
+            console.error("❌ Erro ao resetar senha:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
@@ -273,7 +359,7 @@ router.post('/:id/reset-senha', auth, verificarDono, (req, res) => {
         if (this.changes === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Profissional nao encontrado'
+                message: 'Profissional não encontrado'
             });
         }
 
@@ -285,19 +371,29 @@ router.post('/:id/reset-senha', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// DELETE /api/profissionais/:id
+// DELETE /api/profissionais/:id - DELETAR PROFISSIONAL
 // ============================================
+
 router.delete('/:id', auth, verificarDono, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 
-    const sql = isProduction
-        ? "DELETE FROM profissionais WHERE id =  AND empresa_id = "
-        : "DELETE FROM profissionais WHERE id = ? AND empresa_id = ?";
+    console.log(`🗑️ Deletando profissional ${id}`);
+
+    const db = getEmpresaDb(empresaId);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sql = `DELETE FROM profissionais WHERE id = ? AND empresa_id = ?`;
 
     db.run(sql, [id, empresaId], function (err) {
         if (err) {
-            console.error("Erro ao deletar profissional:", err);
+            console.error("❌ Erro ao deletar profissional:", err);
             return res.status(500).json({
                 success: false,
                 message: err.message
@@ -307,7 +403,7 @@ router.delete('/:id', auth, verificarDono, (req, res) => {
         if (this.changes === 0) {
             return res.status(404).json({
                 success: false,
-                message: 'Profissional nao encontrado'
+                message: 'Profissional não encontrado'
             });
         }
 
@@ -317,33 +413,40 @@ router.delete('/:id', auth, verificarDono, (req, res) => {
         });
     });
 });
+
 // ============================================
-// ROTAS DO PROFISSIONAL
+// ROTAS DO PROFISSIONAL (AGENDAMENTOS E FINANCEIRO)
 // ============================================
 
 // ============================================
 // GET /api/profissional/agendamentos
 // ============================================
+
 router.get('/profissional/agendamentos', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
     }
 
     const profissional_id = req.usuario.id;
+    const empresa_id = req.usuario.empresa_id;
 
-    const sql = isProduction
-        ? `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-           FROM agendamentos a
-           LEFT JOIN clientes c ON a.cliente_id = c.id
-           LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.profissional_id = $1
-           ORDER BY a.data DESC`
-        : `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
-           FROM agendamentos a
-           LEFT JOIN clientes c ON a.cliente_id = c.id
-           LEFT JOIN servicos s ON a.servico_id = s.id
-           WHERE a.profissional_id = ?
-           ORDER BY a.data DESC`;
+    console.log(`📊 Buscando agendamentos do profissional ${profissional_id}`);
+
+    const db = getEmpresaDb(empresa_id);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sql = `SELECT a.*, c.nome as cliente_nome, s.nome as servico_nome
+                 FROM agendamentos a
+                 LEFT JOIN clientes c ON a.cliente_id = c.id
+                 LEFT JOIN servicos s ON a.servico_id = s.id
+                 WHERE a.profissional_id = ?
+                 ORDER BY a.data DESC`;
 
     db.all(sql, [profissional_id], (err, agendamentos) => {
         if (err) {
@@ -357,6 +460,7 @@ router.get('/profissional/agendamentos', auth, (req, res) => {
 // ============================================
 // GET /api/profissional/financeiro
 // ============================================
+
 router.get('/profissional/financeiro', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({
@@ -370,45 +474,34 @@ router.get('/profissional/financeiro', auth, (req, res) => {
 
     console.log(`📊 Buscando financeiro do profissional ${profissional_id} (${req.usuario.nome})`);
 
-    const sql = isProduction
-        ? `SELECT 
-            a.id,
-            a.data,
-            to_char(a.data, 'YYYY-MM-DD') as data_formatada,
-            a.valor_total,
-            a.servico,
-            a.comissao,
-            a.cliente_id,
-            a.status,
-            c.nome as cliente_nome,
-            s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = $1 
-        AND a.empresa_id = $2
-        AND a.status = 'concluido'
-        ORDER BY a.data DESC
-        LIMIT 50`
-        : `SELECT 
-            a.id,
-            a.data,
-            date(a.data) as data_formatada,
-            a.valor_total,
-            a.servico,
-            a.comissao,
-            a.cliente_id,
-            a.status,
-            c.nome as cliente_nome,
-            s.nome as servico_nome
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.profissional_id = ? 
-        AND a.empresa_id = ?
-        AND a.status = 'concluido'
-        ORDER BY a.data DESC
-        LIMIT 50`;
+    const db = getEmpresaDb(empresa_id);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sql = `SELECT 
+                    a.id,
+                    a.data,
+                    date(a.data) as data_formatada,
+                    a.valor_total,
+                    a.servico,
+                    a.comissao,
+                    a.cliente_id,
+                    a.status,
+                    c.nome as cliente_nome,
+                    s.nome as servico_nome
+                FROM agendamentos a
+                LEFT JOIN clientes c ON a.cliente_id = c.id
+                LEFT JOIN servicos s ON a.servico_id = s.id
+                WHERE a.profissional_id = ? 
+                AND a.empresa_id = ?
+                AND a.status = 'concluido'
+                ORDER BY a.data DESC
+                LIMIT 50`;
 
     db.all(sql, [profissional_id, empresa_id], (err, agendamentos) => {
         if (err) {
@@ -470,8 +563,9 @@ router.get('/profissional/financeiro', auth, (req, res) => {
 });
 
 // ============================================
-// PUT /api/profissional/agendamentos/:id
+// PUT /api/profissional/agendamentos/:id - ATUALIZAR AGENDAMENTO
 // ============================================
+
 router.put('/profissional/agendamentos/:id', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
@@ -480,10 +574,18 @@ router.put('/profissional/agendamentos/:id', auth, (req, res) => {
     const { id } = req.params;
     const { data, hora, cliente_id } = req.body;
     const profissional_id = req.usuario.id;
+    const empresa_id = req.usuario.empresa_id;
 
-    const sqlSelect = isProduction
-        ? `SELECT * FROM agendamentos WHERE id = $1 AND profissional_id = $2`
-        : `SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`;
+    const db = getEmpresaDb(empresa_id);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sqlSelect = `SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`;
 
     db.get(sqlSelect, [id, profissional_id], (err, agendamento) => {
         if (err || !agendamento) {
@@ -494,21 +596,20 @@ router.put('/profissional/agendamentos/:id', auth, (req, res) => {
             return res.json({ success: false, message: 'Agendamentos concluídos não podem ser editados' });
         }
 
-        let query = isProduction ? `UPDATE agendamentos SET ` : `UPDATE agendamentos SET `;
+        let query = `UPDATE agendamentos SET `;
         let params = [];
         let updates = [];
-        let counter = 1;
 
         if (data !== undefined) {
-            updates.push(isProduction ? `data = $${counter++}` : `data = ?`);
+            updates.push(`data = ?`);
             params.push(data);
         }
         if (hora !== undefined) {
-            updates.push(isProduction ? `hora = $${counter++}` : `hora = ?`);
+            updates.push(`hora = ?`);
             params.push(hora);
         }
         if (cliente_id !== undefined) {
-            updates.push(isProduction ? `cliente_id = $${counter++}` : `cliente_id = ?`);
+            updates.push(`cliente_id = ?`);
             params.push(cliente_id);
         }
 
@@ -517,7 +618,7 @@ router.put('/profissional/agendamentos/:id', auth, (req, res) => {
         }
 
         query += updates.join(', ');
-        query += isProduction ? ` WHERE id = $${counter++} AND profissional_id = $${counter++}` : ` WHERE id = ? AND profissional_id = ?`;
+        query += ` WHERE id = ? AND profissional_id = ?`;
         params.push(id, profissional_id);
 
         db.run(query, params, function (err) {
@@ -530,8 +631,9 @@ router.put('/profissional/agendamentos/:id', auth, (req, res) => {
 });
 
 // ============================================
-// PUT /api/profissional/agendamentos/:id/concluir
+// PUT /api/profissional/agendamentos/:id/concluir - CONCLUIR AGENDAMENTO
 // ============================================
+
 router.put('/profissional/agendamentos/:id/concluir', auth, (req, res) => {
     if (req.usuario.role !== 'profissional') {
         return res.json({ success: false, message: 'Acesso negado' });
@@ -539,11 +641,19 @@ router.put('/profissional/agendamentos/:id/concluir', auth, (req, res) => {
 
     const { id } = req.params;
     const profissional_id = req.usuario.id;
+    const empresa_id = req.usuario.empresa_id;
     const comissao_percent = req.usuario.comissao_percent || 30;
 
-    const sqlSelect = isProduction
-        ? `SELECT * FROM agendamentos WHERE id = $1 AND profissional_id = $2`
-        : `SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`;
+    const db = getEmpresaDb(empresa_id);
+
+    if (!db) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const sqlSelect = `SELECT * FROM agendamentos WHERE id = ? AND profissional_id = ?`;
 
     db.get(sqlSelect, [id, profissional_id], (err, agendamento) => {
         if (err || !agendamento) {
@@ -556,9 +666,7 @@ router.put('/profissional/agendamentos/:id/concluir', auth, (req, res) => {
 
         const comissao = (agendamento.valor || 0) * (comissao_percent / 100);
 
-        const sqlUpdate = isProduction
-            ? `UPDATE agendamentos SET status = 'concluido', comissao = $1 WHERE id = $2`
-            : `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ?`;
+        const sqlUpdate = `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ?`;
 
         db.run(sqlUpdate, [comissao, id], (err) => {
             if (err) {
@@ -573,4 +681,5 @@ router.put('/profissional/agendamentos/:id/concluir', auth, (req, res) => {
         });
     });
 });
+
 module.exports = router;

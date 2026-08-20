@@ -1,6 +1,7 @@
 // ============================================
 // ROTAS DE ADMIN (SUPER ADMIN) - COMPLETO
 // ============================================
+
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/database');
@@ -8,22 +9,34 @@ const { auth, verificarSuperAdmin, verificarDono } = require('../middlewares/aut
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
 
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// ============================================
-// FUNÇÕES AUXILIARES SQL
-// ============================================
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
 
-function formatDate(coluna) {
-    return isProduction ? `TO_CHAR(${coluna}, 'YYYY-MM-DD')` : `date(${coluna})`;
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
 }
 
 function formatMonthYear(coluna) {
     return isProduction ? `TO_CHAR(${coluna}, 'YYYY-MM')` : `strftime('%Y-%m', ${coluna})`;
-}
-
-function coalesceSum(valor) {
-    return isProduction ? `COALESCE(SUM(${valor}), 0)` : `IFNULL(SUM(${valor}), 0)`;
 }
 
 function dateInterval(intervalo) {
@@ -33,40 +46,40 @@ function dateInterval(intervalo) {
 // ============================================
 // GET /api/admin/stats - ESTATÍSTICAS GERAIS
 // ============================================
+
 router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
     try {
         const empresaId = req.usuario.empresa_id;
 
         console.log('📊 Buscando estatísticas para SuperAdmin');
 
-        // 🔥 CORRIGIDO: Usar TO_CHAR no PostgreSQL
         const sql = isProduction
             ? `SELECT 
-        (SELECT COUNT(*) FROM empresas) as total_empresas,
-        (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true OR plano != 'trial') as empresas_ativas,
-        (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
-        (SELECT COUNT(*) FROM usuarios) as total_usuarios,
-        (SELECT COUNT(*) FROM usuarios WHERE role = 'dono') as total_donos,
-        (SELECT COUNT(*) FROM usuarios WHERE role = 'profissional') as total_profissionais,
-        (SELECT COUNT(*) FROM clientes) as total_clientes,
-        (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
-        (SELECT COUNT(*) FROM agendamentos WHERE EXTRACT(MONTH FROM data) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM data) = EXTRACT(YEAR FROM CURRENT_DATE)) as agendamentos_mes,
-        (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
-        (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true) as empresas_pagas
-    `
+                (SELECT COUNT(*) FROM empresas) as total_empresas,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true OR plano != 'trial') as empresas_ativas,
+                (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
+                (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'dono') as total_donos,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'profissional') as total_profissionais,
+                (SELECT COUNT(*) FROM clientes) as total_clientes,
+                (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
+                (SELECT COUNT(*) FROM agendamentos WHERE EXTRACT(MONTH FROM data) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM data) = EXTRACT(YEAR FROM CURRENT_DATE)) as agendamentos_mes,
+                (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = true) as empresas_pagas
+            `
             : `SELECT 
-        (SELECT COUNT(*) FROM empresas) as total_empresas,
-        (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1 OR plano != 'trial') as empresas_ativas,
-        (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
-        (SELECT COUNT(*) FROM usuarios) as total_usuarios,
-        (SELECT COUNT(*) FROM usuarios WHERE role = 'dono') as total_donos,
-        (SELECT COUNT(*) FROM usuarios WHERE role = 'profissional') as total_profissionais,
-        (SELECT COUNT(*) FROM clientes) as total_clientes,
-        (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
-        (SELECT COUNT(*) FROM agendamentos WHERE strftime('%m', data) = strftime('%m', 'now') AND strftime('%Y', data) = strftime('%Y', 'now')) as agendamentos_mes,
-        (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
-        (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1) as empresas_pagas
-    `;
+                (SELECT COUNT(*) FROM empresas) as total_empresas,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1 OR plano != 'trial') as empresas_ativas,
+                (SELECT COUNT(*) FROM empresas WHERE plano = 'trial') as empresas_trial,
+                (SELECT COUNT(*) FROM usuarios) as total_usuarios,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'dono') as total_donos,
+                (SELECT COUNT(*) FROM usuarios WHERE role = 'profissional') as total_profissionais,
+                (SELECT COUNT(*) FROM clientes) as total_clientes,
+                (SELECT COUNT(*) FROM agendamentos) as total_agendamentos,
+                (SELECT COUNT(*) FROM agendamentos WHERE strftime('%m', data) = strftime('%m', 'now') AND strftime('%Y', data) = strftime('%Y', 'now')) as agendamentos_mes,
+                (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE status = 'concluido') as faturamento_total,
+                (SELECT COUNT(*) FROM empresas WHERE assinatura_ativa = 1) as empresas_pagas
+            `;
 
         db.get(sql, [], (err, stats) => {
             if (err) {
@@ -108,10 +121,9 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
 // ============================================
 // GET /api/admin/empresas - LISTAR EMPRESAS
 // ============================================
+
 router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
     console.log('🏢 Buscando empresas para SuperAdmin');
-
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `SELECT e.*, 
@@ -145,6 +157,7 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/empresas/:id
 // ============================================
+
 router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando empresa ${id}...`);
@@ -158,7 +171,7 @@ router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
            FROM empresas e
            LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
-           WHERE e.id = $1`
+           WHERE e.id = ?`
         : `SELECT e.*, 
            u.nome as dono_nome,
            u.email as dono_email,
@@ -186,6 +199,7 @@ router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // PUT /api/admin/empresas/:id
 // ============================================
+
 router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, plano } = req.body;
@@ -196,7 +210,7 @@ router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     }
 
     const sql = isProduction
-        ? `UPDATE empresas SET nome = $1, plano = $2 WHERE id = $3`
+        ? `UPDATE empresas SET nome = ?, plano = ? WHERE id = ?`
         : `UPDATE empresas SET nome = ?, plano = ? WHERE id = ?`;
 
     db.run(sql, [nome, plano || 'trial', id], function (err) {
@@ -213,6 +227,7 @@ router.put('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // DELETE /api/admin/empresas/:id - CORRIGIDO
 // ============================================
+
 router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     console.log(`⚠️ Super Admin - Deletando empresa ID: ${id}...`);
@@ -220,7 +235,7 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
     try {
         // 1. Verificar se a empresa existe
         const sqlCheck = isProduction
-            ? `SELECT id, nome FROM empresas WHERE id = $1`
+            ? `SELECT id, nome FROM empresas WHERE id = ?`
             : `SELECT id, nome FROM empresas WHERE id = ?`;
 
         const empresa = await new Promise((resolve, reject) => {
@@ -239,10 +254,6 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
 
         console.log(`📌 Empresa encontrada: "${empresa.nome}" (ID: ${id})`);
 
-        // ============================================
-        // 🔥 CORREÇÃO: Deletar apenas tabelas que existem
-        // ============================================
-
         // Lista de tabelas que existem no SQLite
         const queries = [
             `DELETE FROM agendamentos WHERE empresa_id = ?`,
@@ -256,7 +267,7 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
             `DELETE FROM empresas WHERE id = ?`
         ];
 
-        // 🔥 Verificar se as tabelas existem antes de tentar deletar
+        // Verificar se as tabelas existem antes de tentar deletar
         const tabelasExistentes = await new Promise((resolve) => {
             db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, rows) => {
                 if (err) {
@@ -270,9 +281,8 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
 
         console.log('📋 Tabelas existentes:', tabelasExistentes);
 
-        // 🔥 Filtrar apenas as tabelas que existem
+        // Filtrar apenas as tabelas que existem
         const queriesFiltradas = queries.filter(sql => {
-            // Extrair o nome da tabela da query
             const match = sql.match(/FROM\s+(\w+)/i);
             if (match) {
                 const tabela = match[1];
@@ -289,20 +299,17 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
 
         // Executar cada query
         for (const sql of queriesFiltradas) {
-            await new Promise((resolve, reject) => {
+            await new Promise((resolve) => {
                 db.run(sql, [id], (err) => {
                     if (err) {
                         console.error(`❌ Erro ao executar: ${sql}`, err.message);
-                        // Não rejeitar, apenas logar o erro e continuar
-                        resolve();
-                    } else {
-                        resolve();
                     }
+                    resolve();
                 });
             });
         }
 
-        // 🔥 Deletar o banco individual da empresa (se existir)
+        // Deletar o banco individual da empresa (se existir)
         const fs = require('fs');
         const path = require('path');
         const dbPath = path.join(__dirname, '../../database', `empresa_${id}.db`);
@@ -334,10 +341,9 @@ router.delete('/empresas/:id', auth, verificarSuperAdmin, async (req, res) => {
 // ============================================
 // GET /api/admin/usuarios - LISTAR USUÁRIOS
 // ============================================
+
 router.get('/usuarios', auth, verificarSuperAdmin, (req, res) => {
     console.log('👤 Buscando usuários para SuperAdmin');
-
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `SELECT u.*, e.nome as empresa_nome
@@ -365,13 +371,13 @@ router.get('/usuarios', auth, verificarSuperAdmin, (req, res) => {
         });
     });
 });
+
 // ============================================
 // GET /api/admin/empresa/:id - DETALHES DA EMPRESA
 // ============================================
+
 router.get('/empresa/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
-
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
     const sql = isProduction
         ? `SELECT e.*, 
@@ -379,7 +385,7 @@ router.get('/empresa/:id', auth, verificarSuperAdmin, (req, res) => {
            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = e.id) as total_profissionais,
            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
            FROM empresas e
-           WHERE e.id = $1`
+           WHERE e.id = ?`
         : `SELECT e.*, 
            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id) as total_usuarios,
            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = e.id) as total_profissionais,
@@ -409,9 +415,11 @@ router.get('/empresa/:id', auth, verificarSuperAdmin, (req, res) => {
         });
     });
 });
+
 // ============================================
 // GET /api/admin/usuarios/:id
 // ============================================
+
 router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando usuário ${id}...`);
@@ -419,7 +427,7 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const sqlUsuario = isProduction
         ? `SELECT id, nome, email, role, empresa_id, created_at, telefone 
            FROM usuarios 
-           WHERE id = $1`
+           WHERE id = ?`
         : `SELECT id, nome, email, role, empresa_id, created_at, telefone 
            FROM usuarios 
            WHERE id = ?`;
@@ -435,7 +443,7 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
             if (usuario.role === 'profissional') {
                 const sqlProf = isProduction
-                    ? `SELECT comissao_percent FROM profissionais WHERE email = $1`
+                    ? `SELECT comissao_percent FROM profissionais WHERE email = ?`
                     : `SELECT comissao_percent FROM profissionais WHERE email = ?`;
 
                 db.get(sqlProf, [usuario.email], (err, prof) => {
@@ -456,7 +464,7 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
         const sqlProfissional = isProduction
             ? `SELECT id, nome, email, 'profissional' as role, empresa_id, created_at, telefone, comissao_percent
                FROM profissionais 
-               WHERE id = $1 AND ativo = TRUE`
+               WHERE id = ? AND ativo = TRUE`
             : `SELECT id, nome, email, 'profissional' as role, empresa_id, created_at, telefone, comissao_percent
                FROM profissionais 
                WHERE id = ? AND ativo = true`;
@@ -481,6 +489,7 @@ router.get('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // PUT /api/admin/usuarios/:id
 // ============================================
+
 router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, role, senha, telefone } = req.body;
@@ -488,7 +497,7 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
     console.log(`🔧 Super Admin - Atualizando usuário ${id}:`, { nome, email, role, telefone });
 
     const sqlCheck = isProduction
-        ? `SELECT id, empresa_id, role FROM usuarios WHERE id = $1`
+        ? `SELECT id, empresa_id, role FROM usuarios WHERE id = ?`
         : `SELECT id, empresa_id, role FROM usuarios WHERE id = ?`;
 
     db.get(sqlCheck, [id], (err, usuario) => {
@@ -503,30 +512,29 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 
         let query = isProduction
             ? `UPDATE usuarios SET 
-               nome = COALESCE($1, nome), 
-               email = COALESCE($2, email),
-               role = COALESCE($3, role)`
+               nome = COALESCE(?, nome), 
+               email = COALESCE(?, email),
+               role = COALESCE(?, role)`
             : `UPDATE usuarios SET 
                nome = COALESCE(?, nome), 
                email = COALESCE(?, email),
                role = COALESCE(?, role)`;
 
         let params = [nome || null, email || null, role || null];
-        let counter = 4;
 
         if (telefone !== undefined) {
             const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
-            query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
+            query += isProduction ? `, telefone = ?` : `, telefone = ?`;
             params.push(telefoneLimpo);
         }
 
         if (senha && senha.trim() !== '') {
             const senhaHash = bcrypt.hashSync(senha, 10);
-            query += isProduction ? `, senha = $${counter++}` : `, senha = ?`;
+            query += isProduction ? `, senha = ?` : `, senha = ?`;
             params.push(senhaHash);
         }
 
-        query += isProduction ? ` WHERE id = $${counter++}` : ` WHERE id = ?`;
+        query += isProduction ? ` WHERE id = ?` : ` WHERE id = ?`;
         params.push(id);
 
         db.run(query, params, function (err) {
@@ -543,7 +551,7 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
                 console.log(`📝 Atualizando telefone do dono na empresa ${empresaId}: ${telefoneLimpo}`);
 
                 const sqlEmpresa = isProduction
-                    ? `UPDATE empresas SET telefone_dono = $1 WHERE id = $2`
+                    ? `UPDATE empresas SET telefone_dono = ? WHERE id = ?`
                     : `UPDATE empresas SET telefone_dono = ? WHERE id = ?`;
 
                 db.run(sqlEmpresa, [telefoneLimpo, empresaId], function (err) {
@@ -567,6 +575,7 @@ router.put('/usuarios/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/faturamento-mensal
 // ============================================
+
 router.get('/faturamento-mensal', auth, verificarSuperAdmin, (req, res) => {
     const sql = `
         SELECT 
@@ -591,6 +600,7 @@ router.get('/faturamento-mensal', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/crescimento-empresas
 // ============================================
+
 router.get('/crescimento-empresas', auth, verificarSuperAdmin, (req, res) => {
     const sql = `
         SELECT 
@@ -614,6 +624,7 @@ router.get('/crescimento-empresas', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/empresas/:id/usuarios
 // ============================================
+
 router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando usuários e profissionais da empresa ${id}...`);
@@ -632,7 +643,7 @@ router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
             NULL as comissao_percent,
             u.empresa_id
            FROM usuarios u
-           WHERE u.empresa_id = $1 AND u.role = 'dono'
+           WHERE u.empresa_id = ? AND u.role = 'dono'
            
            UNION ALL
            
@@ -647,7 +658,7 @@ router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
             p.comissao_percent,
             p.empresa_id
            FROM profissionais p
-           WHERE p.empresa_id = $2 AND p.ativo = ${ativoCond}
+           WHERE p.empresa_id = ? AND p.ativo = ${ativoCond}
            
            ORDER BY tipo, nome`
         : `SELECT 
@@ -706,6 +717,7 @@ router.get('/empresas/:id/usuarios', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/empresas/:id/acessos
 // ============================================
+
 router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando acessos da empresa ${id}...`);
@@ -714,7 +726,7 @@ router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
         ? `SELECT a.*, u.nome as usuario_nome
            FROM acessos a
            LEFT JOIN usuarios u ON a.usuario_id = u.id
-           WHERE a.empresa_id = $1
+           WHERE a.empresa_id = ?
            ORDER BY a.data_acesso DESC
            LIMIT 50`
         : `SELECT a.*, u.nome as usuario_nome
@@ -738,6 +750,7 @@ router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/empresas/:id/clientes
 // ============================================
+
 router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando clientes da empresa ${id}...`);
@@ -745,7 +758,7 @@ router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
     const sql = isProduction
         ? `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
            FROM clientes 
-           WHERE empresa_id = $1 
+           WHERE empresa_id = ? 
            ORDER BY created_at DESC`
         : `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
            FROM clientes 
@@ -765,6 +778,7 @@ router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/empresas/:id/agendamentos
 // ============================================
+
 router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando agendamentos da empresa ${id}...`);
@@ -779,7 +793,7 @@ router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) =
         LEFT JOIN clientes c ON a.cliente_id = c.id
         LEFT JOIN profissionais p ON a.profissional_id = p.id
         LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.empresa_id = ${isProduction ? '$1' : '?'}
+        WHERE a.empresa_id = ?
         ORDER BY a.data DESC, a.hora DESC
         LIMIT 50
     `;
@@ -803,6 +817,7 @@ router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) =
 // ============================================
 // POST /api/admin/empresas/:id/extender-trial
 // ============================================
+
 router.post('/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔧 Super Admin - Estendendo trial da empresa ${id}...`);
@@ -812,7 +827,7 @@ router.post('/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res
     const dataStr = dataTrialExpira.toISOString().split('T')[0];
 
     const sql = isProduction
-        ? `UPDATE empresas SET trial_expira = $1, assinatura_ativa = 0, plano = 'trial' WHERE id = $2`
+        ? `UPDATE empresas SET trial_expira = ?, assinatura_ativa = 0, plano = 'trial' WHERE id = ?`
         : `UPDATE empresas SET trial_expira = ?, assinatura_ativa = 0, plano = 'trial' WHERE id = ?`;
 
     db.run(sql, [dataStr, id], function (err) {
@@ -833,6 +848,7 @@ router.post('/empresas/:id/extender-trial', auth, verificarSuperAdmin, (req, res
 // ============================================
 // GET /api/admin/empresas/estatisticas
 // ============================================
+
 router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
     console.log('🔍 Super Admin - Buscando empresas com estatísticas...');
 
@@ -851,37 +867,37 @@ router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
         const promises = empresas.map((e) => {
             return new Promise((resolve) => {
                 const sqlUsuarios = isProduction
-                    ? `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = $1`
+                    ? `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = ?`
                     : `SELECT COUNT(*) as total FROM usuarios WHERE empresa_id = ?`;
 
                 db.get(sqlUsuarios, [e.id], (err, usuarios) => {
                     const sqlProfissionais = isProduction
-                        ? `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = $1 AND ativo = true`
+                        ? `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = ? AND ativo = true`
                         : `SELECT COUNT(*) as total FROM profissionais WHERE empresa_id = ? AND ativo = true`;
 
                     db.get(sqlProfissionais, [e.id], (err, profissionais) => {
                         const sqlClientes = isProduction
-                            ? `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = $1`
+                            ? `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = ?`
                             : `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = ?`;
 
                         db.get(sqlClientes, [e.id], (err, clientes) => {
                             const sqlAgendamentos = isProduction
-                                ? `SELECT COUNT(*) as total FROM agendamentos WHERE empresa_id = $1`
+                                ? `SELECT COUNT(*) as total FROM agendamentos WHERE empresa_id = ?`
                                 : `SELECT COUNT(*) as total FROM agendamentos WHERE empresa_id = ?`;
 
                             db.get(sqlAgendamentos, [e.id], (err, agendamentos) => {
                                 const sqlAcessos = isProduction
-                                    ? `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = $1`
+                                    ? `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ?`
                                     : `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ?`;
 
                                 db.get(sqlAcessos, [e.id], (err, acessos) => {
                                     const sqlUltimoAcesso = isProduction
-                                        ? `SELECT data_acesso FROM acessos WHERE empresa_id = $1 ORDER BY data_acesso DESC LIMIT 1`
+                                        ? `SELECT data_acesso FROM acessos WHERE empresa_id = ? ORDER BY data_acesso DESC LIMIT 1`
                                         : `SELECT data_acesso FROM acessos WHERE empresa_id = ? ORDER BY data_acesso DESC LIMIT 1`;
 
                                     db.get(sqlUltimoAcesso, [e.id], (err, ultimoAcesso) => {
                                         const sqlAcessosHoje = isProduction
-                                            ? `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = $1 AND DATE(data_acesso) = CURRENT_DATE`
+                                            ? `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ? AND DATE(data_acesso) = CURRENT_DATE`
                                             : `SELECT COUNT(*) as total FROM acessos WHERE empresa_id = ? AND DATE(data_acesso) = DATE('now')`;
 
                                         db.get(sqlAcessosHoje, [e.id], (err, acessosHoje) => {
@@ -925,6 +941,7 @@ router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/empresas/:id/localizacao
 // ============================================
+
 router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
 
@@ -956,7 +973,7 @@ router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) =>
         }
 
         const sqlLocation = isProduction
-            ? `SELECT * FROM localizacoes WHERE empresa_id = $1 ORDER BY created_at DESC LIMIT 1`
+            ? `SELECT * FROM localizacoes WHERE empresa_id = ? ORDER BY created_at DESC LIMIT 1`
             : `SELECT * FROM localizacoes WHERE empresa_id = ? ORDER BY created_at DESC LIMIT 1`;
 
         db.get(sqlLocation, [id], (err, localizacao) => {
@@ -979,6 +996,7 @@ router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) =>
 // ============================================
 // PUT /api/admin/profissionais/:id
 // ============================================
+
 router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     const { nome, email, senha, comissao_percent, telefone, ativo } = req.body;
@@ -986,7 +1004,7 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     console.log(`🔧 Super Admin - Atualizando profissional ${id}:`, { nome, email, comissao_percent });
 
     const sqlCheck = isProduction
-        ? `SELECT id, empresa_id FROM profissionais WHERE id = $1`
+        ? `SELECT id, empresa_id FROM profissionais WHERE id = ?`
         : `SELECT id, empresa_id FROM profissionais WHERE id = ?`;
 
     db.get(sqlCheck, [id], (err, profissional) => {
@@ -1002,38 +1020,37 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 
         let query = isProduction
             ? `UPDATE profissionais SET 
-               nome = COALESCE($1, nome), 
-               email = COALESCE($2, email)`
+               nome = COALESCE(?, nome), 
+               email = COALESCE(?, email)`
             : `UPDATE profissionais SET 
                nome = COALESCE(?, nome), 
                email = COALESCE(?, email)`;
 
         let params = [nome || null, email || null];
-        let counter = 3;
 
         if (comissao_percent !== undefined && comissao_percent !== null && comissao_percent !== '') {
-            query += isProduction ? `, comissao_percent = $${counter++}` : `, comissao_percent = ?`;
+            query += isProduction ? `, comissao_percent = ?` : `, comissao_percent = ?`;
             params.push(parseFloat(comissao_percent));
         }
 
         if (telefone !== undefined) {
             const telefoneLimpo = telefone ? telefone.replace(/\D/g, '') : null;
-            query += isProduction ? `, telefone = $${counter++}` : `, telefone = ?`;
+            query += isProduction ? `, telefone = ?` : `, telefone = ?`;
             params.push(telefoneLimpo);
         }
 
         if (ativo !== undefined && ativo !== null) {
-            query += isProduction ? `, ativo = $${counter++}` : `, ativo = ?`;
+            query += isProduction ? `, ativo = ?` : `, ativo = ?`;
             params.push(ativo ? 1 : 0);
         }
 
         if (senha && senha.trim() !== '') {
             const senhaHash = bcrypt.hashSync(senha, 10);
-            query += isProduction ? `, senha = $${counter++}` : `, senha = ?`;
+            query += isProduction ? `, senha = ?` : `, senha = ?`;
             params.push(senhaHash);
         }
 
-        query += isProduction ? ` WHERE id = $${counter++}` : ` WHERE id = ?`;
+        query += isProduction ? ` WHERE id = ?` : ` WHERE id = ?`;
         params.push(id);
 
         db.run(query, params, function (err) {
@@ -1054,6 +1071,7 @@ router.put('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/profissionais/:id
 // ============================================
+
 router.get('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando profissional ${id}...`);
@@ -1063,7 +1081,7 @@ router.get('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
     const sql = isProduction
         ? `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
            FROM profissionais 
-           WHERE id = $1 AND ativo = ${ativoCond}`
+           WHERE id = ? AND ativo = ${ativoCond}`
         : `SELECT id, nome, email, comissao_percent, telefone, ativo, empresa_id, created_at 
            FROM profissionais 
            WHERE id = ? AND ativo = true`;
@@ -1089,6 +1107,7 @@ router.get('/profissionais/:id', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/acessos
 // ============================================
+
 router.get('/acessos', auth, verificarSuperAdmin, (req, res) => {
     const sql = isProduction
         ? `SELECT 
@@ -1150,6 +1169,7 @@ router.get('/acessos', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/admin/planos-config
 // ============================================
+
 router.get('/planos-config', auth, verificarSuperAdmin, (req, res) => {
     try {
         const planos = require('../utils/constants').PLANOS;
@@ -1162,6 +1182,7 @@ router.get('/planos-config', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // PUT /api/admin/planos-config
 // ============================================
+
 router.put('/planos-config', auth, verificarSuperAdmin, (req, res) => {
     try {
         const plano = req.body;
@@ -1173,9 +1194,11 @@ router.put('/planos-config', auth, verificarSuperAdmin, (req, res) => {
         res.json({ success: false, message: error.message });
     }
 });
+
 // ============================================
 // POST /api/admin/registrar-acesso
 // ============================================
+
 router.post('/registrar-acesso', auth, (req, res) => {
     const usuario_id = req.usuario.id;
     const empresa_id = req.usuario.empresa_id || null;
@@ -1183,7 +1206,7 @@ router.post('/registrar-acesso', auth, (req, res) => {
     const user_agent = req.headers['user-agent'] || null;
 
     const sql = isProduction
-        ? `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES ($1, $2, $3, $4)`
+        ? `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES (?, ?, ?, ?)`
         : `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES (?, ?, ?, ?)`;
 
     db.run(sql, [usuario_id, empresa_id, ip, user_agent], (err) => {
@@ -1193,9 +1216,11 @@ router.post('/registrar-acesso', auth, (req, res) => {
         res.json({ success: true });
     });
 });
+
 // ============================================
 // PUT /api/admin/empresas/:id/whatsapp-proprio
 // ============================================
+
 router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
@@ -1206,7 +1231,7 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
         // Buscar empresa
         const empresa = await new Promise((resolve, reject) => {
             const sql = isProduction
-                ? 'SELECT id, nome FROM empresas WHERE id = $1'
+                ? 'SELECT id, nome FROM empresas WHERE id = ?'
                 : 'SELECT id, nome FROM empresas WHERE id = ?';
             db.get(sql, [id], (err, row) => {
                 if (err) reject(err);
@@ -1223,7 +1248,7 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
 
         // Atualizar WhatsApp próprio
         const sqlUpdate = isProduction
-            ? `UPDATE empresas SET whatsapp_proprio_habilitado = $1 WHERE id = $2`
+            ? `UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?`
             : `UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?`;
 
         await new Promise((resolve, reject) => {
@@ -1259,4 +1284,5 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
         });
     }
 });
+
 module.exports = router;

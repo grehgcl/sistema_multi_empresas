@@ -1,13 +1,42 @@
-﻿const express = require('express');
+﻿// ============================================
+// ROTAS DE HORÁRIOS - SEE&AGENDE (CORRIGIDO)
+// ============================================
+
+const express = require('express');
 const router = express.Router();
-const { db, getEmpresaDb } = require('../config/database');
+const { getEmpresaDb } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 
-const isProduction = false; // 🔥 FORÇADO SQLITE
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
+const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
 
 // ============================================
 // GET /api/horarios
 // ============================================
+
 router.get('/', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const empresaDb = getEmpresaDb(empresaId);
@@ -31,13 +60,14 @@ router.get('/', auth, (req, res) => {
 });
 
 // ============================================
-// PUT /api/horarios/:dia - Atualizar horário
+// PUT /api/horarios/:dia - Atualizar horário (INTELIGENTE)
 // ============================================
+
 router.put('/:dia', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const empresaDb = getEmpresaDb(empresaId);
     const { dia } = req.params;
-    const { aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim } = req.body;
+    const { aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = req.body;
 
     const diaNum = parseInt(dia);
     if (isNaN(diaNum) || diaNum < 0 || diaNum > 6) {
@@ -47,24 +77,33 @@ router.put('/:dia', auth, verificarDono, (req, res) => {
         });
     }
 
-    // 🔥 VERIFICAR SE O DIA EXISTE
-    empresaDb.get('SELECT id FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
-        [empresaId, diaNum], (err, row) => {
+    // 🔥 BUSCAR O HORÁRIO ATUAL PRIMEIRO
+    empresaDb.get('SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?',
+        [empresaId, diaNum], (err, horarioAtual) => {
             if (err) {
-                console.error("❌ Erro ao verificar horario:", err);
+                console.error("❌ Erro ao buscar horario:", err);
                 return res.status(500).json({
                     success: false,
                     message: err.message
                 });
             }
 
-            // 🔥 SE NÃO EXISTIR, CRIAR
-            if (!row) {
+            // Se não existir, criar com valores padrão
+            if (!horarioAtual) {
                 console.log(`🆕 Criando horário para dia ${diaNum}`);
                 empresaDb.run(`
-                INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [empresaId, diaNum, aberto ? 1 : 0, hora_inicio || '08:00', hora_fim || '18:00', almoco_inicio || '12:00', almoco_fim || '13:00'],
+                    INSERT INTO horarios_funcionamento (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `, [
+                    empresaId,
+                    diaNum,
+                    aberto !== undefined ? (aberto ? 1 : 0) : 1,
+                    hora_inicio || '08:00',
+                    hora_fim || '18:00',
+                    almoco_inicio || '12:00',
+                    almoco_fim || '13:00',
+                    intervalo_minutos || 30
+                ],
                     function (err) {
                         if (err) {
                             console.error("❌ Erro ao criar horario:", err);
@@ -81,22 +120,57 @@ router.put('/:dia', auth, verificarDono, (req, res) => {
                 return;
             }
 
-            // 🔥 ATUALIZAR EXISTENTE
-            const sql = `
-            UPDATE horarios_funcionamento 
-            SET aberto = ?, hora_inicio = ?, hora_fim = ?, almoco_inicio = ?, almoco_fim = ?
-            WHERE empresa_id = ? AND dia_semana = ?
-        `;
+            // 🔥 CONSTRUIR UPDATE DINÂMICO (SÓ OS CAMPOS QUE VIERAM)
+            let updates = [];
+            let params = [];
 
-            empresaDb.run(sql, [
-                aberto ? 1 : 0,
-                hora_inicio || '08:00',
-                hora_fim || '18:00',
-                almoco_inicio || '12:00',
-                almoco_fim || '13:00',
-                empresaId,
-                diaNum
-            ], function (err) {
+            if (aberto !== undefined) {
+                updates.push('aberto = ?');
+                params.push(aberto ? 1 : 0);
+            }
+
+            if (hora_inicio !== undefined && hora_inicio !== null && hora_inicio !== '') {
+                updates.push('hora_inicio = ?');
+                params.push(hora_inicio);
+            }
+
+            if (hora_fim !== undefined && hora_fim !== null && hora_fim !== '') {
+                updates.push('hora_fim = ?');
+                params.push(hora_fim);
+            }
+
+            if (almoco_inicio !== undefined && almoco_inicio !== null && almoco_inicio !== '') {
+                updates.push('almoco_inicio = ?');
+                params.push(almoco_inicio);
+            }
+
+            if (almoco_fim !== undefined && almoco_fim !== null && almoco_fim !== '') {
+                updates.push('almoco_fim = ?');
+                params.push(almoco_fim);
+            }
+
+            if (intervalo_minutos !== undefined && intervalo_minutos !== null && intervalo_minutos !== '') {
+                updates.push('intervalo_minutos = ?');
+                params.push(parseInt(intervalo_minutos));
+            }
+
+            // Se não veio nada, retorna erro
+            if (updates.length === 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Nenhum campo para atualizar'
+                });
+            }
+
+            // 🔥 MONTAR SQL DINÂMICO
+            params.push(empresaId, diaNum);
+            const sql = `UPDATE horarios_funcionamento SET ${updates.join(', ')} WHERE empresa_id = ? AND dia_semana = ?`;
+
+            console.log(`📝 Atualizando dia ${diaNum}:`, updates);
+            console.log(`📝 SQL: ${sql}`);
+            console.log(`📝 Params:`, params);
+
+            empresaDb.run(sql, params, function (err) {
                 if (err) {
                     console.error("❌ Erro ao atualizar horario:", err);
                     return res.status(500).json({
@@ -105,6 +179,7 @@ router.put('/:dia', auth, verificarDono, (req, res) => {
                     });
                 }
 
+                console.log(`✅ Horário do dia ${diaNum} atualizado com sucesso!`);
                 res.json({
                     success: true,
                     message: 'Horário atualizado com sucesso!'
@@ -116,7 +191,8 @@ router.put('/:dia', auth, verificarDono, (req, res) => {
 // ============================================
 // POST /api/horarios (BULK CREATE/UPDATE)
 // ============================================
-router.post('/', auth, verificarDono, async (req, res) => {
+
+router.post('/', auth, verificarDono, (req, res) => {
     const { horarios } = req.body;
     const empresaId = req.usuario.empresa_id;
 
@@ -127,75 +203,160 @@ router.post('/', auth, verificarDono, async (req, res) => {
         });
     }
 
-    try {
-        for (const horario of horarios) {
-            const { dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = horario;
+    const empresaDb = getEmpresaDb(empresaId);
 
-            const checkSql = isProduction
-                ? "SELECT id FROM horarios_funcionamento WHERE dia_semana = $1 AND empresa_id = $2"
-                : "SELECT id FROM horarios_funcionamento WHERE dia_semana = ? AND empresa_id = ?";
+    let processados = 0;
 
-            const existing = await new Promise((resolve) => {
-                db.get(checkSql, [dia_semana, empresaId], (err, row) => {
-                    resolve(row);
-                });
-            });
+    for (const horario of horarios) {
+        const { dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = horario;
 
-            if (existing) {
-                const sql = isProduction
-                    ? "UPDATE horarios_funcionamento SET aberto = $1, hora_inicio = $2, hora_fim = $3, almoco_inicio = $4, almoco_fim = $5, intervalo_minutos = $6 WHERE dia_semana = $7 AND empresa_id = $8"
-                    : "UPDATE horarios_funcionamento SET aberto = ?, hora_inicio = ?, hora_fim = ?, almoco_inicio = ?, almoco_fim = ?, intervalo_minutos = ? WHERE dia_semana = ? AND empresa_id = ?";
+        // Verificar se já existe
+        empresaDb.get(
+            `SELECT id FROM horarios_funcionamento WHERE dia_semana = ? AND empresa_id = ?`,
+            [dia_semana, empresaId],
+            (err, row) => {
+                if (err) {
+                    console.error("❌ Erro ao verificar horario:", err);
+                    return;
+                }
 
-                await new Promise((resolve, reject) => {
-                    db.run(sql, [
-                        aberto !== undefined ? aberto : 1,
-                        hora_inicio || '09:00',
-                        hora_fim || '18:00',
-                        almoco_inicio || '12:00',
-                        almoco_fim || '13:00',
-                        intervalo_minutos || 30,
-                        dia_semana,
-                        empresaId
-                    ], function (err) {
-                        if (err) reject(err);
-                        else resolve();
-                    });
-                });
-            } else {
-                const sql = isProduction
-                    ? "INSERT INTO horarios_funcionamento (dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
-                    : "INSERT INTO horarios_funcionamento (dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-                await new Promise((resolve, reject) => {
-                    db.run(sql, [
-                        dia_semana,
-                        aberto !== undefined ? aberto : 1,
-                        hora_inicio || '09:00',
-                        hora_fim || '18:00',
-                        almoco_inicio || '12:00',
-                        almoco_fim || '13:00',
-                        intervalo_minutos || 30,
-                        empresaId
-                    ], function (err) {
-                        if (err) reject(err);
-                        else resolve();
-                    });
-                });
+                if (row) {
+                    // Atualizar
+                    empresaDb.run(
+                        `UPDATE horarios_funcionamento 
+                         SET aberto = ?, hora_inicio = ?, hora_fim = ?, almoco_inicio = ?, almoco_fim = ?, intervalo_minutos = ?
+                         WHERE dia_semana = ? AND empresa_id = ?`,
+                        [
+                            aberto !== undefined ? (aberto ? 1 : 0) : 1,
+                            hora_inicio || '09:00',
+                            hora_fim || '18:00',
+                            almoco_inicio || '12:00',
+                            almoco_fim || '13:00',
+                            intervalo_minutos || 30,
+                            dia_semana,
+                            empresaId
+                        ],
+                        function(err) {
+                            if (err) {
+                                console.error("❌ Erro ao atualizar horario:", err);
+                            }
+                            processados++;
+                            if (processados === horarios.length) {
+                                res.json({
+                                    success: true,
+                                    message: 'Horarios salvos com sucesso!'
+                                });
+                            }
+                        }
+                    );
+                } else {
+                    // Inserir
+                    empresaDb.run(
+                        `INSERT INTO horarios_funcionamento 
+                         (dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id)
+                         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                        [
+                            dia_semana,
+                            aberto !== undefined ? (aberto ? 1 : 0) : 1,
+                            hora_inicio || '09:00',
+                            hora_fim || '18:00',
+                            almoco_inicio || '12:00',
+                            almoco_fim || '13:00',
+                            intervalo_minutos || 30,
+                            empresaId
+                        ],
+                        function(err) {
+                            if (err) {
+                                console.error("❌ Erro ao inserir horario:", err);
+                            }
+                            processados++;
+                            if (processados === horarios.length) {
+                                res.json({
+                                    success: true,
+                                    message: 'Horarios salvos com sucesso!'
+                                });
+                            }
+                        }
+                    );
+                }
             }
-        }
+        );
+    }
 
+    // Se não houver horários
+    if (horarios.length === 0) {
         res.json({
             success: true,
-            message: 'Horarios salvos com sucesso!'
-        });
-
-    } catch (error) {
-        console.error("Erro ao salvar horarios:", error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Erro ao salvar horarios'
+            message: 'Nenhum horário para salvar'
         });
     }
+});
+
+// ============================================
+// POST /api/horarios/inicializar - Horários padrão
+// ============================================
+
+router.post('/inicializar', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const empresaDb = getEmpresaDb(empresaId);
+
+    const horariosPadrao = [
+        { dia_semana: 1, aberto: 1, hora_inicio: '08:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo_minutos: 30 },
+        { dia_semana: 2, aberto: 1, hora_inicio: '08:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo_minutos: 30 },
+        { dia_semana: 3, aberto: 1, hora_inicio: '08:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo_minutos: 30 },
+        { dia_semana: 4, aberto: 1, hora_inicio: '08:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo_minutos: 30 },
+        { dia_semana: 5, aberto: 1, hora_inicio: '08:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo_minutos: 30 },
+        { dia_semana: 6, aberto: 1, hora_inicio: '08:00', hora_fim: '18:00', almoco_inicio: '12:00', almoco_fim: '13:00', intervalo_minutos: 30 },
+        { dia_semana: 0, aberto: 0, hora_inicio: null, hora_fim: null, almoco_inicio: null, almoco_fim: null, intervalo_minutos: 30 }
+    ];
+
+    // Limpar horários existentes
+    empresaDb.run(
+        `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`,
+        [empresaId],
+        (err) => {
+            if (err) {
+                console.error("❌ Erro ao limpar horarios:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            let inseridos = 0;
+
+            for (const horario of horariosPadrao) {
+                empresaDb.run(
+                    `INSERT INTO horarios_funcionamento 
+                     (empresa_id, dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        empresaId,
+                        horario.dia_semana,
+                        horario.aberto,
+                        horario.hora_inicio,
+                        horario.hora_fim,
+                        horario.almoco_inicio,
+                        horario.almoco_fim,
+                        horario.intervalo_minutos
+                    ],
+                    function(err) {
+                        if (err) {
+                            console.error("❌ Erro ao inserir horario:", err);
+                            return;
+                        }
+                        inseridos++;
+                        if (inseridos === horariosPadrao.length) {
+                            res.json({
+                                success: true,
+                                message: 'Horários inicializados com sucesso!'
+                            });
+                        }
+                    }
+                );
+            }
+        }
+    );
 });
 
 module.exports = router;

@@ -587,37 +587,41 @@ async function toggleServico(id) {
 }
 
 // ============================================
-// EXCLUIR SERVIÇO
+// EXCLUIR SERVIÇO - CORRIGIDO
 // ============================================
 
-async function excluirServico(id) {
-    const servico = listaServicosGlobal.find(s => s.id === id);
-    if (!servico) return;
+async function excluirServico(id, nome) {
+    const confirmado = await showConfirm(
+        `Deseja realmente excluir o serviço "${nome}"?\n\nEsta ação não poderá ser desfeita!`,
+        '✂️ Excluir Serviço',
+        { 
+            confirmText: '✅ Sim, Excluir', 
+            cancelText: '❌ Cancelar', 
+            icon: '✂️',
+            confirmClass: 'btn-danger'
+        }
+    );
+    
+    if (!confirmado) return;
 
-    if (!confirm(`Tem certeza que deseja excluir "${servico.nome}"?`)) return;
-
-    showLoading();
-
-    const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`/api/servicos/${id}`, {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`/api/servicos/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': 'Bearer ' + token }
         });
-        const result = await res.json();
 
+        const result = await response.json();
         if (result.success) {
-            showToast(result.message, 'success');
-            await carregarListaServicos();
+            showToast('✅ Serviço excluído com sucesso!', 'success');
+            carregarServicos();
         } else {
-            showToast('Erro: ' + result.message, 'error');
+            showToast(result.message || '❌ Erro ao excluir serviço', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
-        showToast('Erro ao excluir serviço', 'error');
+        console.error('❌ Erro:', error);
+        showToast('❌ Erro ao excluir serviço', 'error');
     }
-
-    hideLoading();
 }
 
 // ============================================

@@ -543,7 +543,173 @@ window.addEventListener('storage', function (e) {
         }
     }
 });
+// ============================================
+// MODAL DE CONFIRMAÇÃO PERSONALIZADO - CORRIGIDO
+// ============================================
 
+function showConfirm(mensagem, titulo = '⚠️ Confirmação', opcoes = {}) {
+    return new Promise((resolve) => {
+        // Remover modal existente
+        const existing = document.getElementById('confirmModal');
+        if (existing) existing.remove();
+
+        // Opções padrão
+        const {
+            confirmText = '✅ Confirmar',
+            cancelText = '❌ Cancelar',
+            confirmClass = 'btn-danger',
+            icon = '⚠️'
+        } = opcoes;
+
+        const isMobile = window.innerWidth < 768;
+
+        // Criar modal
+        const modal = document.createElement('div');
+        modal.id = 'confirmModal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(4px);
+            z-index: 999999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 16px;
+            animation: fadeIn 0.2s ease;
+        `;
+
+        modal.innerHTML = `
+            <div style="
+                background: var(--bg-card, #1a1a2e);
+                border-radius: ${isMobile ? '16px 16px 0 0' : '16px'};
+                padding: ${isMobile ? '24px 20px' : '30px 28px'};
+                max-width: 450px;
+                width: 100%;
+                max-height: 80vh;
+                overflow-y: auto;
+                border: 1px solid var(--border-color, #2d2d44);
+                box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+                animation: modalSlideIn 0.3s ease;
+                ${isMobile ? 'border-radius: 16px 16px 0 0; margin-bottom: 0;' : ''}
+            ">
+                <div style="text-align: center;">
+                    <div style="font-size: ${isMobile ? '40px' : '48px'}; margin-bottom: 12px;">${icon}</div>
+                    <h3 style="
+                        margin: 0 0 8px 0;
+                        color: var(--text-primary, #fff);
+                        font-size: ${isMobile ? '18px' : '20px'};
+                        font-weight: 700;
+                    ">${titulo}</h3>
+                    <p style="
+                        margin: 0 0 20px 0;
+                        color: var(--text-secondary, #94a3b8);
+                        font-size: ${isMobile ? '14px' : '15px'};
+                        line-height: 1.5;
+                        white-space: pre-wrap;
+                    ">${mensagem}</p>
+                </div>
+
+                <div style="
+                    display: flex;
+                    gap: 10px;
+                    justify-content: center;
+                    flex-direction: ${isMobile ? 'column-reverse' : 'row'};
+                    margin-top: 8px;
+                ">
+                    <button onclick="fecharConfirmModal(false)" 
+                            style="
+                                padding: ${isMobile ? '14px' : '10px 24px'};
+                                border-radius: 10px;
+                                border: 1px solid var(--border-color, #2d2d44);
+                                background: transparent;
+                                color: var(--text-secondary, #94a3b8);
+                                font-size: ${isMobile ? '16px' : '14px'};
+                                font-weight: 600;
+                                cursor: pointer;
+                                flex: 1;
+                                transition: all 0.2s;
+                            "
+                            onmouseover="this.style.background='var(--bg-hover, #22223a)'"
+                            onmouseout="this.style.background='transparent'">
+                        ${cancelText}
+                    </button>
+                    <button onclick="fecharConfirmModal(true)" 
+                            style="
+                                padding: ${isMobile ? '14px' : '10px 24px'};
+                                border-radius: 10px;
+                                border: none;
+                                background: ${confirmClass === 'btn-danger' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)'};
+                                color: white;
+                                font-size: ${isMobile ? '16px' : '14px'};
+                                font-weight: 600;
+                                cursor: pointer;
+                                flex: 1;
+                                transition: all 0.2s;
+                                box-shadow: 0 4px 15px rgba(239,68,68,0.3);
+                            "
+                            onmouseover="this.style.transform='translateY(-2px)'"
+                            onmouseout="this.style.transform='translateY(0)'">
+                        ${confirmText}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // 🔥 ADICIONAR A FUNÇÃO GLOBAL PARA FECHAR O MODAL
+        window.fecharConfirmModal = function(valor) {
+            const modalEl = document.getElementById('confirmModal');
+            if (modalEl) modalEl.remove();
+            resolve(valor);
+            // Limpar a função global após uso
+            delete window.fecharConfirmModal;
+        };
+
+        // Adicionar estilos se não existirem
+        if (!document.getElementById('confirmModalStyles')) {
+            const styles = document.createElement('style');
+            styles.id = 'confirmModalStyles';
+            styles.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes modalSlideIn {
+                    from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+                    to { opacity: 1; transform: scale(1) translateY(0); }
+                }
+                @media (max-width: 480px) {
+                    #confirmModal {
+                        align-items: flex-end !important;
+                    }
+                    #confirmModal > div {
+                        animation: slideUp 0.3s ease !important;
+                    }
+                }
+                @keyframes slideUp {
+                    from { opacity: 0; transform: translateY(30px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+
+        document.body.appendChild(modal);
+
+        // Fechar ao clicar fora (apenas desktop)
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal && window.innerWidth >= 768) {
+                const modalEl = document.getElementById('confirmModal');
+                if (modalEl) modalEl.remove();
+                resolve(false);
+                delete window.fecharConfirmModal;
+            }
+        });
+    });
+}
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================

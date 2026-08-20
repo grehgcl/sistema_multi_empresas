@@ -1,16 +1,42 @@
 ﻿// ============================================
-// ROTAS DE PAGAMENTOS
+// ROTAS DE PAGAMENTOS - SEE&AGENDE
 // ============================================
+
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/database');
 const { auth, verificarDono, verificarSuperAdmin } = require('../middlewares/auth');
 
+// ============================================
+// COMPATIBILIDADE SQLite / PostgreSQL
+// ============================================
+
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+
+function extractMonth(field) {
+    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
+}
+
+function extractYear(field) {
+    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
+}
+
+function extractDay(field) {
+    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
+}
+
+function formatDate(field) {
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
+}
+
+function coalesceSum(field) {
+    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+}
 
 // ============================================
 // PLANOS DISPONÍVEIS
 // ============================================
+
 const PLANOS = {
     starter: { nome: 'Starter', limite: 1, valor: 29.90 },
     pro: { nome: 'Pro', limite: 5, valor: 59.90 },
@@ -18,15 +44,11 @@ const PLANOS = {
     enterprise: { nome: 'Enterprise', limite: 999, valor: 249.90 }
 };
 
-// server/routes/pagamento.routes.js
+// ============================================
+// FUNÇÃO PARA OBTER MODO DE PAGAMENTO
+// ============================================
 
-// ============================================
-// FUNÇÃO PARA OBTER MODO DE PAGAMENTO (CORRIGIDA PARA POSTGRESQL)
-// ============================================
 function getPaymentMode(callback) {
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
-    // 🔥 PostgreSQL: SERIAL em vez de AUTOINCREMENT
     const createTableSQL = isProduction
         ? `CREATE TABLE IF NOT EXISTS configuracoes (
             id SERIAL PRIMARY KEY,
@@ -49,7 +71,6 @@ function getPaymentMode(callback) {
             return callback('simulation');
         }
 
-        // Buscar o valor
         const sql = 'SELECT valor FROM configuracoes WHERE chave = "payment_mode"';
         db.get(sql, [], (err, row) => {
             if (err) {
@@ -61,7 +82,6 @@ function getPaymentMode(callback) {
                 return callback(row.valor);
             }
 
-            // Se não existir, criar com padrão
             const sqlInsert = isProduction
                 ? `INSERT INTO configuracoes (chave, valor) 
                    VALUES ('payment_mode', 'simulation') 
@@ -79,6 +99,7 @@ function getPaymentMode(callback) {
 // ============================================
 // GET /api/pagamento/config - MODO DE PAGAMENTO
 // ============================================
+
 router.get('/config', auth, (req, res) => {
     getPaymentMode((mode) => {
         const isReal = mode === 'real';
@@ -105,6 +126,7 @@ router.get('/config', auth, (req, res) => {
 // ============================================
 // PUT /api/pagamento/config - ALTERAR MODO DE PAGAMENTO
 // ============================================
+
 router.put('/config', auth, verificarSuperAdmin, (req, res) => {
     const { mode } = req.body;
 
@@ -145,6 +167,7 @@ router.put('/config', auth, verificarSuperAdmin, (req, res) => {
 // ============================================
 // GET /api/payment/status
 // ============================================
+
 router.get('/status', (req, res) => {
     getPaymentMode((mode) => {
         res.json({
@@ -158,6 +181,7 @@ router.get('/status', (req, res) => {
 // ============================================
 // POST /api/simulate-payment
 // ============================================
+
 router.post('/simulate-payment', auth, async (req, res) => {
     try {
         const { plano, empresaId } = req.body;
@@ -184,7 +208,7 @@ router.post('/simulate-payment', auth, async (req, res) => {
         const sqlInsert = isProduction
             ? `INSERT INTO transacoes_pagamento 
                (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
-               VALUES ($1, $2, $3, $4, 'simulado', $5, 'approved', CURRENT_TIMESTAMP)`
+               VALUES (?, ?, ?, ?, 'simulado', ?, 'approved', CURRENT_TIMESTAMP)`
             : `INSERT INTO transacoes_pagamento 
                (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
                VALUES (?, ?, ?, ?, 'simulado', ?, 'approved', CURRENT_TIMESTAMP)`;
@@ -201,12 +225,12 @@ router.post('/simulate-payment', auth, async (req, res) => {
 
         const sqlUpdate = isProduction
             ? `UPDATE empresas SET 
-               plano = $1,
-               limite_profissionais = $2,
+               plano = ?,
+               limite_profissionais = ?,
                assinatura_ativa = true,
-               assinatura_valida_ate = $3,
+               assinatura_valida_ate = ?,
                ultima_cobranca = CURRENT_TIMESTAMP
-               WHERE id = $4`
+               WHERE id = ?`
             : `UPDATE empresas SET 
                plano = ?,
                limite_profissionais = ?,
@@ -242,6 +266,7 @@ router.post('/simulate-payment', auth, async (req, res) => {
 // ============================================
 // POST /api/simulate-pix
 // ============================================
+
 router.post('/simulate-pix', auth, (req, res) => {
     const { plano_id, plano_nome, valor } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -253,7 +278,7 @@ router.post('/simulate-pix', auth, (req, res) => {
     const sql = isProduction
         ? `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
-           VALUES ($1, $2, $3, $4, 'pix_simulado', $5, 'pending', $6, $7, CURRENT_TIMESTAMP)`
+           VALUES (?, ?, ?, ?, 'pix_simulado', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`
         : `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
            VALUES (?, ?, ?, ?, 'pix_simulado', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`;
@@ -274,6 +299,7 @@ router.post('/simulate-pix', auth, (req, res) => {
 // ============================================
 // POST /api/simulate-card
 // ============================================
+
 router.post('/simulate-card', auth, (req, res) => {
     const { plano_id, plano_nome, valor } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -283,7 +309,7 @@ router.post('/simulate-card', auth, (req, res) => {
     const sql = isProduction
         ? `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
-           VALUES ($1, $2, $3, $4, 'cartao_simulado', $5, 'approved', CURRENT_TIMESTAMP)`
+           VALUES (?, ?, ?, ?, 'cartao_simulado', ?, 'approved', CURRENT_TIMESTAMP)`
         : `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
            VALUES (?, ?, ?, ?, 'cartao_simulado', ?, 'approved', CURRENT_TIMESTAMP)`;
@@ -299,12 +325,12 @@ router.post('/simulate-card', auth, (req, res) => {
 
         const sqlUpdate = isProduction
             ? `UPDATE empresas SET 
-               plano = $1,
-               limite_profissionais = $2,
+               plano = ?,
+               limite_profissionais = ?,
                assinatura_ativa = true,
-               assinatura_valida_ate = $3,
+               assinatura_valida_ate = ?,
                ultima_cobranca = CURRENT_TIMESTAMP
-               WHERE id = $4`
+               WHERE id = ?`
             : `UPDATE empresas SET 
                plano = ?,
                limite_profissionais = ?,
@@ -328,6 +354,7 @@ router.post('/simulate-card', auth, (req, res) => {
 // ============================================
 // POST /api/simulate-boleto
 // ============================================
+
 router.post('/simulate-boleto', auth, (req, res) => {
     const { plano_id, plano_nome, valor, cpf } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -338,7 +365,7 @@ router.post('/simulate-boleto', auth, (req, res) => {
     const sql = isProduction
         ? `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
-           VALUES ($1, $2, $3, $4, 'boleto_simulado', $5, 'pending', $6, CURRENT_TIMESTAMP)`
+           VALUES (?, ?, ?, ?, 'boleto_simulado', ?, 'pending', ?, CURRENT_TIMESTAMP)`
         : `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
            VALUES (?, ?, ?, ?, 'boleto_simulado', ?, 'pending', ?, CURRENT_TIMESTAMP)`;
@@ -358,11 +385,12 @@ router.post('/simulate-boleto', auth, (req, res) => {
 // ============================================
 // POST /api/confirm-simulated-payment/:paymentId
 // ============================================
+
 router.post('/confirm-simulated-payment/:paymentId', auth, (req, res) => {
     const { paymentId } = req.params;
 
     const sqlSelect = isProduction
-        ? 'SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = $1'
+        ? 'SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = ?'
         : 'SELECT empresa_id, plano_id FROM transacoes_pagamento WHERE pagamento_id = ?';
 
     db.get(sqlSelect, [paymentId], (err, transacao) => {
@@ -377,12 +405,12 @@ router.post('/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 
             const sqlUpdate = isProduction
                 ? `UPDATE empresas SET 
-                   plano = $1,
-                   limite_profissionais = $2,
+                   plano = ?,
+                   limite_profissionais = ?,
                    assinatura_ativa = true,
-                   assinatura_valida_ate = $3,
+                   assinatura_valida_ate = ?,
                    ultima_cobranca = CURRENT_TIMESTAMP
-                   WHERE id = $4`
+                   WHERE id = ?`
                 : `UPDATE empresas SET 
                    plano = ?,
                    limite_profissionais = ?,
@@ -396,7 +424,7 @@ router.post('/confirm-simulated-payment/:paymentId', auth, (req, res) => {
             const sqlUpdateTransacao = isProduction
                 ? `UPDATE transacoes_pagamento 
                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
-                   WHERE pagamento_id = $1`
+                   WHERE pagamento_id = ?`
                 : `UPDATE transacoes_pagamento 
                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
                    WHERE pagamento_id = ?`;
@@ -411,8 +439,9 @@ router.post('/confirm-simulated-payment/:paymentId', auth, (req, res) => {
 });
 
 // ============================================
-// POST /api/mercadopago/webhook - CORRIGIDO
+// POST /api/mercadopago/webhook
 // ============================================
+
 router.post('/mercadopago/webhook', async (req, res) => {
     try {
         console.log('📥 Webhook MercadoPago recebido:', JSON.stringify(req.body, null, 2));
@@ -429,7 +458,6 @@ router.post('/mercadopago/webhook', async (req, res) => {
 
             console.log(`🔍 Consultando pagamento ID: ${paymentId}`);
 
-            // Buscar status do pagamento no Mercado Pago
             const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
             if (mpAccessToken) {
                 try {
@@ -450,7 +478,6 @@ router.post('/mercadopago/webhook', async (req, res) => {
                         if (empresaId && planoId) {
                             console.log(`✅ Pagamento aprovado para empresa ${empresaId}, plano ${planoId}`);
 
-                            // Definir limite baseado no plano
                             const planos = {
                                 starter: 1,
                                 pro: 5,
@@ -459,14 +486,13 @@ router.post('/mercadopago/webhook', async (req, res) => {
                             };
                             const limite = planos[planoId] || 1;
 
-                            // Atualizar o plano da empresa
                             const sql = isProduction
                                 ? `UPDATE empresas 
-                                   SET plano = $1, 
-                                       limite_profissionais = $2,
+                                   SET plano = ?, 
+                                       limite_profissionais = ?,
                                        assinatura_ativa = 1,
                                        assinatura_valida_ate = date('now', '+30 days')
-                                   WHERE id = $3`
+                                   WHERE id = ?`
                                 : `UPDATE empresas 
                                    SET plano = ?, 
                                        limite_profissionais = ?,
@@ -482,21 +508,19 @@ router.post('/mercadopago/webhook', async (req, res) => {
                                 }
                             });
 
-                            // Atualizar transação
                             const sqlTransacao = isProduction
                                 ? `UPDATE transacoes_pagamento 
                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
-                                   WHERE pagamento_id = $1`
+                                   WHERE pagamento_id = ?`
                                 : `UPDATE transacoes_pagamento 
                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
                                    WHERE pagamento_id = ?`;
 
                             db.run(sqlTransacao, [paymentId]);
 
-                            // Habilitar WhatsApp para Business/Enterprise
                             if (['business', 'enterprise'].includes(planoId)) {
                                 const sqlWhats = isProduction
-                                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = $1'
+                                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?'
                                     : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
                                 db.run(sqlWhats, [empresaId], (err) => {
                                     if (err) console.error('Erro ao habilitar WhatsApp:', err);
@@ -522,6 +546,7 @@ router.post('/mercadopago/webhook', async (req, res) => {
 // ============================================
 // POST /api/create-boleto
 // ============================================
+
 router.post('/create-boleto', auth, async (req, res) => {
     const { plano_id, plano_nome, valor } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -533,7 +558,7 @@ router.post('/create-boleto', auth, async (req, res) => {
     const sql = isProduction
         ? `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
-           VALUES ($1, $2, $3, $4, 'boleto', $5, 'pending', $6, CURRENT_TIMESTAMP)`
+           VALUES (?, ?, ?, ?, 'boleto', ?, 'pending', ?, CURRENT_TIMESTAMP)`
         : `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, boleto_url, created_at)
            VALUES (?, ?, ?, ?, 'boleto', ?, 'pending', ?, CURRENT_TIMESTAMP)`;
@@ -553,6 +578,7 @@ router.post('/create-boleto', auth, async (req, res) => {
 // ============================================
 // POST /api/create-pix
 // ============================================
+
 router.post('/create-pix', auth, async (req, res) => {
     const { plano_id, plano_nome, valor } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -564,7 +590,7 @@ router.post('/create-pix', auth, async (req, res) => {
     const sql = isProduction
         ? `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
-           VALUES ($1, $2, $3, $4, 'pix', $5, 'pending', $6, $7, CURRENT_TIMESTAMP)`
+           VALUES (?, ?, ?, ?, 'pix', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`
         : `INSERT INTO transacoes_pagamento 
            (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, qr_code, qr_code_base64, created_at)
            VALUES (?, ?, ?, ?, 'pix', ?, 'pending', ?, ?, CURRENT_TIMESTAMP)`;
@@ -582,7 +608,9 @@ router.post('/create-pix', auth, async (req, res) => {
     });
 });
 
-// server/routes/pagamento.routes.js - CORRIGIR A DETECÇÃO DO MODO
+// ============================================
+// POST /api/create-payment - CHECKOUT
+// ============================================
 
 router.post('/create-payment', auth, verificarDono, async (req, res) => {
     try {
@@ -600,13 +628,10 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
             });
         }
 
-        // 🔥 CORREÇÃO: DETECTAR MODO PELO TOKEN E PELO ENV
         const isRealToken = mpAccessToken.startsWith('APP_USR');
         const isSandboxToken = mpAccessToken.startsWith('TEST');
         const envModo = process.env.MERCADO_PAGO_ENV || 'sandbox';
 
-        // 🔥 SE FOR TOKEN TEST, FORÇA SANDBOX
-        // SE FOR TOKEN APP_USR E ENV=real, FORÇA REAL
         let isReal = false;
         if (isSandboxToken) {
             isReal = false;
@@ -621,7 +646,6 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
 
         console.log(`🔴 Modo final: ${isReal ? 'REAL' : 'SANDBOX'}`);
 
-        // Criar preferência de pagamento
         const preference = {
             items: [{
                 title: `Plano ${plano_nome} - ${periodo === 'anual' ? 'Anual' : 'Mensal'}`,
@@ -675,20 +699,16 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
 
         console.log('✅ Pagamento criado:', payment.id);
 
-        // 🔥 USAR O LINK CORRETO
-        // Se for REAL, usar init_point
-        // Se for SANDBOX, usar sandbox_init_point (ou init_point)
         let link = payment.init_point;
         if (!isReal && payment.sandbox_init_point) {
             link = payment.sandbox_init_point;
         }
         console.log('🔗 Link:', link);
 
-        // Salvar transação
         const sql = isProduction
             ? `INSERT INTO transacoes_pagamento 
                (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
-               VALUES ($1, $2, $3, $4, 'checkout', $5, 'pending', CURRENT_TIMESTAMP)`
+               VALUES (?, ?, ?, ?, 'checkout', ?, 'pending', CURRENT_TIMESTAMP)`
             : `INSERT INTO transacoes_pagamento 
                (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
                VALUES (?, ?, ?, ?, 'checkout', ?, 'pending', CURRENT_TIMESTAMP)`;
@@ -719,8 +739,8 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
 // ============================================
 // POST /api/pagamento/webhook - ALIAS
 // ============================================
+
 router.post('/webhook', (req, res) => {
-    // Redirecionar para o webhook principal
     req.url = '/mercadopago/webhook';
     router.handle(req, res);
 });

@@ -1,6 +1,8 @@
 // ============================================
-// ROTAS DE PLANOS
+// ROTAS DE PLANOS - SEE&AGENDE (SIMPLIFICADO)
+// ULTIMA ATUALIZACAO: 19/08/2026
 // ============================================
+
 const express = require('express');
 const router = express.Router();
 const { db } = require('../config/database');
@@ -9,262 +11,117 @@ const { auth, verificarDono } = require('../middlewares/auth');
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================
-// PLANOS DISPONÍVEIS
+// COMPATIBILIDADE SQLite / PostgreSQL
 // ============================================
-// server/routes/pagamento.routes.js
+
+function getCurrentTimestamp() {
+    return isProduction ? 'NOW()' : "datetime('now')";
+}
+
+// ============================================
+// PLANOS DISPONÍVEIS (SIMPLIFICADO)
+// ============================================
 
 const PLANOS = {
-    // 🔥 PLANO DE TESTE - R$ 1,00 (ADICIONAR PRIMEIRO)
-    teste: { nome: 'Teste R$ 1,00', limite: 1, valor: 1.00, dias_acesso: 1 },
-    starter: { nome: 'Starter', limite: 1, valor: 24.90, dias_acesso: 30 },
-    pro: { nome: 'Pro', limite: 5, valor: 49.90, dias_acesso: 30 },
-    business: { nome: 'Business', limite: 12, valor: 99.90, dias_acesso: 30 },
-    enterprise: { nome: 'Enterprise', limite: 999, valor: 199.90, dias_acesso: 30 }
-};
-
-const PLANOS_NOMES = {
-    trial: 'Trial',
-    teste: 'Teste R$ 1,00',  // 🔥 ADICIONAR
-    starter: 'Starter',
-    pro: 'Pro',
-    business: 'Business',
-    enterprise: 'Enterprise'
-};
-
-// ============================================
-// POST /api/upgrade
-// ============================================
-router.post('/upgrade', auth, verificarDono, (req, res) => {
-    const { plano, metodo_pagamento, comprovante } = req.body;
-    const empresaId = req.usuario.empresa_id;
-
-    if (!PLANOS[plano]) {
-        return res.status(400).json({ success: false, message: 'Plano inválido' });
+    starter: { 
+        nome: 'Starter', 
+        limite: 1, 
+        valor: 29.90, 
+        dias_acesso: 30,
+        agendamentos_mes: 100,
+        whatsapp: false,
+        promocoes: false,
+        fiados: false
+    },
+    pro: { 
+        nome: 'Pro', 
+        limite: 5, 
+        valor: 59.90, 
+        dias_acesso: 30,
+        agendamentos_mes: -1, // -1 = ilimitado
+        whatsapp: true,
+        promocoes: true,
+        fiados: true
     }
+};
 
-    const config = PLANOS[plano];
-    const validaAte = new Date();
-    validaAte.setDate(validaAte.getDate() + config.dias_acesso);
-    const validaAteStr = validaAte.toISOString().split('T')[0];
+// ============================================
+// GET /api/planos - LISTAR PLANOS DISPONÍVEIS
+// ============================================
 
-    const sqlSelect = isProduction
-        ? 'SELECT plano FROM empresas WHERE id = $1'
-        : 'SELECT plano FROM empresas WHERE id = ?';
-
-    db.get(sqlSelect, [empresaId], (err, empresaAtual) => {
-        if (err) {
-            return res.status(500).json({ success: false, message: err.message });
-        }
-
-        const sqlUpdate = isProduction
-            ? `UPDATE empresas SET 
-               plano = $1, 
-               limite_profissionais = $2,
-               assinatura_ativa = 1,
-               assinatura_valida_ate = $3,
-               trial_expira = NULL
-               WHERE id = $4`
-            : `UPDATE empresas SET 
-               plano = ?, 
-               limite_profissionais = ?,
-               assinatura_ativa = 1,
-               assinatura_valida_ate = ?,
-               trial_expira = NULL
-               WHERE id = ?`;
-
-        db.run(sqlUpdate, [plano, config.limite, validaAteStr, empresaId], function (err) {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ success: false, message: err.message });
-            }
-
-            const sqlHistorico = isProduction
-                ? `INSERT INTO planos_historico 
-                   (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
-                   VALUES ($1, $2, $3, $4, $5, $6)`
-                : `INSERT INTO planos_historico 
-                   (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante)
-                   VALUES (?, ?, ?, ?, ?, ?)`;
-
-            db.run(sqlHistorico, [empresaId, empresaAtual?.plano || 'trial', plano, config.valor, metodo_pagamento || 'manual', comprovante || null], (err) => {
-                if (err) console.error('Erro ao salvar histórico:', err);
-            });
-
-            // Habilitar WhatsApp próprio para Business/Enterprise
-            if (['Business', 'Enterprise', 'business', 'enterprise'].includes(plano)) {
-                const sqlWhats = isProduction
-                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = TRUE WHERE id = $1'
-                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
-                db.run(sqlWhats, [empresaId], (err) => {
-                    if (err) console.error('Erro ao habilitar WhatsApp:', err);
-                    else console.log(`✅ WhatsApp próprio habilitado automaticamente para empresa ${empresaId} (plano: ${plano})`);
-                });
-            } else {
-                // Se fez downgrade, desabilitar WhatsApp próprio
-                const sqlWhats = isProduction
-                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = FALSE WHERE id = $1'
-                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 0 WHERE id = ?';
-                db.run(sqlWhats, [empresaId], (err) => {
-                    if (err) console.error('Erro ao desabilitar WhatsApp:', err);
-                    else console.log(`⚠️ WhatsApp próprio desabilitado para empresa ${empresaId} (plano: ${plano})`);
-                });
-            }
-
-            res.json({
-                success: true,
-                message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
-                data: {
-                    plano: plano,
-                    plano_nome: config.nome,
-                    limite: config.limite,
-                    valida_ate: validaAteStr,
-                    valor: config.valor
-                }
-            });
-        });
+router.get('/', auth, (req, res) => {
+    res.json({
+        success: true,
+        data: PLANOS
     });
 });
 
 // ============================================
-// POST /api/cancel-subscription
+// GET /api/planos/empresa - BUSCAR PLANO ATUAL
 // ============================================
-router.post('/cancel-subscription', auth, verificarDono, (req, res) => {
+
+router.get('/empresa', auth, (req, res) => {
     const empresaId = req.usuario.empresa_id;
-    const { motivo } = req.body;
 
-    console.log('Cancelando assinatura da empresa:', empresaId);
-
-    const sqlSelect = isProduction
-        ? 'SELECT plano, assinatura_valida_ate FROM empresas WHERE id = $1'
-        : 'SELECT plano, assinatura_valida_ate FROM empresas WHERE id = ?';
-
-    db.get(sqlSelect, [empresaId], (err, empresa) => {
-        if (err) {
-            console.error('Erro ao buscar empresa:', err);
-            return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
-        }
-
-        if (!empresa) {
-            return res.json({ success: false, message: 'Empresa não encontrada' });
-        }
-
-        if (empresa.plano === 'trial') {
-            return res.json({ success: false, message: 'Você já está no plano Trial' });
-        }
-
-        const sqlHistorico = isProduction
-            ? `INSERT INTO planos_historico 
-               (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
-               VALUES ($1, $2, 'cancelado', 0, 'cancelamento', $3, CURRENT_TIMESTAMP)`
-            : `INSERT INTO planos_historico 
-               (empresa_id, plano_antigo, plano_novo, valor_pago, metodo_pagamento, comprovante, data_mudanca)
-               VALUES (?, ?, 'cancelado', 0, 'cancelamento', ?, CURRENT_TIMESTAMP)`;
-
-        db.run(sqlHistorico, [empresaId, empresa.plano, motivo || 'Usuário cancelou assinatura'], (err) => {
-            if (err) console.error('Erro ao registrar cancelamento:', err);
-        });
-
-        const dataTrialExpira = new Date();
-        dataTrialExpira.setDate(dataTrialExpira.getDate() + 7);
-
-        const sqlUpdate = isProduction
-            ? `UPDATE empresas SET 
-               plano = 'trial',
-               limite_profissionais = 1,
-               assinatura_ativa = 0,
-               assinatura_valida_ate = NULL,
-               trial_expira = $1
-               WHERE id = $2`
-            : `UPDATE empresas SET 
-               plano = 'trial',
-               limite_profissionais = 1,
-               assinatura_ativa = 0,
-               assinatura_valida_ate = NULL,
-               trial_expira = ?
-               WHERE id = ?`;
-
-        db.run(sqlUpdate, [dataTrialExpira.toISOString(), empresaId], function (err) {
-            if (err) {
-                console.error('Erro ao cancelar assinatura:', err);
-                return res.json({ success: false, message: 'Erro ao cancelar assinatura' });
-            }
-
-            res.json({
-                success: true,
-                message: `Assinatura cancelada! Você tem 7 dias de acesso ao plano Trial até ${dataTrialExpira.toLocaleDateString('pt-BR')}.`,
-                dias_trial: 7
-            });
-        });
-    });
-});
-
-// ============================================
-// GET /api/can-return-trial
-// ============================================
-router.get('/can-return-trial', auth, verificarDono, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
+    console.log('📊 Buscando plano da empresa:', empresaId);
 
     const sql = isProduction
-        ? `SELECT plano, assinatura_ativa, assinatura_valida_ate,
-           (SELECT COUNT(*) FROM planos_historico WHERE empresa_id = $1 AND plano_novo = 'cancelado' AND data_mudanca > datetime('now', '-30 days')) as cancelamentos_recentes
-           FROM empresas WHERE id = $1`
-        : `SELECT plano, assinatura_ativa, assinatura_valida_ate,
-           (SELECT COUNT(*) FROM planos_historico WHERE empresa_id = ? AND plano_novo = 'cancelado' AND data_mudanca > datetime('now', '-30 days')) as cancelamentos_recentes
+        ? `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira, agendamentos_mes
+           FROM empresas WHERE id = ?`
+        : `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira, agendamentos_mes
            FROM empresas WHERE id = ?`;
 
     db.get(sql, [empresaId], (err, empresa) => {
         if (err) {
-            return res.json({ success: false, message: 'Erro ao verificar' });
+            console.error('❌ Erro ao buscar plano:', err);
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao buscar plano: ' + err.message
+            });
         }
 
-        const podeVoltarTrial = empresa.plano !== 'trial' && (empresa.cancelamentos_recentes || 0) < 2;
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        const isTrial = empresa.plano === 'trial';
+        let diasRestantes = 0;
+
+        if (isTrial && empresa.trial_expira) {
+            const hoje = new Date();
+            const expira = new Date(empresa.trial_expira);
+            const diffTime = expira - hoje;
+            diasRestantes = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+        }
+
+        const planoInfo = PLANOS[empresa.plano] || null;
+        const planoNome = planoInfo?.nome || empresa.plano || 'Trial';
 
         res.json({
             success: true,
-            pode_voltar_trial: podeVoltarTrial,
-            plano_atual: empresa.plano,
-            cancelamentos_recentes: empresa.cancelamentos_recentes || 0
+            data: {
+                plano: empresa.plano || 'trial',
+                plano_nome: planoNome,
+                limite_profissionais: empresa.limite_profissionais || 1,
+                assinatura_ativa: empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === true,
+                assinatura_valida_ate: empresa.assinatura_valida_ate,
+                trial_expira: empresa.trial_expira,
+                is_trial: isTrial,
+                dias_restantes: diasRestantes,
+                agendamentos_mes: empresa.agendamentos_mes || 0,
+                plano_info: planoInfo
+            }
         });
     });
 });
 
 // ============================================
-// POST /api/simulate-downgrade
+// PUT /api/planos/empresa - ATUALIZAR PLANO
 // ============================================
-router.post('/simulate-downgrade', auth, verificarDono, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
 
-    const dataTrialExpira = new Date();
-    dataTrialExpira.setDate(dataTrialExpira.getDate() + 45);
-
-    const sql = isProduction
-        ? `UPDATE empresas SET 
-           plano = 'trial',
-           limite_profissionais = 1,
-           assinatura_ativa = 0,
-           assinatura_valida_ate = NULL,
-           trial_expira = $1
-           WHERE id = $2`
-        : `UPDATE empresas SET 
-           plano = 'trial',
-           limite_profissionais = 1,
-           assinatura_ativa = 0,
-           assinatura_valida_ate = NULL,
-           trial_expira = ?
-           WHERE id = ?`;
-
-    db.run(sql, [dataTrialExpira.toISOString(), empresaId], function (err) {
-        if (err) {
-            return res.json({ success: false, message: 'Erro ao voltar para trial' });
-        }
-        res.json({ success: true, message: `Voltou para o plano Trial com 45 dias! Válido até ${dataTrialExpira.toLocaleDateString('pt-BR')}` });
-    });
-});
-// server/routes/planos.routes.js
-
-// ============================================
-// PUT /api/planos/empresa - ATUALIZAR PLANO (CORRIGIDO)
-// ============================================
 router.put('/empresa', auth, verificarDono, (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { plano, assinatura_ativa, assinatura_valida_ate } = req.body;
@@ -278,7 +135,7 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
         });
     }
 
-    const planosPermitidos = ['starter', 'pro', 'business', 'enterprise', 'trial'];
+    const planosPermitidos = ['starter', 'pro', 'trial'];
     if (!planosPermitidos.includes(plano)) {
         return res.status(400).json({
             success: false,
@@ -286,33 +143,12 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
         });
     }
 
-    // Definir limite de profissionais baseado no plano
-    let limiteProfissionais = 1;
-    switch (plano) {
-        case 'starter':
-            limiteProfissionais = 1;
-            break;
-        case 'pro':
-            limiteProfissionais = 5;
-            break;
-        case 'business':
-            limiteProfissionais = 15;
-            break;
-        case 'enterprise':
-            limiteProfissionais = 999;
-            break;
-        case 'trial':
-            limiteProfissionais = 1;
-            break;
-        default:
-            limiteProfissionais = 1;
-    }
+    const planoInfo = PLANOS[plano];
+    let limiteProfissionais = planoInfo?.limite || 1;
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
-    // 🔥 VERIFICAR SE A EMPRESA EXISTE
+    // Verificar se empresa existe
     const sqlSelect = isProduction
-        ? "SELECT id FROM empresas WHERE id = $1"
+        ? "SELECT id FROM empresas WHERE id = ?"
         : "SELECT id FROM empresas WHERE id = ?";
 
     db.get(sqlSelect, [empresaId], (err, empresa) => {
@@ -331,14 +167,13 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
             });
         }
 
-        // 🔥 SQL SIMPLIFICADO - SEM updated_at
         const sql = isProduction
             ? `UPDATE empresas 
-               SET plano = $1, 
-                   limite_profissionais = $2,
-                   assinatura_ativa = $3, 
-                   assinatura_valida_ate = $4
-               WHERE id = $5`
+               SET plano = ?, 
+                   limite_profissionais = ?,
+                   assinatura_ativa = ?, 
+                   assinatura_valida_ate = ?
+               WHERE id = ?`
             : `UPDATE empresas 
                SET plano = ?, 
                    limite_profissionais = ?,
@@ -366,12 +201,31 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
                 });
             }
 
+            // 🔥 SE FOR PLANO PRO, HABILITAR WHATSAPP
+            if (plano === 'pro') {
+                const sqlWhats = isProduction
+                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = TRUE WHERE id = ?'
+                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
+                db.run(sqlWhats, [empresaId], (err) => {
+                    if (err) console.error('Erro ao habilitar WhatsApp:', err);
+                    else console.log(`✅ WhatsApp habilitado para empresa ${empresaId} (plano Pro)`);
+                });
+            } else {
+                // Se for Starter ou Trial, desabilitar WhatsApp
+                const sqlWhats = isProduction
+                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = FALSE WHERE id = ?'
+                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 0 WHERE id = ?';
+                db.run(sqlWhats, [empresaId], (err) => {
+                    if (err) console.error('Erro ao desabilitar WhatsApp:', err);
+                    else console.log(`⚠️ WhatsApp desabilitado para empresa ${empresaId} (plano: ${plano})`);
+                });
+            }
+
             console.log(`✅ Plano da empresa ${empresaId} atualizado para ${plano}`);
 
-            // 🔥 BUSCAR DADOS ATUALIZADOS
             const sqlSelectUpdated = isProduction
                 ? `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira
-                   FROM empresas WHERE id = $1`
+                   FROM empresas WHERE id = ?`
                 : `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira
                    FROM empresas WHERE id = ?`;
 
@@ -395,238 +249,147 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// GET /api/planos/empresa - BUSCAR PLANO ATUAL
+// POST /api/upgrade - UPGRADE DE PLANO
 // ============================================
-router.get('/empresa', auth, (req, res) => {
+
+router.post('/upgrade', auth, verificarDono, (req, res) => {
+    const { plano, metodo_pagamento, comprovante } = req.body;
     const empresaId = req.usuario.empresa_id;
 
-    console.log('📊 Buscando plano da empresa:', empresaId);
+    if (!PLANOS[plano]) {
+        return res.status(400).json({ success: false, message: 'Plano inválido' });
+    }
 
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
+    const config = PLANOS[plano];
+    const validaAte = new Date();
+    validaAte.setDate(validaAte.getDate() + config.dias_acesso);
+    const validaAteStr = validaAte.toISOString().split('T')[0];
 
-    const sql = isProduction
-        ? `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira, agendamentos_mes
-           FROM empresas WHERE id = $1`
-        : `SELECT id, nome, plano, limite_profissionais, assinatura_ativa, assinatura_valida_ate, trial_expira, agendamentos_mes
-           FROM empresas WHERE id = ?`;
+    const sqlSelect = isProduction
+        ? 'SELECT plano FROM empresas WHERE id = ?'
+        : 'SELECT plano FROM empresas WHERE id = ?';
 
-    db.get(sql, [empresaId], (err, empresa) => {
+    db.get(sqlSelect, [empresaId], (err, empresaAtual) => {
         if (err) {
-            console.error('❌ Erro ao buscar plano:', err);
-            return res.status(500).json({
-                success: false,
-                message: 'Erro ao buscar plano: ' + err.message
-            });
+            return res.status(500).json({ success: false, message: err.message });
         }
 
-        if (!empresa) {
-            return res.status(404).json({
-                success: false,
-                message: 'Empresa não encontrada'
-            });
-        }
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET 
+               plano = ?, 
+               limite_profissionais = ?,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = ?,
+               trial_expira = NULL
+               WHERE id = ?`
+            : `UPDATE empresas SET 
+               plano = ?, 
+               limite_profissionais = ?,
+               assinatura_ativa = 1,
+               assinatura_valida_ate = ?,
+               trial_expira = NULL
+               WHERE id = ?`;
 
-        // Verificar se está em trial
-        const isTrial = empresa.plano === 'trial';
-        let diasRestantes = 0;
-
-        if (isTrial && empresa.trial_expira) {
-            const hoje = new Date();
-            const expira = new Date(empresa.trial_expira);
-            const diffTime = expira - hoje;
-            diasRestantes = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
-        }
-
-        const planoNome = empresa.plano ?
-            (empresa.plano.charAt(0).toUpperCase() + empresa.plano.slice(1)) : 'Trial';
-
-        res.json({
-            success: true,
-            data: {
-                plano: empresa.plano || 'trial',
-                plano_nome: planoNome,
-                limite_profissionais: empresa.limite_profissionais || 1,
-                assinatura_ativa: empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === true,
-                assinatura_valida_ate: empresa.assinatura_valida_ate,
-                trial_expira: empresa.trial_expira,
-                is_trial: isTrial,
-                dias_restantes: diasRestantes,
-                agendamentos_mes: empresa.agendamentos_mes || 0
+        db.run(sqlUpdate, [plano, config.limite, validaAteStr, empresaId], function (err) {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ success: false, message: err.message });
             }
+
+            // 🔥 SE FOR PRO, HABILITAR WHATSAPP
+            if (plano === 'pro') {
+                const sqlWhats = isProduction
+                    ? 'UPDATE empresas SET whatsapp_proprio_habilitado = TRUE WHERE id = ?'
+                    : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
+                db.run(sqlWhats, [empresaId], (err) => {
+                    if (err) console.error('Erro ao habilitar WhatsApp:', err);
+                    else console.log(`✅ WhatsApp habilitado para empresa ${empresaId} (plano Pro)`);
+                });
+            }
+
+            res.json({
+                success: true,
+                message: `Parabéns! Seu plano ${config.nome} foi ativado com sucesso.`,
+                data: {
+                    plano: plano,
+                    plano_nome: config.nome,
+                    limite: config.limite,
+                    valida_ate: validaAteStr,
+                    valor: config.valor
+                }
+            });
         });
     });
 });
-// server/routes/planos.routes.js - ADICIONAR NO FINAL
 
 // ============================================
-// POST /api/create-payment - CRIAR PAGAMENTO REAL
+// POST /api/cancel-subscription - CANCELAR ASSINATURA
 // ============================================
-router.post('/create-payment', auth, verificarDono, async (req, res) => {
-    try {
-        const { plano_id, plano_nome, valor, metodo_pagamento, periodo } = req.body;
-        const empresaId = req.usuario.empresa_id;
 
-        console.log('💳 Criando pagamento real:', { empresaId, plano_id, plano_nome, valor, periodo });
+router.post('/cancel-subscription', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const { motivo } = req.body;
 
-        // Verificar se o Mercado Pago está configurado
-        const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-        if (!mpAccessToken) {
-            console.warn('⚠️ MERCADO_PAGO_ACCESS_TOKEN não configurado');
-            // Fallback para modo simulação
-            return res.status(400).json({
-                success: false,
-                message: 'Pagamento real não configurado. Use o modo simulação.',
-                fallback: true
-            });
+    console.log('Cancelando assinatura da empresa:', empresaId);
+
+    const sqlSelect = isProduction
+        ? 'SELECT plano, assinatura_valida_ate FROM empresas WHERE id = ?'
+        : 'SELECT plano, assinatura_valida_ate FROM empresas WHERE id = ?';
+
+    db.get(sqlSelect, [empresaId], (err, empresa) => {
+        if (err) {
+            console.error('Erro ao buscar empresa:', err);
+            return res.json({ success: false, message: 'Erro ao buscar dados da empresa' });
         }
 
-        // Configurar Mercado Pago
-        const mercadopago = require('mercadopago');
-        mercadopago.configure({
-            access_token: mpAccessToken
-        });
-
-        // Criar preferência de pagamento
-        const preference = {
-            items: [{
-                title: `Plano ${plano_nome} - ${periodo === 'anual' ? 'Anual' : 'Mensal'}`,
-                description: `Assinatura do plano ${plano_nome} para empresa ${empresaId}`,
-                quantity: 1,
-                currency_id: 'BRL',
-                unit_price: valor
-            }],
-            payer: {
-                email: req.usuario.email || 'cliente@email.com'
-            },
-            back_urls: {
-                success: `${process.env.BASE_URL || 'http://localhost:3000'}/payment-success`,
-                failure: `${process.env.BASE_URL || 'http://localhost:3000'}/payment-failure`,
-                pending: `${process.env.BASE_URL || 'http://localhost:3000'}/payment-pending`
-            },
-            auto_return: 'approved',
-            external_reference: `${empresaId}_${plano_id}`,
-            notification_url: `${process.env.BASE_URL || 'http://localhost:3000'}/api/planos/webhook`
-        };
-
-        const response = await mercadopago.preferences.create(preference);
-        const payment = response.body;
-
-        console.log('✅ Pagamento criado:', payment.id);
-
-        // Salvar no banco (opcional - se tiver tabela de pagamentos)
-        // Se não tiver tabela, pode pular esta parte
-
-        res.json({
-            success: true,
-            init_point: payment.init_point,
-            sandbox_init_point: payment.sandbox_init_point,
-            payment_id: payment.id,
-            message: 'Pagamento criado com sucesso!'
-        });
-
-    } catch (error) {
-        console.error('❌ Erro ao criar pagamento:', error);
-        res.status(500).json({
-            success: false,
-            message: error.message || 'Erro ao criar pagamento'
-        });
-    }
-});
-
-// ============================================
-// POST /api/planos/webhook - WEBHOOK DO MERCADO PAGO
-// ============================================
-router.post('/webhook', async (req, res) => {
-    try {
-        const body = req.body;
-        console.log('📥 Webhook recebido:', JSON.stringify(body, null, 2));
-
-        // Verificar se é uma notificação de pagamento
-        if (body.type === 'payment' || body.topic === 'payment') {
-            const paymentId = body.data?.id || body.id;
-
-            if (!paymentId) {
-                console.log('⚠️ ID do pagamento não encontrado');
-                return res.sendStatus(200);
-            }
-
-            // Buscar status do pagamento
-            const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-            if (!mpAccessToken) {
-                console.error('❌ MERCADO_PAGO_ACCESS_TOKEN não configurado');
-                return res.sendStatus(200);
-            }
-
-            const mercadopago = require('mercadopago');
-            mercadopago.configure({
-                access_token: mpAccessToken
-            });
-
-            const response = await mercadopago.payment.findById(paymentId);
-            const payment = response.body;
-
-            console.log('📊 Status do pagamento:', payment.status);
-
-            if (payment.status === 'approved') {
-                const externalRef = payment.external_reference || '';
-                const [empresaId, planoId] = externalRef.split('_');
-
-                if (empresaId && planoId) {
-                    console.log(`✅ Pagamento aprovado para empresa ${empresaId}, plano ${planoId}`);
-
-                    // Definir limite baseado no plano
-                    let limiteProfissionais = 1;
-                    switch (planoId) {
-                        case 'starter': limiteProfissionais = 1; break;
-                        case 'pro': limiteProfissionais = 5; break;
-                        case 'business': limiteProfissionais = 15; break;
-                        case 'enterprise': limiteProfissionais = 999; break;
-                        default: limiteProfissionais = 1;
-                    }
-
-                    // Atualizar o plano da empresa
-                    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-                    const sql = isProduction
-                        ? `UPDATE empresas 
-                           SET plano = $1, 
-                               limite_profissionais = $2,
-                               assinatura_ativa = 1,
-                               assinatura_valida_ate = date('now', '+30 days')
-                           WHERE id = $3`
-                        : `UPDATE empresas 
-                           SET plano = ?, 
-                               limite_profissionais = ?,
-                               assinatura_ativa = 1,
-                               assinatura_valida_ate = date('now', '+30 days')
-                           WHERE id = ?`;
-
-                    db.run(sql, [planoId, limiteProfissionais, empresaId], function (err) {
-                        if (err) {
-                            console.error('❌ Erro ao ativar plano:', err);
-                        } else {
-                            console.log(`✅ Plano ${planoId} ativado para empresa ${empresaId}`);
-                        }
-                    });
-
-                    // Habilitar WhatsApp para Business/Enterprise
-                    if (['business', 'enterprise'].includes(planoId)) {
-                        const sqlWhats = isProduction
-                            ? 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = $1'
-                            : 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?';
-                        db.run(sqlWhats, [empresaId], (err) => {
-                            if (err) console.error('Erro ao habilitar WhatsApp:', err);
-                            else console.log(`✅ WhatsApp habilitado para empresa ${empresaId}`);
-                        });
-                    }
-                }
-            }
+        if (!empresa) {
+            return res.json({ success: false, message: 'Empresa não encontrada' });
         }
 
-        res.sendStatus(200);
+        if (empresa.plano === 'trial') {
+            return res.json({ success: false, message: 'Você já está no plano Trial' });
+        }
 
-    } catch (error) {
-        console.error('❌ Erro no webhook:', error);
-        res.sendStatus(500);
-    }
+        const dataTrialExpira = new Date();
+        dataTrialExpira.setDate(dataTrialExpira.getDate() + 7);
+
+        const sqlUpdate = isProduction
+            ? `UPDATE empresas SET 
+               plano = 'trial',
+               limite_profissionais = 1,
+               assinatura_ativa = 0,
+               assinatura_valida_ate = NULL,
+               trial_expira = ?
+               WHERE id = ?`
+            : `UPDATE empresas SET 
+               plano = 'trial',
+               limite_profissionais = 1,
+               assinatura_ativa = 0,
+               assinatura_valida_ate = NULL,
+               trial_expira = ?
+               WHERE id = ?`;
+
+        db.run(sqlUpdate, [dataTrialExpira.toISOString(), empresaId], function (err) {
+            if (err) {
+                console.error('Erro ao cancelar assinatura:', err);
+                return res.json({ success: false, message: 'Erro ao cancelar assinatura' });
+            }
+
+            // Desabilitar WhatsApp
+            const sqlWhats = isProduction
+                ? 'UPDATE empresas SET whatsapp_proprio_habilitado = FALSE WHERE id = ?'
+                : 'UPDATE empresas SET whatsapp_proprio_habilitado = 0 WHERE id = ?';
+            db.run(sqlWhats, [empresaId], (err) => {
+                if (err) console.error('Erro ao desabilitar WhatsApp:', err);
+            });
+
+            res.json({
+                success: true,
+                message: `Assinatura cancelada! Você tem 7 dias de acesso ao plano Trial.`,
+                dias_trial: 7
+            });
+        });
+    });
 });
+
 module.exports = router;

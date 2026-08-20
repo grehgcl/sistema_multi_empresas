@@ -1,0 +1,667 @@
+{
+  "timestamp": "2026-08-19T21:09:36.799Z",
+  "analysis": {
+    "summary": {
+      "totalFiles": 340,
+      "totalLines": 128904,
+      "totalDirectories": 45,
+      "fileTypes": {
+        ".js": {
+          "count": 290,
+          "lines": 96193
+        },
+        ".json": {
+          "count": 8,
+          "lines": 22558
+        },
+        ".html": {
+          "count": 4,
+          "lines": 1577
+        },
+        ".css": {
+          "count": 30,
+          "lines": 7340
+        },
+        ".md": {
+          "count": 5,
+          "lines": 814
+        },
+        ".txt": {
+          "count": 3,
+          "lines": 422
+        }
+      },
+      "largestFiles": [
+        {
+          "path": "backup_clientes_2026-07-02_11-57\\routes_backup",
+          "lines": 982
+        },
+        {
+          "path": "backup_clientes_2026-07-02_11-57\\routes_backup",
+          "lines": 742
+        },
+        {
+          "path": "backup_empresas_2026-07-02_11-58\\routes_backup",
+          "lines": 982
+        },
+        {
+          "path": "backup_empresas_2026-07-02_11-58\\routes_backup",
+          "lines": 742
+        },
+        {
+          "path": "backup_horarios_2026-07-02_11-54\\routes_backup",
+          "lines": 982
+        },
+        {
+          "path": "backup_horarios_2026-07-02_11-54\\routes_backup",
+          "lines": 742
+        },
+        {
+          "path": "backup_planos_2026-07-02_11-51\\routes_backup",
+          "lines": 982
+        },
+        {
+          "path": "backup_planos_2026-07-02_11-51\\routes_backup",
+          "lines": 742
+        },
+        {
+          "path": "backup_profissionais_2026-07-02_11-53\\routes_backup",
+          "lines": 982
+        },
+        {
+          "path": "backup_profissionais_2026-07-02_11-53\\routes_backup",
+          "lines": 742
+        },
+        {
+          "path": "backup_servicos_2026-07-02_11-56\\routes_backup",
+          "lines": 982
+        },
+        {
+          "path": "backup_servicos_2026-07-02_11-56\\routes_backup",
+          "lines": 742
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503",
+          "lines": 6077
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css",
+          "lines": 530
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+          "lines": 615
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css",
+          "lines": 1110
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public",
+          "lines": 711
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js",
+          "lines": 1499
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 3228
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 3267
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 1877
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 1204
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 1462
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 1614
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 1005
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+          "lines": 650
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js",
+          "lines": 568
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 1262
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 1113
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 790
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 725
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 728
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 632
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 577
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+          "lines": 968
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services",
+          "lines": 710
+        },
+        {
+          "path": "BACKUP_SQLITE_FUNCIONAL_20260816_021503",
+          "lines": 663
+        },
+        {
+          "path": "",
+          "lines": 6310
+        },
+        {
+          "path": "exportacao",
+          "lines": 770
+        },
+        {
+          "path": "exportacao",
+          "lines": 1937
+        },
+        {
+          "path": "exportacao",
+          "lines": 936
+        },
+        {
+          "path": "",
+          "lines": 6435
+        },
+        {
+          "path": "public\\css",
+          "lines": 530
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 615
+        },
+        {
+          "path": "public\\css",
+          "lines": 1110
+        },
+        {
+          "path": "public",
+          "lines": 736
+        },
+        {
+          "path": "public\\js",
+          "lines": 1499
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 3266
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 2761
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1877
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1204
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1462
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 3020
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 781
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 654
+        },
+        {
+          "path": "public\\js",
+          "lines": 734
+        },
+        {
+          "path": "scripts",
+          "lines": 536
+        },
+        {
+          "path": "server\\routes",
+          "lines": 1288
+        },
+        {
+          "path": "server\\routes",
+          "lines": 1663
+        },
+        {
+          "path": "server\\routes",
+          "lines": 608
+        },
+        {
+          "path": "server\\routes",
+          "lines": 764
+        },
+        {
+          "path": "server\\routes",
+          "lines": 759
+        },
+        {
+          "path": "server\\routes",
+          "lines": 1282
+        },
+        {
+          "path": "server\\routes",
+          "lines": 748
+        },
+        {
+          "path": "server\\routes",
+          "lines": 685
+        },
+        {
+          "path": "server\\routes",
+          "lines": 881
+        },
+        {
+          "path": "server\\services",
+          "lines": 710
+        },
+        {
+          "path": "",
+          "lines": 684
+        }
+      ],
+      "oldestFiles": [
+        {
+          "path": "docs",
+          "modified": "2026-06-28T04:38:46.440Z"
+        },
+        {
+          "path": "docs",
+          "modified": "2026-06-11T15:51:15.894Z"
+        },
+        {
+          "path": "",
+          "modified": "2026-06-16T15:17:12.253Z"
+        },
+        {
+          "path": "scripts",
+          "modified": "2026-07-05T15:12:07.660Z"
+        },
+        {
+          "path": "scripts",
+          "modified": "2026-07-20T04:03:42.611Z"
+        },
+        {
+          "path": "scripts",
+          "modified": "2026-06-18T16:03:37.079Z"
+        },
+        {
+          "path": "scripts",
+          "modified": "2026-07-17T21:40:10.589Z"
+        },
+        {
+          "path": "scripts",
+          "modified": "2026-07-17T21:41:59.883Z"
+        }
+      ]
+    },
+    "backend": {
+      "routes": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes"
+      ],
+      "middlewares": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\middlewares",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\middlewares",
+        "server\\middlewares",
+        "server\\middlewares"
+      ],
+      "services": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\services",
+        "server\\services",
+        "server\\services",
+        "server\\services",
+        "server\\services",
+        "server\\services"
+      ],
+      "jobs": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\server\\jobs",
+        "server\\jobs",
+        "server\\jobs",
+        "server\\jobs",
+        "server\\jobs"
+      ],
+      "models": [],
+      "scripts": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts"
+      ]
+    },
+    "frontend": {
+      "pages": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages"
+      ],
+      "components": [],
+      "styles": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css\\pages",
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\public\\css",
+        "public\\css",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css"
+      ],
+      "assets": []
+    },
+    "database": {
+      "tables": [],
+      "queries": [],
+      "migrations": [
+        "BACKUP_SQLITE_FUNCIONAL_20260816_021503\\scripts",
+        "scripts"
+      ]
+    },
+    "features": {
+      "whatsapp": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "financeiro": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "agendamentos": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "clientes": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "admin": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      }
+    },
+    "dependencies": {
+      "packages": {
+        "@wppconnect-team/wppconnect": "^2.2.1",
+        "axios": "^1.18.1",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.6.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.0.0",
+        "mercadopago": "^3.1.0",
+        "node-cron": "^3.0.3",
+        "nodemailer": "^9.0.3",
+        "pg": "^8.11.3",
+        "stripe": "^22.2.1",
+        "ws": "^8.21.3"
+      },
+      "versions": {
+        "node": ">=18.0.0",
+        "npm": "N/A"
+      }
+    },
+    "structure": {
+      "backend": {},
+      "frontend": {},
+      "scripts": {}
+    }
+  },
+  "recommendations": [
+    "⚠️ Nenhuma rota WhatsApp encontrada - Verificar integração",
+    "⚠️ Nenhuma rota Financeiro encontrada - Verificar módulo",
+    "📏 Arquivos grandes encontrados:",
+    "   - backup_clientes_2026-07-02_11-57\\routes_backup (982 linhas)",
+    "   - backup_clientes_2026-07-02_11-57\\routes_backup (742 linhas)",
+    "   - backup_empresas_2026-07-02_11-58\\routes_backup (982 linhas)",
+    "   - backup_empresas_2026-07-02_11-58\\routes_backup (742 linhas)",
+    "   - backup_horarios_2026-07-02_11-54\\routes_backup (982 linhas)"
+  ],
+  "quickFixes": []
+}
