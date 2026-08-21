@@ -337,7 +337,7 @@ function mostrarCadastro() {
 
 
 // ============================================
-// ATUALIZAR STATUS DO WHATSAPP NO MENU - CORRIGIDO
+// ATUALIZAR STATUS DO WHATSAPP - CORRIGIDO
 // ============================================
 async function atualizarStatusWhatsApp() {
     try {
@@ -357,6 +357,16 @@ async function atualizarStatusWhatsApp() {
         const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
         const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
         
+        // 🔥 SE FOR SUPER ADMIN, NÃO FICAR MONITORANDO (EVITA 401)
+        if (isSuperAdmin) {
+            console.log('👑 Super Admin: Monitoramento WhatsApp desativado');
+            indicator.className = 'status-dot online';
+            indicator.title = '👑 Super Admin - WhatsApp global';
+            indicator.style.background = '#22c55e';
+            indicator.style.boxShadow = '0 0 12px rgba(34,197,94,0.6)';
+            return;
+        }
+
         console.log(`🔄 Atualizando status do WhatsApp... (${isSuperAdmin ? 'Super Admin' : 'Dono'})`);
 
         const response = await fetch('/api/whatsapp/status', {
@@ -370,7 +380,7 @@ async function atualizarStatusWhatsApp() {
         if (response.status === 401) {
             console.warn('⚠️ Token expirado ou inválido');
             indicator.className = 'status-dot offline';
-            indicator.title = '❌ Sessão expirada';
+            indicator.title = '❌ Sessão expirada - Faça login novamente';
             indicator.style.background = '#ef4444';
             indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.4)';
             return;
@@ -387,9 +397,7 @@ async function atualizarStatusWhatsApp() {
 
             if (result.data.connected) {
                 indicator.classList.add('online');
-                indicator.title = isSuperAdmin ? 
-                    `✅ ${result.data.empresa_nome || 'Empresa'} - WhatsApp Conectado` : 
-                    '✅ WhatsApp Conectado';
+                indicator.title = '✅ WhatsApp Conectado';
                 indicator.style.background = '#22c55e';
                 indicator.style.boxShadow = '0 0 12px rgba(34,197,94,0.6)';
                 console.log('🟢 WhatsApp Conectado');
@@ -401,9 +409,7 @@ async function atualizarStatusWhatsApp() {
                 console.log('🟡 WhatsApp Conectando...');
             } else {
                 indicator.classList.add('offline');
-                indicator.title = isSuperAdmin ? 
-                    `❌ ${result.data.empresa_nome || 'Nenhuma empresa'} - WhatsApp Desconectado` : 
-                    '❌ WhatsApp Desconectado';
+                indicator.title = '❌ WhatsApp Desconectado';
                 indicator.style.background = '#ef4444';
                 indicator.style.boxShadow = '0 0 12px rgba(239,68,68,0.4)';
                 console.log('🔴 WhatsApp Desconectado');
@@ -471,7 +477,7 @@ function gerarMenu(usuario) {
             </button>
             <button class="menu-btn" data-page="whatsapp" onclick="executarAcao('carregarWhatsappConfig', this)">
                 <i class="fas fa-whatsapp"></i> WhatsApp
-                <span id="whatsappStatusIndicator" class="status-dot offline"></span>
+                <span id="whatsappStatusIndicator" class="status-dot online" title="👑 Super Admin"></span>
             </button>
             <button class="menu-btn" data-page="planos" onclick="executarAcao('carregarPlanos', this)">
                 <i class="fas fa-crown"></i> Planos

@@ -4,7 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { db, getEmpresaDb } = require('../config/database');
 const { auth, verificarSuperAdmin, verificarDono } = require('../middlewares/auth');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
@@ -119,38 +119,96 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
 });
 
 // ============================================
-// GET /api/admin/empresas - LISTAR EMPRESAS
+// GET /api/admin/empresas - CORRIGIDO
 // ============================================
 
 router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
     console.log('🏢 Buscando empresas para SuperAdmin');
 
-    const sql = isProduction
-        ? `SELECT e.*, 
-           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id) as total_usuarios,
-           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
-           FROM empresas e
-           ORDER BY e.created_at DESC`
-        : `SELECT e.*, 
-           (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id) as total_usuarios,
-           (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos
-           FROM empresas e
-           ORDER BY e.created_at DESC`;
+    // Primeiro, buscar todas as empresas
+    const sqlEmpresas = isProduction
+        ? `SELECT id, nome, plano, trial_expira, assinatura_valida_ate, 
+           whatsapp_proprio_habilitado, whatsapp_connected, telefone_dono
+           FROM empresas ORDER BY id DESC`
+        : `SELECT id, nome, plano, trial_expira, assinatura_valida_ate, 
+           whatsapp_proprio_habilitado, whatsapp_connected, telefone_dono
+           FROM empresas ORDER BY id DESC`;
 
-    db.all(sql, [], (err, empresas) => {
+    db.all(sqlEmpresas, [], (err, empresas) => {
         if (err) {
-            console.error('❌ Erro ao listar empresas:', err);
-            return res.status(500).json({
-                success: false,
-                message: err.message
+            console.error('❌ Erro ao buscar empresas:', err);
+            return res.status(500).json({ 
+                success: false, 
+                message: err.message 
             });
         }
 
-        console.log(`✅ ${empresas.length} empresas encontradas`);
-        res.json({
-            success: true,
-            data: empresas || []
+        // 🔥 Para cada empresa, buscar dados no banco da empresa
+        let empresasProcessadas = 0;
+        const resultados = [];
+
+        empresas.forEach((empresa, index) => {
+            const empresaDb = getEmpresaDb(empresa.id);
+            
+            if (!empresaDb) {
+                // Se não tiver banco próprio, usar contagem do banco principal
+                db.get(
+                    `SELECT COUNT(*) as total_clientes FROM clientes WHERE empresa_id = ?`,
+                    [empresa.id],
+                    (err, clientesRow) => {
+                        db.get(
+                            `SELECT COUNT(*) as total_agendamentos FROM agendamentos WHERE empresa_id = ?`,
+                            [empresa.id],
+                            (err, agendamentosRow) => {
+                                resultados[index] = {
+                                    ...empresa,
+                                    total_clientes: clientesRow?.total || 0,
+                                    total_agendamentos: agendamentosRow?.total || 0
+                                };
+                                empresasProcessadas++;
+                                if (empresasProcessadas === empresas.length) {
+                                    res.json({ 
+                                        success: true, 
+                                        data: resultados 
+                                    });
+                                }
+                            }
+                        );
+                    }
+                );
+                return;
+            }
+
+            // Buscar do banco da empresa
+            empresaDb.get('SELECT COUNT(*) as total FROM clientes', [], (err, clientesRow) => {
+                const totalClientes = clientesRow?.total || 0;
+                
+                empresaDb.get('SELECT COUNT(*) as total FROM agendamentos', [], (err, agendamentosRow) => {
+                    const totalAgendamentos = agendamentosRow?.total || 0;
+                    
+                    resultados[index] = {
+                        ...empresa,
+                        total_clientes: totalClientes,
+                        total_agendamentos: totalAgendamentos
+                    };
+                    
+                    empresasProcessadas++;
+                    if (empresasProcessadas === empresas.length) {
+                        res.json({ 
+                            success: true, 
+                            data: resultados 
+                        });
+                    }
+                });
+            });
         });
+
+        if (empresas.length === 0) {
+            res.json({ 
+                success: true, 
+                data: [] 
+            });
+        }
     });
 });
 
@@ -748,69 +806,77 @@ router.get('/empresas/:id/acessos', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// GET /api/admin/empresas/:id/clientes
+// GET /api/admin/empresas/:id/clientes - USANDO BANCO DA EMPRESA
 // ============================================
 
 router.get('/empresas/:id/clientes', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando clientes da empresa ${id}...`);
 
-    const sql = isProduction
-        ? `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
-           FROM clientes 
-           WHERE empresa_id = ? 
-           ORDER BY created_at DESC`
-        : `SELECT id, nome, telefone, email, created_at, bloqueado_chatbot 
-           FROM clientes 
-           WHERE empresa_id = ? 
-           ORDER BY created_at DESC`;
+    const empresaDb = getEmpresaDb(id);
+    if (!empresaDb) {
+        return res.status(404).json({ 
+            success: false, 
+            message: 'Banco da empresa não encontrado' 
+        });
+    }
 
-    db.all(sql, [id], (err, clientes) => {
+    const sql = "SELECT id, nome, telefone, email, created_at, bloqueado_chatbot FROM clientes ORDER BY nome";
+
+    empresaDb.all(sql, [], (err, clientes) => {
         if (err) {
             console.error('❌ Erro ao buscar clientes:', err);
-            return res.json({ success: false, message: err.message });
+            return res.status(500).json({ success: false, message: err.message });
         }
-
-        res.json({ success: true, data: clientes });
+        console.log(`✅ ${clientes?.length || 0} clientes encontrados`);
+        res.json({ success: true, data: clientes || [] });
     });
 });
 
 // ============================================
-// GET /api/admin/empresas/:id/agendamentos
+// GET /api/admin/empresas/:id/agendamentos - USANDO BANCO DA EMPRESA
 // ============================================
 
 router.get('/empresas/:id/agendamentos', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
     console.log(`🔍 Super Admin - Buscando agendamentos da empresa ${id}...`);
 
+    // 🔥 USAR O BANCO DA EMPRESA (getEmpresaDb)
+    const empresaDb = getEmpresaDb(id);
+    if (!empresaDb) {
+        return res.status(404).json({ 
+            success: false, 
+            message: 'Banco da empresa não encontrado' 
+        });
+    }
+
     const sql = `
-        SELECT a.*, 
-               c.nome as cliente_nome,
-               p.nome as profissional_nome,
-               s.nome as servico_nome,
-               ${formatDate('a.data')} as data_formatada
+        SELECT 
+            a.*,
+            c.nome as cliente_nome,
+            s.nome as servico_nome,
+            p.nome as profissional_nome
         FROM agendamentos a
         LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN profissionais p ON a.profissional_id = p.id
         LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.empresa_id = ?
+        LEFT JOIN profissionais p ON a.profissional_id = p.id
         ORDER BY a.data DESC, a.hora DESC
-        LIMIT 50
     `;
 
-    db.all(sql, [id], (err, agendamentos) => {
+    empresaDb.all(sql, [], (err, agendamentos) => {
         if (err) {
             console.error('❌ Erro ao buscar agendamentos:', err);
-            return res.json({ success: false, message: err.message });
+            return res.status(500).json({ 
+                success: false, 
+                message: err.message 
+            });
         }
 
-        const dadosFormatados = agendamentos.map(a => ({
-            ...a,
-            data: a.data_formatada || a.data,
-            data_formatada: undefined
-        }));
-
-        res.json({ success: true, data: dadosFormatados });
+        console.log(`✅ ${agendamentos?.length || 0} agendamentos encontrados para empresa ${id}`);
+        res.json({ 
+            success: true, 
+            data: agendamentos || [] 
+        });
     });
 });
 
@@ -939,56 +1005,86 @@ router.get('/empresas/estatisticas', auth, verificarSuperAdmin, (req, res) => {
 });
 
 // ============================================
-// GET /api/admin/empresas/:id/localizacao
+// GET /api/admin/empresas/:id - CORRIGIDO
 // ============================================
 
-router.get('/empresas/:id/localizacao', auth, verificarSuperAdmin, (req, res) => {
+router.get('/empresas/:id', auth, verificarSuperAdmin, (req, res) => {
     const { id } = req.params;
+    console.log(`🔍 Super Admin - Buscando empresa ${id}...`);
 
-    console.log(`📍 Buscando localização da empresa ${id}...`);
+    // 🔥 BUSCAR DADOS DA EMPRESA COM CONTAGENS CORRETAS
+    const sql = isProduction
+        ? `SELECT 
+            e.id,
+            e.nome,
+            e.plano,
+            e.trial_expira,
+            e.assinatura_valida_ate,
+            e.whatsapp_proprio_habilitado,
+            e.whatsapp_instance,
+            e.whatsapp_connected,
+            e.telefone_dono,
+            e.endereco,
+            u.nome as dono_nome,
+            u.email as dono_email,
+            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as agendamentos_pendentes,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as agendamentos_concluidos,
+            (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as faturamento_total,
+            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
+            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais
+        FROM empresas e
+        LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+        WHERE e.id = ?`
+        : `SELECT 
+            e.id,
+            e.nome,
+            e.plano,
+            e.trial_expira,
+            e.assinatura_valida_ate,
+            e.whatsapp_proprio_habilitado,
+            e.whatsapp_instance,
+            e.whatsapp_connected,
+            e.telefone_dono,
+            e.endereco,
+            u.nome as dono_nome,
+            u.email as dono_email,
+            (SELECT COUNT(*) FROM clientes WHERE empresa_id = e.id) as total_clientes,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id) as total_agendamentos,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'pendente') as agendamentos_pendentes,
+            (SELECT COUNT(*) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as agendamentos_concluidos,
+            (SELECT COALESCE(SUM(COALESCE(valor_total, valor, 0)), 0) FROM agendamentos WHERE empresa_id = e.id AND status = 'concluido') as faturamento_total,
+            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'dono') as total_donos,
+            (SELECT COUNT(*) FROM usuarios WHERE empresa_id = e.id AND role = 'profissional') as total_profissionais
+        FROM empresas e
+        LEFT JOIN usuarios u ON u.empresa_id = e.id AND u.role = 'dono'
+        WHERE e.id = ?`;
 
-    const sqlCheck = isProduction
-        ? `SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = 'localizacoes'
-        )`
-        : `SELECT name FROM sqlite_master WHERE type='table' AND name='localizacoes'`;
-
-    db.get(sqlCheck, [], (err, tableExists) => {
+    db.get(sql, [id], (err, empresa) => {
         if (err) {
-            console.error('❌ Erro ao verificar tabela localizacoes:', err.message);
-            return res.json({ success: true, data: {} });
+            console.error('❌ Erro ao buscar empresa:', err);
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
         }
 
-        let existe = false;
-        if (isProduction) {
-            existe = tableExists?.exists || false;
-        } else {
-            existe = !!tableExists;
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
         }
 
-        if (!existe) {
-            console.log('⚠️ Tabela localizacoes não encontrada');
-            return res.json({ success: true, data: {} });
-        }
+        console.log(`✅ Empresa encontrada: ${empresa.nome}`);
+        console.log(`📊 Clientes: ${empresa.total_clientes || 0}`);
+        console.log(`📊 Agendamentos: ${empresa.total_agendamentos || 0}`);
+        console.log(`💰 Faturamento: R$ ${empresa.faturamento_total || 0}`);
 
-        const sqlLocation = isProduction
-            ? `SELECT * FROM localizacoes WHERE empresa_id = ? ORDER BY created_at DESC LIMIT 1`
-            : `SELECT * FROM localizacoes WHERE empresa_id = ? ORDER BY created_at DESC LIMIT 1`;
-
-        db.get(sqlLocation, [id], (err, localizacao) => {
-            if (err) {
-                console.error('❌ Erro ao buscar localização:', err.message);
-                return res.json({ success: true, data: {} });
-            }
-
-            if (!localizacao) {
-                console.log(`⚠️ Nenhuma localização encontrada para empresa ${id}`);
-                return res.json({ success: true, data: {} });
-            }
-
-            console.log(`📍 Localização encontrada: ${localizacao.cidade}/${localizacao.estado}`);
-            res.json({ success: true, data: localizacao });
+        res.json({
+            success: true,
+            data: empresa
         });
     });
 });

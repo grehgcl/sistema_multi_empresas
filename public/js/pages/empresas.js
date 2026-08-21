@@ -6,7 +6,7 @@ let usuariosData = [];
 let empresasTimeout = null;
 
 // ============================================
-// 🏢 SUPER ADMIN - DASHBOARD COMPLETO (COM MODO DE PAGAMENTO + RIQUEZA DE DETALHES)
+// 🏢 SUPER ADMIN - DASHBOARD ULTRA MOBILE PREMIUM
 // ============================================
 async function carregarDashboardSuperAdmin() {
     ativarBotao('dashboard');
@@ -14,13 +14,10 @@ async function carregarDashboardSuperAdmin() {
     const token = localStorage.getItem('token');
 
     try {
-        // public/js/pages/empresas.js
-
         const [statsRes, empresasRes, usuariosRes, paymentRes] = await Promise.all([
             fetch('/api/admin/stats', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/admin/empresas', { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch('/api/admin/usuarios', { headers: { 'Authorization': 'Bearer ' + token } }),
-            // 🔥 CORRIGIR: /api/payment/config → /api/pagamento/config
             fetch('/api/pagamento/config', { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
 
@@ -28,7 +25,6 @@ async function carregarDashboardSuperAdmin() {
         const empresas = (await empresasRes.json()).data || [];
         const usuarios = (await usuariosRes.json()).data || [];
 
-        // 🔥 MODO DE PAGAMENTO - COM FALLBACK
         let paymentData = { mode: 'simulation', label: '🟡 Simulação' };
         try {
             if (paymentRes.ok) {
@@ -42,13 +38,10 @@ async function carregarDashboardSuperAdmin() {
         }
 
         console.log('✅ Empresas carregadas:', empresas.length);
-        console.log('💳 Modo de pagamento:', paymentData.mode);
 
-        // Cálculos
         const totalEmpresas = empresas.length;
         const empresasAtivas = empresas.filter(e => e.assinatura_ativa === 1 || e.assinatura_ativa === true).length;
         const empresasTrial = empresas.filter(e => e.plano === 'trial' || e.plano === 'Trial').length;
-        const empresasPagas = empresas.filter(e => e.plano !== 'trial' && e.plano !== 'Trial' && e.plano !== null).length;
         const empresasExpiradas = empresas.filter(e => {
             if (!e.trial_expira) return false;
             const hoje = new Date();
@@ -64,310 +57,460 @@ async function carregarDashboardSuperAdmin() {
         const faturamentoMes = stats.faturamento_mes || 0;
 
         const isReal = paymentData.mode === 'real';
+        const isMobile = window.innerWidth < 768;
 
+        // ============================================
+        // HTML PRINCIPAL
+        // ============================================
         const html = `
-            <div style="padding:16px;max-width:1400px;margin:0 auto;">
-                <!-- CABEÇALHO -->
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:24px;padding-bottom:16px;border-bottom:2px solid #2d2d3f;">
-                    <div>
-                        <h1 style="font-size:24px;font-weight:700;margin:0;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">🏢 Dashboard Super Admin</h1>
-                        <p style="color:#888;font-size:13px;margin:2px 0 0;">
-                            <i class="fas fa-calendar-alt"></i> ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                        </p>
+            <div style="padding:${isMobile ? '8px' : '16px'};max-width:1400px;margin:0 auto;font-family:'Inter',sans-serif;">
+
+                <!-- ========================================== -->
+                <!-- CABEÇALHO COM GRADIENTE -->
+                <!-- ========================================== -->
+                <div style="
+                    background:linear-gradient(135deg,#1a1a2e,#2d2d5f);
+                    border-radius:16px;
+                    padding:${isMobile ? '16px' : '20px'};
+                    margin-bottom:16px;
+                    border:1px solid rgba(102,126,234,0.15);
+                    box-shadow:0 4px 20px rgba(102,126,234,0.08);
+                ">
+                    <div style="display:flex;flex-direction:${isMobile ? 'column' : 'row'};justify-content:space-between;align-items:${isMobile ? 'flex-start' : 'center'};gap:12px;">
+                        <div>
+                            <div style="display:flex;align-items:center;gap:10px;">
+                                <span style="font-size:28px;">👑</span>
+                                <h1 style="font-size:${isMobile ? '20px' : '28px'};font-weight:800;margin:0;background:linear-gradient(135deg,#667eea,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">
+                                    Super Admin
+                                </h1>
+                            </div>
+                            <p style="color:#94a3b8;font-size:${isMobile ? '11px' : '14px'};margin:4px 0 0 0;">
+                                <i class="fas fa-calendar-alt" style="color:#667eea;"></i> 
+                                ${new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                        </div>
+                        <button onclick="carregarDashboardSuperAdmin()" style="
+                            background:linear-gradient(135deg,#667eea,#764ba2);
+                            border:none;
+                            padding:${isMobile ? '10px 16px' : '10px 24px'};
+                            border-radius:12px;
+                            color:white;
+                            font-size:${isMobile ? '13px' : '14px'};
+                            font-weight:600;
+                            cursor:pointer;
+                            display:flex;
+                            align-items:center;
+                            justify-content:center;
+                            gap:8px;
+                            width:${isMobile ? '100%' : 'auto'};
+                            transition:all 0.3s ease;
+                            box-shadow:0 4px 15px rgba(102,126,234,0.3);
+                        " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="fas fa-sync-alt"></i> ${isMobile ? 'Atualizar' : 'Atualizar Dados'}
+                        </button>
                     </div>
-                    <button onclick="carregarDashboardSuperAdmin()" style="background:#667eea;border:none;padding:8px 20px;border-radius:8px;color:white;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;">
-                        <i class="fas fa-sync"></i> Atualizar
-                    </button>
                 </div>
 
-                <!-- 🔥 CARD - MODO DE PAGAMENTO (NOVO) -->
+                <!-- ========================================== -->
+                <!-- MODO DE PAGAMENTO - CARD DESTAQUE -->
+                <!-- ========================================== -->
                 <div style="
-                    background: ${isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)'}; 
+                    background: ${isReal ? 'linear-gradient(135deg,rgba(239,68,68,0.12),rgba(239,68,68,0.04))' : 'linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04))'}; 
                     border: 1px solid ${isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}; 
-                    border-radius: 12px; 
-                    padding: 16px 20px; 
-                    margin-bottom: 20px;
+                    border-radius: 14px; 
+                    padding: ${isMobile ? '12px 14px' : '16px 20px'}; 
+                    margin-bottom: 16px;
                     display: flex; 
+                    flex-direction: ${isMobile ? 'column' : 'row'};
                     justify-content: space-between; 
-                    align-items: center; 
-                    flex-wrap: wrap;
-                    gap: 12px;
+                    align-items: ${isMobile ? 'flex-start' : 'center'}; 
+                    gap: 10px;
                 ">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 28px;">${isReal ? '🔴' : '🟡'}</span>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-wrap:wrap;">
+                        <span style="font-size: ${isMobile ? '28px' : '32px'};">${isReal ? '🔴' : '🟡'}</span>
                         <div>
-                            <div style="font-size: 16px; font-weight: 600; color: var(--text-primary);">
-                                💳 Modo de Pagamento: <span style="color: ${isReal ? '#ef4444' : '#f59e0b'};">${paymentData.label}</span>
+                            <div style="font-size: ${isMobile ? '14px' : '16px'}; font-weight: 700; color: var(--text-primary);">
+                                💳 <span style="color: ${isReal ? '#ef4444' : '#f59e0b'};">${paymentData.label}</span>
                             </div>
-                            <div style="font-size: 13px; color: var(--text-muted); margin-top: 2px;">
-                                ${isReal ? '⚠️ Pagamentos REAIS estão ativos! Os clientes serão cobrados de verdade.' : '🔸 Modo SIMULAÇÃO ativo. Nenhum pagamento real é processado.'}
+                            <div style="font-size: ${isMobile ? '11px' : '13px'}; color: #94a3b8; margin-top: 2px;">
+                                ${isReal ? '⚠️ Pagamentos REAIS estão ativos!' : '🔸 Modo SIMULAÇÃO - Nenhuma cobrança real'}
                             </div>
                         </div>
                     </div>
                     <button onclick="alternarModoPagamento()" style="
-                        padding: 8px 20px;
+                        padding: ${isMobile ? '8px 16px' : '8px 24px'};
                         border: none;
                         border-radius: 10px;
                         background: ${isReal ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
                         color: ${isReal ? '#ef4444' : '#22c55e'};
-                        font-weight: 600;
-                        font-size: 14px;
+                        font-weight: 700;
+                        font-size: ${isMobile ? '12px' : '14px'};
                         cursor: pointer;
-                        transition: all 0.3s ease;
                         display: flex;
                         align-items: center;
+                        justify-content: center;
                         gap: 8px;
-                    " onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                        width: ${isMobile ? '100%' : 'auto'};
+                        transition:all 0.3s ease;
+                    " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                         <i class="fas fa-${isReal ? 'toggle-on' : 'toggle-off'}"></i>
                         ${isReal ? 'Desativar Pagamentos Reais' : 'Ativar Pagamentos Reais'}
                     </button>
                 </div>
 
-                <!-- ALERTA -->
-                <div style="padding:12px 18px;border-radius:12px;margin-bottom:20px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-                    <span style="font-size:20px;">✅</span>
-                    <div>
-                        <div style="font-size:14px;font-weight:600;color:#22c55e;">Painel de Controle Completo</div>
-                        <div style="font-size:12px;color:#888;">Gerencie empresas, planos, usuários e configurações de pagamento.</div>
-                    </div>
+                <!-- ========================================== -->
+                <!-- CARDS DE MÉTRICAS - COM ÍCONES E CORES -->
+                <!-- ========================================== -->
+                <div style="display:grid;grid-template-columns:${isMobile ? 'repeat(3, 1fr)' : 'repeat(5, 1fr)'};gap:${isMobile ? '8px' : '14px'};margin-bottom:16px;">
+                    ${[
+                        { icon: '🏢', label: 'Empresas', value: totalEmpresas, color: '#667eea' },
+                        { icon: '👥', label: 'Usuários', value: usuarios.length, color: '#8b5cf6' },
+                        { icon: '👤', label: 'Clientes', value: totalClientes, color: '#22c55e' },
+                        { icon: '✂️', label: 'Agendamentos', value: totalAgendamentos, color: '#f59e0b' },
+                        { icon: '💰', label: 'Faturamento', value: `R$ ${formatarMoeda(faturamentoMes)}`, color: '#ec4899' }
+                    ].map(metric => `
+                        <div style="
+                            background:linear-gradient(135deg,#1a1a2e,#252540);
+                            border-radius:12px;
+                            padding:${isMobile ? '10px 8px' : '16px 14px'};
+                            border:1px solid rgba(255,255,255,0.04);
+                            text-align:center;
+                            transition:all 0.3s ease;
+                            box-shadow:0 2px 12px rgba(0,0,0,0.1);
+                        " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
+                            <div style="font-size:${isMobile ? '22px' : '28px'};">${metric.icon}</div>
+                            <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:800;color:#fff;margin:2px 0;">${metric.value}</div>
+                            <div style="font-size:${isMobile ? '8px' : '11px'};color:#94a3b8;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">${metric.label}</div>
+                            <div style="height:3px;background:linear-gradient(90deg,${metric.color},transparent);border-radius:4px;margin-top:6px;"></div>
+                        </div>
+                    `).join('')}
                 </div>
 
-                <!-- CARDS DE MÉTRICAS -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;">
-                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;transition:all 0.3s;">
-                        <div style="font-size:24px;display:block;margin-bottom:4px;">🏢</div>
-                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total Empresas</div>
-                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${totalEmpresas}</div>
-                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;flex-wrap:wrap;">
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(34,197,94,0.15);color:#22c55e;">${empresasAtivas} ativas</span>
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;">${empresasTrial} trial</span>
-                        </div>
-                        <div style="height:3px;background:#2d2d3f;border-radius:2px;margin-top:8px;overflow:hidden;">
-                            <div style="height:100%;width:${totalEmpresas > 0 ? (empresasAtivas / totalEmpresas * 100) : 0}%;background:linear-gradient(90deg,#667eea,#764ba2);border-radius:2px;"></div>
-                        </div>
+                <!-- ========================================== -->
+                <!-- FILTRO E BUSCA - COM ÍCONES -->
+                <!-- ========================================== -->
+                <div style="display:flex;flex-direction:${isMobile ? 'column' : 'row'};gap:8px;margin-bottom:14px;">
+                    <div style="flex:1;position:relative;">
+                        <i class="fas fa-search" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:14px;"></i>
+                        <input type="text" id="buscarEmpresa" placeholder="Buscar empresa..." oninput="filtrarEmpresas()" style="
+                            width:100%;
+                            padding:${isMobile ? '12px 14px 12px 40px' : '10px 14px 10px 40px'};
+                            border-radius:10px;
+                            border:1px solid #2d2d3f;
+                            background:#1a1a2e;
+                            color:#fff;
+                            font-size:${isMobile ? '14px' : '14px'};
+                            outline:none;
+                            transition:all 0.3s ease;
+                        " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#2d2d3f'">
                     </div>
-
-                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
-                        <div style="font-size:24px;display:block;margin-bottom:4px;">👥</div>
-                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Usuários</div>
-                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${usuarios.length}</div>
-                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;flex-wrap:wrap;">
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(245,158,11,0.15);color:#f59e0b;">👑 ${totalDonos} donos</span>
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">👤 ${totalProfissionais} profs</span>
-                        </div>
-                    </div>
-
-                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
-                        <div style="font-size:24px;display:block;margin-bottom:4px;">👤</div>
-                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Clientes</div>
-                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${totalClientes}</div>
-                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">em todas as empresas</span>
-                        </div>
-
-                    </div>
-
-                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
-                        <div style="font-size:24px;display:block;margin-bottom:4px;">✂️</div>
-                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Agendamentos</div>
-                        <div style="font-size:28px;font-weight:700;color:#fff;margin:2px 0;">${totalAgendamentos}</div>
-                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(34,197,94,0.15);color:#22c55e;">+${agendamentosMes} este mês</span>
-                        </div>
-                    </div>
-
-                    <div style="background:#1a1a2e;border-radius:14px;padding:16px 18px;border:1px solid #2d2d3f;">
-                        <div style="font-size:24px;display:block;margin-bottom:4px;">💰</div>
-                        <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Faturamento</div>
-                        <div style="font-size:28px;font-weight:700;color:#f59e0b;margin:2px 0;">R$ ${formatarMoeda(faturamentoMes)}</div>
-                        <div style="display:flex;gap:10px;font-size:11px;color:#888;margin-top:4px;">
-                            <span style="padding:2px 10px;border-radius:12px;background:rgba(102,126,234,0.15);color:#667eea;">${empresasPagas} empresas pagas</span>
-                        </div>
-                    </div>
+                    <select id="filtroStatus" onchange="filtrarEmpresas()" style="
+                        padding:${isMobile ? '12px 14px' : '10px 14px'};
+                        border-radius:10px;
+                        border:1px solid #2d2d3f;
+                        background:#1a1a2e;
+                        color:#fff;
+                        font-size:${isMobile ? '14px' : '14px'};
+                        width:${isMobile ? '100%' : 'auto'};
+                        outline:none;
+                        cursor:pointer;
+                        transition:all 0.3s ease;
+                    " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#2d2d3f'">
+                        <option value="">📋 Todos</option>
+                        <option value="ativo">🟢 Ativos</option>
+                        <option value="trial">🟡 Trial</option>
+                        <option value="expirado">🔴 Expirados</option>
+                    </select>
                 </div>
 
-                <!-- TABELA DE EMPRESAS (RICA, COM TODAS AS COLUNAS) -->
-                <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;margin-bottom:20px;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid #2d2d3f;">
-                        <div>
-                            <h3 style="margin:0;font-size:16px;font-weight:600;color:#fff;">📋 Todas as Empresas <span style="font-size:12px;color:#888;font-weight:400;">(${totalEmpresas})</span></h3>
-                            <div style="display:flex;gap:12px;font-size:12px;color:#888;margin-top:4px;flex-wrap:wrap;">
-                                <span style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;background:#2d2d3f;color:#22c55e;">🟢 ${empresasAtivas} ativas</span>
-                                <span style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;background:#2d2d3f;color:#f59e0b;">🟡 ${empresasTrial} trial</span>
-                                <span style="display:flex;align-items:center;gap:4px;padding:2px 10px;border-radius:12px;background:#2d2d3f;color:#ef4444;">🔴 ${empresasExpiradas.length} expiradas</span>
+                <!-- ========================================== -->
+                <!-- LISTA DE EMPRESAS - CARDS PREMIUM -->
+                <!-- ========================================== -->
+                <div style="
+                    background:linear-gradient(135deg,#1a1a2e,#1f1f3a);
+                    border-radius:16px;
+                    padding:${isMobile ? '12px' : '18px'};
+                    border:1px solid rgba(102,126,234,0.08);
+                    margin-bottom:16px;
+                    box-shadow:0 4px 24px rgba(0,0,0,0.15);
+                ">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:20px;">📋</span>
+                            <h3 style="margin:0;font-size:${isMobile ? '15px' : '18px'};font-weight:700;color:#fff;">
+                                Empresas <span style="font-size:12px;color:#94a3b8;font-weight:400;">(${totalEmpresas})</span>
+                            </h3>
+                        </div>
+                        <div style="display:flex;gap:6px;font-size:${isMobile ? '9px' : '11px'};">
+                            <span style="background:rgba(34,197,94,0.15);padding:3px 10px;border-radius:12px;color:#22c55e;font-weight:600;">🟢 ${empresasAtivas}</span>
+                            <span style="background:rgba(245,158,11,0.15);padding:3px 10px;border-radius:12px;color:#f59e0b;font-weight:600;">🟡 ${empresasTrial}</span>
+                            ${empresasExpiradas.length > 0 ? `<span style="background:rgba(239,68,68,0.15);padding:3px 10px;border-radius:12px;color:#ef4444;font-weight:600;">🔴 ${empresasExpiradas.length}</span>` : ''}
+                        </div>
+                    </div>
+
+                    <div id="listaEmpresas" style="display:flex;flex-direction:column;gap:8px;">
+                        ${empresas.length === 0 ? `
+                            <div style="text-align:center;padding:30px;color:#94a3b8;">
+                                <i class="fas fa-building" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3;"></i>
+                                Nenhuma empresa cadastrada
                             </div>
-                        </div>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                            <input type="text" id="buscarEmpresa" placeholder="🔍 Buscar empresa..." oninput="filtrarEmpresas()" style="background:#2d2d3f;border:1px solid #3d3d5f;border-radius:8px;padding:6px 14px;font-size:12px;color:#fff;min-height:36px;">
-                            <select id="filtroStatus" onchange="filtrarEmpresas()" style="background:#2d2d3f;border:1px solid #3d3d5f;border-radius:8px;padding:6px 14px;font-size:12px;color:#fff;min-height:36px;">
-                                <option value="">📋 Todos</option>
-                                <option value="ativo">🟢 Ativos</option>
-                                <option value="trial">🟡 Trial</option>
-                                <option value="expirado">🔴 Expirados</option>
-                            </select>
-                        </div>
-                    </div>
+                        ` : empresas.map((e) => {
+                            // ... lógica de cálculo (mantida igual) ...
+                            const isTrial = e.plano === 'trial' || e.plano === 'Trial';
+                            const isAtivo = e.assinatura_ativa === 1 || e.assinatura_ativa === true;
 
-                    <div style="overflow-x:auto;margin:0 -4px;padding:0 4px;">
-                        <table style="width:100%;min-width:950px;border-collapse:separate;border-spacing:0 6px;font-size:13px;">
-                            <thead>
-                                <tr>
-                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:8px 0 0 0;">#</th>
-                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">Empresa</th>
-                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">Plano</th>
-                                    <th style="padding:10px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">Status</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">⏳ Dias</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👑</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👤</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">👥</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">✂️</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;">💬 WhatsApp</th>
-                                    <th style="padding:10px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;background:#1a1a2e;border-radius:0 8px 0 0;">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="listaEmpresas">
-                                ${empresas.map((e, idx) => {
-            const isTrial = e.plano === 'trial' || e.plano === 'Trial';
-            const isAtivo = e.assinatura_ativa === 1 || e.assinatura_ativa === true;
+                            let diasRestantes = 0;
+                            if (isTrial && e.trial_expira) {
+                                const hoje = new Date();
+                                const expira = new Date(e.trial_expira);
+                                diasRestantes = Math.ceil((expira - hoje) / (1000 * 60 * 60 * 24));
+                                if (diasRestantes < 0) diasRestantes = 0;
+                            } else if (!isTrial && e.assinatura_valida_ate) {
+                                const hoje = new Date();
+                                const validaAte = new Date(e.assinatura_valida_ate);
+                                diasRestantes = Math.ceil((validaAte - hoje) / (1000 * 60 * 60 * 24));
+                                if (diasRestantes < 0) diasRestantes = 0;
+                            }
 
-            let diasRestantes = 0;
-            let isIlimitado = false;
+                            let diasColor = '#22c55e';
+                            let diasTexto = '♾️';
+                            if (isTrial) {
+                                if (diasRestantes <= 0) { diasColor = '#ef4444'; diasTexto = '0d'; }
+                                else if (diasRestantes <= 3) { diasColor = '#ef4444'; diasTexto = diasRestantes + 'd ⚠️'; }
+                                else if (diasRestantes <= 7) { diasColor = '#f59e0b'; diasTexto = diasRestantes + 'd'; }
+                                else { diasColor = '#22c55e'; diasTexto = diasRestantes + 'd'; }
+                            }
 
-            if (isTrial && e.trial_expira) {
-                const hoje = new Date();
-                const expira = new Date(e.trial_expira);
-                diasRestantes = Math.ceil((expira - hoje) / (1000 * 60 * 60 * 24));
-                if (diasRestantes < 0) diasRestantes = 0;
-            } else if (!isTrial && e.assinatura_valida_ate) {
-                const hoje = new Date();
-                const validaAte = new Date(e.assinatura_valida_ate);
-                diasRestantes = Math.ceil((validaAte - hoje) / (1000 * 60 * 60 * 24));
-                if (diasRestantes < 0) diasRestantes = 0;
-            } else {
-                isIlimitado = true;
-                diasRestantes = 999;
-            }
+                            let statusColor = '#22c55e';
+                            let statusText = '✅ Ativo';
+                            let statusBg = 'rgba(34,197,94,0.12)';
+                            if (isTrial) {
+                                if (diasRestantes <= 0) {
+                                    statusColor = '#ef4444'; statusText = '⛔ Expirado';
+                                    statusBg = 'rgba(239,68,68,0.12)';
+                                } else {
+                                    statusColor = '#f59e0b'; statusText = '🔄 Trial';
+                                    statusBg = 'rgba(245,158,11,0.12)';
+                                }
+                            } else if (!isAtivo) {
+                                statusColor = '#94a3b8'; statusText = '⛔ Inativo';
+                                statusBg = 'rgba(148,163,184,0.12)';
+                            }
 
-            let diasColor = '#22c55e';
-            let diasTexto = '♾️';
-            if (!isIlimitado) {
-                if (diasRestantes <= 0) { diasColor = '#ef4444'; diasTexto = '0d 🔴'; }
-                else if (diasRestantes <= 3) { diasColor = '#ef4444'; diasTexto = diasRestantes + 'd 🔴'; }
-                else if (diasRestantes <= 7) { diasColor = '#f59e0b'; diasTexto = diasRestantes + 'd ⚠️'; }
-                else { diasColor = '#22c55e'; diasTexto = diasRestantes + 'd'; }
-            }
+                            let planoColor = '#f59e0b';
+                            let planoBg = 'rgba(245,158,11,0.12)';
+                            let planoText = 'Trial';
+                            if (e.plano === 'Starter' || e.plano === 'starter') { planoColor = '#667eea'; planoBg = 'rgba(102,126,234,0.12)'; planoText = 'Starter'; }
+                            else if (e.plano === 'Pro' || e.plano === 'pro') { planoColor = '#22c55e'; planoBg = 'rgba(34,197,94,0.12)'; planoText = 'Pro'; }
+                            else if (e.plano === 'Business' || e.plano === 'business') { planoColor = '#8b5cf6'; planoBg = 'rgba(139,92,246,0.12)'; planoText = 'Business'; }
+                            else if (e.plano === 'Enterprise' || e.plano === 'enterprise') { planoColor = '#d97706'; planoBg = 'rgba(245,158,11,0.12)'; planoText = 'Enterprise'; }
 
-            let statusColor = '#22c55e';
-            let statusText = '✅ Ativo';
-            let statusBg = 'rgba(34,197,94,0.12)';
-            let statusBorder = 'rgba(34,197,94,0.15)';
+                            const donos = usuarios.filter(u => u.empresa_id === e.id && u.role === 'dono').length;
+                            const profissionais = usuarios.filter(u => u.empresa_id === e.id && u.role === 'profissional').length;
+                            const clientes = e.total_clientes || 0;
+                            const agendamentos = e.total_agendamentos || 0;
 
-            if (isTrial) {
-                if (diasRestantes <= 0) {
-                    statusColor = '#ef4444'; statusText = '⛔ Expirado';
-                    statusBg = 'rgba(239,68,68,0.12)'; statusBorder = 'rgba(239,68,68,0.15)';
-                } else {
-                    statusColor = '#f59e0b'; statusText = '🔄 Trial';
-                    statusBg = 'rgba(245,158,11,0.12)'; statusBorder = 'rgba(245,158,11,0.15)';
-                }
-            } else if (!isAtivo) {
-                statusColor = '#94a3b8'; statusText = '⛔ Inativo';
-                statusBg = 'rgba(148,163,184,0.12)'; statusBorder = 'rgba(148,163,184,0.15)';
-            }
+                            const whatsappHabilitado = e.whatsapp_proprio_habilitado === true || e.whatsapp_proprio_habilitado === 1;
+                            const whatsappConectado = e.whatsapp_connected === true || e.whatsapp_connected === 1;
 
-            let planoColor = '#f59e0b';
-            let planoBg = 'rgba(245,158,11,0.12)';
-            let planoText = 'Trial';
-            if (e.plano === 'Starter' || e.plano === 'starter') { planoColor = '#667eea'; planoBg = 'rgba(102,126,234,0.12)'; planoText = 'Starter'; }
-            else if (e.plano === 'Pro' || e.plano === 'pro') { planoColor = '#22c55e'; planoBg = 'rgba(34,197,94,0.12)'; planoText = 'Pro'; }
-            else if (e.plano === 'Business' || e.plano === 'business') { planoColor = '#8b5cf6'; planoBg = 'rgba(139,92,246,0.12)'; planoText = 'Business'; }
-            else if (e.plano === 'Enterprise' || e.plano === 'enterprise') { planoColor = '#d97706'; planoBg = 'rgba(245,158,11,0.12)'; planoText = 'Enterprise'; }
+                            let whatsappStatus = '';
+                            if (!whatsappHabilitado) {
+                                whatsappStatus = `<span style="color:#ef4444;font-weight:600;font-size:10px;">🔴 OFF</span>`;
+                            } else if (!whatsappConectado) {
+                                whatsappStatus = `<span style="color:#f59e0b;font-weight:600;font-size:10px;">🟡 PEND</span>`;
+                            } else {
+                                whatsappStatus = `<span style="color:#22c55e;font-weight:600;font-size:10px;">🟢 ON</span>`;
+                            }
 
-            const donos = usuarios.filter(u => u.empresa_id === e.id && u.role === 'dono').length;
-            const profissionais = usuarios.filter(u => u.empresa_id === e.id && u.role === 'profissional').length;
-            const clientes = e.total_clientes || 0;
-            const agendamentos = e.total_agendamentos || 0;
+                            return `
+                                <div class="empresa-card" data-id="${e.id}" data-nome="${e.nome.toLowerCase()}" data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" style="
+                                    background:linear-gradient(135deg,#252540,#2a2a4a);
+                                    border-radius:12px;
+                                    padding:${isMobile ? '12px 14px' : '14px 18px'};
+                                    border:1px solid rgba(102,126,234,0.06);
+                                    cursor:pointer;
+                                    transition:all 0.3s ease;
+                                    display:flex;
+                                    flex-direction:column;
+                                    gap:6px;
+                                    box-shadow:0 2px 12px rgba(0,0,0,0.08);
+                                " onmouseover="this.style.borderColor='rgba(102,126,234,0.2)';this.style.transform='translateX(4px)'" onmouseout="this.style.borderColor='rgba(102,126,234,0.06)';this.style.transform='translateX(0)'">
+                                    
+                                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;">
+                                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0;">
+                                            <span style="font-size:${isMobile ? '15px' : '17px'};font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;">
+                                                ${escapeHtml(e.nome)}
+                                            </span>
+                                            <span style="
+                                                background:${statusBg};
+                                                color:${statusColor};
+                                                padding:2px 10px;
+                                                border-radius:10px;
+                                                font-size:${isMobile ? '8px' : '10px'};
+                                                font-weight:600;
+                                                border:1px solid ${statusColor}22;
+                                            ">${statusText}</span>
+                                        </div>
+                                        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
+                                            ${whatsappStatus}
+                                            <span style="font-size:${isMobile ? '11px' : '13px'};color:${diasColor};font-weight:700;">${diasTexto}</span>
+                                        </div>
+                                    </div>
 
-            const whatsappHabilitado = e.whatsapp_proprio_habilitado === true || e.whatsapp_proprio_habilitado === 1 || e.whatsapp_proprio_habilitado === 't';
-            const whatsappConectado = e.whatsapp_connected === true || e.whatsapp_connected === 1 || e.whatsapp_connected === 't';
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+                                        <span style="padding:2px 10px;border-radius:8px;font-size:${isMobile ? '8px' : '10px'};font-weight:600;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}22;">${planoText}</span>
+                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#94a3b8;display:flex;align-items:center;gap:3px;">👑 ${donos}</span>
+                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#94a3b8;display:flex;align-items:center;gap:3px;">👤 ${profissionais}</span>
+                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#818cf8;display:flex;align-items:center;gap:3px;">👥 ${clientes}</span>
+                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#f59e0b;display:flex;align-items:center;gap:3px;font-weight:600;">✂️ ${agendamentos}</span>
+                                    </div>
 
-            let whatsappStatus = '';
-            if (!whatsappHabilitado) {
-                whatsappStatus = `<button onclick="toggleWhatsAppProprio(${e.id}, true)" style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.3);transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'" title="Clique para HABILITAR">🔴 OFF</button>`;
-            } else if (!whatsappConectado) {
-                whatsappStatus = `<button onclick="toggleWhatsAppProprio(${e.id}, false)" style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(245,158,11,0.15);color:#f59e0b;border:1px solid rgba(245,158,11,0.3);transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.25)'" onmouseout="this.style.background='rgba(245,158,11,0.15)'" title="Habilitado mas não conectado">🟡 PEND</button>`;
-            } else {
-                whatsappStatus = `<button onclick="toggleWhatsAppProprio(${e.id}, false)" style="padding:4px 10px;border:none;border-radius:6px;font-size:10px;cursor:pointer;background:rgba(34,197,94,0.15);color:#22c55e;border:1px solid rgba(34,197,94,0.3);transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.25)'" onmouseout="this.style.background='rgba(34,197,94,0.15)'" title="✅ WhatsApp PRÓPRIO ativo!">🟢 ON</button>`;
-            }
-
-            return `
-                                        <tr data-status="${isTrial ? 'trial' : isAtivo ? 'ativo' : 'inativo'}" data-nome="${e.nome.toLowerCase()}" style="background:#252540;border-radius:10px;transition:all 0.2s;cursor:default;">
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:10px 0 0 10px;font-weight:600;color:#666;font-size:12px;text-align:center;">${idx + 1}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;font-size:14px;">${escapeHtml(e.nome)}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:3px 14px;border-radius:20px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;background:${planoBg};color:${planoColor};border:1px solid ${planoColor}33;">${planoText}</span></td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;"><span style="padding:4px 14px;border-radius:20px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px;background:${statusBg};color:${statusColor};border:1px solid ${statusBorder};">${statusText}</span></td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:700;color:${diasColor};text-align:center;font-size:14px;">${diasTexto}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${donos}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${profissionais}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#fff;text-align:center;font-size:14px;">${clientes}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;font-weight:600;color:#667eea;text-align:center;font-size:15px;">${agendamentos}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;text-align:center;">${whatsappStatus}</td>
-                                            <td style="padding:10px 12px;vertical-align:middle;border-bottom:none;border-radius:0 10px 10px 0;">
-                                                <div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:center;">
-                                                    <button onclick="verEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(102,126,234,0.2);color:#667eea;transition:all 0.2s;" onmouseover="this.style.background='rgba(102,126,234,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Ver detalhes"><i class="fas fa-eye"></i></button>
-                                                    <button onclick="editarEmpresa(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Editar plano/nome"><i class="fas fa-edit"></i></button>
-                                                    ${isTrial ? `<button onclick="estenderTrial(${e.id})" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(34,197,94,0.2);color:#22c55e;transition:all 0.2s;" onmouseover="this.style.background='rgba(34,197,94,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Estender Trial"><i class="fas fa-clock"></i></button>` : ''}
-                                                    <button onclick="deletarEmpresa(${e.id}, '${escapeHtml(e.nome)}')" style="padding:4px 8px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(239,68,68,0.2);color:#ef4444;transition:all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.15)'" onmouseout="this.style.background='#1a1a2e'" title="Deletar"><i class="fas fa-trash"></i></button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    `;
-        }).join('')}
-                            </tbody>
-                        </table>
+                                    <div style="display:flex;gap:6px;flex-wrap:wrap;padding-top:8px;border-top:1px solid rgba(255,255,255,0.04);">
+                                        <button onclick="event.stopPropagation();verEmpresa(${e.id})" style="
+                                            padding:${isMobile ? '7px 12px' : '6px 14px'};
+                                            border:none;
+                                            border-radius:8px;
+                                            font-size:${isMobile ? '11px' : '12px'};
+                                            font-weight:600;
+                                            cursor:pointer;
+                                            background:linear-gradient(135deg,rgba(102,126,234,0.15),rgba(102,126,234,0.05));
+                                            color:#818cf8;
+                                            border:1px solid rgba(102,126,234,0.1);
+                                            flex:1;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            gap:4px;
+                                            transition:all 0.3s ease;
+                                        " onmouseover="this.style.background='rgba(102,126,234,0.25)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(102,126,234,0.15),rgba(102,126,234,0.05))'">
+                                            <i class="fas fa-eye"></i> ${isMobile ? '' : 'Ver'}
+                                        </button>
+                                        <button onclick="event.stopPropagation();editarEmpresa(${e.id})" style="
+                                            padding:${isMobile ? '7px 12px' : '6px 14px'};
+                                            border:none;
+                                            border-radius:8px;
+                                            font-size:${isMobile ? '11px' : '12px'};
+                                            font-weight:600;
+                                            cursor:pointer;
+                                            background:linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05));
+                                            color:#f59e0b;
+                                            border:1px solid rgba(245,158,11,0.1);
+                                            flex:1;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            gap:4px;
+                                            transition:all 0.3s ease;
+                                        " onmouseover="this.style.background='rgba(245,158,11,0.25)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(245,158,11,0.15),rgba(245,158,11,0.05))'">
+                                            <i class="fas fa-edit"></i> ${isMobile ? '' : 'Editar'}
+                                        </button>
+                                        ${isTrial ? `
+                                            <button onclick="event.stopPropagation();estenderTrial(${e.id})" style="
+                                                padding:${isMobile ? '7px 12px' : '6px 14px'};
+                                                border:none;
+                                                border-radius:8px;
+                                                font-size:${isMobile ? '11px' : '12px'};
+                                                font-weight:600;
+                                                cursor:pointer;
+                                                background:linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.05));
+                                                color:#22c55e;
+                                                border:1px solid rgba(34,197,94,0.1);
+                                                flex:1;
+                                                display:flex;
+                                                align-items:center;
+                                                justify-content:center;
+                                                gap:4px;
+                                                transition:all 0.3s ease;
+                                            " onmouseover="this.style.background='rgba(34,197,94,0.25)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(34,197,94,0.15),rgba(34,197,94,0.05))'">
+                                                <i class="fas fa-clock"></i> ${isMobile ? '' : '+30d'}
+                                            </button>
+                                        ` : ''}
+                                        <button onclick="event.stopPropagation();toggleWhatsAppProprio(${e.id}, ${!whatsappHabilitado})" style="
+                                            padding:${isMobile ? '7px 12px' : '6px 14px'};
+                                            border:none;
+                                            border-radius:8px;
+                                            font-size:${isMobile ? '11px' : '12px'};
+                                            font-weight:600;
+                                            cursor:pointer;
+                                            background:${whatsappHabilitado ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)'};
+                                            color:${whatsappHabilitado ? '#ef4444' : '#22c55e'};
+                                            border:1px solid ${whatsappHabilitado ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)'};
+                                            flex:1;
+                                            display:flex;
+                                            align-items:center;
+                                            justify-content:center;
+                                            gap:4px;
+                                            transition:all 0.3s ease;
+                                        " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                                            <i class="fas fa-${whatsappHabilitado ? 'toggle-on' : 'toggle-off'}"></i> ${isMobile ? '' : (whatsappHabilitado ? 'Desativar' : 'Ativar')}
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
                     </div>
                 </div>
 
-                <!-- SEÇÃO: ÚLTIMOS USUÁRIOS CADASTRADOS -->
-                <div style="background:#1a1a2e;border-radius:14px;padding:18px;border:1px solid #2d2d3f;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
-                        <h3 style="margin:0;font-size:16px;font-weight:600;color:#fff;">👥 Últimos Usuários Cadastrados</h3>
-                        <span style="font-size:12px;color:#888;background:#2d2d3f;padding:4px 14px;border-radius:20px;">Total: ${usuarios.length}</span>
+                <!-- ========================================== -->
+                <!-- ÚLTIMOS USUÁRIOS - VERSÃO PREMIUM -->
+                <!-- ========================================== -->
+                <div style="
+                    background:linear-gradient(135deg,#1a1a2e,#1f1f3a);
+                    border-radius:16px;
+                    padding:${isMobile ? '12px' : '18px'};
+                    border:1px solid rgba(102,126,234,0.08);
+                    box-shadow:0 4px 24px rgba(0,0,0,0.15);
+                ">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-size:20px;">👥</span>
+                            <h3 style="margin:0;font-size:${isMobile ? '15px' : '18px'};font-weight:700;color:#fff;">Últimos Usuários</h3>
+                        </div>
+                        <span style="font-size:11px;color:#94a3b8;background:rgba(255,255,255,0.04);padding:4px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.04);">Total: ${usuarios.length}</span>
                     </div>
                     <div style="overflow-x:auto;">
-                        <table style="width:100%;border-collapse:collapse;font-size:13px;min-width:500px;">
+                        <table style="width:100%;border-collapse:collapse;font-size:${isMobile ? '10px' : '13px'};min-width:350px;">
                             <thead>
-                                <tr>
-                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Nome</th>
-                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Email</th>
-                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Role</th>
-                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Empresa</th>
-                                    <th style="padding:8px 12px;text-align:left;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Cadastro</th>
-                                    <th style="padding:8px 12px;text-align:center;font-weight:600;color:#94a3b8;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid #2d2d3f;">Ações</th>
+                                <tr style="border-bottom:2px solid rgba(255,255,255,0.04);">
+                                    <th style="padding:${isMobile ? '6px 8px' : '8px 12px'};text-align:left;color:#94a3b8;font-size:${isMobile ? '8px' : '10px'};text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Nome</th>
+                                    <th style="padding:${isMobile ? '6px 8px' : '8px 12px'};text-align:left;color:#94a3b8;font-size:${isMobile ? '8px' : '10px'};text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Email</th>
+                                    <th style="padding:${isMobile ? '6px 8px' : '8px 12px'};text-align:left;color:#94a3b8;font-size:${isMobile ? '8px' : '10px'};text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Role</th>
+                                    <th style="padding:${isMobile ? '6px 8px' : '8px 12px'};text-align:center;color:#94a3b8;font-size:${isMobile ? '8px' : '10px'};text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${usuarios.slice(0, 10).map(u => {
-            const empresa = empresas.find(e => e.id === u.empresa_id);
-            let roleColor = '#f59e0b';
-            let roleBg = 'rgba(245,158,11,0.15)';
-            let roleLabel = '🟠 Dono';
-            if (u.role === 'superadmin') { roleColor = '#ef4444'; roleBg = 'rgba(239,68,68,0.15)'; roleLabel = '🔴 Super Admin'; }
-            else if (u.role === 'profissional') { roleColor = '#667eea'; roleBg = 'rgba(102,126,234,0.15)'; roleLabel = '🔵 Profissional'; }
+                                ${usuarios.slice(0, 8).map(u => {
+                                    const empresa = empresas.find(e => e.id === u.empresa_id);
+                                    let roleColor = '#f59e0b';
+                                    let roleLabel = '🟠 Dono';
+                                    if (u.role === 'superadmin') { roleColor = '#ef4444'; roleLabel = '🔴 Super'; }
+                                    else if (u.role === 'profissional') { roleColor = '#818cf8'; roleLabel = '🔵 Prof'; }
 
-            return `
-                                        <tr style="transition:background 0.2s;cursor:default;" onmouseover="this.style.background='#2d2d3f'" onmouseout="this.style.background='transparent'">
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-weight:600;color:#fff;">${escapeHtml(u.nome)}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${escapeHtml(u.email)}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;"><span style="padding:3px 12px;border-radius:20px;font-size:11px;font-weight:500;background:${roleBg};color:${roleColor};">${roleLabel}</span></td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;">${empresa ? escapeHtml(empresa.nome) : 'N/A'}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;font-size:12px;color:#888;">${formatarDataBr(u.created_at)}</td>
-                                            <td style="padding:8px 12px;border-bottom:1px solid #2d2d3f;text-align:center;">
-                                                <button onclick="editarUsuario(${u.id})" style="padding:4px 10px;border:none;border-radius:6px;font-size:11px;cursor:pointer;background:#1a1a2e;border:1px solid rgba(245,158,11,0.2);color:#f59e0b;transition:all 0.2s;" onmouseover="this.style.background='rgba(245,158,11,0.15)'" onmouseout="this.style.background='#1a1a2e'"><i class="fas fa-edit"></i></button>
+                                    return `
+                                        <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                                            <td style="padding:${isMobile ? '6px 8px' : '8px 12px'};font-weight:600;color:#fff;font-size:${isMobile ? '10px' : '13px'};">${escapeHtml(u.nome)}</td>
+                                            <td style="padding:${isMobile ? '6px 8px' : '8px 12px'};color:#94a3b8;font-size:${isMobile ? '9px' : '12px'};">${escapeHtml(u.email)}</td>
+                                            <td style="padding:${isMobile ? '6px 8px' : '8px 12px'};">
+                                                <span style="padding:2px 10px;border-radius:8px;font-size:${isMobile ? '8px' : '10px'};font-weight:600;background:${roleColor}15;color:${roleColor};border:1px solid ${roleColor}15;">${roleLabel}</span>
+                                            </td>
+                                            <td style="padding:${isMobile ? '6px 8px' : '8px 12px'};text-align:center;">
+                                                <button onclick="editarUsuario(${u.id})" style="
+                                                    padding:${isMobile ? '3px 8px' : '4px 12px'};
+                                                    border:none;
+                                                    border-radius:6px;
+                                                    font-size:${isMobile ? '10px' : '11px'};
+                                                    cursor:pointer;
+                                                    background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04));
+                                                    color:#f59e0b;
+                                                    border:1px solid rgba(245,158,11,0.08);
+                                                    transition:all 0.3s ease;
+                                                " onmouseover="this.style.background='rgba(245,158,11,0.2)'" onmouseout="this.style.background='linear-gradient(135deg,rgba(245,158,11,0.12),rgba(245,158,11,0.04))'">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
                                             </td>
                                         </tr>
                                     `;
-        }).join('')}
+                                }).join('')}
                             </tbody>
                         </table>
                     </div>
@@ -378,15 +521,30 @@ async function carregarDashboardSuperAdmin() {
         document.getElementById('content').innerHTML = html;
         hideLoading();
 
+        // ============================================
+        // INICIAR ANIMAÇÃO DOS CARDS (entrada)
+        // ============================================
+        setTimeout(() => {
+            document.querySelectorAll('.empresa-card').forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    card.style.transition = 'all 0.4s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, 50 * index);
+            });
+        }, 100);
+
     } catch (error) {
         console.error('❌ Erro:', error);
         hideLoading();
         document.getElementById('content').innerHTML = `
-            <div style="text-align:center;padding:60px 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ef4444;"></i>
-                <p style="margin:12px 0;font-size:18px;color:#fff;">Erro ao carregar dashboard</p>
-                <p style="color:#888;font-size:14px;">${error.message}</p>
-                <button onclick="carregarDashboardSuperAdmin()" style="background:#667eea;border:none;padding:10px 24px;border-radius:8px;color:white;font-size:14px;cursor:pointer;margin-top:12px;">
+            <div style="text-align:center;padding:40px 20px;">
+                <i class="fas fa-exclamation-triangle" style="font-size:40px;color:#ef4444;"></i>
+                <p style="margin:12px 0;font-size:16px;color:#fff;">Erro ao carregar dashboard</p>
+                <p style="color:#94a3b8;font-size:13px;">${error.message}</p>
+                <button onclick="carregarDashboardSuperAdmin()" style="background:linear-gradient(135deg,#667eea,#764ba2);border:none;padding:10px 24px;border-radius:10px;color:white;font-size:14px;cursor:pointer;margin-top:12px;font-weight:600;">
                     <i class="fas fa-sync"></i> Tentar Novamente
                 </button>
             </div>
@@ -504,35 +662,45 @@ function filtrarEmpresas() {
 }
 
 // ============================================
-// VER EMPRESA - VERSÃO COMPLETA E DETALHADA
+// VER EMPRESA - VERSÃO MOBILE MELHORADA
 // ============================================
 async function verEmpresa(id) {
     console.log('👁️ Ver empresa ID:', id);
     showLoading();
     const token = localStorage.getItem('token');
+    const isMobile = window.innerWidth < 768;
 
     try {
-        const [empresaRes, usuariosRes, clientesRes, agendamentosRes, acessosRes, localizacaoRes] = await Promise.all([
+        const [empresaRes, usuariosRes, clientesRes, agendamentosRes, acessosRes] = await Promise.all([
             fetch(`/api/admin/empresas/${id}`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/usuarios`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/clientes`, { headers: { 'Authorization': 'Bearer ' + token } }),
             fetch(`/api/admin/empresas/${id}/agendamentos`, { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch(`/api/admin/empresas/${id}/acessos`, { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch(`/api/admin/empresas/${id}/localizacao`, { headers: { 'Authorization': 'Bearer ' + token } })
+            fetch(`/api/admin/empresas/${id}/acessos`, { headers: { 'Authorization': 'Bearer ' + token } })
         ]);
+
+        if (!empresaRes.ok) {
+            console.error('❌ Erro ao carregar empresa:', empresaRes.status);
+            showToast('Erro ao carregar dados da empresa', 'error');
+            hideLoading();
+            return;
+        }
 
         const empresa = (await empresaRes.json()).data || {};
         const usuarios = (await usuariosRes.json()).data || [];
         const clientes = (await clientesRes.json()).data || [];
         const agendamentos = (await agendamentosRes.json()).data || [];
         const acessos = (await acessosRes.json()).data || [];
-        const localizacao = (await localizacaoRes.json()).data || {};
+
+        console.log(`✅ Empresa: ${empresa.nome}`);
+        console.log(`📊 Clientes: ${clientes.length}`);
+        console.log(`📊 Agendamentos: ${agendamentos.length}`);
 
         const donos = usuarios.filter(u => u.tipo === 'dono' || u.role === 'dono');
         const profissionais = usuarios.filter(u => u.tipo === 'profissional' || u.role === 'profissional');
 
         // ============================================
-        // 🔥 CALCULAR STATUS E DIAS RESTANTES
+        // CALCULAR STATUS E DIAS RESTANTES
         // ============================================
         const isTrial = empresa.plano === 'trial' || empresa.plano === 'Trial';
         const isAtivo = empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === true;
@@ -555,9 +723,6 @@ async function verEmpresa(id) {
             diasRestantes = 999;
         }
 
-        // ============================================
-        // 🔥 DEFINIR STATUS COLOR E TEXT
-        // ============================================
         let statusColor = '#22c55e';
         let statusText = '✅ Ativo';
 
@@ -567,10 +732,10 @@ async function verEmpresa(id) {
                 statusText = '⛔ Expirado';
             } else if (diasRestantes <= 7) {
                 statusColor = '#f59e0b';
-                statusText = `⚠️ ${diasRestantes} dias restantes`;
+                statusText = `⚠️ ${diasRestantes} dias`;
             } else {
                 statusColor = '#22c55e';
-                statusText = `✅ ${diasRestantes} dias restantes`;
+                statusText = `✅ ${diasRestantes} dias`;
             }
         } else if (!isAtivo) {
             statusColor = '#ef4444';
@@ -578,7 +743,7 @@ async function verEmpresa(id) {
         }
 
         // ============================================
-        // 🔥 CALCULAR OUTRAS MÉTRICAS
+        // CALCULAR MÉTRICAS
         // ============================================
         const totalAcessos = acessos.length;
         const acessosHoje = acessos.filter(a => {
@@ -595,184 +760,181 @@ async function verEmpresa(id) {
 
         const faturamentoTotal = agendamentos
             .filter(a => a.status === 'concluido')
-            .reduce((sum, a) => sum + (parseFloat(a.valor) || 0), 0);
+            .reduce((sum, a) => sum + (parseFloat(a.valor_total) || parseFloat(a.valor) || 0), 0);
 
         // ============================================
-        // 📝 GERAR HTML
+        // GERAR HTML - VERSÃO MOBILE MELHORADA
         // ============================================
         const html = `
-            <div class="fade-in">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+            <div class="fade-in" style="padding: ${isMobile ? '8px' : '16px'};">
+                <!-- CABEÇALHO -->
+                <div style="display:flex;flex-direction:${isMobile ? 'column' : 'row'};justify-content:space-between;align-items:${isMobile ? 'flex-start' : 'center'};gap:${isMobile ? '10px' : '12px'};margin-bottom:16px;">
                     <div>
-                        <button onclick="carregarDashboardSuperAdmin()" style="background:var(--bg-hover);border:none;padding:4px 14px;border-radius:6px;cursor:pointer;color:var(--text-secondary);font-size:12px;">
+                        <button onclick="carregarDashboardSuperAdmin()" style="background:var(--bg-hover);border:none;padding:4px 12px;border-radius:6px;cursor:pointer;color:var(--text-secondary);font-size:${isMobile ? '11px' : '12px'};">
                             <i class="fas fa-arrow-left"></i> Voltar
                         </button>
-                        <h2 style="margin:8px 0 0;font-size:24px;">🏢 ${escapeHtml(empresa.nome)}</h2>
-                        <p style="margin:2px 0 0;color:var(--text-muted);font-size:13px;">
+                        <h2 style="margin:6px 0 0;font-size:${isMobile ? '20px' : '24px'};color:var(--text-primary);">🏢 ${escapeHtml(empresa.nome)}</h2>
+                        <p style="margin:2px 0 0;color:var(--text-muted);font-size:${isMobile ? '11px' : '13px'};">
                             <i class="fas fa-calendar"></i> Criado em ${formatarDataBr(empresa.created_at)}
-                            ${empresa.dono_nome ? `• 👑 Dono: ${escapeHtml(empresa.dono_nome)}` : ''}
+                            ${empresa.dono_nome ? `• 👑 ${escapeHtml(empresa.dono_nome)}` : ''}
                         </p>
                     </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <span style="background:${statusColor}22;padding:4px 14px;border-radius:8px;color:${statusColor};font-size:12px;font-weight:600;border:1px solid ${statusColor}44;">${statusText}</span>
-                        <button onclick="editarEmpresa(${empresa.id})" style="background:var(--primary);border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;">
-                            <i class="fas fa-edit"></i> Editar Plano
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;width:${isMobile ? '100%' : 'auto'};">
+                        <span style="background:${statusColor}22;padding:4px 12px;border-radius:6px;color:${statusColor};font-size:${isMobile ? '11px' : '12px'};font-weight:600;border:1px solid ${statusColor}44;">
+                            ${statusText}
+                        </span>
+                        <button onclick="editarEmpresa(${empresa.id})" style="background:var(--primary);border:none;padding:${isMobile ? '6px 14px' : '6px 16px'};border-radius:6px;color:white;font-size:${isMobile ? '12px' : '12px'};cursor:pointer;">
+                            <i class="fas fa-edit"></i> ${isMobile ? '' : 'Editar'}
                         </button>
                         ${isTrial ? `
-                            <button onclick="estenderTrial(${empresa.id})" style="background:#22c55e;border:none;padding:6px 16px;border-radius:8px;color:white;font-size:12px;cursor:pointer;">
-                                <i class="fas fa-clock"></i> +30 dias
+                            <button onclick="estenderTrial(${empresa.id})" style="background:#22c55e;border:none;padding:${isMobile ? '6px 14px' : '6px 16px'};border-radius:6px;color:white;font-size:${isMobile ? '12px' : '12px'};cursor:pointer;">
+                                <i class="fas fa-clock"></i> ${isMobile ? '+30d' : '+30 dias'}
                             </button>
                         ` : ''}
                     </div>
                 </div>
-                
-                <!-- CARDS DE MÉTRICAS -->
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;">
-                    <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-muted);">Plano</div>
-                        <div style="font-size:16px;font-weight:700;">${isTrial ? 'Trial' : empresa.plano || 'N/A'}</div>
+
+                <!-- CARDS DE MÉTRICAS - VERSÃO MOBILE -->
+                <div style="display:grid;grid-template-columns:${isMobile ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)'};gap:${isMobile ? '6px' : '10px'};margin-bottom:16px;">
+                    <div style="background:var(--bg-card);border-radius:10px;padding:${isMobile ? '8px 6px' : '12px 14px'};border:1px solid var(--border-color);text-align:center;">
+                        <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">Plano</div>
+                        <div style="font-size:${isMobile ? '12px' : '16px'};font-weight:700;color:var(--text-primary);">${isTrial ? 'Trial' : empresa.plano || 'N/A'}</div>
                     </div>
-                    <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-muted);">👥 Usuários</div>
-                        <div style="font-size:16px;font-weight:700;">${usuarios.length}</div>
-                        <div style="font-size:10px;color:var(--text-muted);">${donos.length} donos, ${profissionais.length} prof</div>
+                    <div style="background:var(--bg-card);border-radius:10px;padding:${isMobile ? '8px 6px' : '12px 14px'};border:1px solid var(--border-color);text-align:center;">
+                        <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">👥 Usuários</div>
+                        <div style="font-size:${isMobile ? '14px' : '16px'};font-weight:700;color:var(--text-primary);">${usuarios.length}</div>
+                        <div style="font-size:${isMobile ? '7px' : '10px'};color:var(--text-muted);">${donos.length} donos</div>
                     </div>
-                    <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-muted);">📊 Acessos</div>
-                        <div style="font-size:16px;font-weight:700;">${totalAcessos}</div>
-                        <div style="font-size:10px;color:var(--text-muted);">${acessosHoje} hoje</div>
+                    <div style="background:var(--bg-card);border-radius:10px;padding:${isMobile ? '8px 6px' : '12px 14px'};border:1px solid var(--border-color);text-align:center;">
+                        <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">📊 Acessos</div>
+                        <div style="font-size:${isMobile ? '14px' : '16px'};font-weight:700;color:var(--text-primary);">${totalAcessos}</div>
+                        <div style="font-size:${isMobile ? '7px' : '10px'};color:var(--text-muted);">${acessosHoje} hoje</div>
                     </div>
-                    <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-muted);">📅 Último acesso</div>
-                        <div style="font-size:13px;font-weight:600;">${ultimoAcessoFormatado}</div>
+                    <div style="background:var(--bg-card);border-radius:10px;padding:${isMobile ? '8px 6px' : '12px 14px'};border:1px solid var(--border-color);text-align:center;">
+                        <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">📅 Último acesso</div>
+                        <div style="font-size:${isMobile ? '10px' : '13px'};font-weight:600;color:var(--text-primary);">${ultimoAcessoFormatado}</div>
                     </div>
-                    <div style="background:var(--bg-card);border-radius:10px;padding:12px 14px;border:1px solid var(--border-color);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-muted);">✂️ Agendamentos</div>
-                        <div style="font-size:16px;font-weight:700;">${agendamentos.length}</div>
-                        <div style="font-size:10px;color:var(--text-muted);">${agendamentosPendentes} pendentes</div>
+                    <div style="background:var(--bg-card);border-radius:10px;padding:${isMobile ? '8px 6px' : '12px 14px'};border:1px solid var(--border-color);text-align:center;">
+                        <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">✂️ Agendamentos</div>
+                        <div style="font-size:${isMobile ? '14px' : '16px'};font-weight:700;color:#f59e0b;">${agendamentos.length}</div>
+                        <div style="font-size:${isMobile ? '7px' : '10px'};color:var(--text-muted);">${agendamentosPendentes} pendentes</div>
                     </div>
-                    <div style="background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.05));border-radius:10px;padding:12px 14px;border:1px solid rgba(16,185,129,0.1);text-align:center;">
-                        <div style="font-size:11px;color:var(--text-muted);">💰 Faturamento</div>
-                        <div style="font-size:16px;font-weight:700;color:#22c55e;">R$ ${formatarMoeda(faturamentoTotal)}</div>
-                        <div style="font-size:10px;color:var(--text-muted);">${agendamentosConcluidos} concluídos</div>
+                    <div style="background:linear-gradient(135deg,rgba(16,185,129,0.08),rgba(5,150,105,0.05));border-radius:10px;padding:${isMobile ? '8px 6px' : '12px 14px'};border:1px solid rgba(16,185,129,0.1);text-align:center;">
+                        <div style="font-size:${isMobile ? '9px' : '11px'};color:var(--text-muted);">💰 Faturamento</div>
+                        <div style="font-size:${isMobile ? '14px' : '16px'};font-weight:700;color:#22c55e;">R$ ${formatarMoeda(faturamentoTotal)}</div>
+                        <div style="font-size:${isMobile ? '7px' : '10px'};color:var(--text-muted);">${agendamentosConcluidos} concluídos</div>
                     </div>
                 </div>
 
-                <!-- LOCALIZAÇÃO DO CADASTRO -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <h4 style="margin:0 0 12px 0;font-size:14px;display:flex;align-items:center;gap:8px;">
-                        <i class="fas fa-map-marker-alt" style="color:#22c55e;"></i> 
-                        Localização do Cadastro
-                        <span style="font-size:11px;color:var(--text-muted);font-weight:400;">
-                            ${localizacao.created_at ? `• ${formatarDataHora(localizacao.created_at)}` : ''}
-                        </span>
+                <!-- SEÇÃO DONOS - MOBILE -->
+                <div style="background:var(--bg-card);border-radius:${isMobile ? '10px' : '12px'};padding:${isMobile ? '10px 12px' : '16px'};border:1px solid var(--border-color);margin-bottom:12px;">
+                    <h4 style="margin:0 0 8px 0;font-size:${isMobile ? '13px' : '14px'};color:var(--text-primary);">
+                        <i class="fas fa-crown" style="color:#f59e0b;"></i> Donos (${donos.length})
                     </h4>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;">
-                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
-                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📡 IP</div>
-                            <div style="font-size:14px;font-weight:600;font-family:monospace;color:var(--text-primary);">
-                                ${localizacao.ip || 'N/A'}
-                            </div>
-                        </div>
-                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
-                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🌍 Cidade</div>
-                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">
-                                ${localizacao.cidade || 'N/A'}
-                            </div>
-                        </div>
-                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
-                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">📍 Estado</div>
-                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">
-                                ${localizacao.estado || 'N/A'}
-                            </div>
-                        </div>
-                        <div style="background:var(--bg-hover);padding:10px;border-radius:8px;">
-                            <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;">🏢 ISP</div>
-                            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">
-                                ${localizacao.isp || 'N/A'}
-                            </div>
-                        </div>
-                    </div>
-                    ${localizacao.latitude && localizacao.longitude ? `
-                        <div style="margin-top:10px;text-align:center;">
-                            <a href="https://www.google.com/maps?q=${localizacao.latitude},${localizacao.longitude}" target="_blank" 
-                               style="color:#667eea;font-size:12px;text-decoration:none;background:rgba(102,126,234,0.08);padding:6px 16px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;">
-                                <i class="fas fa-map"></i> Ver no Google Maps
-                            </a>
-                        </div>
-                    ` : ''}
-                </div>
-
-                <!-- SEÇÃO DONOS -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <h4 style="margin:0 0 12px 0;font-size:14px;"><i class="fas fa-crown" style="color:#f59e0b;"></i> Donos (${donos.length})</h4>
                     ${donos.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;width:100%">
-                                <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Cadastro</th><th>Ações</th></tr></thead>
+                            <table style="width:100%;font-size:${isMobile ? '11px' : '12px'};border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:var(--bg-hover);">
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '9px' : '11px'};">Nome</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '9px' : '11px'};">Email</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '9px' : '11px'};">Ações</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    ${donos.map(d => `<tr>
-                                        <td style="font-weight:600;">${escapeHtml(d.nome)}</td>
-                                        <td>${escapeHtml(d.email)}</td>
-                                        <td>${escapeHtml(d.telefone || '-')}</td>
-                                        <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(d.created_at)}</td>
-                                        <td><button onclick="editarUsuario(${d.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;"><i class="fas fa-edit"></i></button></td>
-                                    </tr>`).join('')}
+                                    ${donos.map(d => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};font-weight:600;color:var(--text-primary);">${escapeHtml(d.nome)}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};color:var(--text-muted);font-size:${isMobile ? '10px' : '12px'};">${escapeHtml(d.email)}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;">
+                                                <button onclick="editarUsuario(${d.id})" style="background:rgba(102,126,234,0.15);border:none;padding:${isMobile ? '2px 6px' : '2px 10px'};border-radius:4px;color:var(--primary);font-size:${isMobile ? '10px' : '11px'};cursor:pointer;">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum dono cadastrado.</div>'}
+                    ` : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">Nenhum dono cadastrado.</div>'}
                 </div>
 
-                <!-- SEÇÃO PROFISSIONAIS -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <h4 style="margin:0 0 12px 0;font-size:14px;"><i class="fas fa-users" style="color:var(--primary);"></i> Profissionais (${profissionais.length})</h4>
+                <!-- SEÇÃO PROFISSIONAIS - MOBILE -->
+                <div style="background:var(--bg-card);border-radius:${isMobile ? '10px' : '12px'};padding:${isMobile ? '10px 12px' : '16px'};border:1px solid var(--border-color);margin-bottom:12px;">
+                    <h4 style="margin:0 0 8px 0;font-size:${isMobile ? '13px' : '14px'};color:var(--text-primary);">
+                        <i class="fas fa-users" style="color:var(--primary);"></i> Profissionais (${profissionais.length})
+                    </h4>
                     ${profissionais.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;width:100%">
-                                <thead><tr><th>Nome</th><th>Email</th><th>Telefone</th><th>Comissão</th><th>Cadastro</th><th>Ações</th></tr></thead>
+                            <table style="width:100%;font-size:${isMobile ? '11px' : '12px'};border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:var(--bg-hover);">
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '9px' : '11px'};">Nome</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '9px' : '11px'};">Comissão</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '9px' : '11px'};">Ações</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    ${profissionais.map(p => `<tr>
-                                        <td style="font-weight:600;">${escapeHtml(p.nome)}</td>
-                                        <td>${escapeHtml(p.email)}</td>
-                                        <td>${escapeHtml(p.telefone || '-')}</td>
-                                        <td><span style="background:rgba(16,185,129,0.15);padding:2px 10px;border-radius:12px;color:#22c55e;font-weight:600;">${p.comissao_percent || 0}%</span></td>
-                                        <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(p.created_at)}</td>
-                                        <td><button onclick="editarUsuario(${p.id})" style="background:rgba(102,126,234,0.15);border:none;padding:2px 12px;border-radius:4px;color:var(--primary);font-size:11px;cursor:pointer;"><i class="fas fa-edit"></i></button></td>
-                                    </tr>`).join('')}
+                                    ${profissionais.map(p => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};font-weight:600;color:var(--text-primary);">${escapeHtml(p.nome)}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};">
+                                                <span style="background:rgba(16,185,129,0.15);padding:1px 8px;border-radius:10px;color:#22c55e;font-weight:600;font-size:${isMobile ? '10px' : '12px'};">${p.comissao_percent || 0}%</span>
+                                            </td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;">
+                                                <button onclick="editarUsuario(${p.id})" style="background:rgba(102,126,234,0.15);border:none;padding:${isMobile ? '2px 6px' : '2px 10px'};border-radius:4px;color:var(--primary);font-size:${isMobile ? '10px' : '11px'};cursor:pointer;">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum profissional cadastrado.</div>'}
+                    ` : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">Nenhum profissional cadastrado.</div>'}
                 </div>
 
-                <!-- SEÇÃO CLIENTES -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <h4 style="margin:0 0 12px 0;font-size:14px;"><i class="fas fa-address-book" style="color:#8b5cf6;"></i> Clientes (${clientes.length})</h4>
+                <!-- SEÇÃO CLIENTES - MOBILE (CARDS) -->
+                <div style="background:var(--bg-card);border-radius:${isMobile ? '10px' : '12px'};padding:${isMobile ? '10px 12px' : '16px'};border:1px solid var(--border-color);margin-bottom:12px;">
+                    <h4 style="margin:0 0 8px 0;font-size:${isMobile ? '13px' : '14px'};color:var(--text-primary);">
+                        <i class="fas fa-address-book" style="color:#8b5cf6;"></i> Clientes (${clientes.length})
+                    </h4>
                     ${clientes.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;width:100%">
-                                <thead><tr><th>Nome</th><th>Telefone</th><th>Email</th><th>Cadastro</th><th>Status</th></tr></thead>
+                            <table style="width:100%;font-size:${isMobile ? '10px' : '12px'};border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:var(--bg-hover);">
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Nome</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Telefone</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Status</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    ${clientes.slice(0, 20).map(c => `<tr>
-                                        <td style="font-weight:600;">${escapeHtml(c.nome)}</td>
-                                        <td>${escapeHtml(c.telefone || '-')}</td>
-                                        <td>${escapeHtml(c.email || '-')}</td>
-                                        <td style="font-size:11px;color:var(--text-muted);">${formatarDataBr(c.created_at)}</td>
-                                        <td>${c.bloqueado_chatbot === 1 ? '🔒 Bloqueado' : '✅ Ativo'}</td>
-                                    </tr>`).join('')}
+                                    ${clientes.slice(0, isMobile ? 15 : 20).map(c => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};font-weight:600;color:var(--text-primary);font-size:${isMobile ? '10px' : '12px'};">${escapeHtml(c.nome)}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};color:var(--text-muted);font-size:${isMobile ? '9px' : '11px'};">${escapeHtml(c.telefone || '-')}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;font-size:${isMobile ? '9px' : '11px'};">
+                                                ${c.bloqueado_chatbot === 1 ? '🔒' : '✅'}
+                                            </td>
+                                        </tr>
+                                    `).join('')}
                                 </tbody>
                             </table>
-                            ${clientes.length > 20 ? `<div style="text-align:center;padding:8px;color:var(--text-muted);font-size:12px;">+ ${clientes.length - 20} clientes a mais...</div>` : ''}
+                            ${clientes.length > (isMobile ? 15 : 20) ? `
+                                <div style="text-align:center;padding:6px;color:var(--text-muted);font-size:11px;">+ ${clientes.length - (isMobile ? 15 : 20)} clientes a mais...</div>
+                            ` : ''}
                         </div>
-                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum cliente cadastrado.</div>'}
+                    ` : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">Nenhum cliente cadastrado.</div>'}
                 </div>
 
-                <!-- SEÇÃO AGENDAMENTOS -->
-                <div style="background:var(--bg-card);border-radius:12px;padding:16px;border:1px solid var(--border-color);margin-bottom:16px;">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-                        <h4 style="margin:0;font-size:14px;"><i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Agendamentos (${agendamentos.length})</h4>
-                        <div style="display:flex;gap:8px;font-size:11px;">
+                <!-- SEÇÃO AGENDAMENTOS - MOBILE (CARDS) -->
+                <div style="background:var(--bg-card);border-radius:${isMobile ? '10px' : '12px'};padding:${isMobile ? '10px 12px' : '16px'};border:1px solid var(--border-color);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+                        <h4 style="margin:0;font-size:${isMobile ? '13px' : '14px'};color:var(--text-primary);">
+                            <i class="fas fa-calendar-alt" style="color:var(--primary);"></i> Agendamentos (${agendamentos.length})
+                        </h4>
+                        <div style="display:flex;gap:6px;font-size:${isMobile ? '9px' : '11px'};">
                             <span style="color:#f59e0b;">⏳ ${agendamentosPendentes}</span>
                             <span style="color:#22c55e;">✅ ${agendamentosConcluidos}</span>
                             ${agendamentosCancelados > 0 ? `<span style="color:#ef4444;">❌ ${agendamentosCancelados}</span>` : ''}
@@ -780,27 +942,42 @@ async function verEmpresa(id) {
                     </div>
                     ${agendamentos.length > 0 ? `
                         <div style="overflow-x:auto;">
-                            <table class="data-table" style="font-size:12px;width:100%">
-                                <thead><tr><th>Cliente</th><th>Serviço</th><th>Data</th><th>Hora</th><th>Valor</th><th>Status</th></tr></thead>
+                            <table style="width:100%;font-size:${isMobile ? '10px' : '12px'};border-collapse:collapse;">
+                                <thead>
+                                    <tr style="background:var(--bg-hover);">
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Cliente</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Serviço</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:left;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Data</th>
+                                        <th style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;color:var(--text-muted);font-weight:600;font-size:${isMobile ? '8px' : '10px'};">Status</th>
+                                    </tr>
+                                </thead>
                                 <tbody>
-                                    ${agendamentos.slice(0, 15).map(a => `<tr>
-                                        <td>${escapeHtml(a.cliente_nome || 'N/A')}</td>
-                                        <td>${escapeHtml(a.servico || a.servico_nome || '-')}</td>
-                                        <td>${formatarDataBr(a.data)}</td>
-                                        <td>${a.hora || '-'}</td>
-                                        <td>R$ ${formatarMoeda(a.valor)}</td>
-                                        <td><span style="padding:2px 10px;border-radius:12px;font-size:10px;font-weight:600;background:${a.status === 'concluido' ? 'rgba(34,197,94,0.15)' : a.status === 'cancelado' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'};color:${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">${a.status || 'pendente'}</span></td>
-                                    </tr>`).join('')}
+                                    ${agendamentos.slice(0, isMobile ? 10 : 15).map(a => `
+                                        <tr style="border-bottom:1px solid var(--border-color);">
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};font-weight:500;color:var(--text-primary);font-size:${isMobile ? '9px' : '11px'};">${escapeHtml(a.cliente_nome || 'N/A')}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};color:var(--text-muted);font-size:${isMobile ? '9px' : '11px'};">${escapeHtml(a.servico || a.servico_nome || '-')}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};color:var(--text-muted);font-size:${isMobile ? '9px' : '11px'};">${formatarDataBr(a.data)}</td>
+                                            <td style="padding:${isMobile ? '4px 6px' : '6px 10px'};text-align:center;">
+                                                <span style="padding:2px 8px;border-radius:10px;font-size:${isMobile ? '8px' : '10px'};font-weight:600;background:${a.status === 'concluido' ? 'rgba(34,197,94,0.15)' : a.status === 'cancelado' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'};color:${a.status === 'concluido' ? '#22c55e' : a.status === 'cancelado' ? '#ef4444' : '#f59e0b'};">
+                                                    ${a.status || 'pendente'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
                                 </tbody>
                             </table>
+                            ${agendamentos.length > (isMobile ? 10 : 15) ? `
+                                <div style="text-align:center;padding:6px;color:var(--text-muted);font-size:11px;">+ ${agendamentos.length - (isMobile ? 10 : 15)} agendamentos a mais...</div>
+                            ` : ''}
                         </div>
-                    ` : '<div style="text-align:center;padding:16px;color:var(--text-muted);">Nenhum agendamento encontrado.</div>'}
+                    ` : '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">Nenhum agendamento encontrado.</div>'}
                 </div>
             </div>
         `;
 
         document.getElementById('content').innerHTML = html;
         hideLoading();
+
     } catch (error) {
         hideLoading();
         console.error('❌ Erro ao carregar detalhes da empresa:', error);
