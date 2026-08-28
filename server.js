@@ -158,8 +158,8 @@ app.use('/api/empresa', empresasRoutes);
 const chatbotRoutes = require('./server/routes/chatbot.routes');
 app.use('/api/chatbot', chatbotRoutes);
 
-const adminRoutes = require('./server/routes/admin.routes');
-app.use('/api/admin', adminRoutes);
+// const adminRoutes = require('./server/routes/admin.routes');
+// app.use('/api/admin', adminRoutes);
 
 const clientesRoutes = require('./server/routes/clientes.routes');
 app.use('/api/clientes', clientesRoutes);
@@ -686,7 +686,7 @@ app.get('/health', (req, res) => {
 // INICIAR SERVIDOR
 // ============================================================
 
-const HOST = process.env.RENDER === 'true' ? '0.0.0.0' : 'localhost';
+const HOST = '0.0.0.0';
 
 app.listen(PORT, HOST, () => {
     console.log(`\n🚀 Servidor rodando em http://${HOST}:${PORT}`);
