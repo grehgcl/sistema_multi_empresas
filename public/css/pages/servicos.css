@@ -1,133 +1,313 @@
 /* ============================================
    SERVICOS.CSS - ESTILOS COMPLETOS
-   ULTIMA ATUALIZACAO: 31/07/2026
+   Versão 3.0 - COM BOTÕES PADRÃO E MOBILE CARDS
    ============================================ */
 
-/* ----- HEADER E TÍTULOS ----- */
+/* ===== HEADER E TÍTULOS ===== */
 .page-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
 }
 
 .page-title {
-    font-size: 24px;
+    font-size: 1.5rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--text-primary, #1f2937);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
 }
 
 .page-title i {
-    color: var(--primary);
+    color: var(--primary, #667eea);
 }
 
 .page-subtitle {
-    color: var(--text-muted);
-    font-size: 14px;
-    margin-top: 2px;
+    color: var(--text-muted, #6b7280);
+    font-size: 0.875rem;
+    margin-top: 0.125rem;
 }
 
-/* ----- STATS ----- */
+/* ===== STATS ===== */
 .servico-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 10px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    gap: 0.625rem;
+    margin-bottom: 1.25rem;
 }
 
 .stat-mini {
-    background: var(--bg-card);
-    border-radius: 12px;
-    padding: 10px 14px;
+    background: var(--bg-card, #ffffff);
+    border-radius: 0.75rem;
+    padding: 0.625rem 0.875rem;
     text-align: center;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--border-color, #e5e7eb);
+    transition: all 0.3s ease;
+}
+
+.stat-mini:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
 }
 
 .stat-mini-value {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--text-primary, #1f2937);
     display: block;
 }
 
 .stat-mini-label {
-    font-size: 10px;
-    color: var(--text-muted);
+    font-size: 0.625rem;
+    color: var(--text-muted, #6b7280);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.01875rem;
 }
 
-/* ----- LISTA DE SERVIÇOS ----- */
-.servicos-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
+/* ============================================
+   BOTÕES DE AÇÃO - PADRÃO
+   ============================================ */
+
+/* Container dos botões */
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
 }
 
-/* ----- TABELA ----- */
-.table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.data-table {
-    width: 100%;
-    border-collapse: collapse;
-    background: var(--bg-card);
-    border-radius: 12px;
-    overflow: hidden;
-    font-size: 13px;
-}
-
-.data-table thead {
-    background: var(--gradient);
-}
-
-.data-table th {
-    padding: 10px 16px;
-    text-align: left;
-    color: white;
+/* Botão base */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border: 1.5px solid transparent;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
     font-weight: 600;
-    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-decoration: none;
+    min-width: 5rem;
+    min-height: 2.5rem;
+    background: var(--bg-hover, #f3f4f6);
+    color: var(--text-secondary, #4b5563);
+}
+
+.btn-action i {
+    font-size: 0.875rem;
+}
+
+.btn-action:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+.btn-action:active {
+    transform: scale(0.95);
+}
+
+/* ===== BOTÃO EDITAR ===== */
+.btn-edit {
+    background: rgba(102, 126, 234, 0.12);
+    color: #4f46e5;
+    border-color: rgba(102, 126, 234, 0.2);
+}
+
+.btn-edit:hover {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 0.25rem 0.75rem rgba(79, 70, 229, 0.3);
+}
+
+/* ===== BOTÃO TOGGLE ON ===== */
+.btn-toggle-on {
+    background: rgba(34, 197, 94, 0.12);
+    color: #16a34a;
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.btn-toggle-on:hover {
+    background: #16a34a;
+    color: #ffffff;
+    border-color: #16a34a;
+    box-shadow: 0 0.25rem 0.75rem rgba(22, 163, 74, 0.3);
+}
+
+/* ===== BOTÃO TOGGLE OFF ===== */
+.btn-toggle-off {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-toggle-off:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 0.25rem 0.75rem rgba(220, 38, 38, 0.3);
+}
+
+/* ===== BOTÃO EXCLUIR ===== */
+.btn-delete {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 0.25rem 0.75rem rgba(220, 38, 38, 0.3);
+}
+
+/* ===== BOTÃO DESABILITADO ===== */
+.btn-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ============================================
+   CARDS MOBILE - SERVIÇOS
+   ============================================ */
+
+.servicos-mobile-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.25rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.servico-card {
+    background: var(--bg-card, #ffffff);
+    border-radius: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 1px solid var(--border-color, #e5e7eb);
+    box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    transition: all 0.3s ease;
+}
+
+.servico-card:hover {
+    box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.servico-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.625rem;
+    padding-bottom: 0.625rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    gap: 0.5rem;
+}
+
+.servico-card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary, #1f2937);
+    flex: 1;
+    min-width: 0;
+}
+
+.servico-card-title .servico-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.servico-card-title .servico-nome {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.servico-card-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.25rem 0.75rem;
+    margin: 0.5rem 0 0.75rem 0;
+}
+
+.servico-card-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    padding: 0.25rem 0;
+}
+
+.servico-card-field.full-width {
+    grid-column: span 2;
+}
+
+.servico-card-field .field-label {
+    font-size: 0.625rem;
+    color: var(--text-muted, #6b7280);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.03rem;
+    font-weight: 600;
 }
 
-.data-table td {
-    padding: 10px 16px;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
-    vertical-align: middle;
+.servico-card-field .field-value {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--text-primary, #1f2937);
 }
 
-.data-table tbody tr:hover {
-    background: var(--bg-hover);
-}
-
-.data-table .valor {
+.servico-card-field .field-value.valor {
     font-weight: 700;
     color: #22c55e;
+    font-size: 0.9375rem;
 }
 
-/* ----- STATUS ----- */
+.servico-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin-top: 0.625rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+}
+
+.servico-card-actions .btn-action {
+    flex: 1;
+    justify-content: center;
+    min-width: 3.5rem;
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+}
+
+/* ============================================
+   STATUS BADGE
+   ============================================ */
 .status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 11px;
+    gap: 0.375rem;
+    padding: 0.25rem 0.875rem;
+    border-radius: 1.25rem;
+    font-size: 0.6875rem;
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .status-badge .dot {
-    width: 6px;
-    height: 6px;
+    width: 0.375rem;
+    height: 0.375rem;
     border-radius: 50%;
     display: inline-block;
 }
@@ -136,7 +316,6 @@
     background: rgba(34, 197, 94, 0.12);
     color: #22c55e;
 }
-
 .status-badge.ativo .dot {
     background: #22c55e;
 }
@@ -145,123 +324,309 @@
     background: rgba(239, 68, 68, 0.12);
     color: #ef4444;
 }
-
 .status-badge.inativo .dot {
     background: #ef4444;
 }
 
-/* ----- AÇÕES ----- */
-.actions-cell {
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
+/* ============================================
+   DURAÇÃO BADGE (DESKTOP)
+   ============================================ */
+.duracao-badge {
+    background: var(--bg-hover, #f3f4f6);
+    padding: 0.125rem 0.75rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary, #4b5563);
+    white-space: nowrap;
 }
 
-.btn-icon {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    padding: 6px 10px;
-    border-radius: 50%;
-    transition: var(--transition);
-    font-size: 15px;
-    color: var(--text-muted);
+/* ============================================
+   TABELA
+   ============================================ */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-.btn-icon:hover {
-    background: var(--bg-hover);
-    transform: scale(1.1);
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card, #ffffff);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    font-size: 0.875rem;
 }
 
-.btn-edit:hover {
-    background: rgba(102, 126, 234, 0.1);
-    color: var(--primary);
+.data-table thead {
+    background: var(--gradient, linear-gradient(135deg, #667eea, #764ba2));
 }
 
-.btn-toggle-on:hover {
-    background: rgba(34, 197, 94, 0.1);
+.data-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    color: var(--text-primary, #1f2937);
+    vertical-align: middle;
+}
+
+.data-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table .valor {
+    font-weight: 700;
     color: #22c55e;
 }
 
-.btn-toggle-off:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
+/* ============================================
+   MOBILE
+   ============================================ */
 
-.btn-delete:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
-}
-
-/* ----- MOBILE ----- */
-@media (max-width: 768px) {
+@media (max-width: 48rem) {
     .page-title {
-        font-size: 20px;
+        font-size: 1.25rem;
     }
 
     .servico-stats {
         grid-template-columns: repeat(3, 1fr);
-        gap: 6px;
+        gap: 0.375rem;
     }
 
     .stat-mini-value {
-        font-size: 16px;
+        font-size: 1rem;
     }
 
+    /* Tabela vira cards */
     .data-table thead {
         display: none;
     }
 
     .data-table tbody tr {
         display: block;
-        margin-bottom: 12px;
-        background: var(--bg-card);
-        border-radius: 16px;
-        border: 1px solid var(--border-color);
-        padding: 14px 16px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        margin-bottom: 0.75rem;
+        background: var(--bg-card, #ffffff);
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        padding: 1rem;
+        box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
     }
 
     .data-table tbody tr:hover {
-        background: var(--bg-card);
+        background: var(--bg-card, #ffffff);
+        box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
     }
 
     .data-table tbody td {
         display: flex;
         justify-content: space-between;
-        padding: 6px 0 !important;
-        border-bottom: 1px solid var(--border-color);
+        align-items: center;
+        padding: 0.375rem 0 !important;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
         background: transparent !important;
+        font-size: 0.8125rem;
     }
 
     .data-table tbody td:last-child {
         border-bottom: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
+        border-top: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    .data-table tbody td:last-child .actions-cell {
+        justify-content: center;
+    }
+
+    .data-table tbody td:last-child .btn-action {
+        flex: 1;
+        justify-content: center;
     }
 
     .data-table tbody td::before {
         content: attr(data-label);
         font-weight: 600;
-        color: var(--text-muted);
-        font-size: 11px;
+        color: var(--text-muted, #6b7280);
+        font-size: 0.6875rem;
         text-transform: uppercase;
+        letter-spacing: 0.01875rem;
+        flex-shrink: 0;
     }
 
     .data-table tbody td .valor {
-        font-size: 14px;
+        font-size: 0.875rem;
+    }
+
+    /* Botões maiores para toque */
+    .btn-action {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.8125rem;
+        min-height: 2.75rem;
+        min-width: 4rem;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .btn-action i {
+        font-size: 0.9375rem;
     }
 
     .actions-cell {
-        justify-content: flex-end;
-        gap: 8px;
+        gap: 0.375rem;
+    }
+
+    .servico-card-body {
+        grid-template-columns: 1fr 1fr;
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 30rem) {
     .servico-stats {
         grid-template-columns: repeat(2, 1fr);
     }
 
-    .data-table tbody tr {
-        padding: 12px;
+    .servico-card-body {
+        grid-template-columns: 1fr;
+        gap: 0.125rem;
+    }
+
+    .servico-card-field.full-width {
+        grid-column: span 1;
+    }
+
+    .data-table tbody td:last-child .actions-cell {
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+
+    .data-table tbody td:last-child .btn-action {
+        width: 100%;
+        justify-content: center;
+        padding: 0.625rem;
+        min-height: 3rem;
+    }
+
+    .btn-action {
+        padding: 0.625rem;
+        min-height: 3rem;
+        font-size: 0.875rem;
+    }
+
+    .servico-card-actions {
+        flex-direction: column;
+    }
+
+    .servico-card-actions .btn-action {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* ============================================
+   TOOLTIP / DICA DOS BOTÕES
+   ============================================ */
+.btn-action[title] {
+    position: relative;
+}
+
+.btn-action[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--text-primary, #1f2937);
+    color: #ffffff;
+    padding: 0.25rem 0.625rem;
+    border-radius: 0.25rem;
+    font-size: 0.625rem;
+    font-weight: 500;
+    white-space: nowrap;
+    z-index: 10;
+    box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
+}
+
+.btn-action[title]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: calc(100% + 0.25rem);
+    left: 50%;
+    transform: translateX(-50%);
+    border: 0.375rem solid transparent;
+    border-top-color: var(--text-primary, #1f2937);
+    z-index: 10;
+}
+
+/* ============================================
+   ANIMAÇÕES DOS BOTÕES
+   ============================================ */
+.btn-action {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-action::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(0);
+    border-radius: 50%;
+    transition: transform 0.5s ease;
+}
+
+.btn-action:active::after {
+    transform: scale(2);
+}
+
+/* ============================================
+   TOUCH DEVICES - DESABILITAR HOVERS
+   ============================================ */
+@media (hover: none) {
+    .btn-action:hover {
+        transform: none !important;
+        box-shadow: none !important;
+    }
+
+    .btn-action:active {
+        transform: scale(0.95);
+    }
+
+    .stat-mini:hover {
+        transform: none !important;
+    }
+
+    .data-table tbody tr:hover {
+        background: transparent;
+    }
+
+    .servico-card:hover {
+        box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    }
+
+    .btn-action[title]:hover::after,
+    .btn-action[title]:hover::before {
+        display: none;
     }
 }

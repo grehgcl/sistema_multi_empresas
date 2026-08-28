@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
@@ -9,23 +9,12 @@
     <meta name="format-detection" content="telephone=no">
     <title>See&Agende - Gestão para Salões, Barbearias e Estéticas</title>
 
-    <!-- ============================================ -->
-    <!-- PWA CONFIG - MANIFEST E ÍCONES -->
-    <!-- ============================================ -->
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#667eea">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
-
-    <!-- ============================================ -->
     <!-- CSS GLOBAL -->
-    <!-- ============================================ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
     <link id="landing-css" rel="stylesheet" href="/css/pages/landing.css?v=1">
 
-    <!-- CSS DA PÁGINA (CARREGADO VIA JS) -->
+    <!-- CSS DA PÁGINA (CARREGADO VIA JS) - 🔥 ADICIONADO -->
     <link id="page-css" rel="stylesheet" href="">
 
     <!-- AOS ANIMAÇÕES -->
@@ -37,9 +26,6 @@
 
 <body>
 
-    <!-- ============================================ -->
-    <!-- LANDING PAGE                                -->
-    <!-- ============================================ -->
     <div id="landingContainer" class="landing-split">
         <div class="landing-left">
             <div class="landing-content">
@@ -70,9 +56,6 @@
             </div>
         </div>
         <div class="landing-right">
-            <!-- ============================================ -->
-            <!-- LOGIN                                       -->
-            <!-- ============================================ -->
             <div id="loginContainer" class="auth-container active">
                 <div class="auth-box">
                     <div class="auth-header">
@@ -111,10 +94,6 @@
                     </div>
                 </div>
             </div>
-
-            <!-- ============================================ -->
-            <!-- CADASTRO                                    -->
-            <!-- ============================================ -->
             <div id="cadastroContainer" class="auth-container" style="display:none">
                 <div class="auth-box">
                     <div class="auth-header">
@@ -151,7 +130,7 @@
                     </div>
                     <small
                         style="color:var(--text-muted);font-size:10px;display:block;margin-top:-8px;margin-bottom:8px;padding-left:40px;">
-                        ⚠️ Obrigatório para receber notificações do WhatsApp
+                        📱 Obrigatório para receber notificações do WhatsApp
                     </small>
                     <div class="auth-terms">
                         <label>
@@ -177,9 +156,6 @@
         </div>
     </div>
 
-    <!-- ============================================ -->
-    <!-- APP PRINCIPAL                               -->
-    <!-- ============================================ -->
     <div id="app" class="app" style="display:none">
         <div class="header header-glass">
             <h2><i class="fas fa-eye"></i> See&Agende</h2>
@@ -190,6 +166,7 @@
             </div>
         </div>
 
+        <!-- 🔥 BOTÃO HAMBURGUER - SÓ DENTRO DO APP -->
         <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
             <i class="fas fa-bars"></i>
         </button>
@@ -202,9 +179,6 @@
         </div>
     </div>
 
-    <!-- ============================================ -->
-    <!-- MODALS                                      -->
-    <!-- ============================================ -->
     <!-- MODAL CLIENTE -->
     <div id="modalCliente" class="modal">
         <div class="modal-content glass">
@@ -277,25 +251,30 @@
         </div>
     </div>
 
+
     <canvas id="particlesCanvas"
         style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1;"></canvas>
 
-    <!-- ============================================ -->
-    <!-- SCRIPTS                                     -->
-    <!-- ============================================ -->
+    <!-- ============================================
+    SCRIPTS
+    ============================================ -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
+    <!-- UI PRIMEIRO (contém carregarCSS) -->
     <script src="/js/ui.js"></script>
-    <script src="/js/ui.js?v=20260804"></script>
-    <script src="/js/pages/dashboard.js?v=20260822c"></script>
-    <script src="/js/pages/clientes.js?v=20260804"></script>
-    <script src="/js/pages/agendamentos.js?v=20260804"></script>
-    <script src="/js/pages/financeiro.js?v=20260804"></script>
-    <script src="/js/pages/empresas.js?v=20260804"></script>
-    <script src="/js/pages/configuracoes.js?v=20260804"></script>
-    <script src="/js/pages/servicos.js?v=20260804"></script>
-    <script src="/js/pages/planos.js?v=20260804"></script>
-    <script src="/js/pages/whatsapp-config.js?v=20260804"></script>
+
+    <!-- PÁGINAS -->
+    <script src="/js/pages/dashboard.js?v=20260731"></script>
+    <script src="/js/pages/dashboard-profissional.js"></script>
+    <script src="/js/pages/clientes.js"></script>
+    <script src="/js/pages/agendamentos.js?v=20260731"></script>
+    <script src="/js/pages/agendamentos-profissional.js"></script>
+    <script src="/js/pages/financeiro.js"></script>
+    <script src="/js/pages/empresas.js"></script>
+    <script src="/js/pages/configuracoes.js"></script>
+    <script src="/js/pages/servicos.js"></script>
+    <script src="/js/pages/planos.js"></script>
+    <script src="/js/pages/whatsapp-config.js"></script>
 
     <script>
         AOS.init({ duration: 800, once: true });
@@ -303,6 +282,10 @@
         let token = null;
         let usuario = null;
 
+        // ========== PARTÍCULAS ANIMADAS ==========
+        // ... (mantenha o código das partículas)
+
+        // ========== TOGGLE PASSWORD ==========
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
             const toggleBtn = input.parentElement.querySelector('.toggle-pwd');
@@ -316,16 +299,19 @@
             }
         }
 
+        // ========== TOGGLE MOBILE MENU ==========
         function toggleMobileMenu() {
             document.getElementById('sidebar').classList.toggle('open');
             document.querySelector('.sidebar-overlay').classList.toggle('active');
         }
 
+        // ========== FECHAR MODAL ==========
         function fecharModal(modalId) {
             const modal = document.getElementById(modalId);
             if (modal) modal.style.display = 'none';
         }
 
+        // ========== MODAL CLIENTE ==========
         function abrirModalCliente() {
             const modal = document.getElementById('modalCliente');
             if (modal) {
@@ -343,8 +329,9 @@
             if (modal) modal.style.display = 'none';
         }
 
+        // ========== AÇÕES RÁPIDAS ==========
         function abrirModalAgendamentoRapido() {
-            console.log('⚡ Ação rápida: Novo Agendamento');
+            console.log('🔄 Ação rápida: Novo Agendamento');
             if (typeof window.abrirModalAgendamentoDono === 'function') {
                 if (typeof window.carregarDadosAgendamento === 'function') {
                     window.carregarDadosAgendamento().then(() => {
@@ -368,7 +355,7 @@
         }
 
         function abrirModalClienteRapido() {
-            console.log('⚡ Ação rápida: Novo Cliente');
+            console.log('🔄 Ação rápida: Novo Cliente');
             if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalClienteRapido) {
                 window.abrirModalCliente();
                 return;
@@ -376,6 +363,7 @@
             abrirModalCliente();
         }
 
+        // ========== AUTH ==========
         async function fazerLogin() {
             const email = document.getElementById('loginEmail').value;
             const senha = document.getElementById('loginSenha').value;
@@ -389,51 +377,23 @@
                 });
                 const data = await res.json();
                 hideLoading();
-
-                console.log('📥 Resposta do login:', data);
-
                 if (data.success) {
-                    const token = data.token || data.data?.token;
-                    const usuarioData = data.data?.usuario || data.data;
-
-                    console.log('🔑 Token encontrado:', token);
-                    console.log('👤 Usuario encontrado:', usuarioData);
-
-                    if (!token || token === 'undefined') {
-                        console.error('❌ Token inválido:', token);
-                        showToast('Erro: token não recebido', 'error');
-                        return;
-                    }
-
-                    if (!usuarioData || !usuarioData.nome) {
-                        console.error('❌ Usuário inválido:', usuarioData);
-                        showToast('Erro: dados do usuário incompletos', 'error');
-                        return;
-                    }
-
-                    window.token = token;
-                    window.usuario = usuarioData;
-
+                    token = data.data.token;
+                    usuario = data.data.usuario;
                     localStorage.setItem('token', token);
-                    localStorage.setItem('usuario', JSON.stringify(usuarioData));
-
+                    localStorage.setItem('usuario', JSON.stringify(usuario));
                     if (document.getElementById('rememberMe').checked) {
                         localStorage.setItem('rememberEmail', email);
                     } else {
                         localStorage.removeItem('rememberEmail');
                     }
-
-                    console.log('✅ Token salvo:', localStorage.getItem('token'));
-                    console.log('✅ Usuario salvo:', localStorage.getItem('usuario'));
-                    console.log('✅ Usuario global:', window.usuario);
-
-                    showToast('Login realizado com sucesso!', 'success');
-
+                    // 🔥 USAR A FUNÇÃO DO UI.JS
                     if (typeof window.mostrarApp === 'function') {
                         window.mostrarApp();
                     } else {
                         mostrarApp();
                     }
+                    showToast('Login realizado com sucesso!', 'success');
                 } else {
                     document.getElementById('loginMessage').innerHTML = data.message;
                     document.getElementById('loginMessage').style.display = 'block';
@@ -441,102 +401,76 @@
                 }
             } catch (error) {
                 hideLoading();
-                console.error('❌ Erro no login:', error);
                 showToast('Erro ao fazer login', 'error');
             }
         }
 
-        // ============================================
-        // FAZER CADASTRO - VERSÃO CORRIGIDA
-        // ============================================
+        async function fazerCadastro() {
+            const nome = document.getElementById('cadastroNome').value;
+            const email = document.getElementById('cadastroEmail').value;
+            const senha = document.getElementById('cadastroSenha').value;
+            const empresa_nome = document.getElementById('cadastroEmpresa').value;
+            const telefone = document.getElementById('cadastroTelefone').value;
+            const acceptTerms = document.getElementById('acceptTerms').checked;
 
-        function fazerCadastro() {
-            const nome = document.getElementById('cadastroNome')?.value?.trim();
-            const email = document.getElementById('cadastroEmail')?.value?.trim();
-            const senha = document.getElementById('cadastroSenha')?.value;
-            const empresa_nome = document.getElementById('cadastroEmpresa')?.value?.trim();
-            const telefone = document.getElementById('cadastroTelefone')?.value?.trim();
-
-            console.log('📝 Tentando cadastro...');
-
-            // Validação
             if (!nome || !email || !senha || !empresa_nome || !telefone) {
-                showToast('⚠️ Preencha todos os campos', 'warning');
+                showToast('Preencha todos os campos obrigatórios (incluindo telefone)', 'warning');
                 return;
             }
 
             if (senha.length < 6) {
-                showToast('⚠️ A senha deve ter pelo menos 6 caracteres', 'warning');
+                showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
+                return;
+            }
+
+            if (!acceptTerms) {
+                showToast('Aceite os Termos de Uso para continuar', 'warning');
                 return;
             }
 
             const telefoneLimpo = telefone.replace(/\D/g, '');
             if (telefoneLimpo.length < 10) {
-                showToast('⚠️ Telefone inválido (mínimo 10 dígitos)', 'warning');
+                showToast('Digite um telefone válido (ex: 41999999999)', 'warning');
                 return;
             }
 
-            // Mostrar loading
-            const btn = document.querySelector('#cadastroContainer button[type="button"]');
-            const originalText = btn?.textContent || 'Cadastrar';
-            if (btn) {
-                btn.disabled = true;
-                btn.textContent = '⏳ Cadastrando...';
-            }
-
-            fetch('/api/auth/cadastro', {
+            showLoading();
+            try {
+                const res = await fetch('/api/auth/cadastro', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        nome: nome,
-                        email: email,
-                        senha: senha,
-                        empresa_nome: empresa_nome,
+                        nome,
+                        email,
+                        senha,
+                        empresa_nome,
                         telefone: telefoneLimpo
                     })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('📥 Resposta do cadastro:', data);
-
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent = originalText;
-                    }
-
-                    if (!data.success) {
-                        showToast(data.message || '❌ Erro ao cadastrar', 'error');
-                        return;
-                    }
-
-                    showToast('✅ Cadastro realizado com sucesso! Faça login.', 'success');
-
-                    // 🔥 CORREÇÃO: Redirecionar para login (NÃO tentar login automático)
-                    setTimeout(() => {
-                        // Ir para tela de login
-                        document.getElementById('loginContainer').style.display = 'block';
-                        document.getElementById('cadastroContainer').style.display = 'none';
-
-                        // Preencher email automaticamente
-                        const loginEmail = document.getElementById('loginEmail');
-                        if (loginEmail) {
-                            loginEmail.value = email;
-                        }
-
-                        showToast('✅ Cadastro realizado! Faça login.', 'success');
-                    }, 1500);
-
-                })
-                .catch(error => {
-                    console.error('❌ Erro no cadastro:', error);
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent = originalText;
-                    }
-                    showToast('❌ Erro ao conectar com o servidor', 'error');
                 });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    document.getElementById('cadastroMessage').className = 'success-message';
+                    document.getElementById('cadastroMessage').innerHTML = '✅ ' + data.message;
+                    document.getElementById('cadastroMessage').style.display = 'block';
+                    showToast(data.message, 'success');
+                    setTimeout(() => {
+                        if (typeof window.mostrarLogin === 'function') {
+                            window.mostrarLogin();
+                        } else {
+                            mostrarLogin();
+                        }
+                    }, 3000);
+                } else {
+                    document.getElementById('cadastroMessage').className = 'error-message';
+                    document.getElementById('cadastroMessage').innerHTML = data.message;
+                    document.getElementById('cadastroMessage').style.display = 'block';
+                    showToast(data.message, 'error');
+                }
+            } catch (error) {
+                hideLoading();
+                showToast('Erro ao cadastrar', 'error');
+            }
         }
 
         function logout() {
@@ -544,6 +478,7 @@
             token = null;
             usuario = null;
             showToast('Logout realizado com sucesso!', 'info');
+            // 🔥 USAR A FUNÇÃO DO UI.JS
             if (typeof window.mostrarLanding === 'function') {
                 window.mostrarLanding();
             } else {
@@ -556,43 +491,21 @@
             }
         }
 
+        // ========== MENU ==========
         function carregarMenu() {
-            const usuarioStr = localStorage.getItem('usuario');
-            const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
-
-            console.log('📋 Carregando menu para:', usuario?.nome);
-            console.log('🔍 Role:', usuario?.role);
-
             const sidebar = document.getElementById('sidebar');
-
-            if (!usuario) {
-                console.warn('⚠️ Nenhum usuário encontrado');
-                sidebar.innerHTML = '';
-                return;
-            }
-
-            const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
-            const isProfissional = usuario.role === 'profissional';
-            const isDono = usuario.role === 'dono';
-
-            console.log('🔍 isSuperAdmin:', isSuperAdmin);
-            console.log('🔍 isDono:', isDono);
-
             let botoes = [];
-
-            if (isSuperAdmin) {
+            if (usuario.role === 'superadmin') {
                 botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
-                    { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
-                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-                    { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
+                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardSuperAdmin' }
                 ];
-            } else if (isProfissional) {
+            } else if (usuario.role === 'profissional') {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboardProfissional' },
-                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' }
+                    { id: 'agendamentos', nome: 'Meus Agendamentos', icone: 'fa-calendar-alt', funcao: 'carregarAgendamentosProfissional' },
+                    { id: 'financeiro', nome: 'Minhas Comissões', icone: 'fa-coins', funcao: 'carregarFinanceiro' }
                 ];
-            } else if (isDono) {
+            } else {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-line', funcao: 'carregarDashboard' },
                     { id: 'agendamentos', nome: 'Agendamentos', icone: 'fa-calendar-check', funcao: 'carregarAgendamentos' },
@@ -600,28 +513,14 @@
                     { id: 'financeiro', nome: 'Financeiro', icone: 'fa-coins', funcao: 'carregarFinanceiro' },
                     { id: 'clientes', nome: 'Clientes', icone: 'fa-users', funcao: 'carregarClientes' },
                     { id: 'configuracoes', nome: 'Configurações', icone: 'fa-gear', funcao: 'carregarConfiguracoes' },
-                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-                    { id: 'planos', nome: 'Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
+                    { id: 'whatsapp', nome: '📱 WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarConfigWhatsApp' },
+                    { id: 'planos', nome: '💎 Planos', icone: 'fa-gem', funcao: 'carregarPlanos' }
                 ];
             }
 
-            // 🔥 GERAR O HTML DO MENU COM O INDICADOR
-            sidebar.innerHTML = botoes.map(b => {
-                // 🔥 ADICIONAR O INDICADOR APENAS PARA WHATSAPP
-                let indicador = '';
-                if (b.id === 'whatsapp') {
-                    indicador = `<span id="whatsappStatusIndicator" class="status-dot offline"></span>`;
-                }
-                return `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome} ${indicador}</button>`;
-            }).join('');
-
-            // Ativar o botão da página atual
-            const urlParams = new URLSearchParams(window.location.search);
-            const page = urlParams.get('page') || 'dashboard';
-            ativarBotao(page);
-
-            console.log('✅ Menu carregado com sucesso!');
-            console.log('🔍 Elemento WhatsApp:', document.getElementById('whatsappStatusIndicator'));
+            sidebar.innerHTML = botoes.map(b =>
+                `<button onclick="executarAcao('${b.funcao}', '${b.id}')" id="btn${b.id}"><i class="fas ${b.icone}"></i> ${b.nome}</button>`
+            ).join('');
         }
 
         function ativarBotao(id) {
@@ -630,61 +529,37 @@
             if (btn) btn.classList.add('active');
         }
 
+        // ========== MOSTRAR APP ==========
         function mostrarApp() {
-            const usuarioStr = localStorage.getItem('usuario');
-            const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
-
-            console.log('📱 Mostrando app...', usuario);
-
-            if (!usuario || !usuario.nome) {
-                console.warn('⚠️ Usuário inválido, redirecionando para login');
-                localStorage.removeItem('token');
-                localStorage.removeItem('usuario');
-                mostrarLanding();
-                mostrarLogin();
-                return;
-            }
-
             document.getElementById('landingContainer').style.display = 'none';
             document.getElementById('app').style.display = 'block';
-
-            const userNameEl = document.getElementById('userName');
-            const userBadgeEl = document.getElementById('userBadge');
-
-            if (userNameEl) {
-                userNameEl.textContent = '👤 ' + (usuario?.nome || 'Usuário');
+            document.getElementById('userName').innerHTML = '👋 ' + usuario.nome;
+            if (usuario.role === 'superadmin') {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
+            } else if (usuario.role === 'profissional') {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
+            } else {
+                document.getElementById('userBadge').innerHTML = '<span class="badge-dono">🟠 Proprietário</span>';
             }
-
-            if (userBadgeEl) {
-                const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
-                if (isSuperAdmin) {
-                    userBadgeEl.innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
-                } else if (usuario?.role === 'profissional') {
-                    userBadgeEl.innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
-                } else {
-                    userBadgeEl.innerHTML = '<span class="badge-dono">🟠 Proprietário</span>';
-                }
-            }
-
             carregarMenu();
-
-            const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
-            if (isSuperAdmin) {
-                if (typeof carregarDashboard === 'function') carregarDashboard();
-            } else if (usuario?.role === 'profissional') {
+            if (usuario.role === 'profissional') {
                 if (typeof carregarDashboardProfissional === 'function') carregarDashboardProfissional();
+            } else if (usuario.role === 'superadmin') {
+                if (typeof carregarDashboardSuperAdmin === 'function') carregarDashboardSuperAdmin();
             } else {
                 if (typeof carregarDashboard === 'function') carregarDashboard();
             }
         }
 
-        window.onclick = function(event) {
+        // ========== FECHAR MODAL AO CLICAR FORA ==========
+        window.onclick = function (event) {
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = 'none';
             }
         };
 
-        document.addEventListener('keydown', function(event) {
+        // ========== ENTER KEY ==========
+        document.addEventListener('keydown', function (event) {
             if (event.key === 'Enter') {
                 if (document.getElementById('loginContainer').style.display !== 'none') {
                     fazerLogin();
@@ -694,7 +569,8 @@
             }
         });
 
-        document.addEventListener('keydown', function(event) {
+        // ========== FECHAR MODAIS COM ESC ==========
+        document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 document.querySelectorAll('.modal').forEach(modal => {
                     modal.style.display = 'none';
@@ -702,17 +578,18 @@
             }
         });
 
-        document.addEventListener('DOMContentLoaded', function() {
+        // ========== CORREÇÃO: CONECTAR O FORMULÁRIO DE CLIENTE ==========
+        document.addEventListener('DOMContentLoaded', function () {
             console.log('🔧 Configurando formulário de cliente...');
             const form = document.getElementById('formCliente');
             if (form) {
                 console.log('✅ Formulário de cliente encontrado!');
                 const newForm = form.cloneNode(true);
                 form.parentNode.replaceChild(newForm, form);
-                newForm.addEventListener('submit', function(e) {
+                newForm.addEventListener('submit', function (e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('📝 Formulário de cliente submetido!');
+                    console.log('🔄 Formulário de cliente submetido!');
                     if (typeof window.salvarCliente === 'function') {
                         window.salvarCliente();
                     } else {
@@ -726,6 +603,7 @@
             }
         });
 
+        // ========== INIT ==========
         const savedToken = localStorage.getItem('token');
         const savedUsuario = localStorage.getItem('usuario');
         const savedEmail = localStorage.getItem('rememberEmail');
@@ -734,15 +612,17 @@
             document.getElementById('rememberMe').checked = true;
         }
 
+        // ========== TEMA ESCURO POR PADRÃO ==========
         const temaSalvo = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', temaSalvo);
         localStorage.setItem('theme', temaSalvo);
 
         if (savedToken && savedUsuario) {
             token = savedToken;
-            usuario = savedUsuario && savedUsuario !== 'undefined' ? JSON.parse(savedUsuario) : null;
+            usuario = JSON.parse(savedUsuario);
             mostrarApp();
         } else {
+            // 🔥 USAR A FUNÇÃO DO UI.JS
             if (typeof window.mostrarLanding === 'function') {
                 window.mostrarLanding();
             } else {
@@ -754,26 +634,8 @@
                 mostrarLogin();
             }
         }
-        console.log('✅ index.html versão: 2026-08-13-v3');
     </script>
 
-    <!-- ============================================ -->
-    <!-- REGISTRAR SERVICE WORKER (PWA)              -->
-    <!-- ============================================ -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                        console.log('✅ Service Worker registrado com sucesso!');
-                        console.log('📱 PWA instalado no navegador!');
-                    })
-                    .catch(function(error) {
-                        console.log('❌ Erro ao registrar Service Worker:', error);
-                    });
-            });
-        }
-    </script>
 
 </body>
 

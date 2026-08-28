@@ -229,7 +229,7 @@ function controlarMenu() {
 }
 
 // ============================================
-// FORÇAR CORES DO HEADER - VERSÃO SEGURA
+// FORÇAR CORES DO HEADER - VERSÃO CORRIGIDA
 // ============================================
 function forcarCoresHeader() {
     try {
@@ -256,18 +256,17 @@ function forcarCoresHeader() {
             }
 
             if (usuario && usuario.role === 'superadmin') {
-                userBadgeEl.innerHTML = '<span style="color:#ef4444;background:rgba(239,68,68,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔴 SUPER ADMIN</span>';
+                userBadgeEl.innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
             } else if (usuario && usuario.role === 'profissional') {
-                userBadgeEl.innerHTML = '<span style="color:#667eea;background:rgba(102,126,234,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🔵 PROFISSIONAL</span>';
+                userBadgeEl.innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
             } else {
-                userBadgeEl.innerHTML = '<span style="color:#f59e0b;background:rgba(245,158,11,0.15);padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;">🟠 Proprietário</span>';
+                userBadgeEl.innerHTML = '<span class="badge-dono">🟠 Proprietário</span>';
             }
         }
     } catch (error) {
         console.warn('⚠️ Erro no forcarCoresHeader:', error);
     }
 }
-
 // ============================================
 // FORMATAR DATA (CORRIGIDO)
 // ============================================
@@ -424,37 +423,28 @@ async function atualizarStatusWhatsApp() {
 // INICIAR MONITORAMENTO DO WHATSAPP
 // ============================================
 function iniciarMonitoramentoWhatsApp() {
-    let tentativas = 0;
-    const maxTentativas = 15;
-    
-    function verificarERodar() {
-        const indicator = document.getElementById('whatsappStatusIndicator');
-        if (indicator) {
-            console.log('✅ Elemento WhatsApp encontrado, iniciando monitoramento...');
-            // Verificar token antes de chamar
-            const token = localStorage.getItem('token');
-            if (!token) {
-                console.warn('⚠️ Token não encontrado, aguardando...');
-                setTimeout(verificarERodar, 1000);
-                return;
-            }
-            atualizarStatusWhatsApp();
-            if (window.whatsappInterval) {
-                clearInterval(window.whatsappInterval);
-            }
-            window.whatsappInterval = setInterval(atualizarStatusWhatsApp, 30000);
-        } else {
-            tentativas++;
-            if (tentativas < maxTentativas) {
-                console.log(`⏳ Aguardando menu carregar... (${tentativas}/${maxTentativas})`);
-                setTimeout(verificarERodar, 500);
-            } else {
-                console.warn('⚠️ Elemento WhatsApp não encontrado após várias tentativas');
-            }
-        }
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+
+    // 🔥 SE FOR SUPER ADMIN, NÃO FICAR MONITORANDO (EVITA 401)
+    if (isSuperAdmin) {
+        console.log('👑 Super Admin: monitoramento WhatsApp desativado');
+        return;
     }
-    
-    verificarERodar();
+
+    // Só monitora se for Dono
+    if (usuario.role === 'dono') {
+        console.log('📱 Iniciando monitoramento WhatsApp para Dono');
+        
+        // Verificar e rodar imediatamente
+        verificarERodar();
+
+        // Configurar intervalo (a cada 30 segundos)
+        if (window.whatsappInterval) {
+            clearInterval(window.whatsappInterval);
+        }
+        window.whatsappInterval = setInterval(verificarERodar, 30000);
+    }
 }
 
 // ============================================

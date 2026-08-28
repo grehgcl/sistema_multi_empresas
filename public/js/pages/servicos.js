@@ -70,7 +70,6 @@ async function carregarServicos() {
 
     document.getElementById('content').innerHTML = html;
 
-    // 🔥 ESPERA O DOM CARREGAR E DEPOIS CARREGA OS SERVIÇOS
     setTimeout(() => {
         carregarListaServicos();
     }, 100);
@@ -99,13 +98,10 @@ async function carregarListaServicos() {
 
         if (result.success) {
             listaServicosGlobal = result.data;
-
-            // 🔥 FORÇA A DETECÇÃO DE MOBILE
             const isMobile = window.innerWidth < 768 || window.screen.width < 768;
 
             console.log('📱 Modo mobile:', isMobile);
             console.log('📊 Total de serviços:', listaServicosGlobal.length);
-            console.log('📋 Serviços:', listaServicosGlobal);
 
             // Atualizar estatísticas
             const total = listaServicosGlobal.length;
@@ -134,11 +130,11 @@ async function carregarListaServicos() {
 
             if (isMobile) {
                 // ============================================
-                // VERSÃO MOBILE - CARDS
+                // VERSÃO MOBILE - CARDS COM CLASSES CSS
                 // ============================================
                 console.log('📱 Renderizando MOBILE - Cards');
 
-                html = `<div style="display:flex;flex-direction:column;gap:10px;">`;
+                html = `<div class="servicos-mobile-container">`;
 
                 for (let s of listaServicosGlobal) {
                     const isAtivo = (s.ativo == 1 || s.ativo == true);
@@ -147,141 +143,42 @@ async function carregarListaServicos() {
                     const valorFormatado = (parseFloat(s.valor) || 0).toFixed(2);
 
                     html += `
-                        <div style="
-                            background: var(--bg-card);
-                            border-radius: 16px;
-                            padding: 16px;
-                            border: 1px solid var(--border-color);
-                            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-                            transition: all 0.3s ease;
-                        ">
-                            <!-- Header -->
-                            <div style="
-                                display: flex;
-                                justify-content: space-between;
-                                align-items: center;
-                                margin-bottom: 10px;
-                                padding-bottom: 10px;
-                                border-bottom: 1px solid var(--border-color);
-                            ">
-                                <div style="
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 8px;
-                                    font-size: 16px;
-                                    font-weight: 600;
-                                    color: var(--text-primary);
-                                ">
-                                    <span style="font-size: 20px;">✂️</span>
-                                    <span>${escapeHtml(s.nome)}</span>
+                        <div class="servico-card">
+                            <div class="servico-card-header">
+                                <div class="servico-card-title">
+                                    <span class="servico-icon">✂️</span>
+                                    <span class="servico-nome">${escapeHtml(s.nome)}</span>
                                 </div>
-                                <span style="
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 4px;
-                                    padding: 4px 12px;
-                                    border-radius: 9999px;
-                                    font-size: 11px;
-                                    font-weight: 600;
-                                    background: ${isAtivo ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};
-                                    color: ${isAtivo ? '#22c55e' : '#ef4444'};
-                                ">
-                                    <span style="
-                                        width: 6px;
-                                        height: 6px;
-                                        border-radius: 50%;
-                                        display: inline-block;
-                                        background: ${isAtivo ? '#22c55e' : '#ef4444'};
-                                    "></span>
+                                <span class="status-badge ${statusClass}">
+                                    <span class="dot"></span>
                                     ${statusLabel}
                                 </span>
                             </div>
 
-                            <!-- Body -->
-                            <div style="
-                                display: grid;
-                                grid-template-columns: 1fr 1fr;
-                                gap: 4px 12px;
-                                margin: 8px 0 12px 0;
-                            ">
-                                <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;">
-                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">📝 Descrição</span>
-                                    <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${escapeHtml(s.descricao || '-')}</span>
+                            <div class="servico-card-body">
+                                <div class="servico-card-field">
+                                    <span class="field-label">📝 Descrição</span>
+                                    <span class="field-value">${escapeHtml(s.descricao || '-')}</span>
                                 </div>
-                                <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;">
-                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">💰 Valor</span>
-                                    <span style="font-size:13px;font-weight:700;color:var(--primary);">R$ ${valorFormatado}</span>
+                                <div class="servico-card-field">
+                                    <span class="field-label">💰 Valor</span>
+                                    <span class="field-value valor">R$ ${valorFormatado}</span>
                                 </div>
-                                <div style="display:flex;flex-direction:column;gap:2px;padding:4px 0;grid-column: span 2;">
-                                    <span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">⏱️ Duração</span>
-                                    <span style="font-size:13px;font-weight:500;color:var(--text-primary);">${s.duracao || 30} minutos</span>
+                                <div class="servico-card-field full-width">
+                                    <span class="field-label">⏱️ Duração</span>
+                                    <span class="field-value">${s.duracao || 30} minutos</span>
                                 </div>
                             </div>
 
-                            <!-- Actions -->
-                            <div style="
-                                display: flex;
-                                gap: 6px;
-                                flex-wrap: wrap;
-                                padding-top: 10px;
-                                border-top: 1px solid var(--border-color);
-                            ">
-                                <button onclick="editarServico(${s.id})" style="
-                                    padding: 6px 14px;
-                                    border-radius: 10px;
-                                    border: 1px solid rgba(102,126,234,0.3);
-                                    background: var(--bg-hover);
-                                    color: var(--primary);
-                                    font-size: 12px;
-                                    font-weight: 500;
-                                    cursor: pointer;
-                                    transition: all 0.3s ease;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 4px;
-                                    flex: 1;
-                                    justify-content: center;
-                                    min-width: 60px;
-                                ">
+                            <div class="servico-card-actions">
+                                <button class="btn-action btn-edit" onclick="editarServico(${s.id})">
                                     <i class="fas fa-pen"></i> Editar
                                 </button>
-                                <button onclick="toggleServico(${s.id})" style="
-                                    padding: 6px 14px;
-                                    border-radius: 10px;
-                                    border: 1px solid ${isAtivo ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'};
-                                    background: var(--bg-hover);
-                                    color: ${isAtivo ? '#22c55e' : '#ef4444'};
-                                    font-size: 12px;
-                                    font-weight: 500;
-                                    cursor: pointer;
-                                    transition: all 0.3s ease;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 4px;
-                                    flex: 1;
-                                    justify-content: center;
-                                    min-width: 60px;
-                                ">
+                                <button class="btn-action ${isAtivo ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})">
                                     <i class="fas ${isAtivo ? 'fa-toggle-on' : 'fa-toggle-off'}"></i> 
                                     ${isAtivo ? 'Desativar' : 'Ativar'}
                                 </button>
-                                <button onclick="excluirServico(${s.id})" style="
-                                    padding: 6px 14px;
-                                    border-radius: 10px;
-                                    border: 1px solid rgba(239,68,68,0.3);
-                                    background: var(--bg-hover);
-                                    color: #ef4444;
-                                    font-size: 12px;
-                                    font-weight: 500;
-                                    cursor: pointer;
-                                    transition: all 0.3s ease;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    gap: 4px;
-                                    flex: 1;
-                                    justify-content: center;
-                                    min-width: 60px;
-                                ">
+                                <button class="btn-action btn-delete" onclick="excluirServico(${s.id}, '${escapeHtml(s.nome)}')">
                                     <i class="fas fa-trash"></i> Excluir
                                 </button>
                             </div>
@@ -292,7 +189,7 @@ async function carregarListaServicos() {
 
             } else {
                 // ============================================
-                // VERSÃO DESKTOP - TABELA
+                // VERSÃO DESKTOP - TABELA COM CLASSES CSS
                 // ============================================
                 console.log('💻 Renderizando DESKTOP - Tabela');
 
@@ -315,7 +212,7 @@ async function carregarListaServicos() {
                                         <td><strong>${escapeHtml(s.nome)}</strong></td>
                                         <td>${escapeHtml(s.descricao || '-')}</td>
                                         <td><span class="valor">R$ ${(parseFloat(s.valor) || 0).toFixed(2)}</span></td>
-                                        <td><span style="background:var(--bg-hover);padding:2px 12px;border-radius:12px;font-size:12px;font-weight:600;">${s.duracao || 30} min</span></td>
+                                        <td><span class="duracao-badge">${s.duracao || 30} min</span></td>
                                         <td>
                                             <span class="status-badge ${(s.ativo == 1 || s.ativo == true) ? 'ativo' : 'inativo'}">
                                                 <span class="dot"></span>
@@ -324,14 +221,14 @@ async function carregarListaServicos() {
                                         </td>
                                         <td>
                                             <div class="actions-cell">
-                                                <button class="btn-icon btn-edit" onclick="editarServico(${s.id})" title="Editar">
-                                                    <i class="fas fa-pen"></i>
+                                                <button class="btn-action btn-edit" onclick="editarServico(${s.id})" title="Editar">
+                                                    <i class="fas fa-pen"></i> Editar
                                                 </button>
-                                                <button class="btn-icon ${(s.ativo == 1 || s.ativo == true) ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})" title="${(s.ativo == 1 || s.ativo == true) ? 'Desativar' : 'Ativar'}">
+                                                <button class="btn-action ${(s.ativo == 1 || s.ativo == true) ? 'btn-toggle-on' : 'btn-toggle-off'}" onclick="toggleServico(${s.id})" title="${(s.ativo == 1 || s.ativo == true) ? 'Desativar' : 'Ativar'}">
                                                     <i class="fas ${(s.ativo == 1 || s.ativo == true) ? 'fa-toggle-on' : 'fa-toggle-off'}"></i>
                                                 </button>
-                                                <button class="btn-icon btn-delete" onclick="excluirServico(${s.id})" title="Excluir">
-                                                    <i class="fas fa-trash"></i>
+                                                <button class="btn-action btn-delete" onclick="excluirServico(${s.id}, '${escapeHtml(s.nome)}')" title="Excluir">
+                                                    <i class="fas fa-trash"></i> Excluir
                                                 </button>
                                             </div>
                                         </td>
@@ -419,20 +316,20 @@ function abrirModalServico(servico = null) {
             <div class="form-group">
                 <label>⏱️ Duração (minutos) *</label>
                 <select id="servicoDuracao" class="form-control">
-    <option value="15" ${isEdit && servico.duracao === 15 ? 'selected' : ''}>15 minutos</option>
-    <option value="30" ${isEdit && (servico.duracao === 30 || !servico) ? 'selected' : ''}>30 minutos</option>
-    <option value="45" ${isEdit && servico.duracao === 45 ? 'selected' : ''}>45 minutos</option>
-    <option value="50" ${isEdit && servico.duracao === 50 ? 'selected' : ''}>50 minutos</option>
-    <option value="60" ${isEdit && servico.duracao === 60 ? 'selected' : ''}>1 hora (60 min)</option>
-    <option value="90" ${isEdit && servico.duracao === 90 ? 'selected' : ''}>1h30 (90 min)</option>
-    <option value="120" ${isEdit && servico.duracao === 120 ? 'selected' : ''}>2 horas (120 min)</option>
-    <option value="180" ${isEdit && servico.duracao === 180 ? 'selected' : ''}>3 horas (180 min)</option>
-    <option value="240" ${isEdit && servico.duracao === 240 ? 'selected' : ''}>4 horas (240 min)</option>
-    <option value="300" ${isEdit && servico.duracao === 300 ? 'selected' : ''}>5 horas (300 min)</option>
-    <option value="360" ${isEdit && servico.duracao === 360 ? 'selected' : ''}>6 horas (360 min)</option>
-    <option value="420" ${isEdit && servico.duracao === 420 ? 'selected' : ''}>7 horas (420 min)</option>
-    <option value="480" ${isEdit && servico.duracao === 480 ? 'selected' : ''}>8 horas (480 min)</option>
-</select>
+                    <option value="15" ${isEdit && servico.duracao === 15 ? 'selected' : ''}>15 minutos</option>
+                    <option value="30" ${isEdit && (servico.duracao === 30 || !servico) ? 'selected' : ''}>30 minutos</option>
+                    <option value="45" ${isEdit && servico.duracao === 45 ? 'selected' : ''}>45 minutos</option>
+                    <option value="50" ${isEdit && servico.duracao === 50 ? 'selected' : ''}>50 minutos</option>
+                    <option value="60" ${isEdit && servico.duracao === 60 ? 'selected' : ''}>1 hora (60 min)</option>
+                    <option value="90" ${isEdit && servico.duracao === 90 ? 'selected' : ''}>1h30 (90 min)</option>
+                    <option value="120" ${isEdit && servico.duracao === 120 ? 'selected' : ''}>2 horas (120 min)</option>
+                    <option value="180" ${isEdit && servico.duracao === 180 ? 'selected' : ''}>3 horas (180 min)</option>
+                    <option value="240" ${isEdit && servico.duracao === 240 ? 'selected' : ''}>4 horas (240 min)</option>
+                    <option value="300" ${isEdit && servico.duracao === 300 ? 'selected' : ''}>5 horas (300 min)</option>
+                    <option value="360" ${isEdit && servico.duracao === 360 ? 'selected' : ''}>6 horas (360 min)</option>
+                    <option value="420" ${isEdit && servico.duracao === 420 ? 'selected' : ''}>7 horas (420 min)</option>
+                    <option value="480" ${isEdit && servico.duracao === 480 ? 'selected' : ''}>8 horas (480 min)</option>
+                </select>
                 <small class="text-muted" style="display:block;margin-top:4px;color:var(--text-muted);">
                     <i class="fas fa-info-circle"></i> 
                     A agenda respeitará este tempo, bloqueando os horários necessários
@@ -587,7 +484,7 @@ async function toggleServico(id) {
 }
 
 // ============================================
-// EXCLUIR SERVIÇO - CORRIGIDO
+// EXCLUIR SERVIÇO
 // ============================================
 
 async function excluirServico(id, nome) {
@@ -614,7 +511,7 @@ async function excluirServico(id, nome) {
         const result = await response.json();
         if (result.success) {
             showToast('✅ Serviço excluído com sucesso!', 'success');
-            carregarServicos();
+            carregarListaServicos();
         } else {
             showToast(result.message || '❌ Erro ao excluir serviço', 'error');
         }

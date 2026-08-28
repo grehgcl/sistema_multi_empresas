@@ -1,6 +1,6 @@
 // ============================================
 // PLANOS.JS - VERSÃO SIMPLIFICADA (2 PLANOS)
-// ULTIMA ATUALIZACAO: 19/08/2026
+// ULTIMA ATUALIZACAO: 22/08/2026
 // ============================================
 
 let periodoSelecionado = 'mensal';
@@ -11,6 +11,27 @@ let modoPagamento = 'simulation';
 // ============================================
 
 const PLANOS_CONFIG = {
+    trial: {
+        id: 'trial',
+        nome: 'Trial (Starter)',
+        valor_mensal: 0,
+        valor_anual: 0,
+        profs: 1,
+        agendamentos: '100/mês',
+        popular: false,
+        cor: '#6b7280',
+        recursos: [
+            '✅ Até 1 profissional',
+            '✅ 100 agendamentos por mês',
+            '✅ Dashboard básico',
+            '✅ Suporte por email'
+        ],
+        limitacoes: [
+            '❌ Sem WhatsApp',
+            '❌ Sem envio de promoções',
+            '❌ Sem fiados'
+        ]
+    },
     starter: {
         id: 'starter',
         nome: 'Starter',
@@ -122,17 +143,38 @@ async function carregarPlanos() {
         let planoAtual = 'trial';
         let limiteAtual = 1;
         let diasRestantes = 0;
-        let validaAte = '';
+        let validaAte = 'N/A';
         let isTrial = true;
         let agendamentosMes = 0;
+        let planoNome = 'Trial (Starter)';
+        let whatsappHabilitado = false;
 
         if (planoData.success && planoData.data) {
             planoAtual = planoData.data.plano || 'trial';
             limiteAtual = planoData.data.limite_profissionais || 1;
             diasRestantes = planoData.data.dias_restantes || 0;
-            validaAte = planoData.data.valida_ate || '';
+            
+            // 🔥 CORREÇÃO: PEGAR DATA DE VALIDADE
+            if (planoData.data.data_validade_formatada) {
+                validaAte = planoData.data.data_validade_formatada;
+            } else if (planoData.data.assinatura_valida_ate) {
+                try {
+                    validaAte = new Date(planoData.data.assinatura_valida_ate).toLocaleDateString('pt-BR');
+                } catch {
+                    validaAte = planoData.data.assinatura_valida_ate || 'N/A';
+                }
+            } else if (planoData.data.trial_expira) {
+                try {
+                    validaAte = new Date(planoData.data.trial_expira).toLocaleDateString('pt-BR');
+                } catch {
+                    validaAte = planoData.data.trial_expira || 'N/A';
+                }
+            }
+            
             isTrial = planoData.data.is_trial || (planoAtual === 'trial');
             agendamentosMes = planoData.data.agendamentos_mes || 0;
+            planoNome = planoData.data.plano_display || planoData.data.plano_nome || planoAtual;
+            whatsappHabilitado = planoData.data.whatsapp?.habilitado || false;
         }
 
         const isReal = modoAtual === 'real';
@@ -141,7 +183,7 @@ async function carregarPlanos() {
         const modoBg = isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
         const modoBorder = isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
 
-        const planoInfo = PLANOS_CONFIG[planoAtual];
+        const planoInfo = PLANOS_CONFIG[planoAtual] || PLANOS_CONFIG.trial;
 
         // ==========================================
         // HTML
@@ -205,12 +247,21 @@ async function carregarPlanos() {
                                 </p>
                             ` : `
                                 <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
-                                    📅 Válido até: ${validaAte || 'N/A'}
+                                    📅 Válido até: <strong>${validaAte}</strong>
                                 </p>
                             `}
                             <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
                                 👥 ${limiteAtual} profissional(is) ativo(s)
                             </p>
+                            ${whatsappHabilitado ? `
+                                <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
+                                    📱 <span style="color: #22c55e;">✅ WhatsApp habilitado</span>
+                                </p>
+                            ` : `
+                                <p style="margin: 4px 0 0 0; opacity: 0.6; font-size: ${isMobile ? '13px' : '14px'};">
+                                    📱 <span style="color: #f59e0b;">⚠️ WhatsApp não habilitado</span>
+                                </p>
+                            `}
                             ${!isTrial && planoInfo?.agendamentos ? `
                                 <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
                                     📊 ${planoInfo.agendamentos} agendamentos
@@ -292,7 +343,11 @@ async function carregarPlanos() {
                 <div id="planosContainer" style="display: grid; grid-template-columns: ${isMobile ? '1fr' : '1fr 1fr'}; gap: ${isMobile ? '16px' : '24px'}; max-width: 800px; margin: 0 auto;">
         `;
 
-        for (const [key, plano] of Object.entries(PLANOS_CONFIG)) {
+        // Mostrar Starter e Pro (esconder Trial)
+        const planosParaMostrar = ['starter', 'pro'];
+
+        for (const key of planosParaMostrar) {
+            const plano = PLANOS_CONFIG[key];
             const isCurrent = planoAtual === key;
             const valor = periodoSelecionado === 'anual' ? plano.valor_anual : plano.valor_mensal;
             const periodoLabel = periodoSelecionado === 'anual' ? '/ano' : '/mês';

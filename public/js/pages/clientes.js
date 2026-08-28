@@ -1,6 +1,6 @@
 // ============================================
-// CLIENTES.JS - CRM COMPLETO + OTIMIZADO
-// ULTIMA ATUALIZACAO: 19/08/2026
+// CLIENTES.JS - CRM OTIMIZADO (RENDERIZAÇÃO EM BATCHES)
+// ULTIMA ATUALIZACAO: 22/08/2026
 // ============================================
 
 // ============================================
@@ -63,6 +63,16 @@ function limparTelefone(telefone) {
 }
 
 // ============================================
+// CONFIGURAÇÕES DE PERFORMANCE
+// ============================================
+
+const PERFORMANCE_CONFIG = {
+    BATCH_SIZE: 100,
+    DEBOUNCE_MS: 300,
+    RENDER_DELAY: 50
+};
+
+// ============================================
 // VARIÁVEIS GLOBAIS
 // ============================================
 
@@ -81,6 +91,8 @@ let timeoutBusca = null;
 let envioLock = false;
 let carregandoBackground = false;
 let clientesAgendamentosCache = {};
+let renderTimeout = null;
+let clienteObserver = null;
 
 // ============================================
 // PREVENIR RECARREGAMENTOS NO MOBILE
@@ -114,613 +126,20 @@ async function carregarGruposCliente(clienteId) {
 }
 
 // ============================================
-// ABRIR MODAL DE GERENCIAR GRUPOS
-// ============================================
-
-async function abrirModalGrupos(clienteId) {
-    clienteEditandoGrupos = clienteId;
-    const cliente = clientesCompletos.find(c => c.id === clienteId);
-    if (!cliente) {
-        showToast('Cliente não encontrado', 'error');
-        return;
-    }
-
-    const grupos = await carregarGruposCliente(clienteId);
-    const gruposDisponiveis = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais'];
-
-    const isMobile = window.innerWidth < 768;
-
-    let html = `
-        <div id="modalGrupos" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
-            <div class="modal-content" style="max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: ${isMobile ? '16px' : '24px'}; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-                        <i class="fas fa-tags" style="color: #8b5cf6;"></i>
-                        Grupos de ${escapeHtml(cliente.nome)}
-                    </h3>
-                    <button onclick="fecharModalGrupos()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
-                </div>
-
-                <div style="margin-bottom: 16px;">
-                    <p style="font-size: 13px; color: var(--text-muted);">Selecione os grupos que este cliente pertence</p>
-                </div>
-
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
-                    ${gruposDisponiveis.map(g => {
-        const isSelected = grupos.includes(g);
-        return `
-                            <button onclick="toggleGrupoCliente('${g}')" 
-                                    style="padding: 6px 14px; border-radius: 20px; border: 2px solid ${isSelected ? '#8b5cf6' : 'var(--border-color)'}; 
-                                           background: ${isSelected ? 'rgba(139,92,246,0.15)' : 'var(--bg-hover)'}; 
-                                           color: ${isSelected ? '#8b5cf6' : 'var(--text-secondary)'}; 
-                                           font-size: 12px; font-weight: ${isSelected ? '700' : '500'}; cursor: pointer; transition: all 0.2s;
-                                           display: inline-flex; align-items: center; gap: 4px;"
-                                    id="grupo_btn_${g.replace(/\s/g, '_')}">
-                                ${isSelected ? '✅' : '☐'} ${g}
-                            </button>
-                        `;
-    }).join('')}
-                </div>
-
-                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-                    <input type="text" id="novoGrupoInput" placeholder="Criar novo grupo..." 
-                           style="flex:1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); 
-                                  background: var(--bg-input); color: var(--text-primary); font-size: 13px;">
-                    <button onclick="criarNovoGrupo()" style="padding: 8px 16px; border-radius: 8px; border: none; 
-                            background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; font-weight: 600; cursor: pointer;">
-                        <i class="fas fa-plus"></i> Adicionar
-                    </button>
-                </div>
-
-                <!-- GRUPOS ATUAIS COM BOTÃO DE EXCLUIR -->
-                ${grupos.length > 0 ? `
-                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
-                        <i class="fas fa-list"></i> Grupos atuais
-                    </div>
-                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-                        ${grupos.map(g => `
-                            <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(139,92,246,0.1); padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2);">
-                                🏷️ ${g}
-                                <button onclick="excluirGrupoCliente('${g}')" 
-                                        style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 2px;"
-                                        title="Remover grupo">
-                                    <i class="fas fa-times-circle"></i>
-                                </button>
-                            </span>
-                        `).join('')}
-                    </div>
-                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
-                        Clique no ✕ para remover um grupo deste cliente
-                    </div>
-                </div>
-                ` : `
-                <div style="margin-bottom: 16px; padding: 10px; background: var(--bg-hover); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 12px; border: 1px dashed var(--border-color);">
-                    <i class="fas fa-info-circle"></i> Este cliente não pertence a nenhum grupo
-                </div>
-                `}
-
-                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                    <button onclick="fecharModalGrupos()" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer;">Cancelar</button>
-                    <button onclick="salvarGruposCliente()" style="padding: 8px 24px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 13px; font-weight: 600; cursor: pointer;">
-                        <i class="fas fa-save"></i> Salvar Grupos
-                    </button>
-                </div>
-            </div>
-        </div>
-    `;
-
-    const existing = document.getElementById('modalGrupos');
-    if (existing) existing.remove();
-    document.body.insertAdjacentHTML('beforeend', html);
-
-    gruposSelecionadosTemp = [...grupos];
-}
-
-function fecharModalGrupos() {
-    const modal = document.getElementById('modalGrupos');
-    if (modal) modal.remove();
-    clienteEditandoGrupos = null;
-    gruposSelecionadosTemp = [];
-}
-
-// ============================================
-// EXCLUIR GRUPO DO CLIENTE
-// ============================================
-
-function excluirGrupoCliente(grupo) {
-    if (!confirm(`Remover o grupo "${grupo}" deste cliente?`)) return;
-
-    gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
-
-    const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
-    if (btn) {
-        btn.textContent = `☐ ${grupo}`;
-        btn.style.background = 'var(--bg-hover)';
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.borderColor = 'var(--border-color)';
-        btn.style.fontWeight = '500';
-    }
-
-    const clienteId = clienteEditandoGrupos;
-    atualizarGruposAtuais(clienteId);
-
-    showToast(`Grupo "${grupo}" removido deste cliente`, 'info');
-}
-
-// ============================================
-// TOGGLE GRUPO CLIENTE
-// ============================================
-
-function toggleGrupoCliente(grupo) {
-    const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
-    if (!btn) {
-        console.warn(`⚠️ Botão não encontrado para: ${grupo}`);
-        return;
-    }
-
-    const isSelected = btn.textContent.includes('✅');
-
-    if (isSelected) {
-        btn.textContent = `☐ ${grupo}`;
-        btn.style.background = 'var(--bg-hover)';
-        btn.style.color = 'var(--text-secondary)';
-        btn.style.borderColor = 'var(--border-color)';
-        btn.style.fontWeight = '500';
-        gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
-    } else {
-        btn.textContent = `✅ ${grupo}`;
-        btn.style.background = 'rgba(139,92,246,0.15)';
-        btn.style.color = '#8b5cf6';
-        btn.style.borderColor = '#8b5cf6';
-        btn.style.fontWeight = '700';
-        if (!gruposSelecionadosTemp.includes(grupo)) {
-            gruposSelecionadosTemp.push(grupo);
-        }
-    }
-
-    if (clienteEditandoGrupos) {
-        atualizarGruposAtuais(clienteEditandoGrupos);
-    }
-}
-
-// ============================================
-// CRIAR NOVO GRUPO
-// ============================================
-
-function criarNovoGrupo() {
-    const input = document.getElementById('novoGrupoInput');
-    const nome = input.value.trim();
-
-    if (!nome) {
-        showToast('Digite um nome para o grupo', 'warning');
-        return;
-    }
-
-    const gruposDisponiveis = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais'];
-
-    if (gruposDisponiveis.includes(nome)) {
-        showToast(`O grupo "${nome}" já existe`, 'warning');
-        return;
-    }
-
-    if (!gruposSelecionadosTemp.includes(nome)) {
-        gruposSelecionadosTemp.push(nome);
-    }
-
-    const clienteId = clienteEditandoGrupos;
-    fecharModalGrupos();
-
-    setTimeout(() => {
-        abrirModalGrupos(clienteId);
-        setTimeout(() => {
-            gruposSelecionadosTemp.forEach(g => {
-                const btn = document.getElementById(`grupo_btn_${g.replace(/\s/g, '_')}`);
-                if (btn) {
-                    btn.textContent = `✅ ${g}`;
-                    btn.style.background = 'rgba(139,92,246,0.15)';
-                    btn.style.color = '#8b5cf6';
-                    btn.style.borderColor = '#8b5cf6';
-                    btn.style.fontWeight = '700';
-                }
-            });
-
-            const btnNovoGrupo = document.getElementById(`grupo_btn_${nome.replace(/\s/g, '_')}`);
-            if (btnNovoGrupo) {
-                btnNovoGrupo.textContent = `✅ ${nome}`;
-                btnNovoGrupo.style.background = 'rgba(139,92,246,0.15)';
-                btnNovoGrupo.style.color = '#8b5cf6';
-                btnNovoGrupo.style.borderColor = '#8b5cf6';
-                btnNovoGrupo.style.fontWeight = '700';
-            }
-
-            atualizarGruposAtuais(clienteId);
-
-            const input2 = document.getElementById('novoGrupoInput');
-            if (input2) input2.value = '';
-
-            showToast(`Grupo "${nome}" criado e adicionado! ✅`, 'success');
-        }, 150);
-    }, 150);
-}
-
-// ============================================
-// ATUALIZAR GRUPOS ATUAIS
-// ============================================
-
-function atualizarGruposAtuais(clienteId) {
-    const container = document.querySelector('#modalGrupos .modal-content');
-    if (!container) return;
-
-    const gruposAtuaisDiv = container.querySelector('div:has(> div > span)');
-    if (!gruposAtuaisDiv) return;
-
-    const gruposHtml = gruposSelecionadosTemp.length > 0 ? `
-        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
-            ${gruposSelecionadosTemp.map(g => `
-                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(139,92,246,0.1); padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2);">
-                    🏷️ ${g}
-                    <button onclick="excluirGrupoCliente('${g}')" 
-                            style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 2px;"
-                            title="Remover grupo">
-                        <i class="fas fa-times-circle"></i>
-                    </button>
-                </span>
-            `).join('')}
-        </div>
-        <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
-            Clique no ✕ para remover um grupo deste cliente
-        </div>
-    ` : `
-        <div style="padding: 10px; background: var(--bg-hover); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 12px; border: 1px dashed var(--border-color);">
-            <i class="fas fa-info-circle"></i> Este cliente não pertence a nenhum grupo
-        </div>
-    `;
-
-    const gruposAtuaisDivParent = gruposAtuaisDiv.parentElement;
-    if (gruposAtuaisDivParent) {
-        const title = gruposAtuaisDivParent.querySelector('div[style*="font-size: 12px; font-weight: 600;"]');
-        if (title) {
-            gruposAtuaisDivParent.innerHTML = `
-                ${title.outerHTML}
-                ${gruposHtml}
-            `;
-        }
-    }
-}
-
-// ============================================
-// SALVAR GRUPOS DO CLIENTE
-// ============================================
-
-async function salvarGruposCliente() {
-    if (!clienteEditandoGrupos) {
-        showToast('❌ Nenhum cliente selecionado', 'error');
-        return;
-    }
-
-    console.log('📝 Salvando grupos para cliente:', clienteEditandoGrupos);
-    console.log('📝 Grupos selecionados:', gruposSelecionadosTemp);
-
-    showLoading();
-    const token = localStorage.getItem('token');
-
-    try {
-        const res = await fetch(`/api/clientes/${clienteEditandoGrupos}/grupos`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({
-                grupos: gruposSelecionadosTemp
-            })
-        });
-
-        const data = await res.json();
-        hideLoading();
-
-        if (data.success) {
-            showToast('✅ Grupos atualizados com sucesso!', 'success');
-
-            const clienteIndex = clientesCompletos.findIndex(c => c.id === clienteEditandoGrupos);
-            if (clienteIndex !== -1) {
-                clientesCompletos[clienteIndex].grupos = [...gruposSelecionadosTemp];
-            }
-
-            fecharModalGrupos();
-            await carregarClientes();
-
-            if (filtroGrupo !== 'todos') {
-                setTimeout(() => {
-                    setFiltroGrupo(filtroGrupo);
-                }, 300);
-            }
-
-        } else {
-            showToast(data.message || '❌ Erro ao salvar grupos', 'error');
-            console.error('❌ Erro no backend:', data);
-        }
-    } catch (error) {
-        console.error('❌ Erro ao salvar grupos:', error);
-        hideLoading();
-        showToast('❌ Erro ao conectar com o servidor', 'error');
-    }
-}
-
-// ============================================
-// SET FILTRO GRUPO
-// ============================================
-
-function setFiltroGrupo(grupo) {
-    console.log(`🔍 Filtrando por grupo: ${grupo}`);
-
-    filtroGrupo = grupo;
-    if (filtroClientes !== 'todos') {
-        filtroClientes = 'todos';
-    }
-
-    if (window._filtroTimeout) {
-        clearTimeout(window._filtroTimeout);
-    }
-
-    window._filtroTimeout = setTimeout(() => {
-        const clientesFiltrados = clientesCompletos.filter(c => {
-            if (filtroGrupo !== 'todos') {
-                return c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo);
-            }
-            return true;
-        });
-
-        renderizarClientes(clientesCompletos);
-        atualizarBotoesFiltro();
-
-        console.log(`✅ Filtro aplicado: ${clientesFiltrados.length} clientes encontrados`);
-    }, 100);
-}
-
-// ============================================
-// APLICAR FILTROS CLIENTES
-// ============================================
-
-function aplicarFiltrosClientes() {
-    const content = document.getElementById('content');
-    if (!content || !content.innerHTML.includes('👥 Clientes')) return;
-
-    if (clientesCompletos.length === 0) {
-        carregarClientes();
-        return;
-    }
-
-    renderizarClientes(clientesCompletos);
-    atualizarBotoesFiltro();
-}
-
-// ============================================
-// RENDERIZAR LISTA DE CLIENTES
-// ============================================
-
-function renderizarListaClientes() {
-    renderizarClientes(clientesCompletos);
-}
-
-// ============================================
-// ATUALIZAR BOTÕES DE FILTRO
-// ============================================
-
-function atualizarBotoesFiltro() {
-    const totalClientes = clientesCompletos.length;
-    const vipCount = clientesCompletos.filter(c => c.classificacao === 'vip').length;
-    const sumidosCount = clientesCompletos.filter(c => c.classificacao === 'sumido').length;
-    const frequentesCount = clientesCompletos.filter(c => c.classificacao === 'frequente').length;
-    const novosCount = clientesCompletos.filter(c => c.classificacao === 'novo').length;
-    const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
-
-    const btnTodos = document.querySelector('button[onclick*="setFiltroClientes(\'todos\')"]');
-    if (btnTodos) btnTodos.textContent = `📊 Todos (${totalClientes})`;
-
-    const btnVip = document.querySelector('button[onclick*="setFiltroClientes(\'vip\')"]');
-    if (btnVip) btnVip.textContent = `⭐ VIP (${vipCount})`;
-
-    const btnFreq = document.querySelector('button[onclick*="setFiltroClientes(\'frequentes\')"]');
-    if (btnFreq) btnFreq.textContent = `🔥 Frequentes (${frequentesCount})`;
-
-    const btnSumidos = document.querySelector('button[onclick*="setFiltroClientes(\'sumidos\')"]');
-    if (btnSumidos) btnSumidos.textContent = `😴 Sumidos (${sumidosCount})`;
-
-    const btnNovos = document.querySelector('button[onclick*="setFiltroClientes(\'novos\')"]');
-    if (btnNovos) btnNovos.textContent = `🌱 Novos (${novosCount})`;
-
-    const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
-    if (whatsEl) whatsEl.textContent = comWhatsApp;
-}
-
-// ============================================
-// CARREGAR CLIENTES EM BACKGROUND
-// ============================================
-
-async function carregarClientesBackground() {
-    if (carregandoBackground) return;
-    carregandoBackground = true;
-
-    try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            carregandoBackground = false;
-            return;
-        }
-
-        const [resClientes, resAgendamentos, resGrupos] = await Promise.all([
-            fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/agendamentos?limit=500', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/clientes/grupos', { headers: { 'Authorization': 'Bearer ' + token } })
-        ]);
-
-        if (!resClientes.ok) {
-            carregandoBackground = false;
-            return;
-        }
-
-        const dataClientes = await resClientes.json();
-        const dataAgendamentos = resAgendamentos.ok ? await resAgendamentos.json() : { data: [] };
-        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: { clientes: [], grupos: [] } };
-
-        const clientes = dataClientes.data || [];
-        const agendamentos = dataAgendamentos.data || [];
-        const gruposMap = dataGrupos.data || {};
-
-        const agendamentosPorCliente = new Map();
-        for (const a of agendamentos) {
-            if (!agendamentosPorCliente.has(a.cliente_id)) {
-                agendamentosPorCliente.set(a.cliente_id, []);
-            }
-            agendamentosPorCliente.get(a.cliente_id).push(a);
-        }
-
-        clientesCompletos = clientes.map(cliente => {
-            const ags = agendamentosPorCliente.get(cliente.id) || [];
-            const agsConcluidos = ags.filter(a => a.status === 'concluido');
-
-            let valorTotal = 0;
-            for (const a of agsConcluidos) {
-                valorTotal += parseFloat(a.valor_total) || parseFloat(a.valor) || 0;
-            }
-
-            const ticketMedio = agsConcluidos.length > 0 ? valorTotal / agsConcluidos.length : 0;
-
-            let ultimaVisita = null;
-            let diasDesdeUltima = null;
-            if (agsConcluidos.length > 0) {
-                const datas = agsConcluidos.map(a => new Date(a.data + 'T00:00:00'));
-                ultimaVisita = new Date(Math.max(...datas));
-                const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
-                const diffTime = hoje - ultimaVisita;
-                diasDesdeUltima = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
-
-            let classificacao = 'regular';
-            let icone = '👤';
-
-            if (agsConcluidos.length >= 10 && valorTotal >= 500) {
-                classificacao = 'vip';
-                icone = '⭐';
-            } else if (agsConcluidos.length >= 5) {
-                classificacao = 'frequente';
-                icone = '🔥';
-            } else if (diasDesdeUltima !== null && diasDesdeUltima > 60) {
-                classificacao = 'sumido';
-                icone = '😴';
-            } else if (agsConcluidos.length <= 1) {
-                classificacao = 'novo';
-                icone = '🌱';
-            }
-
-            let grupos = [];
-            if (cliente.grupos) {
-                try {
-                    grupos = typeof cliente.grupos === 'string' ? JSON.parse(cliente.grupos) : cliente.grupos;
-                } catch (e) {
-                    grupos = [];
-                }
-            }
-
-            return {
-                id: cliente.id,
-                nome: cliente.nome || 'Cliente',
-                telefone: cliente.telefone || '',
-                email: cliente.email || '',
-                grupos: grupos,
-                bloqueado_chatbot: cliente.bloqueado_chatbot || 0,
-                dias_bloqueio: cliente.dias_bloqueio || null,
-                created_at: cliente.created_at,
-                total_agendamentos: ags.length,
-                total_concluidos: agsConcluidos.length,
-                valor_total: valorTotal,
-                ticket_medio: ticketMedio,
-                ultima_visita: ultimaVisita,
-                dias_sem_visita: diasDesdeUltima,
-                classificacao: classificacao,
-                icone: icone
-            };
-        });
-
-        clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
-
-        const gruposSet = new Set();
-        for (const c of clientesCompletos) {
-            if (c.grupos && Array.isArray(c.grupos)) {
-                for (const g of c.grupos) {
-                    if (g) gruposSet.add(g);
-                }
-            }
-        }
-        gruposClientes = Array.from(gruposSet).sort();
-
-        renderizarClientes(clientesCompletos);
-
-        console.log(`✅ Background: ${clientesCompletos.length} clientes atualizados`);
-
-    } catch (error) {
-        console.error('❌ Erro no background:', error);
-    }
-
-    carregandoBackground = false;
-}
-
-// ============================================
-// FILTRAR POR LETRA (A-Z)
-// ============================================
-
-function filtrarPorLetra(letra) {
-    console.log(`🔍 Filtrando por letra: ${letra}`);
-    letraSelecionada = letra;
-
-    const botoesLetras = document.querySelectorAll('.letra-btn');
-    botoesLetras.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.letra === letra) {
-            btn.classList.add('active');
-        }
-    });
-
-    if (letra === 'todos') {
-        localStorage.removeItem('letraSelecionada');
-        letraSelecionada = '';
-        termoBuscaClientes = '';
-        const input = document.getElementById('buscaClientesInput');
-        if (input) input.value = '';
-        renderizarClientes(clientesCompletos);
-        return;
-    }
-
-    localStorage.setItem('letraSelecionada', letra);
-    
-    if (termoBuscaClientes) {
-        termoBuscaClientes = '';
-        const input = document.getElementById('buscaClientesInput');
-        if (input) input.value = '';
-    }
-
-    renderizarClientes(clientesCompletos);
-}
-
-function limparFiltroLetra() {
-    letraSelecionada = '';
-    localStorage.removeItem('letraSelecionada');
-    const botoesLetras = document.querySelectorAll('.letra-btn');
-    botoesLetras.forEach(btn => btn.classList.remove('active'));
-    termoBuscaClientes = '';
-    const input = document.getElementById('buscaClientesInput');
-    if (input) input.value = '';
-    renderizarClientes(clientesCompletos);
-}
-
-// ============================================
-// CARREGAR CLIENTES (PRINCIPAL)
+// CARREGAR CLIENTES (PRINCIPAL) - COM CSS
 // ============================================
 
 async function carregarClientes() {
+    // 🔥 CARREGAR CSS - FORÇADO
+    const cssLink = document.querySelector('link[href*="clientes.css"]');
+    if (!cssLink) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = '/css/pages/clientes.css';
+        document.head.appendChild(link);
+        console.log('✅ CSS clientes.css carregado!');
+    }
+
     if (carregandoClientes) {
         console.log("⏳ Já está carregando clientes, aguarde...");
         return;
@@ -849,7 +268,7 @@ async function carregarClientes() {
         }
         gruposClientes = Array.from(gruposSet).sort();
 
-        renderizarClientes(clientesCompletos);
+        renderizarClientesOtimizado(clientesCompletos);
 
         console.log(`✅ ${clientesCompletos.length} clientes carregados`);
 
@@ -874,10 +293,142 @@ async function carregarClientes() {
 }
 
 // ============================================
-// RENDERIZAR CLIENTES
+// CARREGAR CLIENTES EM BACKGROUND
 // ============================================
 
-function renderizarClientes(clientes) {
+async function carregarClientesBackground() {
+    if (carregandoBackground) return;
+    carregandoBackground = true;
+
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            carregandoBackground = false;
+            return;
+        }
+
+        const [resClientes, resAgendamentos, resGrupos] = await Promise.all([
+            fetch('/api/clientes', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/agendamentos?limit=500', { headers: { 'Authorization': 'Bearer ' + token } }),
+            fetch('/api/clientes/grupos', { headers: { 'Authorization': 'Bearer ' + token } })
+        ]);
+
+        if (!resClientes.ok) {
+            carregandoBackground = false;
+            return;
+        }
+
+        const dataClientes = await resClientes.json();
+        const dataAgendamentos = resAgendamentos.ok ? await resAgendamentos.json() : { data: [] };
+        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: { clientes: [], grupos: [] } };
+
+        const clientes = dataClientes.data || [];
+        const agendamentos = dataAgendamentos.data || [];
+
+        const agendamentosPorCliente = new Map();
+        for (const a of agendamentos) {
+            if (!agendamentosPorCliente.has(a.cliente_id)) {
+                agendamentosPorCliente.set(a.cliente_id, []);
+            }
+            agendamentosPorCliente.get(a.cliente_id).push(a);
+        }
+
+        clientesCompletos = clientes.map(cliente => {
+            const ags = agendamentosPorCliente.get(cliente.id) || [];
+            const agsConcluidos = ags.filter(a => a.status === 'concluido');
+
+            let valorTotal = 0;
+            for (const a of agsConcluidos) {
+                valorTotal += parseFloat(a.valor_total) || parseFloat(a.valor) || 0;
+            }
+
+            const ticketMedio = agsConcluidos.length > 0 ? valorTotal / agsConcluidos.length : 0;
+
+            let ultimaVisita = null;
+            let diasDesdeUltima = null;
+            if (agsConcluidos.length > 0) {
+                const datas = agsConcluidos.map(a => new Date(a.data + 'T00:00:00'));
+                ultimaVisita = new Date(Math.max(...datas));
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0);
+                const diffTime = hoje - ultimaVisita;
+                diasDesdeUltima = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+
+            let classificacao = 'regular';
+            let icone = '👤';
+
+            if (agsConcluidos.length >= 10 && valorTotal >= 500) {
+                classificacao = 'vip';
+                icone = '⭐';
+            } else if (agsConcluidos.length >= 5) {
+                classificacao = 'frequente';
+                icone = '🔥';
+            } else if (diasDesdeUltima !== null && diasDesdeUltima > 60) {
+                classificacao = 'sumido';
+                icone = '😴';
+            } else if (agsConcluidos.length <= 1) {
+                classificacao = 'novo';
+                icone = '🌱';
+            }
+
+            let grupos = [];
+            if (cliente.grupos) {
+                try {
+                    grupos = typeof cliente.grupos === 'string' ? JSON.parse(cliente.grupos) : cliente.grupos;
+                } catch (e) {
+                    grupos = [];
+                }
+            }
+
+            return {
+                id: cliente.id,
+                nome: cliente.nome || 'Cliente',
+                telefone: cliente.telefone || '',
+                email: cliente.email || '',
+                grupos: grupos,
+                bloqueado_chatbot: cliente.bloqueado_chatbot || 0,
+                dias_bloqueio: cliente.dias_bloqueio || null,
+                created_at: cliente.created_at,
+                total_agendamentos: ags.length,
+                total_concluidos: agsConcluidos.length,
+                valor_total: valorTotal,
+                ticket_medio: ticketMedio,
+                ultima_visita: ultimaVisita,
+                dias_sem_visita: diasDesdeUltima,
+                classificacao: classificacao,
+                icone: icone
+            };
+        });
+
+        clientesCompletos.sort((a, b) => b.total_concluidos - a.total_concluidos);
+
+        const gruposSet = new Set();
+        for (const c of clientesCompletos) {
+            if (c.grupos && Array.isArray(c.grupos)) {
+                for (const g of c.grupos) {
+                    if (g) gruposSet.add(g);
+                }
+            }
+        }
+        gruposClientes = Array.from(gruposSet).sort();
+
+        renderizarClientesOtimizado(clientesCompletos);
+
+        console.log(`✅ Background: ${clientesCompletos.length} clientes atualizados`);
+
+    } catch (error) {
+        console.error('❌ Erro no background:', error);
+    }
+
+    carregandoBackground = false;
+}
+
+// ============================================
+// RENDERIZAR CLIENTES OTIMIZADO (BATCHES) - CORRIGIDO
+// ============================================
+
+function renderizarClientesOtimizado(clientes) {
     const isMobile = window.innerWidth < 768;
     const content = document.getElementById('content');
 
@@ -892,7 +443,7 @@ function renderizarClientes(clientes) {
         letraSelecionada = letraSalva;
     }
 
-    // Filtro por busca (apenas se não estiver no mobile com campo de busca)
+    // Filtro por busca
     if (termoBuscaClientes && !isMobile) {
         const busca = termoBuscaClientes.toLowerCase().trim();
         clientesFiltrados = clientesFiltrados.filter(c => {
@@ -936,14 +487,14 @@ function renderizarClientes(clientes) {
     // ==========================================
     let html = `<div class="fade-in" style="padding-bottom: 80px;">`;
 
-    // Header
+    // 🔥 HEADER - COM BOTÕES MOBILE MAIORES
     html += `
-        <div class="dashboard-header">
+        <div class="dashboard-header" style="${isMobile ? 'flex-direction:column;align-items:stretch;gap:8px;' : ''}">
             <div>
-                <h2 class="page-title" style="font-size: ${isMobile ? '18px' : '24px'};">👥 Clientes</h2>
+                <h2 class="page-title" style="font-size: ${isMobile ? '20px' : '24px'};">👥 Clientes</h2>
                 ${!isMobile ? `<p class="page-subtitle"><i class="fas fa-users"></i> Gerencie seus clientes e acompanhe métricas importantes</p>` : ''}
             </div>
-            <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;">
+            <div class="dashboard-actions" style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; ${isMobile ? 'width:100%;' : ''}">
                 ${!isMobile ? `
                 <div style="display: flex; align-items: center; gap: 4px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 10px; padding: 2px 4px; flex: 1; min-width: 100px;">
                     <input type="text" id="buscaClientesInput" 
@@ -962,8 +513,31 @@ function renderizarClientes(clientes) {
                 </div>
                 ` : ''}
                 
-                <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'};">
-                    <i class="fas fa-bullhorn"></i> ${isMobile ? '' : 'Promoção'}
+                <!-- 🔥 BOTÃO PROMOÇÃO - MAIOR NO MOBILE -->
+                <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="
+                    background: linear-gradient(135deg, #25D366, #128C7E); 
+                    color: white; 
+                    padding: ${isMobile ? '12px 18px' : '6px 14px'}; 
+                    border-radius: ${isMobile ? '12px' : '8px'}; 
+                    border: none; 
+                    font-weight: 700; 
+                    cursor: pointer; 
+                    display: inline-flex; 
+                    align-items: center; 
+                    justify-content: center;
+                    gap: 8px; 
+                    font-size: ${isMobile ? '15px' : '13px'};
+                    ${isMobile ? 'flex: 1; min-height: 48px; width: 100%;' : ''}
+                    box-shadow: 0 4px 12px rgba(37,211,102,0.35);
+                    transition: all 0.3s ease;
+                "
+                onmouseover="this.style.transform='scale(1.02)'"
+                onmouseout="this.style.transform='scale(1)'"
+                onmousedown="this.style.transform='scale(0.95)'"
+                onmouseup="this.style.transform='scale(1.02)'"
+                >
+                    <i class="fas fa-bullhorn" style="font-size: ${isMobile ? '18px' : '14px'};"></i> 
+                    ${isMobile ? '📢 Promoção' : 'Promoção'}
                 </button>
                 
                 ${!isMobile ? `
@@ -972,38 +546,117 @@ function renderizarClientes(clientes) {
                 </button>
                 ` : ''}
                 
-                <button class="btn btn-primary" onclick="abrirModalCliente()" style="padding: 6px 12px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-size: ${isMobile ? '11px' : '13px'}; background: linear-gradient(135deg, #667eea, #764ba2); color: white;">
-                    <i class="fas fa-plus"></i> ${isMobile ? '' : 'Novo'}
+                <!-- 🔥 BOTÃO NOVO CLIENTE - MAIOR NO MOBILE -->
+                <button class="btn btn-primary" onclick="abrirModalCliente()" style="
+                    padding: ${isMobile ? '12px 18px' : '6px 14px'}; 
+                    border-radius: ${isMobile ? '12px' : '8px'}; 
+                    border: none; 
+                    font-weight: 700; 
+                    cursor: pointer; 
+                    display: inline-flex; 
+                    align-items: center; 
+                    justify-content: center;
+                    gap: 8px; 
+                    font-size: ${isMobile ? '15px' : '13px'}; 
+                    background: linear-gradient(135deg, #667eea, #764ba2); 
+                    color: white;
+                    ${isMobile ? 'flex: 1; min-height: 48px; width: 100%;' : ''}
+                    box-shadow: 0 4px 12px rgba(102,126,234,0.35);
+                    transition: all 0.3s ease;
+                "
+                onmouseover="this.style.transform='scale(1.02)'"
+                onmouseout="this.style.transform='scale(1)'"
+                onmousedown="this.style.transform='scale(0.95)'"
+                onmouseup="this.style.transform='scale(1.02)'"
+                >
+                    <i class="fas fa-plus" style="font-size: ${isMobile ? '18px' : '14px'};"></i> 
+                    ${isMobile ? '➕ Novo Cliente' : 'Novo'}
                 </button>
             </div>
         </div>
 
-        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;">
-            <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">📊 Todos (${totalClientes})</button>
-            <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">⭐ VIP (${vipCount})</button>
-            <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🔥 Frequentes (${frequentesCount})</button>
-            <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">😴 Sumidos (${sumidosCount})</button>
-            <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '10px' : '12px'}; padding: 3px 10px;">🌱 Novos (${novosCount})</button>
+        <!-- FILTROS DE CLASSIFICAÇÃO -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; ${isMobile ? 'justify-content:center;' : ''}">
+            <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">📊 Todos (${totalClientes})</button>
+            <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">⭐ VIP (${vipCount})</button>
+            <button onclick="setFiltroClientes('frequentes')" class="btn ${filtroClientes === 'frequentes' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">🔥 Frequentes (${frequentesCount})</button>
+            <button onclick="setFiltroClientes('sumidos')" class="btn ${filtroClientes === 'sumidos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">😴 Sumidos (${sumidosCount})</button>
+            <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">🌱 Novos (${novosCount})</button>
         </div>`;
 
-    // Filtro por grupos
+    // 🔥 FILTRO POR GRUPOS - MAIS BONITO E MAIOR
     if (gruposClientes.length > 0) {
         html += `
-            <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; padding: 8px 0; border-top: 1px solid var(--border-color);">
-                <span style="font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; margin-right: 4px;">
-                    <i class="fas fa-tags" style="color: #8b5cf6;"></i> Grupos:
+            <div style="
+                display: flex; 
+                gap: ${isMobile ? '8px' : '10px'}; 
+                flex-wrap: wrap; 
+                margin-bottom: 14px; 
+                padding: ${isMobile ? '12px 8px' : '12px 0'}; 
+                border-top: 2px solid var(--border-color, #e5e7eb);
+                border-bottom: 2px solid var(--border-color, #e5e7eb);
+                background: var(--bg-hover, rgba(0,0,0,0.02));
+                border-radius: 12px;
+                ${isMobile ? 'justify-content: center;' : ''}
+            ">
+                <span style="
+                    font-size: ${isMobile ? '13px' : '14px'}; 
+                    color: var(--text-muted, #6b7280); 
+                    display: flex; 
+                    align-items: center; 
+                    gap: 6px; 
+                    margin-right: 6px;
+                    font-weight: 600;
+                ">
+                    <i class="fas fa-tags" style="color: #8b5cf6; font-size: ${isMobile ? '16px' : '14px'};"></i> 
+                    ${isMobile ? '' : 'Grupos:'}
                 </span>
                 ${gruposClientes.map(g => `
                     <button onclick="setFiltroGrupo('${g}')" 
                             class="btn ${filtroGrupo === g ? 'btn-primary' : 'btn-outline'}" 
-                            style="font-size: 10px; padding: 3px 10px; border-color: #8b5cf6; color: ${filtroGrupo === g ? '#fff' : '#8b5cf6'};">
-                        🏷️ ${g}
-                    </button>
+                            style="
+                                font-size: ${isMobile ? '13px' : '12px'}; 
+                                padding: ${isMobile ? '8px 16px' : '6px 16px'}; 
+                                border-radius: 20px;
+                                border: 2px solid ${filtroGrupo === g ? '#8b5cf6' : '#8b5cf6'};
+                                background: ${filtroGrupo === g ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'transparent'};
+                                color: ${filtroGrupo === g ? '#ffffff' : '#8b5cf6'};
+                                font-weight: ${filtroGrupo === g ? '700' : '600'};
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                ${isMobile ? 'min-height: 40px; min-width: 60px;' : ''}
+                                box-shadow: ${filtroGrupo === g ? '0 4px 15px rgba(139,92,246,0.3)' : 'none'};
+                            "
+                            onmouseover="this.style.transform='scale(1.05)'" 
+                            onmouseout="this.style.transform='scale(1)'"
+                            onmousedown="this.style.transform='scale(0.95)'"
+                            onmouseup="this.style.transform='scale(1.05)'"
+                        >
+                            🏷️ ${g}
+                        </button>
                 `).join('')}
                 ${filtroGrupo !== 'todos' ? `
-                    <button onclick="setFiltroGrupo('todos')" class="btn btn-outline" style="font-size: 10px; padding: 3px 10px; border-color: #ef4444; color: #ef4444;">
-                        <i class="fas fa-times"></i> Limpar
-                    </button>
+                    <button onclick="setFiltroGrupo('todos')" 
+                            class="btn btn-outline" 
+                            style="
+                                font-size: ${isMobile ? '13px' : '12px'}; 
+                                padding: ${isMobile ? '8px 16px' : '6px 16px'}; 
+                                border-radius: 20px;
+                                border: 2px solid #ef4444;
+                                background: transparent;
+                                color: #ef4444;
+                                font-weight: 600;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                ${isMobile ? 'min-height: 40px; min-width: 60px;' : ''}
+                            "
+                            onmouseover="this.style.background='rgba(239,68,68,0.1)'" 
+                            onmouseout="this.style.background='transparent'"
+                            onmousedown="this.style.transform='scale(0.95)'"
+                            onmouseup="this.style.transform='scale(1)'"
+                        >
+                            <i class="fas fa-times"></i> ${isMobile ? '' : 'Limpar'}
+                        </button>
                 ` : ''}
             </div>
         `;
@@ -1106,152 +759,96 @@ function renderizarClientes(clientes) {
             </div>
         `;
     } else if (isMobile) {
-        // MOBILE - CARDS
-        html += `<div style="display:flex;flex-direction:column;gap:8px;">`;
+        // ============================================
+        // 🔥 VERSÃO MOBILE - CARDS COM CLASSES CSS
+        // ============================================
+        html += `<div class="clientes-mobile-container" style="display:flex;flex-direction:column;gap:10px;padding:4px;width:100%;box-sizing:border-box;">`;
         for (const c of clientesFiltrados) {
             const isBloqueado = c.bloqueado_chatbot === 1;
             const telefone = c.telefone || '';
             const whatsappLink = telefone ? `https://wa.me/55${telefone.replace(/\D/g, '')}` : '#';
             const inicial = c.nome ? c.nome.charAt(0).toUpperCase() : '?';
-            const cores = {
-                vip: { bg: 'rgba(245,158,11,0.15)', border: '#f59e0b', text: '#f59e0b' },
-                frequente: { bg: 'rgba(34,197,94,0.15)', border: '#22c55e', text: '#22c55e' },
-                sumido: { bg: 'rgba(239,68,68,0.15)', border: '#ef4444', text: '#ef4444' },
-                novo: { bg: 'rgba(102,126,234,0.15)', border: '#667eea', text: '#667eea' },
-                regular: { bg: 'rgba(107,114,128,0.1)', border: '#6b7280', text: '#6b7280' }
-            };
-            const cor = cores[c.classificacao] || cores.regular;
+            const corClass = c.classificacao || 'regular';
 
             const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
-                `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:8px;color:#8b5cf6;margin:1px;">${g}</span>`
+                `<span class="grupo-tag">${g}</span>`
             ).join(' ') : '';
 
             html += `
-                <div style="background: var(--bg-card); border-radius: 12px; padding: 12px; border: 1px solid ${cor.border};">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
-                        <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                            <div style="width:32px;height:32px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:12px;flex-shrink:0;">${inicial}</div>
+                <div class="cliente-card" style="width:100%;box-sizing:border-box;">
+                    <div class="card-top">
+                        <div class="card-cliente">
+                            <div class="card-avatar">${inicial}</div>
                             <div style="flex:1;min-width:0;">
-                                <div style="font-size:13px;font-weight:600;color:var(--text-primary);">
-                                    ${escapeHtml(c.nome)}
-                                    <span style="font-size:11px;">${c.icone || ''}</span>
+                                <div class="card-nome">
+                                    ${escapeHtml(c.nome)} <span class="icone">${c.icone || ''}</span>
                                 </div>
-                                <div style="font-size:10px;color:var(--text-muted);">
-                                    ${c.telefone ? `📱 ${escapeHtml(c.telefone)}` : 'Sem telefone'}
+                                <div class="card-telefone">
+                                    <i class="fas fa-phone"></i> ${c.telefone ? escapeHtml(c.telefone) : 'Sem telefone'}
                                 </div>
-                                <div style="font-size:8px;margin-top:2px;">${gruposLabels}</div>
+                                <div class="card-grupos">${gruposLabels}</div>
                             </div>
                         </div>
-                        <span style="padding:1px 8px;border-radius:10px;font-size:9px;font-weight:600;background:${cor.bg};color:${cor.text};border:1px solid ${cor.border};white-space:nowrap;">
-                            ${c.classificacao}
-                        </span>
+                        <span class="card-classificacao ${corClass}">${c.classificacao}</span>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:var(--bg-hover);border-radius:6px;padding:6px;margin:6px 0;">
-                        <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:var(--text-primary);">${c.total_concluidos}</div><div style="font-size:8px;color:var(--text-muted);">Atend.</div></div>
-                        <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:#22c55e;">R$ ${formatMoney(c.ticket_medio)}</div><div style="font-size:8px;color:var(--text-muted);">Ticket</div></div>
-                        <div style="text-align:center;"><div style="font-size:13px;font-weight:700;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-primary)'};">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div><div style="font-size:8px;color:var(--text-muted);">Última</div></div>
+
+                    <div class="card-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">${c.total_concluidos}</div>
+                            <div class="stat-label">Atend.</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number verde">R$ ${formatMoney(c.ticket_medio)}</div>
+                            <div class="stat-label">Ticket</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number ${c.dias_sem_visita > 60 ? 'vermelho' : ''}">${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}</div>
+                            <div class="stat-label">Última</div>
+                        </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;padding-top:6px;border-top:1px solid var(--border-color);">
-                        ${whatsappLink !== '#' ? `<a href="${whatsappLink}" target="_blank" style="text-align:center;padding:4px;border-radius:6px;background:rgba(37,211,102,0.1);color:#25D366;font-size:12px;text-decoration:none;"><i class="fab fa-whatsapp"></i></a>` : '<div></div>'}
-                        <button onclick="editarCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(102,126,234,0.1);color:#667eea;border:none;font-size:12px;"><i class="fas fa-pen"></i></button>
-                        <button onclick="verHistoricoCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(139,92,246,0.1);color:#8b5cf6;border:none;font-size:12px;"><i class="fas fa-history"></i></button>
-                        <button onclick="abrirModalGrupos(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(139,92,246,0.1);color:#8b5cf6;border:none;font-size:12px;" title="Grupos"><i class="fas fa-tags"></i></button>
-                        ${isBloqueado ? `<button onclick="desbloquearChatbot(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(34,197,94,0.1);color:#22c55e;border:none;font-size:12px;"><i class="fas fa-unlock"></i></button>` : `<button onclick="bloquearChatbot(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;font-size:12px;"><i class="fas fa-lock"></i></button>`}
-                        <button onclick="excluirCliente(${c.id})" style="text-align:center;padding:4px;border-radius:6px;background:rgba(239,68,68,0.1);color:#ef4444;border:none;font-size:12px;"><i class="fas fa-trash"></i></button>
+
+                    <div class="card-actions">
+                        ${whatsappLink !== '#' ? `<a href="${whatsappLink}" target="_blank" class="btn-action-card btn-whatsapp"><i class="fab fa-whatsapp"></i></a>` : '<div></div>'}
+                        <button class="btn-action-card btn-edit" onclick="editarCliente(${c.id})"><i class="fas fa-pen"></i></button>
+                        <button class="btn-action-card btn-history" onclick="verHistoricoCliente(${c.id})"><i class="fas fa-history"></i></button>
+                        <button class="btn-action-card btn-grupos" onclick="abrirModalGrupos(${c.id})"><i class="fas fa-tags"></i></button>
+                        ${isBloqueado ? 
+                            `<button class="btn-action-card btn-unblock" onclick="desbloquearChatbot(${c.id})"><i class="fas fa-unlock"></i></button>` :
+                            `<button class="btn-action-card btn-block" onclick="bloquearChatbot(${c.id})"><i class="fas fa-lock"></i></button>`
+                        }
+                        <button class="btn-action-card btn-delete" onclick="excluirCliente(${c.id})"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
             `;
         }
         html += `</div>`;
     } else {
-        // DESKTOP - TABELA
-        const cores = {
-            vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
-            frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
-            sumido: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
-            novo: { bg: 'rgba(102,126,234,0.15)', text: '#667eea' },
-            regular: { bg: 'rgba(107,114,128,0.1)', text: '#6b7280' }
-        };
-
+        // ============================================
+        // 🔥 VERSÃO DESKTOP - TABELA
+        // ============================================
         html += `
-            <div class="table-responsive" style="overflow-x: auto;">
-                <table class="data-table" style="width: 100%; min-width: 800px; font-size: 13px;">
-                    <thead>
+            <div id="clientesTableContainer" style="position:relative;max-height:70vh;overflow-y:auto;overflow-x:auto;">
+                <table class="data-table" style="width: 100%; min-width: 800px; font-size: 13px;border-collapse:collapse;">
+                    <thead style="position:sticky;top:0;z-index:5;">
                         <tr>
-                            <th style="padding: 6px 8px;">#</th>
-                            <th style="padding: 6px 8px;">Cliente</th>
-                            <th style="padding: 6px 8px;">Telefone</th>
-                            <th style="padding: 6px 8px;">Class.</th>
-                            <th style="padding: 6px 8px;">Grupos</th>
-                            <th style="padding: 6px 8px; text-align:center;">Atend.</th>
-                            <th style="padding: 6px 8px; text-align:center;">Ticket</th>
-                            <th style="padding: 6px 8px; text-align:center;">Última</th>
-                            <th style="padding: 6px 8px; text-align:center;">Ações</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);">#</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);">Cliente</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);">Telefone</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);">Class.</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);">Grupos</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);text-align:center;">Atend.</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);text-align:center;">Ticket</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);text-align:center;">Última</th>
+                            <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);text-align:center;">Ações</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${clientesFiltrados.map(c => {
-                            const isBloqueado = c.bloqueado_chatbot === 1;
-                            const telefone = c.telefone || '';
-                            const cor = cores[c.classificacao] || cores.regular;
-                            const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
-                                `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:9px;color:#8b5cf6;margin:1px;display:inline-block;">${g}</span>`
-                            ).join(' ') : '';
-                            return `
-                                <tr>
-                                    <td style="padding: 6px 8px; text-align:center;">${c.id}</td>
-                                    <td style="padding: 6px 8px;">
-                                        <strong>${escapeHtml(c.nome)}</strong> 
-                                        <span style="font-size:14px;">${c.icone || ''}</span>
-                                    </td>
-                                    <td style="padding: 6px 8px;">
-                                        ${telefone ? escapeHtml(telefone) : '-'}
-                                        ${telefone ? `<a href="https://wa.me/55${telefone.replace(/\D/g, '')}" target="_blank" style="color:#25D366;text-decoration:none;margin-left:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
-                                    </td>
-                                    <td style="padding: 6px 8px;">
-                                        <span style="padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};">
-                                            ${c.icone || ''} ${c.classificacao}
-                                        </span>
-                                    </td>
-                                    <td style="padding: 6px 8px; font-size:10px;">
-                                        ${gruposLabels || '-'}
-                                    </td>
-                                    <td style="padding: 6px 8px; text-align:center;">${c.total_concluidos}</td>
-                                    <td style="padding: 6px 8px; text-align:center;font-weight:600;color:#22c55e;">
-                                        R$ ${formatMoney(c.ticket_medio)}
-                                    </td>
-                                    <td style="padding: 6px 8px; text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">
-                                        ${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}
-                                    </td>
-                                    <td style="padding: 6px 8px;">
-                                        <div style="display:flex;gap:2px;flex-wrap:wrap;justify-content:center;">
-                                            <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar" style="padding:2px 6px;border:none;background:rgba(102,126,234,0.1);border-radius:4px;cursor:pointer;color:#667eea;">
-                                                <i class="fas fa-pen"></i>
-                                            </button>
-                                            <button class="btn-icon" onclick="verHistoricoCliente(${c.id})" title="Histórico" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
-                                                <i class="fas fa-history"></i>
-                                            </button>
-                                            <button class="btn-icon" onclick="abrirModalGrupos(${c.id})" title="Grupos" style="padding:2px 6px;border:none;background:rgba(139,92,246,0.1);border-radius:4px;cursor:pointer;color:#8b5cf6;">
-                                                <i class="fas fa-tags"></i>
-                                            </button>
-                                            ${isBloqueado ?
-                                                `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar" style="padding:2px 6px;border:none;background:rgba(34,197,94,0.1);border-radius:4px;cursor:pointer;color:#22c55e;">
-                                                    <i class="fas fa-unlock"></i>
-                                                </button>` :
-                                                `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
-                                                    <i class="fas fa-lock"></i>
-                                                </button>`
-                                            }
-                                            <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir" style="padding:2px 6px;border:none;background:rgba(239,68,68,0.1);border-radius:4px;cursor:pointer;color:#ef4444;">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            `;
-                        }).join('')}
+                    <tbody id="listaClientesBody">
+                        <!-- Renderizado via batches -->
                     </tbody>
                 </table>
+            </div>
+            <div id="loadingIndicator" style="display:none;text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">
+                <i class="fas fa-spinner fa-spin"></i> Carregando clientes...
             </div>
         `;
     }
@@ -1259,24 +856,192 @@ function renderizarClientes(clientes) {
     html += `</div></div>`;
 
     content.innerHTML = html;
-    window.scrollTo(0, 0);
 
+    // 🔥 Renderizar em batches (Desktop apenas)
+    if (!isMobile && clientesFiltrados.length > 0) {
+        renderizarClientesBatches(clientesFiltrados);
+    }
+
+    window.scrollTo(0, 0);
     console.log(`✅ Clientes renderizados: ${clientesFiltrados.length} de ${clientes.length}`);
+}
+// ============================================
+// RENDERIZAR CLIENTES EM BATCHES - DESKTOP CORRIGIDO
+// ============================================
+
+function renderizarClientesBatches(clientes) {
+    const tbody = document.getElementById('listaClientesBody');
+    if (!tbody) return;
+
+    const batchSize = PERFORMANCE_CONFIG.BATCH_SIZE;
+    let index = 0;
+    const total = clientes.length;
+
+    const cores = {
+        vip: { bg: 'rgba(245,158,11,0.15)', text: '#f59e0b' },
+        frequente: { bg: 'rgba(34,197,94,0.15)', text: '#22c55e' },
+        sumido: { bg: 'rgba(239,68,68,0.15)', text: '#ef4444' },
+        novo: { bg: 'rgba(102,126,234,0.15)', text: '#667eea' },
+        regular: { bg: 'rgba(107,114,128,0.1)', text: '#6b7280' }
+    };
+
+    function renderizarBatch() {
+        const start = index;
+        const end = Math.min(start + batchSize, total);
+        const fragment = document.createDocumentFragment();
+
+        for (let i = start; i < end; i++) {
+            const c = clientes[i];
+            const isBloqueado = c.bloqueado_chatbot === 1;
+            const telefone = c.telefone || '';
+            const cor = cores[c.classificacao] || cores.regular;
+            const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
+                `<span class="grupo-tag">${g}</span>`
+            ).join(' ') : '';
+
+            const tr = document.createElement('tr');
+            tr.style.transition = 'opacity 0.15s';
+            tr.innerHTML = `
+                <td data-label="ID" style="padding: 6px 8px; text-align:center;">${c.id}</td>
+                <td data-label="Cliente" style="padding: 6px 8px;">
+                    <strong>${escapeHtml(c.nome)}</strong> 
+                    <span style="font-size:14px;">${c.icone || ''}</span>
+                </td>
+                <td data-label="Telefone" style="padding: 6px 8px;">
+                    ${telefone ? escapeHtml(telefone) : '-'}
+                    ${telefone ? `<a href="https://wa.me/55${telefone.replace(/\D/g, '')}" target="_blank" style="color:#25D366;text-decoration:none;margin-left:4px;"><i class="fab fa-whatsapp"></i></a>` : ''}
+                </td>
+                <td data-label="Class." style="padding: 6px 8px;">
+                    <span style="padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;background:${cor.bg};color:${cor.text};">
+                        ${c.icone || ''} ${c.classificacao}
+                    </span>
+                </td>
+                <td data-label="Grupos" style="padding: 6px 8px; font-size:10px;">
+                    <div class="grupos-container">${gruposLabels || '-'}</div>
+                </td>
+                <td data-label="Atend." style="padding: 6px 8px; text-align:center;">${c.total_concluidos || 0}</td>
+                <td data-label="Ticket" style="padding: 6px 8px; text-align:center;font-weight:600;color:#22c55e;">
+                    R$ ${formatMoney(c.ticket_medio || 0)}
+                </td>
+                <td data-label="Última" style="padding: 6px 8px; text-align:center;font-size:12px;color:${c.dias_sem_visita > 60 ? '#ef4444' : 'var(--text-muted)'};">
+                    ${c.dias_sem_visita !== null ? c.dias_sem_visita + 'd' : '-'}
+                </td>
+                <td data-label="Ações" style="padding: 6px 8px;">
+                    <div class="actions-cell">
+                        <button class="btn-icon btn-edit" onclick="editarCliente(${c.id})" title="Editar">
+                            <i class="fas fa-pen"></i>
+                        </button>
+                        <button class="btn-icon btn-history" onclick="verHistoricoCliente(${c.id})" title="Histórico">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        <button class="btn-icon btn-grupos" onclick="abrirModalGrupos(${c.id})" title="Grupos">
+                            <i class="fas fa-tags"></i>
+                        </button>
+                        ${isBloqueado ?
+                            `<button class="btn-icon btn-unblock" onclick="desbloquearChatbot(${c.id})" title="Liberar">
+                                <i class="fas fa-unlock"></i>
+                            </button>` :
+                            `<button class="btn-icon btn-block" onclick="bloquearChatbot(${c.id})" title="Bloquear">
+                                <i class="fas fa-lock"></i>
+                            </button>`
+                        }
+                        <button class="btn-icon btn-delete" onclick="excluirCliente(${c.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            fragment.appendChild(tr);
+        }
+
+        tbody.appendChild(fragment);
+        index = end;
+
+        if (index < total) {
+            requestAnimationFrame(() => {
+                setTimeout(renderizarBatch, PERFORMANCE_CONFIG.RENDER_DELAY);
+            });
+        } else {
+            const indicator = document.getElementById('loadingIndicator');
+            if (indicator) indicator.style.display = 'none';
+            console.log(`✅ ${total} clientes renderizados em ${Math.ceil(total/batchSize)} batches`);
+            atualizarBotoesFiltro();
+        }
+    }
+
+    const indicator = document.getElementById('loadingIndicator');
+    if (indicator) indicator.style.display = 'block';
+
+    // Limpar tbody antes de renderizar
+    tbody.innerHTML = '';
+    setTimeout(renderizarBatch, 100);
 }
 
 // ============================================
-// SET FILTRO CLIENTES
+// FUNÇÕES DE FILTRO
 // ============================================
 
 function setFiltroClientes(filtro) {
     filtroClientes = filtro;
     if (filtroGrupo !== 'todos') filtroGrupo = 'todos';
-    renderizarClientes(clientesCompletos);
+    renderizarClientesOtimizado(clientesCompletos);
 }
 
-// ============================================
-// BUSCAR CLIENTES (APENAS DESKTOP)
-// ============================================
+function setFiltroGrupo(grupo) {
+    filtroGrupo = grupo;
+    if (filtroClientes !== 'todos') {
+        filtroClientes = 'todos';
+    }
+
+    if (window._filtroTimeout) {
+        clearTimeout(window._filtroTimeout);
+    }
+
+    window._filtroTimeout = setTimeout(() => {
+        renderizarClientesOtimizado(clientesCompletos);
+    }, 100);
+}
+
+function filtrarPorLetra(letra) {
+    console.log(`🔍 Filtrando por letra: ${letra}`);
+    letraSelecionada = letra;
+    localStorage.setItem('letraSelecionada', letra);
+
+    const botoesLetras = document.querySelectorAll('.letra-btn');
+    botoesLetras.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.letra === letra) {
+            btn.classList.add('active');
+        }
+    });
+
+    if (letra === 'todos') {
+        localStorage.removeItem('letraSelecionada');
+        letraSelecionada = '';
+        termoBuscaClientes = '';
+        const input = document.getElementById('buscaClientesInput');
+        if (input) input.value = '';
+    } else {
+        if (termoBuscaClientes) {
+            termoBuscaClientes = '';
+            const input = document.getElementById('buscaClientesInput');
+            if (input) input.value = '';
+        }
+    }
+
+    renderizarClientesOtimizado(clientesCompletos);
+}
+
+function limparFiltroLetra() {
+    letraSelecionada = '';
+    localStorage.removeItem('letraSelecionada');
+    const botoesLetras = document.querySelectorAll('.letra-btn');
+    botoesLetras.forEach(btn => btn.classList.remove('active'));
+    termoBuscaClientes = '';
+    const input = document.getElementById('buscaClientesInput');
+    if (input) input.value = '';
+    renderizarClientesOtimizado(clientesCompletos);
+}
 
 function buscarClientes() {
     const isMobile = window.innerWidth < 768;
@@ -1298,7 +1063,7 @@ function buscarClientes() {
     if (btnLimpar) btnLimpar.style.display = termoBuscaClientes ? 'block' : 'none';
 
     if (timeoutBusca) clearTimeout(timeoutBusca);
-    timeoutBusca = setTimeout(() => renderizarClientes(clientesCompletos), 300);
+    timeoutBusca = setTimeout(() => renderizarClientesOtimizado(clientesCompletos), PERFORMANCE_CONFIG.DEBOUNCE_MS);
 }
 
 function limparBuscaClientes() {
@@ -1315,40 +1080,108 @@ function limparBuscaClientes() {
     letraSelecionada = '';
     const btnLimpar = document.getElementById('btnLimparBusca');
     if (btnLimpar) btnLimpar.style.display = 'none';
-    renderizarClientes(clientesCompletos);
+    renderizarClientesOtimizado(clientesCompletos);
+}
+
+// ============================================
+// RENDERIZAR LISTA CLIENTES (Compatibilidade)
+// ============================================
+
+function renderizarListaClientes() {
+    renderizarClientesOtimizado(clientesCompletos);
+}
+
+// ============================================
+// APLICAR FILTROS CLIENTES
+// ============================================
+
+function aplicarFiltrosClientes() {
+    const content = document.getElementById('content');
+    if (!content || !content.innerHTML.includes('👥 Clientes')) return;
+
+    if (clientesCompletos.length === 0) {
+        carregarClientes();
+        return;
+    }
+
+    renderizarClientesOtimizado(clientesCompletos);
+}
+
+// ============================================
+// ATUALIZAR BOTÕES DE FILTRO
+// ============================================
+
+function atualizarBotoesFiltro() {
+    const totalClientes = clientesCompletos.length;
+    const vipCount = clientesCompletos.filter(c => c.classificacao === 'vip').length;
+    const sumidosCount = clientesCompletos.filter(c => c.classificacao === 'sumido').length;
+    const frequentesCount = clientesCompletos.filter(c => c.classificacao === 'frequente').length;
+    const novosCount = clientesCompletos.filter(c => c.classificacao === 'novo').length;
+    const comWhatsApp = clientesCompletos.filter(c => c.telefone && c.telefone.trim() !== '').length;
+
+    const btnTodos = document.querySelector('button[onclick*="setFiltroClientes(\'todos\')"]');
+    if (btnTodos) btnTodos.textContent = `📊 Todos (${totalClientes})`;
+
+    const btnVip = document.querySelector('button[onclick*="setFiltroClientes(\'vip\')"]');
+    if (btnVip) btnVip.textContent = `⭐ VIP (${vipCount})`;
+
+    const btnFreq = document.querySelector('button[onclick*="setFiltroClientes(\'frequentes\')"]');
+    if (btnFreq) btnFreq.textContent = `🔥 Frequentes (${frequentesCount})`;
+
+    const btnSumidos = document.querySelector('button[onclick*="setFiltroClientes(\'sumidos\')"]');
+    if (btnSumidos) btnSumidos.textContent = `😴 Sumidos (${sumidosCount})`;
+
+    const btnNovos = document.querySelector('button[onclick*="setFiltroClientes(\'novos\')"]');
+    if (btnNovos) btnNovos.textContent = `🌱 Novos (${novosCount})`;
+
+    const whatsEl = document.querySelector('.stat-mini-value[style*="color: #25D366"]');
+    if (whatsEl) whatsEl.textContent = comWhatsApp;
 }
 
 // ============================================
 // FUNÇÕES CRUD
+// ============================================
+// ============================================
+// ABRIR MODAL CLIENTE - CORRIGIDO
 // ============================================
 
 function abrirModalCliente() {
     const existingModal = document.getElementById('modalCliente');
     if (existingModal) existingModal.remove();
 
+    const isMobile = window.innerWidth < 768;
+
     const modalHtml = `
-        <div id="modalCliente" class="modal" style="display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999;">
-            <div class="modal-content" style="max-width: 450px; width: 100%; margin: 20px; padding: 25px; background: var(--bg-card); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: var(--text-primary);">➕ Novo Cliente</h3>
-                    <button onclick="fecharModalCliente()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
+        <div id="modalCliente" class="modal modal-cliente" style="display: flex; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; padding: 16px;">
+            <div class="modal-content" style="max-width: 450px; width: 100%; margin: auto; padding: ${isMobile ? '16px' : '24px'}; background: var(--bg-card); border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+                <div class="modal-header">
+                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                        <i class="fas fa-user-plus" style="color: #22c55e;"></i>
+                        ${isMobile ? 'Novo' : 'Novo Cliente'}
+                    </h3>
+                    <button class="modal-close" onclick="fecharModalCliente()">&times;</button>
                 </div>
+                
                 <form id="formNovoCliente" onsubmit="event.preventDefault(); salvarCliente();">
                     <div class="form-group">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-secondary);">Nome *</label>
-                        <input type="text" id="clienteNome" class="form-control" placeholder="Nome completo" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; background: var(--bg-input); color: var(--text-primary);">
+                        <label>Nome *</label>
+                        <input type="text" id="clienteNome" class="form-control" placeholder="Nome completo" required>
                     </div>
                     <div class="form-group">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-secondary);">Telefone</label>
-                        <input type="text" id="clienteTelefone" class="form-control" placeholder="(00) 00000-0000" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; background: var(--bg-input); color: var(--text-primary);">
+                        <label>Telefone</label>
+                        <input type="text" id="clienteTelefone" class="form-control" placeholder="(00) 00000-0000">
                     </div>
                     <div class="form-group">
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600; color: var(--text-secondary);">Email</label>
-                        <input type="email" id="clienteEmail" class="form-control" placeholder="cliente@email.com" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 14px; background: var(--bg-input); color: var(--text-primary);">
+                        <label>Email</label>
+                        <input type="email" id="clienteEmail" class="form-control" placeholder="cliente@email.com">
                     </div>
-                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="fecharModalCliente()" style="padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; background: var(--bg-hover); color: var(--text-secondary);">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="salvarCliente()" style="padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; font-weight: 600;">Salvar</button>
+                    <div class="modal-actions">
+                        <button type="button" class="btn-action btn-outline" onclick="fecharModalCliente()">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button type="submit" class="btn-action btn-primary">
+                            <i class="fas fa-save"></i> Salvar
+                        </button>
                     </div>
                 </form>
             </div>
@@ -1412,6 +1245,10 @@ async function salvarCliente() {
     }
 }
 
+// ============================================
+// EDITAR CLIENTE - CORRIGIDO
+// ============================================
+
 async function editarCliente(id) {
     try {
         const token = localStorage.getItem('token');
@@ -1432,35 +1269,35 @@ async function editarCliente(id) {
         const isMobile = window.innerWidth < 768;
 
         const modalHtml = `
-            <div id="modalEditarCliente" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+            <div id="modalEditarCliente" class="modal modal-cliente" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
                 <div class="modal-content" style="max-width: 450px; width: 100%; margin: auto; padding: ${isMobile ? '16px' : '24px'}; background: var(--bg-card); border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); max-height: 90vh; overflow-y: auto;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div class="modal-header">
                         <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
-                            <i class="fas fa-user-edit"></i> Editar Cliente
+                            <i class="fas fa-user-edit" style="color: var(--primary);"></i>
+                            ${isMobile ? 'Editar' : 'Editar Cliente'}
                         </h3>
-                        <button onclick="fecharModalEditarCliente()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted); line-height: 1; padding: 0 8px;">&times;</button>
+                        <button class="modal-close" onclick="fecharModalEditarCliente()">&times;</button>
                     </div>
                     
-                    <form id="formEditarCliente" onsubmit="event.preventDefault(); atualizarCliente(${id});" style="display:flex;flex-direction:column;gap:12px;">
-                        <div class="form-group" style="margin:0;">
-                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">Nome <span style="color:#ef4444;">*</span></label>
-                            <input type="text" id="editClienteNome" class="form-control" value="${escapeHtml(cliente.nome)}" required style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
+                    <form id="formEditarCliente" onsubmit="event.preventDefault(); atualizarCliente(${id});">
+                        <div class="form-group">
+                            <label>Nome *</label>
+                            <input type="text" id="editClienteNome" class="form-control" value="${escapeHtml(cliente.nome)}" required>
                         </div>
-                        
-                        <div class="form-group" style="margin:0;">
-                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">📱 Telefone</label>
-                            <input type="text" id="editClienteTelefone" class="form-control" value="${escapeHtml(cliente.telefone || '')}" placeholder="(00) 00000-0000" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="text" id="editClienteTelefone" class="form-control" value="${escapeHtml(cliente.telefone || '')}" placeholder="(00) 00000-0000">
                         </div>
-                        
-                        <div class="form-group" style="margin:0;">
-                            <label style="font-size:13px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">📧 Email</label>
-                            <input type="email" id="editClienteEmail" class="form-control" value="${escapeHtml(cliente.email || '')}" placeholder="cliente@email.com" style="width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="editClienteEmail" class="form-control" value="${escapeHtml(cliente.email || '')}" placeholder="cliente@email.com">
                         </div>
-                        
-                        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                            <button type="button" onclick="fecharModalEditarCliente()" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer; font-weight: 500;">Cancelar</button>
-                            <button type="submit" style="padding: 8px 24px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                                <i class="fas fa-save"></i> Salvar Alterações
+                        <div class="modal-actions">
+                            <button type="button" class="btn-action btn-outline" onclick="fecharModalEditarCliente()">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button type="submit" class="btn-action btn-primary">
+                                <i class="fas fa-save"></i> Salvar
                             </button>
                         </div>
                     </form>
@@ -1529,10 +1366,6 @@ async function atualizarCliente(id) {
         showToast('Erro ao atualizar cliente', 'error');
     }
 }
-
-// ============================================
-// EXCLUIR CLIENTE - CORRIGIDO
-// ============================================
 
 async function excluirCliente(id) {
     const confirmado = await showConfirm(
@@ -1632,10 +1465,6 @@ async function desbloquearChatbot(id) {
     }
 }
 
-// ============================================
-// VER HISTÓRICO DO CLIENTE
-// ============================================
-
 async function verHistoricoCliente(id) {
     const token = localStorage.getItem('token');
 
@@ -1706,10 +1535,6 @@ function fecharModalHistorico() {
     if (modal) modal.remove();
 }
 
-// ============================================
-// APAGAR TODOS OS CLIENTES
-// ============================================
-
 async function apagarTodosClientes() {
     if (!confirm('🛑 ATENÇÃO: Você tem certeza que deseja apagar TODOS os clientes?\n\nEsta ação apagará também todos os agendamentos vinculados e não poderá ser desfeita!')) {
         return;
@@ -1775,7 +1600,321 @@ async function apagarTodosClientes() {
 }
 
 // ============================================
-// IMPORTAÇÃO - APENAS DESKTOP
+// FUNÇÕES DE GRUPOS
+// ============================================
+
+async function abrirModalGrupos(clienteId) {
+    clienteEditandoGrupos = clienteId;
+    const cliente = clientesCompletos.find(c => c.id === clienteId);
+    if (!cliente) {
+        showToast('Cliente não encontrado', 'error');
+        return;
+    }
+
+    const grupos = await carregarGruposCliente(clienteId);
+    const gruposDisponiveis = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais'];
+
+    const isMobile = window.innerWidth < 768;
+
+    let html = `
+        <div id="modalGrupos" class="modal" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 99999; align-items: center; justify-content: center; padding: 16px;">
+            <div class="modal-content" style="max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; background: var(--bg-card); border-radius: 16px; padding: ${isMobile ? '16px' : '24px'}; box-shadow: 0 20px 60px rgba(0,0,0,0.4);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="margin: 0; font-size: ${isMobile ? '16px' : '20px'}; display: flex; align-items: center; gap: 8px; color: var(--text-primary);">
+                        <i class="fas fa-tags" style="color: #8b5cf6;"></i>
+                        Grupos de ${escapeHtml(cliente.nome)}
+                    </h3>
+                    <button onclick="fecharModalGrupos()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: var(--text-muted);">&times;</button>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <p style="font-size: 13px; color: var(--text-muted);">Selecione os grupos que este cliente pertence</p>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                    ${gruposDisponiveis.map(g => {
+        const isSelected = grupos.includes(g);
+        return `
+                            <button onclick="toggleGrupoCliente('${g}')" 
+                                    style="padding: 6px 14px; border-radius: 20px; border: 2px solid ${isSelected ? '#8b5cf6' : 'var(--border-color)'}; 
+                                           background: ${isSelected ? 'rgba(139,92,246,0.15)' : 'var(--bg-hover)'}; 
+                                           color: ${isSelected ? '#8b5cf6' : 'var(--text-secondary)'}; 
+                                           font-size: 12px; font-weight: ${isSelected ? '700' : '500'}; cursor: pointer; transition: all 0.2s;
+                                           display: inline-flex; align-items: center; gap: 4px;"
+                                    id="grupo_btn_${g.replace(/\s/g, '_')}">
+                                ${isSelected ? '✅' : '☐'} ${g}
+                            </button>
+                        `;
+    }).join('')}
+                </div>
+
+                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                    <input type="text" id="novoGrupoInput" placeholder="Criar novo grupo..." 
+                           style="flex:1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border-color); 
+                                  background: var(--bg-input); color: var(--text-primary); font-size: 13px;">
+                    <button onclick="criarNovoGrupo()" style="padding: 8px 16px; border-radius: 8px; border: none; 
+                            background: linear-gradient(135deg, #8b5cf6, #6d28d9); color: white; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+
+                ${grupos.length > 0 ? `
+                <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px;">
+                        <i class="fas fa-list"></i> Grupos atuais
+                    </div>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                        ${grupos.map(g => `
+                            <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(139,92,246,0.1); padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2);">
+                                🏷️ ${g}
+                                <button onclick="excluirGrupoCliente('${g}')" 
+                                        style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 2px;"
+                                        title="Remover grupo">
+                                    <i class="fas fa-times-circle"></i>
+                                </button>
+                            </span>
+                        `).join('')}
+                    </div>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
+                        Clique no ✕ para remover um grupo deste cliente
+                    </div>
+                </div>
+                ` : `
+                <div style="margin-bottom: 16px; padding: 10px; background: var(--bg-hover); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 12px; border: 1px dashed var(--border-color);">
+                    <i class="fas fa-info-circle"></i> Este cliente não pertence a nenhum grupo
+                </div>
+                `}
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                    <button onclick="fecharModalGrupos()" style="padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border-color); background: transparent; color: var(--text-secondary); font-size: 13px; cursor: pointer;">Cancelar</button>
+                    <button onclick="salvarGruposCliente()" style="padding: 8px 24px; border-radius: 8px; border: none; background: linear-gradient(135deg, #667eea, #764ba2); color: white; font-size: 13px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-save"></i> Salvar Grupos
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    const existing = document.getElementById('modalGrupos');
+    if (existing) existing.remove();
+    document.body.insertAdjacentHTML('beforeend', html);
+
+    gruposSelecionadosTemp = [...grupos];
+}
+
+function fecharModalGrupos() {
+    const modal = document.getElementById('modalGrupos');
+    if (modal) modal.remove();
+    clienteEditandoGrupos = null;
+    gruposSelecionadosTemp = [];
+}
+
+function toggleGrupoCliente(grupo) {
+    const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
+    if (!btn) {
+        console.warn(`⚠️ Botão não encontrado para: ${grupo}`);
+        return;
+    }
+
+    const isSelected = btn.textContent.includes('✅');
+
+    if (isSelected) {
+        btn.textContent = `☐ ${grupo}`;
+        btn.style.background = 'var(--bg-hover)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.borderColor = 'var(--border-color)';
+        btn.style.fontWeight = '500';
+        gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
+    } else {
+        btn.textContent = `✅ ${grupo}`;
+        btn.style.background = 'rgba(139,92,246,0.15)';
+        btn.style.color = '#8b5cf6';
+        btn.style.borderColor = '#8b5cf6';
+        btn.style.fontWeight = '700';
+        if (!gruposSelecionadosTemp.includes(grupo)) {
+            gruposSelecionadosTemp.push(grupo);
+        }
+    }
+
+    if (clienteEditandoGrupos) {
+        atualizarGruposAtuais(clienteEditandoGrupos);
+    }
+}
+
+function criarNovoGrupo() {
+    const input = document.getElementById('novoGrupoInput');
+    const nome = input.value.trim();
+
+    if (!nome) {
+        showToast('Digite um nome para o grupo', 'warning');
+        return;
+    }
+
+    const gruposDisponiveis = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais'];
+
+    if (gruposDisponiveis.includes(nome)) {
+        showToast(`O grupo "${nome}" já existe`, 'warning');
+        return;
+    }
+
+    if (!gruposSelecionadosTemp.includes(nome)) {
+        gruposSelecionadosTemp.push(nome);
+    }
+
+    const clienteId = clienteEditandoGrupos;
+    fecharModalGrupos();
+
+    setTimeout(() => {
+        abrirModalGrupos(clienteId);
+        setTimeout(() => {
+            gruposSelecionadosTemp.forEach(g => {
+                const btn = document.getElementById(`grupo_btn_${g.replace(/\s/g, '_')}`);
+                if (btn) {
+                    btn.textContent = `✅ ${g}`;
+                    btn.style.background = 'rgba(139,92,246,0.15)';
+                    btn.style.color = '#8b5cf6';
+                    btn.style.borderColor = '#8b5cf6';
+                    btn.style.fontWeight = '700';
+                }
+            });
+
+            const btnNovoGrupo = document.getElementById(`grupo_btn_${nome.replace(/\s/g, '_')}`);
+            if (btnNovoGrupo) {
+                btnNovoGrupo.textContent = `✅ ${nome}`;
+                btnNovoGrupo.style.background = 'rgba(139,92,246,0.15)';
+                btnNovoGrupo.style.color = '#8b5cf6';
+                btnNovoGrupo.style.borderColor = '#8b5cf6';
+                btnNovoGrupo.style.fontWeight = '700';
+            }
+
+            atualizarGruposAtuais(clienteId);
+
+            const input2 = document.getElementById('novoGrupoInput');
+            if (input2) input2.value = '';
+
+            showToast(`Grupo "${nome}" criado e adicionado! ✅`, 'success');
+        }, 150);
+    }, 150);
+}
+
+function atualizarGruposAtuais(clienteId) {
+    const container = document.querySelector('#modalGrupos .modal-content');
+    if (!container) return;
+
+    const gruposAtuaisDiv = container.querySelector('div:has(> div > span)');
+    if (!gruposAtuaisDiv) return;
+
+    const gruposHtml = gruposSelecionadosTemp.length > 0 ? `
+        <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            ${gruposSelecionadosTemp.map(g => `
+                <span style="display: inline-flex; align-items: center; gap: 4px; background: rgba(139,92,246,0.1); padding: 4px 10px; border-radius: 16px; border: 1px solid rgba(139,92,246,0.2);">
+                    🏷️ ${g}
+                    <button onclick="excluirGrupoCliente('${g}')" 
+                            style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 14px; padding: 0 2px;"
+                            title="Remover grupo">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
+                </span>
+            `).join('')}
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
+            Clique no ✕ para remover um grupo deste cliente
+        </div>
+    ` : `
+        <div style="padding: 10px; background: var(--bg-hover); border-radius: 8px; text-align: center; color: var(--text-muted); font-size: 12px; border: 1px dashed var(--border-color);">
+            <i class="fas fa-info-circle"></i> Este cliente não pertence a nenhum grupo
+        </div>
+    `;
+
+    const gruposAtuaisDivParent = gruposAtuaisDiv.parentElement;
+    if (gruposAtuaisDivParent) {
+        const title = gruposAtuaisDivParent.querySelector('div[style*="font-size: 12px; font-weight: 600;"]');
+        if (title) {
+            gruposAtuaisDivParent.innerHTML = `
+                ${title.outerHTML}
+                ${gruposHtml}
+            `;
+        }
+    }
+}
+
+async function salvarGruposCliente() {
+    if (!clienteEditandoGrupos) {
+        showToast('❌ Nenhum cliente selecionado', 'error');
+        return;
+    }
+
+    console.log('📝 Salvando grupos para cliente:', clienteEditandoGrupos);
+    console.log('📝 Grupos selecionados:', gruposSelecionadosTemp);
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch(`/api/clientes/${clienteEditandoGrupos}/grupos`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                grupos: gruposSelecionadosTemp
+            })
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('✅ Grupos atualizados com sucesso!', 'success');
+
+            const clienteIndex = clientesCompletos.findIndex(c => c.id === clienteEditandoGrupos);
+            if (clienteIndex !== -1) {
+                clientesCompletos[clienteIndex].grupos = [...gruposSelecionadosTemp];
+            }
+
+            fecharModalGrupos();
+            await carregarClientes();
+
+            if (filtroGrupo !== 'todos') {
+                setTimeout(() => {
+                    setFiltroGrupo(filtroGrupo);
+                }, 300);
+            }
+
+        } else {
+            showToast(data.message || '❌ Erro ao salvar grupos', 'error');
+            console.error('❌ Erro no backend:', data);
+        }
+    } catch (error) {
+        console.error('❌ Erro ao salvar grupos:', error);
+        hideLoading();
+        showToast('❌ Erro ao conectar com o servidor', 'error');
+    }
+}
+
+function excluirGrupoCliente(grupo) {
+    if (!confirm(`Remover o grupo "${grupo}" deste cliente?`)) return;
+
+    gruposSelecionadosTemp = gruposSelecionadosTemp.filter(g => g !== grupo);
+
+    const btn = document.getElementById(`grupo_btn_${grupo.replace(/\s/g, '_')}`);
+    if (btn) {
+        btn.textContent = `☐ ${grupo}`;
+        btn.style.background = 'var(--bg-hover)';
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.borderColor = 'var(--border-color)';
+        btn.style.fontWeight = '500';
+    }
+
+    const clienteId = clienteEditandoGrupos;
+    atualizarGruposAtuais(clienteId);
+
+    showToast(`Grupo "${grupo}" removido deste cliente`, 'info');
+}
+
+// ============================================
+// FUNÇÕES DE IMPORTAÇÃO CSV
 // ============================================
 
 function abrirModalImportarCSV() {
@@ -2131,7 +2270,7 @@ async function salvarLoteClientesDesktop(lista) {
 }
 
 // ============================================
-// ABRIR MODAL PROMOÇÃO
+// FUNÇÕES DE PROMOÇÃO
 // ============================================
 
 function abrirModalPromocao() {
@@ -2152,7 +2291,6 @@ function abrirModalPromocao() {
     });
 
     const gruposPadrao = ['Premium', 'Frequentes', 'Promoções', 'Aniversariantes', 'Amigos', 'Indicados', 'Especiais', 'VIP', 'Sumidos'];
-
     const todosGrupos = new Set([...gruposPadrao, ...gruposExistentes]);
     const gruposAtivos = Array.from(todosGrupos).sort();
 
@@ -2164,7 +2302,7 @@ function abrirModalPromocao() {
     for (let c of clientesComWhatsApp) {
         const classificacaoIcon = c.classificacao === 'vip' ? '⭐' :
             c.classificacao === 'frequente' ? '🔥' :
-                c.classificacao === 'sumido' ? '😴' : '👤';
+            c.classificacao === 'sumido' ? '😴' : '👤';
 
         const gruposLabels = c.grupos && Array.isArray(c.grupos) ? c.grupos.map(g =>
             `<span style="background:rgba(139,92,246,0.1);padding:1px 6px;border-radius:8px;font-size:8px;color:#8b5cf6;">${g}</span>`
@@ -2309,9 +2447,11 @@ Venha aproveitar nossa promoção imperdível!
     }, 100);
 }
 
-// ============================================
-// FILTRAR CLIENTES NA PROMOÇÃO - CORRIGIDO
-// ============================================
+function fecharModalPromocao() {
+    const modal = document.getElementById('modalPromocao');
+    if (modal) modal.remove();
+    promocaoEmAndamento = false;
+}
 
 function filtrarClientesPromocao() {
     try {
@@ -2367,10 +2507,6 @@ function filtrarClientesPromocao() {
     }
 }
 
-// ============================================
-// SELECIONAR TODOS OS CLIENTES - CORRIGIDO
-// ============================================
-
 function selecionarTodosClientes(selecionar) {
     try {
         const container = document.getElementById('listaClientesPromocao');
@@ -2396,10 +2532,6 @@ function selecionarTodosClientes(selecionar) {
         console.error('❌ Erro ao selecionar todos:', error);
     }
 }
-
-// ============================================
-// ATUALIZAR CONTADOR DE SELECIONADOS - CORRIGIDO
-// ============================================
 
 function atualizarContadorSelecionados() {
     try {
@@ -2434,12 +2566,6 @@ function atualizarContadorSelecionados() {
     } catch (error) {
         console.error('❌ Erro ao atualizar contador:', error);
     }
-}
-
-function fecharModalPromocao() {
-    const modal = document.getElementById('modalPromocao');
-    if (modal) modal.remove();
-    promocaoEmAndamento = false;
 }
 
 function normalizarNumero(telefone) {
@@ -2662,6 +2788,7 @@ async function enviarPromocao() {
         }
     }, 5000);
 }
+
 // ============================================
 // FORÇAR ATUALIZAÇÃO DOS GRUPOS
 // ============================================
@@ -2682,7 +2809,6 @@ async function forcarAtualizacaoGrupos() {
             const clientes = data.data?.clientes || [];
             const grupos = data.data?.grupos || [];
 
-            // Atualizar grupos locais
             const gruposMap = {};
             for (const c of clientes) {
                 gruposMap[c.id] = c.grupos || [];
@@ -2696,11 +2822,10 @@ async function forcarAtualizacaoGrupos() {
                 }
             });
 
-            // Atualizar lista de grupos
             gruposClientes = grupos;
 
             console.log('✅ Grupos atualizados localmente');
-            renderizarClientes(clientesCompletos);
+            renderizarClientesOtimizado(clientesCompletos);
             showToast('✅ Grupos atualizados com sucesso!', 'success');
         } else {
             showToast('❌ Erro ao atualizar grupos', 'error');
@@ -2710,6 +2835,7 @@ async function forcarAtualizacaoGrupos() {
         showToast('❌ Erro ao conectar com o servidor', 'error');
     }
 }
+
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
@@ -2721,7 +2847,7 @@ window.setFiltroClientes = setFiltroClientes;
 window.setFiltroGrupo = setFiltroGrupo;
 window.filtrarPorLetra = filtrarPorLetra;
 window.limparFiltroLetra = limparFiltroLetra;
-window.renderizarClientes = renderizarClientes;
+window.renderizarClientesOtimizado = renderizarClientesOtimizado;
 window.apagarTodosClientes = apagarTodosClientes;
 window.abrirModalCliente = abrirModalCliente;
 window.fecharModalCliente = fecharModalCliente;
@@ -2757,5 +2883,6 @@ window.aplicarFiltrosClientes = aplicarFiltrosClientes;
 window.carregarClientesBackground = carregarClientesBackground;
 window.renderizarListaClientes = renderizarListaClientes;
 window.forcarAtualizacaoGrupos = forcarAtualizacaoGrupos;
+window.atualizarBotoesFiltro = atualizarBotoesFiltro;
 
-console.log('✅ clientes.js carregado (OTIMIZADO - SEM LUPA NO MOBILE)');
+console.log('✅ clientes.js carregado (OTIMIZADO COM RENDERIZAÇÃO EM BATCHES)');

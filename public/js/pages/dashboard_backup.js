@@ -1,5 +1,5 @@
-// ============================================
-// DASHBOARD.JS - VERSÃO COMPLETA COM CORREÇÕES
+﻿// ============================================
+// DASHBOARD.JS - VERSÃO MINIMALISTA COM AGENDA EM DESTAQUE
 // ULTIMA ATUALIZACAO: 22/08/2026
 // ============================================
 
@@ -123,63 +123,6 @@ function atualizarModoAgendaPorTela() {
 }
 
 // ============================================
-// IR PARA O PRÓXIMO DIA DISPONÍVEL
-// ============================================
-
-function irParaDiaDisponivel(dataStr) {
-    if (!dataStr) return;
-    const partes = dataStr.split('-').map(Number);
-    if (partes.length !== 3) return;
-    agendaInteligenteDate = new Date(partes[0], partes[1] - 1, partes[2]);
-    renderizarAgendaInteligente();
-}
-
-// ============================================
-// MUDAR AGENDA - PULAR DIAS FECHADOS
-// ============================================
-
-function mudarAgendaSemana(dir) {
-    let novaData = new Date(agendaInteligenteDate);
-    novaData.setDate(novaData.getDate() + dir);
-    
-    const diaSem = novaData.getDay();
-    const horDia = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
-    const aberto = horDia && (horDia.aberto == 1 || horDia.aberto == true);
-    
-    if (!aberto) {
-        let encontrou = false;
-        let dataTeste = new Date(novaData);
-        
-        for (let i = 1; i <= 7; i++) {
-            dataTeste = new Date(novaData);
-            dataTeste.setDate(novaData.getDate() + (dir > 0 ? i : -i));
-            const testDiaSem = dataTeste.getDay();
-            const testHorDia = agendaInteligenteHorarios.find(h => h.dia_semana === testDiaSem);
-            const testAberto = testHorDia && (testHorDia.aberto == 1 || testHorDia.aberto == true);
-            if (testAberto) {
-                encontrou = true;
-                break;
-            }
-        }
-        
-        if (encontrou) {
-            const dataFormatada = dataTeste.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
-            const diaOriginal = novaData.toLocaleDateString('pt-BR', { weekday: 'long' });
-            showToast(`⏭️ ${diaOriginal} está fechado. Indo para ${dataFormatada}`, 'info');
-            agendaInteligenteDate = dataTeste;
-        } else {
-            showToast('⚠️ Nenhum dia disponível nos próximos 7 dias', 'warning');
-            return;
-        }
-    } else {
-        agendaInteligenteDate = novaData;
-    }
-    
-    if (agendaModoCompleto && isMobileScreen()) agendaModoCompleto = false;
-    renderizarAgendaInteligente();
-}
-
-// ============================================
 // CONCLUIR AGENDAMENTOS VENCIDOS
 // ============================================
 
@@ -273,7 +216,7 @@ async function carregarAgendaInteligente() {
 }
 
 // ============================================
-// RENDERIZAR AGENDA INTELIGENTE - COMPLETA
+// RENDERIZAR AGENDA INTELIGENTE - CORRIGIDA (TODOS OS HORÁRIOS)
 // ============================================
 
 function renderizarAgendaInteligente() {
@@ -315,54 +258,9 @@ function renderizarAgendaInteligente() {
         const diaSem = dia.getDay();
         const horDia = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
         const aberto = horDia && (horDia.aberto == 1 || horDia.aberto == true);
-        const isFechado = !aberto;
 
-        if (isFechado) {
-            let proxDia = new Date(dia);
-            let encontrou = false;
-            
-            for (let i = 1; i <= 7; i++) {
-                const testDate = new Date(dia);
-                testDate.setDate(dia.getDate() + i);
-                const testDiaSem = testDate.getDay();
-                const testHorDia = agendaInteligenteHorarios.find(h => h.dia_semana === testDiaSem);
-                const testAberto = testHorDia && (testHorDia.aberto == 1 || testHorDia.aberto == true);
-                if (testAberto) {
-                    proxDia = testDate;
-                    encontrou = true;
-                    break;
-                }
-            }
-
-            container.innerHTML = `
-                <div style="text-align:center;padding:30px;">
-                    <div style="font-size:48px;">🚫</div>
-                    <p style="margin-top:8px;font-weight:700;font-size:16px;color:var(--text-primary);">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })} Fechado</p>
-                    <p style="font-size:13px;color:var(--text-muted);">Este dia não está disponível para agendamentos</p>
-                    ${encontrou ? `
-                        <button onclick="irParaDiaDisponivel('${proxDia.getFullYear()}-${String(proxDia.getMonth() + 1).padStart(2, '0')}-${String(proxDia.getDate()).padStart(2, '0')}')" style="
-                            margin-top:12px;
-                            padding:8px 20px;
-                            border:none;
-                            border-radius:10px;
-                            background:linear-gradient(135deg,#667eea,#764ba2);
-                            color:white;
-                            font-weight:600;
-                            font-size:14px;
-                            cursor:pointer;
-                        ">
-                            ▶️ Ir para ${proxDia.toLocaleDateString('pt-BR', { weekday: 'long' })}
-                        </button>
-                    ` : `
-                        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Nenhum dia disponível nos próximos 7 dias</p>
-                    `}
-                    <div style="display:flex;gap:6px;margin-top:16px;justify-content:center;">
-                        <button onclick="mudarAgendaSemana(-1)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;cursor:pointer;">◀️ Ontem</button>
-                        <button onclick="irAgendaHoje()" style="padding:8px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:600;cursor:pointer;">📌 Hoje</button>
-                        <button onclick="mudarAgendaSemana(1)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;cursor:pointer;">Amanhã ▶️</button>
-                    </div>
-                </div>
-            `;
+        if (!aberto) {
+            container.innerHTML = `<div style="text-align:center;padding:30px;"><div style="font-size:40px;">🚫</div><p style="margin-top:8px;font-weight:600;">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })} Fechado</p><p style="font-size:12px;color:var(--text-muted);">Configure o horário de funcionamento</p></div>`;
             return;
         }
 
@@ -379,37 +277,28 @@ function renderizarAgendaInteligente() {
             }
         }
 
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                      document.body.classList.contains('dark-theme') ||
-                      window.matchMedia('(prefers-color-scheme: dark)').matches;
-
         let html = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
                 <div>
-                    <div style="font-size:17px;font-weight:800;color:${isDark ? '#ffffff' : '#1a1a2e'};">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })}</div>
+                    <div style="font-size:16px;font-weight:700;">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })}</div>
                     <div style="font-size:12px;color:var(--text-muted);">${dia.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</div>
                 </div>
-                <button onclick="alternarModoAgenda()" style="background:var(--bg-card);border:1px solid var(--border-color);padding:6px 14px;border-radius:16px;font-size:11px;font-weight:700;color:var(--text-primary);cursor:pointer;">📅 Semana</button>
+                <button onclick="alternarModoAgenda()" style="background:var(--bg-card);border:1px solid var(--border-color);padding:6px 12px;border-radius:16px;font-size:11px;font-weight:600;cursor:pointer;">📅 Semana</button>
             </div>
             <div style="display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;padding-right:4px;">
         `;
 
+        // 🔥 MOSTRAR TODOS OS HORÁRIOS (não apenas os primeiros 6)
         for (let hora of base) {
             const alm = horDia && hora >= (horDia.almoco_inicio || '12:00') && hora < (horDia.almoco_fim || '13:00');
             if (alm) {
-                html += `<div style="background:rgba(245,158,11,0.12);border-radius:8px;padding:8px 12px;border-left:3px solid #f59e0b;font-size:13px;color:#f59e0b;font-weight:600;">🍽 ${hora} — Almoço</div>`;
+                html += `<div style="background:rgba(245,158,11,0.08);border-radius:8px;padding:8px 12px;border-left:3px solid #f59e0b;font-size:13px;color:#f59e0b;">🍽 ${hora} — Almoço</div>`;
                 continue;
             }
-            
-            let ocupados = 0;
-            let profissionaisStatus = [];
+            let ocup = 0;
             const hm = horaParaMinutos(hora);
-            
             for (let p of agendaInteligenteProfissionais) {
-                let ocupado = false;
-                let nomeProfissional = p.nome || p.name || 'Profissional';
-                let clienteNome = '';
-                
+                let oc = false;
                 if (p.is_dono) {
                     for (let ag of agendaInteligenteData) {
                         if (ag.data !== dataStr || ag.status === 'cancelado' || (ag.profissional_id !== null && ag.profissional_id !== '' && ag.profissional_id !== undefined) || !ag.hora) continue;
@@ -419,81 +308,31 @@ function renderizarAgendaInteligente() {
                             const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
                             if (s && s.duracao) dur = parseInt(s.duracao);
                         }
-                        if (hm >= agH && hm < agH + dur) { 
-                            ocupado = true; 
-                            clienteNome = ag.cliente_nome || 'Cliente';
-                            break; 
-                        }
+                        if (hm >= agH && hm < agH + dur) { oc = true; break; }
                     }
                 } else {
-                    for (let ag of agendaInteligenteData) {
-                        if (ag.data !== dataStr || ag.status === 'cancelado' || String(ag.profissional_id) !== String(p.id) || !ag.hora) continue;
-                        const agH = horaParaMinutos(ag.hora);
-                        let dur = 30;
-                        if (ag.servico_id) {
-                            const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                            if (s && s.duracao) dur = parseInt(s.duracao);
-                        }
-                        if (hm >= agH && hm < agH + dur) { 
-                            ocupado = true; 
-                            clienteNome = ag.cliente_nome || 'Cliente';
-                            break; 
-                        }
-                    }
+                    oc = isHorarioOcupadoComDuracao(agendaInteligenteData, p.id, dataStr, hora);
                 }
-                
-                if (ocupado) ocupados++;
-                profissionaisStatus.push({
-                    nome: nomeProfissional,
-                    ocupado: ocupado,
-                    cliente: clienteNome
-                });
+                if (oc) ocup++;
             }
-            
-            const totalProfissionais = agendaInteligenteProfissionais.length;
-            const livres = totalProfissionais - ocupados;
-            
-            let statusText = '';
-            let statusColor = '';
-            let statusBg = '';
-            let detalhesProfissionais = '';
-            
-            if (livres === 0) {
-                statusText = `🔴 ${ocupados}/${totalProfissionais} OCUPADOS`;
-                statusColor = '#ef4444';
-                statusBg = 'rgba(239,68,68,0.08)';
-                detalhesProfissionais = profissionaisStatus.filter(p => p.ocupado).map(p => `${p.nome} (${p.cliente})`).join(', ');
-            } else if (ocupados > 0) {
-                statusText = `🟡 ${livres} livre${livres > 1 ? 's' : ''} · ${ocupados} ocupado${ocupados > 1 ? 's' : ''}`;
-                statusColor = '#f59e0b';
-                statusBg = 'rgba(245,158,11,0.08)';
-                const livresList = profissionaisStatus.filter(p => !p.ocupado).map(p => p.nome);
-                detalhesProfissionais = `Livre: ${livresList.join(', ')}`;
-            } else {
-                statusText = `🟢 ${totalProfissionais} LIVRE${totalProfissionais > 1 ? 'S' : ''}`;
-                statusColor = '#22c55e';
-                statusBg = 'rgba(34,197,94,0.08)';
-                detalhesProfissionais = `Todos disponíveis`;
-            }
+            const tot = agendaInteligenteProfissionais.length;
+            const liv = tot - ocup;
+            const cls = liv === 0 ? 'lotado' : ocup > 0 ? 'parcial' : 'livre';
+            const txt = liv === 0 ? '🔴 LOTADO' : liv === tot ? '🟢 LIVRE' : `🟡 ${ocup}/${tot}`;
             
             html += `
                 <div onclick="abrirDetalhesSlot('${dataStr}','${hora}')" style="
-                    background:${statusBg};
-                    border-radius:10px;
-                    padding:10px 14px;
+                    background:${cls === 'livre' ? 'rgba(34,197,94,0.06)' : cls === 'parcial' ? 'rgba(245,158,11,0.06)' : 'rgba(239,68,68,0.06)'};
+                    border-radius:8px;
+                    padding:8px 12px;
+                    display:flex;
+                    justify-content:space-between;
+                    align-items:center;
                     cursor:pointer;
-                    border-left:4px solid ${statusColor};
-                    margin-bottom:4px;
+                    border-left:3px solid ${cls === 'livre' ? '#22c55e' : cls === 'parcial' ? '#f59e0b' : '#ef4444'};
                 ">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-weight:700;font-size:15px;color:${isDark ? '#ffffff' : '#1a1a2e'};">${hora}</span>
-                        <span style="font-weight:700;font-size:13px;color:${statusColor};">${statusText}</span>
-                    </div>
-                    ${detalhesProfissionais ? `
-                        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.05);">
-                            ${detalhesProfissionais}
-                        </div>
-                    ` : ''}
+                    <span style="font-weight:600;font-size:14px;">${hora}</span>
+                    <span style="font-weight:700;font-size:12px;color:${cls === 'livre' ? '#22c55e' : cls === 'parcial' ? '#f59e0b' : '#ef4444'};">${txt}</span>
                 </div>
             `;
         }
@@ -501,9 +340,9 @@ function renderizarAgendaInteligente() {
         html += `
             </div>
             <div style="display:flex;gap:6px;margin-top:10px;">
-                <button onclick="mudarAgendaSemana(-1)" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">◀️ Ontem</button>
-                <button onclick="irAgendaHoje()" style="flex:1;padding:10px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:700;cursor:pointer;">📌 Hoje</button>
-                <button onclick="mudarAgendaSemana(1)" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">Amanhã ▶️</button>
+                <button onclick="mudarAgendaSemana(-1)" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:11px;cursor:pointer;">◀️ Ontem</button>
+                <button onclick="irAgendaHoje()" style="flex:1;padding:8px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:11px;font-weight:600;cursor:pointer;">📌 Hoje</button>
+                <button onclick="mudarAgendaSemana(1)" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:11px;cursor:pointer;">Amanhã ▶️</button>
             </div>
         `;
         container.innerHTML = html;
@@ -511,7 +350,7 @@ function renderizarAgendaInteligente() {
     }
 
     // ============================================
-    // VERSÃO DESKTOP - TODOS OS HORÁRIOS (MAIOR)
+    // VERSÃO DESKTOP - TODOS OS HORÁRIOS
     // ============================================
 
     const horaAtual = hoje.getHours();
@@ -539,33 +378,24 @@ function renderizarAgendaInteligente() {
         if ((h * 60 + m) >= totMin) { idxAtual = i; break; }
     }
 
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                  document.body.classList.contains('dark-theme') ||
-                  window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    // 🔥 TAMANHOS MAIORES PARA DESKTOP
-    const cellPad = '10px 12px';
-    const fSize = '14px';
-    const minW = '850px';
-
     let html = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-            <span style="font-size:16px;font-weight:700;color:${isDark ? '#ffffff' : '#1a1a2e'};">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <span style="font-size:13px;font-weight:600;color:var(--text-secondary);">
                 📅 ${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
             </span>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button onclick="mudarAgendaSemana(-7)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">◀◀</button>
-                <button onclick="mudarAgendaSemana(-1)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">◀</button>
-                <button onclick="irAgendaHoje()" style="padding:6px 16px;border-radius:6px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:700;cursor:pointer;">📌 Hoje</button>
-                <button onclick="mudarAgendaSemana(1)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">▶</button>
-                <button onclick="mudarAgendaSemana(7)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">▶▶</button>
+            <div style="display:flex;gap:4px;">
+                <button onclick="mudarAgendaSemana(-7)" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border-color);background:transparent;font-size:10px;cursor:pointer;">◀◀</button>
+                <button onclick="mudarAgendaSemana(-1)" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border-color);background:transparent;font-size:10px;cursor:pointer;">◀</button>
+                <button onclick="irAgendaHoje()" style="padding:4px 10px;border-radius:4px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:10px;font-weight:600;cursor:pointer;">Hoje</button>
+                <button onclick="mudarAgendaSemana(1)" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border-color);background:transparent;font-size:10px;cursor:pointer;">▶</button>
+                <button onclick="mudarAgendaSemana(7)" style="padding:4px 8px;border-radius:4px;border:1px solid var(--border-color);background:transparent;font-size:10px;cursor:pointer;">▶▶</button>
             </div>
         </div>
-        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:550px;overflow-y:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:${fSize};min-width:${minW};">
+        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:500px;overflow-y:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:650px;">
                 <thead>
                     <tr>
-                        <th style="padding:12px 10px;background:var(--bg-hover);text-align:center;position:sticky;top:0;z-index:10;min-width:70px;font-weight:700;font-size:14px;color:var(--text-primary);">⏰</th>
+                        <th style="padding:6px 4px;background:var(--bg-hover);text-align:center;position:sticky;top:0;z-index:10;min-width:55px;font-weight:700;font-size:11px;">⏰</th>
     `;
 
     for (let d of dias) {
@@ -577,27 +407,28 @@ function renderizarAgendaInteligente() {
         const horD = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
         const ab = horD && (horD.aberto == 1 || horD.aberto == true);
         const bg = isH ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : ab ? 'var(--bg-hover)' : 'rgba(239,68,68,0.08)';
-        const col = isH ? '#fff' : ab ? (isDark ? '#ffffff' : '#1a1a2e') : '#ef4444';
+        const col = isH ? '#fff' : ab ? 'var(--text-secondary)' : '#ef4444';
         html += `
-            <th style="padding:12px 8px;background:${bg};color:${col};text-align:center;position:sticky;top:0;z-index:5;min-width:90px;">
-                <span style="display:block;font-size:11px;opacity:0.7;font-weight:600;">${nd}</span>
-                <span style="font-size:${isH ? '22px' : '18px'};font-weight:800;display:block;">${dn}</span>
-                ${!ab ? '<span style="font-size:10px;color:#ef4444;display:block;font-weight:700;">🚫 FECHADO</span>' : ''}
+            <th style="padding:6px 4px;background:${bg};color:${col};text-align:center;position:sticky;top:0;z-index:5;min-width:65px;">
+                <span style="display:block;font-size:9px;opacity:0.7;">${nd}</span>
+                <span style="font-size:${isH ? '16px' : '13px'};font-weight:800;display:block;">${dn}</span>
+                ${!ab ? '<span style="font-size:7px;color:#ef4444;display:block;">🚫</span>' : ''}
             </th>
         `;
     }
     html += `</tr></thead><tbody>`;
 
+    // 🔥 MOSTRAR TODOS OS HORÁRIOS (sem filtro)
     for (let idx = 0; idx < base.length; idx++) {
         const hora = base[idx];
         const isAgora = (idx === idxAtual);
         html += `
-            <tr style="${isAgora ? 'background:rgba(102,126,234,0.08);' : ''}">
-                <td style="padding:${cellPad};text-align:center;border-bottom:1px solid var(--border-color);font-weight:700;background:${isAgora ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'var(--bg-hover)'};color:${isAgora ? '#fff' : 'var(--text-primary)'};position:sticky;left:0;z-index:3;min-width:70px;font-size:14px;">
-                    ${isAgora ? '<span style="font-size:8px;display:block;background:rgba(255,255,255,0.25);padding:2px 8px;border-radius:8px;margin-bottom:3px;">● AGORA</span>' : ''}
-                    <span style="font-size:15px;font-weight:800;">${hora}</span>
+            <tr style="${isAgora ? 'background:rgba(102,126,234,0.06);' : ''}">
+                <td style="padding:4px 4px;text-align:center;border-bottom:1px solid var(--border-color);font-weight:700;background:${isAgora ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'var(--bg-hover)'};color:${isAgora ? '#fff' : 'var(--text-primary)'};position:sticky;left:0;z-index:3;min-width:55px;font-size:11px;">
+                    ${isAgora ? '<span style="font-size:7px;display:block;background:rgba(255,255,255,0.25);padding:1px 4px;border-radius:6px;margin-bottom:2px;">AGORA</span>' : ''}
+                    ${hora}
                 </td>
-        `;
+    `;
 
         for (let d of dias) {
             const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -611,7 +442,7 @@ function renderizarAgendaInteligente() {
                 const [hA, mA] = hora.split(':').map(Number);
                 dentro = (hA * 60 + mA) >= (hI * 60 + mI) && (hA * 60 + mA) <= (hF * 60 + mF);
             }
-            let cont = '', bg = 'transparent', click = '', tooltip = '';
+            let cont = '', bg = 'transparent', click = '';
 
             const dataLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate());
             const passou = dataLocal < hojeLocalObj;
@@ -619,23 +450,19 @@ function renderizarAgendaInteligente() {
 
             if (!ab || !dentro) {
                 bg = 'rgba(107,114,128,0.03)';
-                cont = `<span style="color:#9ca3af;font-size:16px;">—</span>`;
+                cont = `<span style="color:#9ca3af;">—</span>`;
             } else if (passou) {
                 bg = 'rgba(107,114,128,0.03)';
-                cont = `<span style="opacity:0.2;font-size:18px;">✓</span>`;
+                cont = `<span style="opacity:0.2;">✓</span>`;
             } else if (alm) {
-                bg = 'rgba(245,158,11,0.08)';
-                cont = `<span style="font-size:18px;">🍽</span>`;
+                bg = 'rgba(245,158,11,0.06)';
+                cont = `🍽`;
                 click = '';
-                tooltip = 'Almoço';
             } else {
-                // CALCULAR OCUPAÇÃO POR PROFISSIONAL
-                let ocupados = 0;
+                let ocup = 0;
                 const hm = horaParaMinutos(hora);
-                const profissionais = agendaInteligenteProfissionais;
-
-                for (let p of profissionais) {
-                    let ocupado = false;
+                for (let p of agendaInteligenteProfissionais) {
+                    let oc = false;
                     if (p.is_dono) {
                         for (let ag of agendaInteligenteData) {
                             if (ag.data !== ds || ag.status === 'cancelado' || (ag.profissional_id !== null && ag.profissional_id !== '' && ag.profissional_id !== undefined) || !ag.hora) continue;
@@ -645,46 +472,30 @@ function renderizarAgendaInteligente() {
                                 const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
                                 if (s && s.duracao) dur = parseInt(s.duracao);
                             }
-                            if (hm >= agH && hm < agH + dur) { ocupado = true; break; }
+                            if (hm >= agH && hm < agH + dur) { oc = true; break; }
                         }
                     } else {
-                        for (let ag of agendaInteligenteData) {
-                            if (ag.data !== ds || ag.status === 'cancelado' || String(ag.profissional_id) !== String(p.id) || !ag.hora) continue;
-                            const agH = horaParaMinutos(ag.hora);
-                            let dur = 30;
-                            if (ag.servico_id) {
-                                const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                                if (s && s.duracao) dur = parseInt(s.duracao);
-                            }
-                            if (hm >= agH && hm < agH + dur) { ocupado = true; break; }
-                        }
+                        oc = isHorarioOcupadoComDuracao(agendaInteligenteData, p.id, ds, hora);
                     }
-                    if (ocupado) ocupados++;
+                    if (oc) ocup++;
                 }
-
-                const totalProf = profissionais.length;
-                const livres = totalProf - ocupados;
-
-                if (livres === 0) {
-                    bg = 'rgba(239,68,68,0.10)';
-                    cont = `<span style="color:#dc2626;font-weight:800;font-size:15px;">🔴 ${ocupados}/${totalProf}</span>`;
+                const liv = agendaInteligenteProfissionais.length - ocup;
+                if (liv === 0) {
+                    bg = 'rgba(239,68,68,0.08)';
+                    cont = `<span style="color:#dc2626;font-weight:700;font-size:13px;">🔴</span>`;
                     click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                    tooltip = `${ocupados} ocupado${ocupados > 1 ? 's' : ''}`;
-                } else if (ocupados > 0) {
-                    bg = 'rgba(245,158,11,0.08)';
-                    cont = `<span style="color:#d97706;font-weight:800;font-size:15px;">🟡 ${livres}/${totalProf}</span>`;
+                } else if (ocup > 0) {
+                    bg = 'rgba(245,158,11,0.06)';
+                    cont = `<span style="color:#d97706;font-weight:700;font-size:13px;">🟡</span>`;
                     click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                    tooltip = `${livres} livre${livres > 1 ? 's' : ''}`;
                 } else {
-                    bg = 'rgba(34,197,94,0.08)';
-                    cont = `<span style="color:#22c55e;font-weight:800;font-size:15px;">🟢 ${totalProf}/${totalProf}</span>`;
+                    bg = 'rgba(34,197,94,0.06)';
+                    cont = `<span style="color:#22c55e;font-weight:700;font-size:13px;">🟢</span>`;
                     click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                    tooltip = `Todos disponíveis`;
                 }
             }
             html += `
-                <td style="padding:${cellPad};border-bottom:1px solid var(--border-color);background:${bg};text-align:center;${click ? 'cursor:pointer;' : ''}font-weight:700;font-size:15px;" 
-                    onclick="${click}" title="${tooltip}">
+                <td style="padding:4px 4px;border-bottom:1px solid var(--border-color);background:${bg};text-align:center;${click ? 'cursor:pointer;' : ''}font-weight:700;font-size:13px;" onclick="${click}">
                     ${cont}
                 </td>
             `;
@@ -693,14 +504,15 @@ function renderizarAgendaInteligente() {
     }
     html += `</tbody></table></div>`;
     html += `
-        <div style="display:flex;justify-content:center;gap:24px;margin-top:10px;font-size:12px;color:var(--text-muted);padding:6px 0;">
-            <span>🟢 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Livre</strong></span>
-            <span>🟡 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Parcial</strong></span>
-            <span>🔴 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Lotado</strong></span>
+        <div style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:10px;color:var(--text-muted);">
+            <span>🟢 Livre</span>
+            <span>🟡 Parcial</span>
+            <span>🔴 Lotado</span>
         </div>
     `;
     container.innerHTML = html;
 }
+
 // ============================================
 // ABRIR DETALHES DO SLOT
 // ============================================
@@ -742,13 +554,7 @@ function abrirDetalhesSlot(dataStr, hora) {
             (!a.profissional_id && p.is_dono)
         );
         if (oc) {
-            const dur = ag ? (() => {
-                let d = 30;
-                const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                if (s && s.duracao) d = parseInt(s.duracao);
-                return d;
-            })() : 30;
-            htmlO += `<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(239,68,68,0.08);border-radius:8px;margin-bottom:4px;font-size:13px;"><span>🔴 ${p.nome}</span><span style="color:var(--text-muted);">${ag?.cliente_nome || 'Cliente'} ${ag?.hora} (${dur}min)</span></div>`;
+            htmlO += `<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(239,68,68,0.08);border-radius:8px;margin-bottom:4px;font-size:13px;"><span>🔴 ${p.nome}</span><span style="color:var(--text-muted);">${ag?.cliente_nome || 'Cliente'} ${ag?.hora}</span></div>`;
         } else {
             htmlD += `<div onclick="agendarNoHorarioDisponivel('${dataStr}','${hora}','${p.id}')" style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);border-radius:8px;margin-bottom:4px;cursor:pointer;font-size:13px;"><span>🟢 ${p.nome}</span><span style="color:#22c55e;font-weight:600;">Agendar →</span></div>`;
         }
@@ -834,6 +640,11 @@ function alternarModoAgenda() {
     renderizarAgendaInteligente();
 }
 
+function mudarAgendaSemana(dir) {
+    agendaInteligenteDate.setDate(agendaInteligenteDate.getDate() + dir);
+    renderizarAgendaInteligente();
+}
+
 function irAgendaHoje() {
     agendaInteligenteDate = new Date();
     if (agendaModoCompleto && isMobileScreen()) agendaModoCompleto = false;
@@ -881,24 +692,11 @@ async function carregarDashboard() {
 }
 
 // ============================================
-// CARREGAR DASHBOARD DONO - VERSÃO COMPLETA MELHORADA
+// CARREGAR DASHBOARD DONO - VERSÃO MINIMALISTA
 // ============================================
 
 async function carregarDashboardDono() {
-    // 🔥 FORÇAR CARREGAMENTO DO CSS
-    const cssLink = document.querySelector('link[href*="dashboard.css"]');
-    if (!cssLink) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = '/css/pages/dashboard.css';
-        document.head.appendChild(link);
-        console.log('✅ CSS dashboard.css carregado!');
-    }
-
-    if (typeof window.carregarCSS === 'function') {
-        window.carregarCSS('dashboard');
-    }
-    
+    if (typeof window.carregarCSS === 'function') window.carregarCSS('dashboard');
     const token = localStorage.getItem('token');
     let empresa = { plano: 'trial', assinatura_ativa: 0 };
     
@@ -976,107 +774,105 @@ async function carregarDashboardDono() {
     }
 
     // ==========================================
-    // HTML - CORES MAIS ESCURAS E TEXTOS MAIORES
+    // HTML - MINIMALISTA COM AGENDA EM DESTAQUE
     // ==========================================
     
     let html = `<div class="fade-in" style="padding: 4px 0 80px 0;">`;
 
-    // ALERTAS
+    // ALERTAS (apenas se necessário)
     if (mostrarAviso) {
         html += `
-            <div class="dash-alert dash-alert-warning" style="background:linear-gradient(135deg,#d97706,#92400e);border-radius:10px;padding:12px 16px;margin-bottom:12px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;box-shadow:0 4px 15px rgba(217,119,6,0.3);border:1px solid rgba(255,255,255,0.08);">
-                <span style="font-weight:600;font-size:${isMobile ? '13px' : '15px'};">${msgTrial}</span>
-                <button onclick="carregarPlanos()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.15);padding:6px 18px;border-radius:8px;color:white;font-weight:600;cursor:pointer;font-size:${isMobile ? '12px' : '14px'};transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                    Upgrade →
-                </button>
+            <div style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;padding:10px 14px;margin-bottom:12px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <span style="font-weight:600;font-size:${isMobile ? '12px' : '14px'};">${msgTrial}</span>
+                <button onclick="carregarPlanos()" style="background:rgba(255,255,255,0.2);border:none;padding:4px 14px;border-radius:6px;color:white;font-weight:600;cursor:pointer;font-size:${isMobile ? '11px' : '13px'};">Upgrade →</button>
             </div>
         `;
     }
 
     if (vencidos.length > 0) {
         html += `
-            <div class="dash-alert dash-alert-danger" style="background:linear-gradient(135deg,#dc2626,#991b1b);border-radius:10px;padding:12px 16px;margin-bottom:12px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;box-shadow:0 4px 15px rgba(220,38,38,0.3);border:1px solid rgba(255,255,255,0.08);">
-                <span style="font-weight:600;font-size:${isMobile ? '13px' : '15px'};">⏰ ${vencidos.length} vencido${vencidos.length > 1 ? 's' : ''}</span>
-                <button onclick="concluirAgendamentosVencidos()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.15);padding:6px 18px;border-radius:8px;color:white;font-weight:600;cursor:pointer;font-size:${isMobile ? '12px' : '14px'};transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                    Concluir
-                </button>
+            <div style="background:linear-gradient(135deg,#ef4444,#dc2626);border-radius:10px;padding:10px 14px;margin-bottom:12px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;">
+                <span style="font-weight:600;font-size:${isMobile ? '12px' : '14px'};">⏰ ${vencidos.length} vencido${vencidos.length > 1 ? 's' : ''}</span>
+                <button onclick="concluirAgendamentosVencidos()" style="background:rgba(255,255,255,0.2);border:none;padding:4px 14px;border-radius:6px;color:white;font-weight:600;cursor:pointer;font-size:${isMobile ? '11px' : '13px'};">Concluir</button>
             </div>
         `;
     }
 
-    // 🔥 HEADER - CORES MAIS ESCURAS E TEXTOS MAIORES
+    // ==========================================
+    // HEADER SIMPLES
+    // ==========================================
     html += `
-        <div class="dash-welcome" style="
-            background: linear-gradient(135deg, #4a3f7a 0%, #2d1b4e 100%);
-            border-radius: 16px;
-            padding: ${isMobile ? '16px 18px' : '20px 28px'};
-            margin-bottom: 18px;
+        <div style="
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: ${isMobile ? '14px 16px' : '16px 24px'};
+            margin-bottom: 14px;
             color: white;
             display:flex;
             justify-content:space-between;
             align-items:center;
             flex-wrap:wrap;
-            gap:12px;
-            box-shadow: 0 8px 32px rgba(74,63,122,0.4);
-            border: 1px solid rgba(255,255,255,0.08);
+            gap:8px;
         ">
             <div>
-                <div style="font-size:${isMobile ? '20px' : '24px'};font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-0.5px;">
-                    👋 Olá, <span style="font-weight:900;">${escapeHtml(nomeUsuario)}</span>
-                    <span style="font-size:${isMobile ? '16px' : '22px'};">🎉</span>
+                <div style="font-size:${isMobile ? '16px' : '18px'};font-weight:700;display:flex;align-items:center;gap:6px;">
+                    👋 Olá, ${escapeHtml(nomeUsuario)}
                 </div>
-                <div style="font-size:${isMobile ? '13px' : '15px'};opacity:0.85;margin-top:4px;font-weight:500;">
-                    📅 ${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;margin-top:2px;">
+                    ${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
                 </div>
             </div>
-            <div style="text-align:right;background:rgba(255,255,255,0.10);padding:${isMobile ? '8px 16px' : '12px 24px'};border-radius:14px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.08);">
-                <div style="font-size:${isMobile ? '22px' : '32px'};font-weight:800;letter-spacing:-0.5px;">
+            <div style="text-align:right;">
+                <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:700;">
                     R$ ${formatarMoeda(faturamentoHoje)}
                 </div>
-                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.7;font-weight:500;">
-                    <i class="fas fa-calendar-day"></i> Faturamento de hoje
+                <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;">
+                    <i class="fas fa-calendar-day"></i> Hoje
                 </div>
             </div>
         </div>
     `;
 
-    // 🔥 CARDS DE RESUMO - CORES MAIS ESCURAS E TEXTOS MAIORES
+    // ==========================================
+    // RESUMO RÁPIDO - 3 CARDS
+    // ==========================================
     html += `
         <div style="
             display: grid;
             grid-template-columns: ${isMobile ? '1fr 1fr 1fr' : 'repeat(3, 1fr)'};
-            gap: ${isMobile ? '8px' : '14px'};
-            margin-bottom: 18px;
+            gap: ${isMobile ? '6px' : '12px'};
+            margin-bottom: 14px;
         ">
-            <div class="dash-card-green" style="background:linear-gradient(135deg,#0d9488,#065f46);border-radius:14px;padding:${isMobile ? '14px 12px' : '16px 20px'};color:white;text-align:center;box-shadow:0 4px 20px rgba(13,148,136,0.35);border:1px solid rgba(255,255,255,0.06);transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(13,148,136,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(13,148,136,0.35)'">
-                <div style="font-size:${isMobile ? '26px' : '32px'};font-weight:800;letter-spacing:-0.5px;">${agHojeCount}</div>
-                <div style="font-size:${isMobile ? '11px' : '14px'};opacity:0.85;font-weight:600;margin-top:4px;">📋 Agendamentos</div>
-                ${agPendHoje > 0 ? `<div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;margin-top:4px;">${agPendHoje} pendente${agPendHoje > 1 ? 's' : ''}</div>` : ''}
+            <div style="background:linear-gradient(135deg,#22c55e,#16a34a);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 16px'};color:white;text-align:center;">
+                <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:700;">${agHojeCount}</div>
+                <div style="font-size:${isMobile ? '9px' : '11px'};opacity:0.8;">📋 Agendamentos</div>
+                ${agPendHoje > 0 ? `<div style="font-size:${isMobile ? '8px' : '10px'};opacity:0.7;">${agPendHoje} pendente${agPendHoje > 1 ? 's' : ''}</div>` : ''}
             </div>
-            <div class="dash-card-purple" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-radius:14px;padding:${isMobile ? '14px 12px' : '16px 20px'};color:white;text-align:center;box-shadow:0 4px 20px rgba(124,58,237,0.35);border:1px solid rgba(255,255,255,0.06);transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(124,58,237,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(124,58,237,0.35)'">
-                <div style="font-size:${isMobile ? '26px' : '32px'};font-weight:800;letter-spacing:-0.5px;">R$ ${formatarMoeda(ticketMedio)}</div>
-                <div style="font-size:${isMobile ? '11px' : '14px'};opacity:0.85;font-weight:600;margin-top:4px;">🎯 Ticket Médio</div>
+            <div style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 16px'};color:white;text-align:center;">
+                <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:700;">R$ ${formatarMoeda(ticketMedio)}</div>
+                <div style="font-size:${isMobile ? '9px' : '11px'};opacity:0.8;">🎯 Ticket Médio</div>
             </div>
-            <div class="dash-card-yellow" style="background:linear-gradient(135deg,#d97706,#92400e);border-radius:14px;padding:${isMobile ? '14px 12px' : '16px 20px'};color:white;text-align:center;box-shadow:0 4px 20px rgba(217,119,6,0.35);border:1px solid rgba(255,255,255,0.06);transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(217,119,6,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(217,119,6,0.35)'">
-                <div style="font-size:${isMobile ? '26px' : '32px'};font-weight:800;letter-spacing:-0.5px;">${clientes.length}</div>
-                <div style="font-size:${isMobile ? '11px' : '14px'};opacity:0.85;font-weight:600;margin-top:4px;">👤 Clientes</div>
+            <div style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:10px;padding:${isMobile ? '10px 8px' : '12px 16px'};color:white;text-align:center;">
+                <div style="font-size:${isMobile ? '18px' : '24px'};font-weight:700;">${clientes.length}</div>
+                <div style="font-size:${isMobile ? '9px' : '11px'};opacity:0.8;">👤 Clientes</div>
             </div>
         </div>
     `;
 
-    // 🔥 AGENDA INTELIGENTE - EM DESTAQUE
+    // ==========================================
+    // AGENDA INTELIGENTE - EM DESTAQUE
+    // ==========================================
     html += `
-        <div style="margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:700;">
+        <div style="margin-bottom:14px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <h3 style="font-size:${isMobile ? '15px' : '17px'};margin:0;display:flex;align-items:center;gap:6px;color:var(--text-primary);">
                     <i class="fas fa-calendar-alt" style="color:#8b5cf6;"></i> Agenda do Dia
-                    <span style="font-size:11px;color:var(--text-muted);font-weight:400;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">${agHojeCount} hoje</span>
                 </h3>
-                <button onclick="carregarAgendamentos()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;color:var(--text-secondary);font-size:${isMobile ? '11px' : '12px'};cursor:pointer;transition:all 0.2s;font-weight:600;" onmouseover="this.style.background='var(--border-color)'" onmouseout="this.style.background='var(--bg-hover)'">
+                <button onclick="carregarAgendamentos()" style="background:transparent;border:none;color:var(--text-muted);font-size:${isMobile ? '11px' : '13px'};cursor:pointer;">
                     Ver todos →
                 </button>
             </div>
-            <div id="agendaInteligenteContainer" class="agenda-container" style="background:var(--bg-card);border-radius:14px;padding:${isMobile ? '12px' : '16px'};border:1px solid var(--border-color);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
+            <div id="agendaInteligenteContainer" style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '10px' : '14px'};border:1px solid var(--border-color);">
                 <div style="text-align:center;padding:20px;">
                     <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:28px;height:28px;"></div>
                     <p style="margin-top:8px;font-size:12px;color:var(--text-muted);">Carregando agenda...</p>
@@ -1085,36 +881,29 @@ async function carregarDashboardDono() {
         </div>
     `;
 
-    // 🔥 PRÓXIMOS ATENDIMENTOS
+    // ==========================================
+    // PRÓXIMOS ATENDIMENTOS (resumido)
+    // ==========================================
     const proximos = agendamentos
         .filter(a => a.status === 'pendente' && a.data >= hojeStr)
         .sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora))
-        .slice(0, isMobile ? 2 : 4);
+        .slice(0, isMobile ? 2 : 3);
 
     if (proximos.length > 0) {
         html += `
-            <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '12px 14px' : '14px 18px'};border:1px solid var(--border-color);margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                <div style="font-size:${isMobile ? '12px' : '13px'};font-weight:700;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                    <i class="fas fa-clock" style="color:#f59e0b;"></i> Próximos Atendimentos
-                    <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(${proximos.length})</span>
+            <div style="background:var(--bg-card);border-radius:10px;padding:${isMobile ? '10px 12px' : '12px 16px'};border:1px solid var(--border-color);">
+                <div style="font-size:${isMobile ? '11px' : '13px'};font-weight:600;color:var(--text-muted);margin-bottom:8px;">
+                    <i class="fas fa-clock" style="color:#f59e0b;"></i> Próximos
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;">
                     ${proximos.map(ag => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-hover);border-radius:8px;border-left:4px solid #8b5cf6;transition:all 0.2s;" onmouseover="this.style.background='rgba(139,92,246,0.08)'" onmouseout="this.style.background='var(--bg-hover)'">
-                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                                <span style="font-weight:700;font-size:${isMobile ? '13px' : '14px'};color:var(--text-primary);">
-                                    ${escapeHtml(ag.cliente_nome || 'Cliente')}
-                                </span>
-                                <span style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);background:var(--bg-card);padding:1px 8px;border-radius:10px;white-space:nowrap;">
-                                    ${escapeHtml(ag.servico_nome || ag.servico || 'Serviço')}
-                                </span>
-                            </div>
-                            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                                <span style="font-size:${isMobile ? '11px' : '12px'};color:var(--text-muted);font-weight:500;">
-                                    ${formatarDataLocal(ag.data)} ${ag.hora || ''}
-                                </span>
-                                <span style="font-size:10px;color:#f59e0b;font-weight:600;background:rgba(245,158,11,0.1);padding:1px 8px;border-radius:10px;">⏳</span>
-                            </div>
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--bg-hover);border-radius:6px;border-left:3px solid #8b5cf6;">
+                            <span style="font-weight:500;font-size:${isMobile ? '12px' : '13px'};">
+                                ${escapeHtml(ag.cliente_nome || 'Cliente')}
+                            </span>
+                            <span style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);">
+                                ${formatarDataLocal(ag.data)} ${ag.hora || ''}
+                            </span>
                         </div>
                     `).join('')}
                 </div>
@@ -1122,31 +911,31 @@ async function carregarDashboardDono() {
         `;
     }
 
-    // 🔥 ONBOARDING - PARA NOVOS USUÁRIOS
+    // ==========================================
+    // ONBOARDING (para novos usuários)
+    // ==========================================
     if (isNewUser) {
         html += `
             <div style="
                 margin-top:14px;
-                background:linear-gradient(135deg,#4a3f7a,#2d1b4e);
-                border-radius:14px;
-                padding:${isMobile ? '16px' : '20px 24px'};
+                background:linear-gradient(135deg,#667eea,#764ba2);
+                border-radius:12px;
+                padding:${isMobile ? '14px' : '16px 20px'};
                 color:white;
                 display:flex;
                 justify-content:space-between;
                 align-items:center;
                 flex-wrap:wrap;
-                gap:12px;
-                box-shadow:0 4px 20px rgba(74,63,122,0.3);
-                border:1px solid rgba(255,255,255,0.08);
+                gap:10px;
             ">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <span style="font-size:32px;">🚀</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-size:28px;">🚀</span>
                     <div>
-                        <h4 style="margin:0;font-size:${isMobile ? '15px' : '18px'};font-weight:700;">Comece aqui!</h4>
-                        <p style="margin:2px 0 0 0;opacity:0.85;font-size:${isMobile ? '12px' : '14px'};">Cadastre serviços e crie seu primeiro agendamento</p>
+                        <h4 style="margin:0;font-size:${isMobile ? '14px' : '16px'};">Comece aqui!</h4>
+                        <p style="margin:2px 0 0 0;opacity:0.8;font-size:${isMobile ? '11px' : '13px'};">Cadastre serviços e crie seu primeiro agendamento</p>
                     </div>
                 </div>
-                <button onclick="carregarServicos()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.15);padding:8px 20px;border-radius:10px;color:white;font-weight:700;font-size:${isMobile ? '13px' : '15px'};cursor:pointer;transition:all 0.2s;backdrop-filter:blur(4px);" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                <button onclick="carregarServicos()" style="background:rgba(255,255,255,0.2);border:none;padding:6px 16px;border-radius:8px;color:white;font-weight:700;font-size:${isMobile ? '12px' : '14px'};cursor:pointer;">
                     Começar →
                 </button>
             </div>
@@ -1157,10 +946,12 @@ async function carregarDashboardDono() {
 
     document.getElementById('content').innerHTML = html;
     
+    // Carregar agenda
     setTimeout(() => carregarAgendaInteligente(), 200);
 
     console.log('✅ Dashboard minimalista renderizado com sucesso!');
 }
+
 // ============================================
 // CARREGAR DASHBOARD SUPER ADMIN
 // ============================================
@@ -1377,10 +1168,9 @@ window.irAgendaHoje = irAgendaHoje;
 window.renderizarAgendaInteligente = renderizarAgendaInteligente;
 window.alternarModoAgenda = alternarModoAgenda;
 window.concluirAgendamentosVencidos = concluirAgendamentosVencidos;
-window.irParaDiaDisponivel = irParaDiaDisponivel;
 window.carregarServicos = carregarServicos;
 window.carregarAgendamentos = carregarAgendamentos;
 window.carregarClientes = carregarClientes;
 window.carregarPlanos = carregarPlanos;
 
-console.log('✅ dashboard.js COMPLETO - Agenda em destaque com navegação inteligente');
+console.log('✅ dashboard.js MINIMALISTA - Agenda em destaque');

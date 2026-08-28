@@ -215,7 +215,7 @@ async function carregarFinanceiro() {
 }
 
 // ============================================
-// RENDERIZAR FINANCEIRO V2
+// RENDERIZAR FINANCEIRO V2 - CORRIGIDO COM CLASSES CSS
 // ============================================
 
 function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usuario) {
@@ -266,12 +266,13 @@ function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usu
                     </p>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-outline btn-sm" onclick="carregarFinanceiro()">
+                    <button class="btn-action btn-primary" onclick="carregarFinanceiro()">
                         <i class="fas fa-sync"></i> Atualizar
                     </button>
                 </div>
             </div>
 
+            <!-- TABS -->
             <div class="config-tabs" style="
                 display: flex;
                 gap: ${isMobile ? '4px' : '8px'};
@@ -398,38 +399,28 @@ function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usu
             <div id="financeiroContent">
                 <!-- CARDS PRINCIPAIS -->
                 <div style="display:grid;grid-template-columns:${isMobile ? '1fr 1fr' : 'repeat(4,1fr)'};gap:${isMobile ? '8px' : '12px'};margin-bottom:${isMobile ? '12px' : '16px'};">
-                    <div style="background:linear-gradient(135deg, #667eea, #764ba2);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <div>
-                                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">💰 Faturamento</div>
-                                <div style="font-size:${isMobile ? '20px' : '28px'};font-weight:800;margin-top:2px;">R$ ${faturamentoBruto.toFixed(2)}</div>
-                                <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;margin-top:4px;">
-                                    ${totalServicos} serviços • Ticket médio R$ ${ticketMedio.toFixed(2)}
-                                </div>
-                            </div>
-                            <div style="font-size:${isMobile ? '24px' : '36px'};opacity:0.3;">📊</div>
+                    <!-- Faturamento -->
+                    <div class="card-faturamento">
+                        <div>
+                            <div class="card-label">💰 Faturamento</div>
+                            <div class="card-value">R$ ${faturamentoBruto.toFixed(2)}</div>
+                            <div class="card-sub">${totalServicos} serviços • Ticket médio R$ ${ticketMedio.toFixed(2)}</div>
                         </div>
-                        <div style="margin-top:${isMobile ? '8px' : '12px'};padding-top:${isMobile ? '8px' : '12px'};border-top:1px solid rgba(255,255,255,0.15);">
-                            <span style="font-size:${isMobile ? '11px' : '13px'};">
-                                ${variacaoFat > 0 ? '📈' : variacaoFat < 0 ? '📉' : '➡️'} 
-                                ${variacaoFat > 0 ? '+' : ''}${variacaoFat.toFixed(1)}% vs mês anterior
-                            </span>
+                        <div class="card-footer">
+                            ${variacaoFat > 0 ? '📈' : variacaoFat < 0 ? '📉' : '➡️'} 
+                            ${variacaoFat > 0 ? '+' : ''}${variacaoFat.toFixed(1)}% vs mês anterior
                         </div>
                     </div>
 
-                    <div style="background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};border:2px solid #ef4444;box-shadow:0 4px 20px rgba(239,68,68,0.08);">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <div>
-                                <div style="font-size:${isMobile ? '11px' : '13px'};color:#ef4444;font-weight:600;">📉 Despesas</div>
-                                <div style="font-size:${isMobile ? '20px' : '28px'};font-weight:800;color:#ef4444;margin-top:2px;">R$ ${totalDespesas.toFixed(2)}</div>
-                                <div style="font-size:${isMobile ? '10px' : '12px'};color:var(--text-muted);margin-top:4px;">
-                                    💳 Pagas: R$ ${despesasPagas.toFixed(2)} • ⏳ Pendentes: R$ ${despesasPendentes.toFixed(2)}
-                                </div>
-                            </div>
-                            <div style="font-size:${isMobile ? '24px' : '36px'};opacity:0.3;">📉</div>
+                    <!-- Despesas -->
+                    <div class="card-despesa">
+                        <div>
+                            <div class="card-label">📉 Despesas</div>
+                            <div class="card-value">R$ ${totalDespesas.toFixed(2)}</div>
+                            <div class="card-sub">💳 Pagas: R$ ${despesasPagas.toFixed(2)} • ⏳ Pendentes: R$ ${despesasPendentes.toFixed(2)}</div>
                         </div>
-                        <div style="margin-top:${isMobile ? '8px' : '12px'};padding-top:${isMobile ? '8px' : '12px'};border-top:1px solid var(--border-color);">
-                            <span style="font-size:${isMobile ? '11px' : '13px'};color:${variacaoDesp > 0 ? '#ef4444' : '#22c55e'};">
+                        <div class="card-footer">
+                            <span style="color:${variacaoDesp > 0 ? '#ef4444' : '#22c55e'}">
                                 ${variacaoDesp > 0 ? '📈' : variacaoDesp < 0 ? '📉' : '➡️'} 
                                 ${variacaoDesp > 0 ? '+' : ''}${variacaoDesp.toFixed(1)}% vs mês anterior
                                 ${variacaoDesp > 0 ? ' ⚠️' : ' ✅'}
@@ -437,109 +428,101 @@ function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usu
                         </div>
                     </div>
 
-                    <div style="background:${lucroLiquido >= 0 ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'linear-gradient(135deg, #ef4444, #dc2626)'};border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px ${lucroLiquido >= 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'};">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <div>
-                                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">💎 Lucro Líquido</div>
-                                <div style="font-size:${isMobile ? '20px' : '28px'};font-weight:800;margin-top:2px;">R$ ${lucroLiquido.toFixed(2)}</div>
-                                <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;margin-top:4px;">
-                                    ${lucroLiquido >= 0 ? '✅ Lucrativo' : '❌ Prejuízo'} • Margem: ${faturamentoBruto > 0 ? ((lucroLiquido / faturamentoBruto) * 100).toFixed(1) : 0}%
-                                </div>
-                            </div>
-                            <div style="font-size:${isMobile ? '24px' : '36px'};opacity:0.3;">💎</div>
+                    <!-- Lucro -->
+                    <div class="card-lucro ${lucroLiquido >= 0 ? 'positive' : 'negative'}">
+                        <div>
+                            <div class="card-label">💎 Lucro Líquido</div>
+                            <div class="card-value">R$ ${lucroLiquido.toFixed(2)}</div>
+                            <div class="card-sub">${lucroLiquido >= 0 ? '✅ Lucrativo' : '❌ Prejuízo'} • Margem: ${faturamentoBruto > 0 ? ((lucroLiquido / faturamentoBruto) * 100).toFixed(1) : 0}%</div>
                         </div>
-                        <div style="margin-top:${isMobile ? '8px' : '12px'};padding-top:${isMobile ? '8px' : '12px'};border-top:1px solid rgba(255,255,255,0.15);">
-                            <span style="font-size:${isMobile ? '11px' : '13px'};">
-                                ${variacaoLucro > 0 ? '📈' : variacaoLucro < 0 ? '📉' : '➡️'} 
-                                ${variacaoLucro > 0 ? '+' : ''}${variacaoLucro.toFixed(1)}% vs mês anterior
-                            </span>
+                        <div class="card-footer">
+                            ${variacaoLucro > 0 ? '📈' : variacaoLucro < 0 ? '📉' : '➡️'} 
+                            ${variacaoLucro > 0 ? '+' : ''}${variacaoLucro.toFixed(1)}% vs mês anterior
                         </div>
                     </div>
 
-                    <div style="background:linear-gradient(135deg, #8b5cf6, #6d28d9);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};color:white;box-shadow:0 4px 20px rgba(139,92,246,0.3);">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <div>
-                                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.8;">👨‍💼 Comissões</div>
-                                <div style="font-size:${isMobile ? '20px' : '28px'};font-weight:800;margin-top:2px;">R$ ${totalComissoes.toFixed(2)}</div>
-                                <div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;margin-top:4px;">
-                                    Lucro após comissões: R$ ${lucroAposComissoes.toFixed(2)}
-                                </div>
-                            </div>
-                            <div style="font-size:${isMobile ? '24px' : '36px'};opacity:0.3;">👨‍💼</div>
+                    <!-- Comissões -->
+                    <div class="card-comissoes">
+                        <div>
+                            <div class="card-label">👨‍💼 Comissões</div>
+                            <div class="card-value">R$ ${totalComissoes.toFixed(2)}</div>
+                            <div class="card-sub">Lucro após comissões: R$ ${lucroAposComissoes.toFixed(2)}</div>
                         </div>
                     </div>
                 </div>
 
                 <!-- ANÁLISE RÁPIDA -->
                 <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:${isMobile ? '10px' : '16px'};margin-bottom:${isMobile ? '12px' : '16px'};">
-                    <div style="background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};border:1px solid var(--border-color);">
+                    <div class="analise-card">
                         <h4 style="font-size:${isMobile ? '14px' : '16px'};margin:0 0 ${isMobile ? '8px' : '12px'} 0;display:flex;align-items:center;gap:8px;">
                             <i class="fas fa-lightbulb" style="color:#f59e0b;"></i> Análise de Performance
                         </h4>
-                        <div style="display:flex;flex-direction:column;gap:${isMobile ? '6px' : '8px'};">
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:${isMobile ? '4px 0' : '6px 0'};border-bottom:1px solid var(--border-color);">
-                                <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-secondary);">🎫 Ticket Médio</span>
-                                <span style="font-size:${isMobile ? '15px' : '18px'};font-weight:700;color:#22c55e;">R$ ${ticketMedio.toFixed(2)}</span>
+                        <div>
+                            <div class="analise-item">
+                                <span class="analise-label">🎫 Ticket Médio</span>
+                                <span class="analise-value positive">R$ ${ticketMedio.toFixed(2)}</span>
                             </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:${isMobile ? '4px 0' : '6px 0'};border-bottom:1px solid var(--border-color);">
-                                <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-secondary);">📅 Média de serviços/dia</span>
-                                <span style="font-size:${isMobile ? '15px' : '18px'};font-weight:700;color:var(--text-primary);">${(totalServicos / 30).toFixed(1)}</span>
+                            <div class="analise-item">
+                                <span class="analise-label">📅 Média de serviços/dia</span>
+                                <span class="analise-value neutral">${(totalServicos / 30).toFixed(1)}</span>
                             </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:${isMobile ? '4px 0' : '6px 0'};">
-                                <span style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-secondary);">📊 Margem de Lucro</span>
-                                <span style="font-size:${isMobile ? '15px' : '18px'};font-weight:700;color:${faturamentoBruto > 0 && (lucroLiquido / faturamentoBruto) > 0.2 ? '#22c55e' : '#f59e0b'};">${faturamentoBruto > 0 ? ((lucroLiquido / faturamentoBruto) * 100).toFixed(1) : 0}%</span>
+                            <div class="analise-item">
+                                <span class="analise-label">📊 Margem de Lucro</span>
+                                <span class="analise-value ${faturamentoBruto > 0 && (lucroLiquido / faturamentoBruto) > 0.2 ? 'positive' : 'negative'}">
+                                    ${faturamentoBruto > 0 ? ((lucroLiquido / faturamentoBruto) * 100).toFixed(1) : 0}%
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <div style="background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '14px' : '18px'};border:1px solid var(--border-color);">
+                    <div class="analise-card">
                         <h4 style="font-size:${isMobile ? '14px' : '16px'};margin:0 0 ${isMobile ? '8px' : '12px'} 0;display:flex;align-items:center;gap:8px;">
                             <i class="fas fa-bullhorn" style="color:${lucroLiquido >= 0 ? '#22c55e' : '#ef4444'};"></i> 
                             ${lucroLiquido >= 0 ? '📈 Oportunidades de Melhoria' : '⚠️ Alertas e Ações'}
                         </h4>
-                        <div style="display:flex;flex-direction:column;gap:${isMobile ? '6px' : '8px'};">
+                        <div>
                             ${totalServicos < 30 ? `
-                                <div style="display:flex;align-items:center;gap:8px;padding:${isMobile ? '6px 10px' : '8px 12px'};background:rgba(245,158,11,0.1);border-radius:8px;border-left:3px solid #f59e0b;">
-                                    <span style="font-size:18px;">📉</span>
-                                    <span style="font-size:${isMobile ? '12px' : '13px'};color:var(--text-secondary);">
+                                <div class="alert-card warning">
+                                    <span class="alert-icon">📉</span>
+                                    <span class="alert-text">
                                         <strong>Baixo volume:</strong> Apenas ${totalServicos} serviços no mês. <br>
-                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#f59e0b;">💡 Invista em marketing para atrair mais clientes.</span>
+                                        <span class="alert-hint">💡 Invista em marketing para atrair mais clientes.</span>
                                     </span>
                                 </div>
                             ` : ''}
                             ${ticketMedio < 50 ? `
-                                <div style="display:flex;align-items:center;gap:8px;padding:${isMobile ? '6px 10px' : '8px 12px'};background:rgba(245,158,11,0.1);border-radius:8px;border-left:3px solid #f59e0b;">
-                                    <span style="font-size:18px;">💰</span>
-                                    <span style="font-size:${isMobile ? '12px' : '13px'};color:var(--text-secondary);">
+                                <div class="alert-card warning">
+                                    <span class="alert-icon">💰</span>
+                                    <span class="alert-text">
                                         <strong>Ticket médio baixo:</strong> R$ ${ticketMedio.toFixed(2)} <br>
-                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#f59e0b;">💡 Ofereça combos ou serviços premium.</span>
+                                        <span class="alert-hint">💡 Ofereça combos ou serviços premium.</span>
                                     </span>
                                 </div>
                             ` : ''}
                             ${despesasPendentes > 0 ? `
-                                <div style="display:flex;align-items:center;gap:8px;padding:${isMobile ? '6px 10px' : '8px 12px'};background:rgba(239,68,68,0.1);border-radius:8px;border-left:3px solid #ef4444;">
-                                    <span style="font-size:18px;">⏳</span>
-                                    <span style="font-size:${isMobile ? '12px' : '13px'};color:var(--text-secondary);">
+                                <div class="alert-card danger">
+                                    <span class="alert-icon">⏳</span>
+                                    <span class="alert-text">
                                         <strong>Despesas pendentes:</strong> R$ ${despesasPendentes.toFixed(2)} <br>
-                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#ef4444;">⚠️ Regularize para não comprometer o fluxo de caixa.</span>
+                                        <span class="alert-hint">⚠️ Regularize para não comprometer o fluxo de caixa.</span>
                                     </span>
                                 </div>
                             ` : ''}
                             ${faturamentoBruto > 0 && (despesasPendentes === 0 && totalServicos >= 30 && ticketMedio >= 50) ? `
-                                <div style="display:flex;align-items:center;gap:8px;padding:${isMobile ? '6px 10px' : '8px 12px'};background:rgba(34,197,94,0.1);border-radius:8px;border-left:3px solid #22c55e;">
-                                    <span style="font-size:18px;">🏆</span>
-                                    <span style="font-size:${isMobile ? '12px' : '13px'};color:var(--text-secondary);">
+                                <div class="alert-card success">
+                                    <span class="alert-icon">🏆</span>
+                                    <span class="alert-text">
                                         <strong>Excelente performance!</strong> <br>
-                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#22c55e;">✅ Continue assim! Considere expandir serviços.</span>
+                                        <span class="alert-hint">✅ Continue assim! Considere expandir serviços.</span>
                                     </span>
                                 </div>
                             ` : ''}
                             ${lucroLiquido < 0 ? `
-                                <div style="display:flex;align-items:center;gap:8px;padding:${isMobile ? '6px 10px' : '8px 12px'};background:rgba(239,68,68,0.15);border-radius:8px;border-left:3px solid #ef4444;">
-                                    <span style="font-size:18px;">🚨</span>
-                                    <span style="font-size:${isMobile ? '12px' : '13px'};color:var(--text-secondary);">
+                                <div class="alert-card danger">
+                                    <span class="alert-icon">🚨</span>
+                                    <span class="alert-text">
                                         <strong>Prejuízo no mês!</strong> Despesas maiores que faturamento. <br>
-                                        <span style="font-size:${isMobile ? '10px' : '12px'};color:#ef4444;">⚠️ Reveja seus custos e aumente o ticket médio.</span>
+                                        <span class="alert-hint">⚠️ Reveja seus custos e aumente o ticket médio.</span>
                                     </span>
                                 </div>
                             ` : ''}
@@ -611,9 +594,8 @@ function renderizarFinanceiroV2(financeiro, despesas, receitas, comparativo, usu
     document.getElementById('content').innerHTML = html;
     console.log('✅ Financeiro V2 renderizado com sucesso!');
 }
-
 // ============================================
-// VISÃO DO PROFISSIONAL
+// VISÃO DO PROFISSIONAL - CORRIGIDA COM CLASSES CSS
 // ============================================
 
 function renderizarVisaoProfissional(financeiro, isMobile) {
@@ -633,14 +615,14 @@ function renderizarVisaoProfissional(financeiro, isMobile) {
             </div>
 
             <div style="display:grid;grid-template-columns:${isMobile ? '1fr' : '1fr 1fr'};gap:${isMobile ? '12px' : '16px'};">
-                <div style="background:linear-gradient(135deg, #667eea, #764ba2);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '20px' : '24px'};color:white;box-shadow:0 4px 20px rgba(102,126,234,0.3);">
-                    <div style="font-size:${isMobile ? '12px' : '14px'};opacity:0.8;">💰 Total em Comissões</div>
-                    <div style="font-size:${isMobile ? '28px' : '36px'};font-weight:800;margin-top:4px;">R$ ${totalComissoes.toFixed(2)}</div>
-                    <div style="font-size:${isMobile ? '12px' : '14px'};opacity:0.7;margin-top:8px;">
-                        ✅ ${totalServicos} serviços concluídos
-                    </div>
+                <!-- Card Total em Comissões -->
+                <div class="card-faturamento">
+                    <div class="card-label">💰 Total em Comissões</div>
+                    <div class="card-value" style="font-size:${isMobile ? '28px' : '36px'};">R$ ${totalComissoes.toFixed(2)}</div>
+                    <div class="card-sub">✅ ${totalServicos} serviços concluídos</div>
                 </div>
 
+                <!-- Card Ticket Médio -->
                 <div style="background:var(--bg-card);border-radius:${isMobile ? '12px' : '16px'};padding:${isMobile ? '20px' : '24px'};border:2px solid #22c55e;">
                     <div style="font-size:${isMobile ? '12px' : '14px'};color:var(--text-muted);">📈 Ticket Médio</div>
                     <div style="font-size:${isMobile ? '28px' : '36px'};font-weight:800;color:#22c55e;margin-top:4px;">
@@ -652,22 +634,13 @@ function renderizarVisaoProfissional(financeiro, isMobile) {
                 </div>
             </div>
 
+            <!-- Botão para ver detalhes -->
             <div style="margin-top:${isMobile ? '16px' : '20px'};text-align:center;padding:${isMobile ? '20px' : '30px'};background:var(--bg-hover);border-radius:12px;border:1px dashed var(--border-color);">
                 <i class="fas fa-chevron-right" style="font-size:${isMobile ? '24px' : '32px'};color:var(--primary);display:block;margin-bottom:8px;"></i>
                 <p style="font-size:${isMobile ? '14px' : '16px'};color:var(--text-secondary);">
                     Veja todos os seus serviços na aba <strong>Comissões</strong>
                 </p>
-                <button onclick="switchFinanceiroTab('profissionais')" style="
-                    padding:${isMobile ? '8px 20px' : '10px 28px'};
-                    background:var(--gradient);
-                    color:white;
-                    border:none;
-                    border-radius:10px;
-                    font-weight:600;
-                    font-size:${isMobile ? '13px' : '14px'};
-                    cursor:pointer;
-                    margin-top:10px;
-                ">
+                <button class="btn-action btn-primary" onclick="switchFinanceiroTab('profissionais')" style="margin-top:10px;">
                     <i class="fas fa-arrow-right"></i> Ver Detalhes
                 </button>
             </div>
@@ -676,7 +649,6 @@ function renderizarVisaoProfissional(financeiro, isMobile) {
 
     document.getElementById('content').innerHTML = html;
 }
-
 // ============================================
 // SWITCH TABS
 // ============================================

@@ -1,105 +1,762 @@
 /* ============================================
-    - ESTILOS ESPEC�FICOS
-   ULTIMA ATUALIZACAO: 31/07/2026
+   FINANCEIRO.CSS - ESTILOS ESSENCIAIS
+   Versão 4.0 - CORES MAIS ESCURAS E LEGÍVEIS
    ============================================ */
 
-/* Estilos da p�gina */
-/* ============================================
-   FINANCEIRO.CSS - ESTILOS ESPECÍFICOS
-   ULTIMA ATUALIZACAO: 31/07/2026
-   ============================================ */
+/* ===== CARDS PRINCIPAIS ===== */
+.financeiro-card {
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    transition: all 0.3s ease;
+}
 
-/* ----- CARDS FINANCEIROS ----- */
+.financeiro-card:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: var(--shadow-lg, 0 10px 15px -3px rgba(0, 0, 0, 0.1));
+}
+
+/* 🔥 Card Faturamento - COR MAIS ESCURA */
 .card-faturamento {
-    background: linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(16, 185, 129, 0.05));
-    border: 1px solid rgba(34, 197, 94, 0.15);
-    border-radius: 12px;
-    padding: 16px 20px;
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff !important;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 4px 20px rgba(79, 70, 229, 0.35) !important;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.card-faturamento .value {
-    color: #22c55e;
-    font-size: 22px;
-    font-weight: 700;
+.card-faturamento:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 8px 30px rgba(79, 70, 229, 0.45) !important;
 }
 
+.card-faturamento .card-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-top: 0.125rem;
+    letter-spacing: -0.5px;
+}
+
+.card-faturamento .card-label {
+    font-size: 0.8125rem;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
+.card-faturamento .card-sub {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+    font-weight: 400;
+}
+
+.card-faturamento .card-footer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.8125rem;
+    opacity: 0.85;
+}
+
+/* 🔥 Card Despesa - COR MAIS ESCURA */
 .card-despesa {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.04));
-    border: 1px solid rgba(239, 68, 68, 0.12);
-    border-radius: 12px;
-    padding: 16px 20px;
+    background: var(--bg-card, #ffffff);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 2px solid #dc2626 !important;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.08);
+    transition: all 0.3s ease;
 }
 
-.card-despesa .value {
-    color: #ef4444;
-    font-size: 22px;
+.card-despesa:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 8px 30px rgba(220, 38, 38, 0.15);
+}
+
+.card-despesa .card-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #dc2626 !important;
+    margin-top: 0.125rem;
+    letter-spacing: -0.5px;
+}
+
+.card-despesa .card-label {
+    font-size: 0.8125rem;
+    color: #dc2626 !important;
     font-weight: 700;
 }
 
+.card-despesa .card-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted, #6b7280);
+    margin-top: 0.25rem;
+    font-weight: 500;
+}
+
+.card-despesa .card-footer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    font-size: 0.8125rem;
+}
+
+/* 🔥 Card Lucro - CORES MAIS FORTES */
 .card-lucro {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.05));
-    border: 1px solid rgba(102, 126, 234, 0.15);
-    border-radius: 12px;
-    padding: 16px 20px;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(22, 163, 74, 0.35);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.card-lucro .value {
-    color: #8b5cf6;
-    font-size: 22px;
+.card-lucro.positive {
+    background: linear-gradient(135deg, #059669, #065f46) !important;
+    box-shadow: 0 4px 20px rgba(5, 150, 105, 0.35) !important;
+}
+
+.card-lucro.positive:hover {
+    box-shadow: 0 8px 30px rgba(5, 150, 105, 0.45) !important;
+}
+
+.card-lucro.negative {
+    background: linear-gradient(135deg, #dc2626, #991b1b) !important;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.35) !important;
+}
+
+.card-lucro.negative:hover {
+    box-shadow: 0 8px 30px rgba(220, 38, 38, 0.45) !important;
+}
+
+.card-lucro:hover {
+    transform: translateY(-0.125rem);
+}
+
+.card-lucro .card-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-top: 0.125rem;
+    letter-spacing: -0.5px;
+}
+
+.card-lucro .card-label {
+    font-size: 0.8125rem;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
+.card-lucro .card-sub {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+    font-weight: 400;
+}
+
+.card-lucro .card-footer {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.8125rem;
+    opacity: 0.85;
+}
+
+/* 🔥 Card Comissões - COR MAIS ESCURA */
+.card-comissoes {
+    background: linear-gradient(135deg, #6d28d9, #4c1d95) !important;
+    color: #ffffff !important;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 4px 20px rgba(109, 40, 217, 0.35) !important;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.card-comissoes:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 8px 30px rgba(109, 40, 217, 0.45) !important;
+}
+
+.card-comissoes .card-value {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-top: 0.125rem;
+    letter-spacing: -0.5px;
+}
+
+.card-comissoes .card-label {
+    font-size: 0.8125rem;
+    opacity: 0.85;
+    font-weight: 600;
+}
+
+.card-comissoes .card-sub {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    margin-top: 0.25rem;
+    font-weight: 400;
+}
+
+/* ===== CARD DE ANÁLISE ===== */
+.analise-card {
+    background: var(--bg-card, #ffffff);
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border-color, #e5e7eb);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.analise-card .analise-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.analise-card .analise-item:last-child {
+    border-bottom: none;
+}
+
+.analise-card .analise-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary, #4b5563);
+}
+
+.analise-card .analise-value {
+    font-size: 1.125rem;
     font-weight: 700;
 }
 
-/* ----- TABS ----- */
+.analise-card .analise-value.positive {
+    color: #059669 !important;
+}
+
+.analise-card .analise-value.negative {
+    color: #dc2626 !important;
+}
+
+.analise-card .analise-value.neutral {
+    color: var(--text-primary, #1f2937);
+}
+
+/* ===== CARDS DE ALERTAS ===== */
+.alert-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 0.5rem;
+    border-left: 3px solid transparent;
+    margin-bottom: 0.375rem;
+}
+
+.alert-card.warning {
+    background: rgba(245, 158, 11, 0.08);
+    border-left-color: #d97706;
+}
+
+.alert-card.danger {
+    background: rgba(220, 38, 38, 0.08);
+    border-left-color: #dc2626;
+}
+
+.alert-card.success {
+    background: rgba(5, 150, 105, 0.08);
+    border-left-color: #059669;
+}
+
+.alert-card.info {
+    background: rgba(79, 70, 229, 0.08);
+    border-left-color: #4f46e5;
+}
+
+.alert-card .alert-icon {
+    font-size: 1.125rem;
+    flex-shrink: 0;
+    margin-top: 0.0625rem;
+}
+
+.alert-card .alert-text {
+    font-size: 0.8125rem;
+    color: var(--text-secondary, #4b5563);
+    line-height: 1.4;
+}
+
+.alert-card .alert-text strong {
+    color: var(--text-primary, #1f2937);
+}
+
+.alert-card .alert-hint {
+    font-size: 0.625rem;
+    color: var(--text-muted, #6b7280);
+    display: block;
+    margin-top: 0.125rem;
+    font-weight: 500;
+}
+
+/* ============================================
+   BOTÕES PADRÃO
+   ============================================ */
+
+/* Container dos botões */
+.actions-cell {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Botão base */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.875rem;
+    border: 1.5px solid transparent;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    text-decoration: none;
+    min-width: 5rem;
+    min-height: 2.5rem;
+    background: var(--bg-hover, #f3f4f6);
+    color: var(--text-secondary, #4b5563);
+}
+
+.btn-action i {
+    font-size: 0.875rem;
+}
+
+.btn-action:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+.btn-action:active {
+    transform: scale(0.95);
+}
+
+/* ===== BOTÃO EDITAR ===== */
+.btn-edit {
+    background: rgba(79, 70, 229, 0.12);
+    color: #4f46e5;
+    border-color: rgba(79, 70, 229, 0.2);
+}
+
+.btn-edit:hover {
+    background: #4f46e5;
+    color: #ffffff;
+    border-color: #4f46e5;
+    box-shadow: 0 0.25rem 0.75rem rgba(79, 70, 229, 0.3);
+}
+
+/* ===== BOTÃO EXCLUIR ===== */
+.btn-delete {
+    background: rgba(220, 38, 38, 0.12);
+    color: #dc2626;
+    border-color: rgba(220, 38, 38, 0.2);
+}
+
+.btn-delete:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 0.25rem 0.75rem rgba(220, 38, 38, 0.3);
+}
+
+/* ===== BOTÃO CONCLUIR/BAIXAR ===== */
+.btn-success {
+    background: rgba(5, 150, 105, 0.12);
+    color: #059669;
+    border-color: rgba(5, 150, 105, 0.2);
+}
+
+.btn-success:hover {
+    background: #059669;
+    color: #ffffff;
+    border-color: #059669;
+    box-shadow: 0 0.25rem 0.75rem rgba(5, 150, 105, 0.3);
+}
+
+/* ===== BOTÃO PRIMÁRIO ===== */
+.btn-primary {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #ffffff;
+    border-color: transparent;
+}
+
+.btn-primary:hover {
+    transform: translateY(-0.125rem);
+    box-shadow: 0 0.25rem 0.75rem rgba(79, 70, 229, 0.3);
+}
+
+/* ===== BOTÃO OUTLINE ===== */
+.btn-outline {
+    background: transparent;
+    color: var(--text-secondary, #4b5563);
+    border-color: var(--border-color, #e5e7eb);
+}
+
+.btn-outline:hover {
+    background: var(--bg-hover, #f3f4f6);
+    transform: translateY(-0.125rem);
+}
+
+/* ============================================
+   TABS
+   ============================================ */
+
 .tabs-financeiro {
     display: flex;
-    gap: 4px;
-    background: var(--bg-hover);
-    border-radius: 10px;
-    padding: 4px;
-    margin-bottom: 16px;
+    gap: 0.25rem;
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+    border-radius: 0.625rem;
+    padding: 0.25rem;
+    margin-bottom: 1rem;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .tabs-financeiro .tab {
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
     border: none;
     background: transparent;
-    color: var(--text-secondary);
-    font-size: 13px;
+    color: var(--text-secondary, #4b5563);
+    font-size: 0.8125rem;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .tabs-financeiro .tab:hover {
-    color: var(--text-primary);
+    color: var(--text-primary, #1f2937);
 }
 
 .tabs-financeiro .tab.active {
-    background: var(--bg-card);
-    color: var(--primary);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    background: var(--bg-card, #ffffff);
+    color: #4f46e5 !important;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.06);
 }
 
-/* ----- MOBILE ----- */
-@media (max-width: 768px) {
+/* ============================================
+   MINI STATS
+   ============================================ */
+
+.mini-stat {
+    text-align: center;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-hover, #f3f4f6);
+    border-radius: 0.625rem;
+}
+
+.mini-stat .mini-stat-value {
+    font-size: 1.375rem;
+    font-weight: 700;
+    display: block;
+}
+
+.mini-stat .mini-stat-label {
+    font-size: 0.625rem;
+    color: var(--text-muted, #6b7280);
+}
+
+.mini-stat .mini-stat-value.primary {
+    color: #4f46e5 !important;
+}
+
+.mini-stat .mini-stat-value.success {
+    color: #059669 !important;
+}
+
+.mini-stat .mini-stat-value.danger {
+    color: #dc2626 !important;
+}
+
+.mini-stat .mini-stat-value.warning {
+    color: #d97706 !important;
+}
+
+/* ============================================
+   TABELAS
+   ============================================ */
+
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-card, #ffffff);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    font-size: 0.875rem;
+}
+
+.data-table thead {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+}
+
+.data-table th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+}
+
+.data-table td {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color, #e5e7eb);
+    color: var(--text-primary, #1f2937);
+    vertical-align: middle;
+}
+
+.data-table tbody tr {
+    transition: background 0.2s ease;
+}
+
+.data-table tbody tr:hover {
+    background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.data-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.data-table .valor {
+    font-weight: 700;
+    color: #059669 !important;
+}
+
+.data-table .valor-danger {
+    font-weight: 700;
+    color: #dc2626 !important;
+}
+
+/* ============================================
+   DIVISORES E UTILIDADES
+   ============================================ */
+
+.divider {
+    border: none;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    margin: 0.75rem 0;
+}
+
+.divider-light {
+    border: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    margin: 0.75rem 0;
+}
+
+.text-muted {
+    color: var(--text-muted, #6b7280);
+}
+
+.text-success {
+    color: #059669 !important;
+}
+
+.text-danger {
+    color: #dc2626 !important;
+}
+
+.text-warning {
+    color: #d97706 !important;
+}
+
+.text-primary {
+    color: #4f46e5 !important;
+}
+
+/* ============================================
+   RESPONSIVIDADE
+   ============================================ */
+
+@media (max-width: 48rem) {
+    .card-faturamento .card-value,
+    .card-despesa .card-value,
+    .card-lucro .card-value,
+    .card-comissoes .card-value {
+        font-size: 1.25rem;
+    }
 
     .card-faturamento,
     .card-despesa,
-    .card-lucro {
-        padding: 10px 12px;
-    }
-
-    .card-faturamento .value,
-    .card-despesa .value,
-    .card-lucro .value {
-        font-size: 16px;
+    .card-lucro,
+    .card-comissoes {
+        padding: 0.75rem 1rem;
     }
 
     .tabs-financeiro .tab {
-        font-size: 11px;
-        padding: 6px 12px;
+        font-size: 0.6875rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .btn-action {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.8125rem;
+        min-height: 2.75rem;
+        min-width: 4rem;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .actions-cell {
+        gap: 0.375rem;
+    }
+
+    /* Tabela vira cards */
+    .data-table thead {
+        display: none;
+    }
+
+    .data-table tbody tr {
+        display: block;
+        margin-bottom: 0.75rem;
+        background: var(--bg-card, #ffffff);
+        border-radius: 0.75rem;
+        border: 1px solid var(--border-color, #e5e7eb);
+        padding: 1rem;
+        box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
+    }
+
+    .data-table tbody tr:hover {
+        background: var(--bg-card, #ffffff);
+    }
+
+    .data-table tbody td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.375rem 0 !important;
+        border-bottom: 1px solid var(--border-color, #e5e7eb);
+        background: transparent !important;
+        font-size: 0.8125rem;
+    }
+
+    .data-table tbody td:last-child {
+        border-bottom: none;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
+        border-top: 1px solid var(--border-color, #e5e7eb);
+    }
+
+    .data-table tbody td:last-child .actions-cell {
+        justify-content: center;
+    }
+
+    .data-table tbody td:last-child .btn-action {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .data-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-muted, #6b7280);
+        font-size: 0.6875rem;
+        text-transform: uppercase;
+        letter-spacing: 0.01875rem;
+        flex-shrink: 0;
+    }
+
+    .data-table tbody td .valor {
+        font-size: 0.875rem;
+    }
+
+    .analise-card .analise-item {
+        padding: 0.375rem 0;
+    }
+
+    .analise-card .analise-value {
+        font-size: 1rem;
+    }
+
+    .alert-card {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .alert-card .alert-text {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 30rem) {
+    .card-faturamento .card-value,
+    .card-despesa .card-value,
+    .card-lucro .card-value,
+    .card-comissoes .card-value {
+        font-size: 1.125rem;
+    }
+
+    .data-table tbody td:last-child .actions-cell {
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+
+    .data-table tbody td:last-child .btn-action {
+        width: 100%;
+        justify-content: center;
+        padding: 0.625rem;
+        min-height: 3rem;
+    }
+
+    .btn-action {
+        padding: 0.625rem;
+        min-height: 3rem;
+        font-size: 0.875rem;
+    }
+
+    .analise-card {
+        padding: 0.75rem;
+    }
+
+    .analise-card .analise-label {
+        font-size: 0.75rem;
+    }
+
+    .analise-card .analise-value {
+        font-size: 0.875rem;
+    }
+}
+
+/* Touch devices - desabilitar hovers */
+@media (hover: none) {
+    .card-faturamento:hover {
+        transform: none;
+    }
+    .card-despesa:hover {
+        transform: none;
+    }
+    .card-lucro:hover {
+        transform: none;
+    }
+    .card-comissoes:hover {
+        transform: none;
+    }
+    .btn-action:hover {
+        transform: none !important;
+        box-shadow: none !important;
+    }
+    .data-table tbody tr:hover {
+        background: transparent;
     }
 }

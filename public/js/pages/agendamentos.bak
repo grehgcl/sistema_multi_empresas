@@ -471,11 +471,14 @@ async function carregarListaAgendamentosComFiltro() {
         
         // 🔥 SE NÃO EXISTIR O CONTAINER, CRIAR
         if (!container) {
+            // Procurar a tabela ou o container existente
             const tableResponsive = document.querySelector('.table-responsive');
             if (tableResponsive) {
+                // Renomear para containerAgendamentos
                 tableResponsive.id = 'containerAgendamentos';
                 container = tableResponsive;
             } else {
+                // Criar novo container
                 const card = document.querySelector('.card');
                 if (card) {
                     container = document.createElement('div');
@@ -483,6 +486,7 @@ async function carregarListaAgendamentosComFiltro() {
                     container.className = 'table-responsive';
                     card.appendChild(container);
                 } else {
+                    // Fallback: criar no content
                     const content = document.getElementById('content');
                     if (content) {
                         container = document.createElement('div');
@@ -499,6 +503,7 @@ async function carregarListaAgendamentosComFiltro() {
             return;
         }
 
+        // 🔥 LIMPAR CONTEÚDO DO CONTAINER
         container.innerHTML = '';
 
         if (listaFiltrada.length === 0) {
@@ -521,12 +526,20 @@ async function carregarListaAgendamentosComFiltro() {
             return;
         }
 
+        // 🔥 RENDERIZAR CARDS (MOBILE) OU TABELA (DESKTOP)
         if (isMobile) {
-            // ============================================
-            // VERSÃO MOBILE - CARDS COM BOTÕES USANDO CLASSES CSS
-            // ============================================
+            // 🔥 VERSÃO MOBILE - CARDS
             const cardContainer = document.createElement('div');
             cardContainer.className = 'agendamentos-mobile-container';
+            cardContainer.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 4px 2px;
+                width: 100%;
+                max-width: 100%;
+                box-sizing: border-box;
+            `;
 
             for (let item of listaFiltrada) {
                 const statusMap = {
@@ -561,44 +574,171 @@ async function carregarListaAgendamentosComFiltro() {
                 const nomeCliente = item.cliente_nome || (item.cliente_id ? `⚠️ Cliente #${item.cliente_id}` : '⚠️ Sem cliente');
 
                 const card = document.createElement('div');
-                card.className = 'agendamento-card';
+                card.style.cssText = `
+                    background: var(--bg-card);
+                    border-radius: 14px;
+                    padding: 14px 16px;
+                    border: 1px solid var(--border-color);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+                    width: 100%;
+                    max-width: 100%;
+                    box-sizing: border-box;
+                    transition: all 0.2s ease;
+                `;
 
                 card.innerHTML = `
-                    <div class="card-header">
-                        <div class="card-cliente">
-                            <span class="avatar">${nomeCliente ? nomeCliente.charAt(0).toUpperCase() : '⚠️'}</span>
-                            <div>
-                                <div class="cliente-nome">${escapeHtml(nomeCliente)}</div>
-                                <div class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')} ${extrasCount > 0 ? `⭐ +${extrasCount}` : ''}</div>
+                    <!-- CABEÇALHO: Cliente + Status -->
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0;">
+                            <div style="
+                                width: 40px;
+                                height: 40px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #667eea, #764ba2);
+                                color: white;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-weight: 700;
+                                font-size: 16px;
+                                flex-shrink: 0;
+                            ">${nomeCliente ? nomeCliente.charAt(0).toUpperCase() : '⚠️'}</div>
+                            <div style="min-width:0;flex:1;">
+                                <div style="font-weight:600;color:var(--text-primary);font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    ${escapeHtml(nomeCliente)}
+                                </div>
+                                <div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                    ${escapeHtml(item.servico_nome || item.servico || '-')}
+                                    ${extrasCount > 0 ? ` <span style="color:#f59e0b;">⭐ +${extrasCount}</span>` : ''}
+                                </div>
                             </div>
                         </div>
-                        <span class="status-badge ${statusInfo.class}">
-                            <span class="dot"></span> ${statusInfo.label}
+                        <span style="
+                            padding:3px 12px;
+                            border-radius:20px;
+                            font-size:10px;
+                            font-weight:600;
+                            white-space:nowrap;
+                            flex-shrink:0;
+                            background: ${statusInfo.bg};
+                            color: ${statusInfo.color};
+                            border: 1px solid ${statusInfo.color}22;
+                        ">
+                            ${statusInfo.label}
                         </span>
                     </div>
 
-                    <div class="card-info">
-                        <span><i class="fas fa-calendar"></i> ${dataFormatada}</span>
-                        <span><i class="fas fa-clock"></i> ${horaFormatada}</span>
-                        <span><i class="fas fa-user"></i> ${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
-                        <span><i class="fas fa-money-bill"></i> R$ ${valorTotal.toFixed(2)}</span>
+                    <!-- INFORMAÇÕES -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 6px 12px;
+                        background: var(--bg-hover);
+                        padding: 10px 14px;
+                        border-radius: 10px;
+                        margin-bottom: 12px;
+                        width: 100%;
+                        box-sizing: border-box;
+                    ">
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">📅 Data</div>
+                            <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${dataFormatada}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">⏰ Horário</div>
+                            <div style="font-weight:500;color:var(--text-primary);font-size:14px;">${horaFormatada}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">👨‍💼 Profissional</div>
+                            <div style="font-weight:500;color:var(--text-primary);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                ${escapeHtml(item.profissional_nome || 'Não atribuído')}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.3px;font-weight:600;">💰 Valor</div>
+                            <div style="font-weight:700;color:#22c55e;font-size:15px;">R$ ${valorTotal.toFixed(2)}</div>
+                            ${extrasCount > 0 ? `<div style="font-size:9px;color:var(--text-muted);">R$ ${valorPrincipal.toFixed(2)} + R$ ${valorExtras.toFixed(2)}</div>` : ''}
+                        </div>
                     </div>
 
-                    <div class="card-actions">
+                    <!-- BOTÕES DE AÇÃO -->
+                    <div style="
+                        display: grid;
+                        grid-template-columns: ${podeEditar ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr'};
+                        gap: 6px;
+                        border-top: 1px solid var(--border-color);
+                        padding-top: 10px;
+                    ">
                         ${podeEditar ? `
-                            <button class="btn-action btn-edit" onclick="editarAgendamento(${item.id})">
-                                <i class="fas fa-pen"></i> Editar
+                            <button onclick="editarAgendamento(${item.id})" style="
+                                padding: 7px 6px;
+                                border-radius: 8px;
+                                border: 1px solid rgba(102,126,234,0.25);
+                                background: var(--bg-hover);
+                                color: var(--primary);
+                                font-size: 11px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 4px;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.background='rgba(102,126,234,0.08)'" onmouseout="this.style.background='var(--bg-hover)'">
+                                <i class="fas fa-pen" style="font-size:10px;"></i> Editar
                             </button>
-                            <button class="btn-action btn-concluir" onclick="concluirAgendamento(${item.id})">
-                                <i class="fas fa-check"></i> Concluir
+                            <button onclick="concluirAgendamento(${item.id})" style="
+                                padding: 7px 6px;
+                                border-radius: 8px;
+                                border: 1px solid rgba(34,197,94,0.25);
+                                background: var(--bg-hover);
+                                color: #22c55e;
+                                font-size: 11px;
+                                font-weight: 500;
+                                cursor: pointer;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 4px;
+                                transition: all 0.2s;
+                            " onmouseover="this.style.background='rgba(34,197,94,0.08)'" onmouseout="this.style.background='var(--bg-hover)'">
+                                <i class="fas fa-check" style="font-size:10px;"></i> Concluir
                             </button>
                         ` : ''}
-                        <button class="btn-action btn-view" onclick="abrirModalExtra(${item.id})">
-                            <i class="fas ${extrasCount > 0 ? 'fa-star' : 'fa-plus-circle'}"></i> 
+                        <button onclick="abrirModalExtra(${item.id})" style="
+                            padding: 7px 6px;
+                            border-radius: 8px;
+                            border: 1px solid ${extrasCount > 0 ? 'rgba(34,197,94,0.4)' : 'rgba(245,158,11,0.3)'};
+                            background: var(--bg-hover);
+                            color: ${extrasCount > 0 ? '#22c55e' : '#f59e0b'};
+                            font-size: 11px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 4px;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='rgba(245,158,11,0.08)'" onmouseout="this.style.background='var(--bg-hover)'">
+                            <i class="fas ${extrasCount > 0 ? 'fa-star' : 'fa-plus-circle'}" style="font-size:10px;"></i> 
                             ${extrasCount > 0 ? `${extrasCount}` : 'Extras'}
                         </button>
-                        <button class="btn-action btn-delete" onclick="excluirAgendamento(${item.id})">
-                            <i class="fas fa-trash"></i> Excluir
+                        <button onclick="excluirAgendamento(${item.id})" style="
+                            padding: 7px 6px;
+                            border-radius: 8px;
+                            border: 1px solid rgba(239,68,68,0.25);
+                            background: var(--bg-hover);
+                            color: #ef4444;
+                            font-size: 11px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 4px;
+                            transition: all 0.2s;
+                        " onmouseover="this.style.background='rgba(239,68,68,0.08)'" onmouseout="this.style.background='var(--bg-hover)'">
+                            <i class="fas fa-trash" style="font-size:10px;"></i> Excluir
                         </button>
                     </div>
                 `;
@@ -609,22 +749,22 @@ async function carregarListaAgendamentosComFiltro() {
             container.appendChild(cardContainer);
 
         } else {
-            // ============================================
-            // VERSÃO DESKTOP - TABELA COM BOTÕES USANDO CLASSES CSS
-            // ============================================
+            // 🔥 VERSÃO DESKTOP - TABELA
             const table = document.createElement('table');
             table.className = 'data-table';
+            table.style.cssText = 'width:100%;border-collapse:collapse;';
             
+            // Cabeçalho
             table.innerHTML = `
                 <thead>
                     <tr>
-                        <th>📅 Data/Hora</th>
-                        <th>👤 Cliente</th>
-                        <th>👨‍💼 Profissional</th>
-                        <th>✂️ Serviço</th>
-                        <th>💰 Valor</th>
-                        <th>📊 Status</th>
-                        <th>⚡ Ações</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">📅 Data/Hora</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">👤 Cliente</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">👨‍💼 Profissional</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">✂️ Serviço</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">💰 Valor</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">📊 Status</th>
+                        <th style="text-align:left;padding:12px;border-bottom:2px solid var(--border-color);">⚡ Ações</th>
                     </tr>
                 </thead>
                 <tbody id="listaAgendamentosDesktop"></tbody>
@@ -646,122 +786,9 @@ async function carregarListaAgendamentosComFiltro() {
     }
 }
 
+
 // ============================================
-// RENDERIZAR LINHA DA TABELA (DESKTOP)
-// ============================================
-
-function renderizarLinhaAgendamento(item) {
-    const agendamentoId = item?.id;
-    if (!agendamentoId) {
-        return `<tr><td colspan="7" style="color:red;">⚠️ Agendamento inválido (sem ID)</td></tr>`;
-    }
-
-    const statusMap = {
-        'concluido': { class: 'concluido', label: '✅ Concluído' },
-        'pendente': { class: 'pendente', label: '⏳ Pendente' },
-        'agendado': { class: 'agendado', label: '📋 Agendado' },
-        'cancelado': { class: 'cancelado', label: '❌ Cancelado' }
-    };
-    const statusInfo = statusMap[item.status] || statusMap['pendente'];
-    
-    const dataFormatada = formatarDataBr(item.data);
-    const horaFormatada = formatarHoraBr(item.hora);
-    const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
-
-    const nomeCliente = item.cliente_nome || (item.cliente_id ? `⚠️ Cliente #${item.cliente_id}` : '⚠️ Sem cliente');
-
-    let extrasCount = 0;
-    let extrasList = [];
-    let valorExtras = 0;
-
-    if (item.servicos_extras) {
-        try {
-            extrasList = typeof item.servicos_extras === 'string' ? JSON.parse(item.servicos_extras) : item.servicos_extras;
-            extrasCount = extrasList.length;
-            for (let extra of extrasList) {
-                valorExtras += parseFloat(extra.valor) || 0;
-            }
-        } catch (e) {
-            extrasList = [];
-            extrasCount = 0;
-        }
-    }
-
-    const valorPrincipal = parseFloat(item.valor) || 0;
-    const valorTotal = valorPrincipal + valorExtras;
-    const valorExibir = item.valor_total ? parseFloat(item.valor_total) : valorTotal;
-
-    return `
-        <tr data-agendamento-id="${agendamentoId}">
-            <td>
-                <div class="cell-data-hora">
-                    <span class="data">${dataFormatada}</span>
-                    <span class="hora">${horaFormatada}</span>
-                </div>
-            </td>
-            <td>
-                <div class="cell-cliente">
-                    <span class="cliente-nome">${escapeHtml(nomeCliente)}</span>
-                </div>
-            </td>
-            <td>
-                <span class="profissional-nome">${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
-            </td>
-            <td>
-                <div>
-                    <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
-                    ${extrasCount > 0 ? `
-                        <span style="display:block;font-size:10px;color:#f59e0b;margin-top:2px;">
-                            <i class="fas fa-plus-circle"></i> ${extrasCount} extra(s)
-                        </span>
-                    ` : ''}
-                </div>
-            </td>
-            <td>
-                <div>
-                    ${extrasCount > 0 ? `
-                        <span style="font-size:11px;color:var(--text-muted);display:block;">
-                            R$ ${valorPrincipal.toFixed(2)}
-                            <span style="color:#22c55e;">+ R$ ${valorExtras.toFixed(2)}</span>
-                        </span>
-                        <span style="font-weight:700;color:var(--primary);font-size:15px;">
-                            R$ ${valorExibir.toFixed(2)}
-                        </span>
-                    ` : `
-                        <span class="valor">R$ ${valorPrincipal.toFixed(2)}</span>
-                    `}
-                </div>
-            </td>
-            <td>
-                <span class="status-badge ${statusInfo.class}">
-                    <span class="dot"></span>
-                    ${statusInfo.label}
-                </span>
-            </td>
-            <td>
-                <div class="actions-cell">
-                    ${podeEditar ? `
-                        <button class="btn-action btn-edit" onclick="editarAgendamento(${agendamentoId})" title="Editar">
-                            <i class="fas fa-pen"></i> Editar
-                        </button>
-                        <button class="btn-action btn-concluir" onclick="concluirAgendamento(${agendamentoId})" title="Concluir">
-                            <i class="fas fa-check"></i> Concluir
-                        </button>
-                    ` : ''}
-                    <button class="btn-action btn-view" onclick="abrirModalExtra(${agendamentoId})" title="Serviços Extras">
-                        <i class="fas ${extrasCount > 0 ? 'fa-star' : 'fa-plus-circle'}"></i> 
-                        ${extrasCount > 0 ? `${extrasCount}` : 'Extras'}
-                    </button>
-                    <button class="btn-action btn-delete" onclick="excluirAgendamento(${agendamentoId})" title="Excluir">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `;
-}
-// ============================================
-// RENDERIZAR LINHA DA TABELA (DESKTOP)
+// RENDERIZAR LINHA DA TABELA
 // ============================================
 
 function renderizarLinhaAgendamento(item) {
@@ -853,21 +880,32 @@ function renderizarLinhaAgendamento(item) {
                 </span>
             </td>
             <td>
-                <div class="actions-cell">
+                <div class="actions-cell" style="display:flex;gap:4px;flex-wrap:wrap;">
                     ${podeEditar ? `
-                        <button class="btn-action btn-edit" onclick="editarAgendamento(${agendamentoId})" title="Editar">
-                            <i class="fas fa-pen"></i> Editar
+                        <button class="btn-icon btn-edit" onclick="editarAgendamento(${agendamentoId})" title="Editar">
+                            <i class="fas fa-pen"></i>
                         </button>
-                        <button class="btn-action btn-concluir" onclick="concluirAgendamento(${agendamentoId})" title="Concluir">
-                            <i class="fas fa-check"></i> Concluir
+                        <button class="btn-icon btn-check" onclick="concluirAgendamento(${agendamentoId})" title="Concluir">
+                            <i class="fas fa-check"></i>
                         </button>
                     ` : ''}
-                    <button class="btn-action btn-view" onclick="abrirModalExtra(${agendamentoId})" title="Serviços Extras">
+                    <button class="btn-icon btn-extra" onclick="abrirModalExtra(${agendamentoId})" title="Serviços Extras" style="
+                        padding: 4px 10px;
+                        border-radius: 6px;
+                        border: 1px solid ${extrasCount > 0 ? 'rgba(34,197,94,0.5)' : 'rgba(245,158,11,0.3)'};
+                        background: var(--bg-hover);
+                        color: ${extrasCount > 0 ? '#22c55e' : '#f59e0b'};
+                        font-size: 12px;
+                        cursor: pointer;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 4px;
+                    ">
                         <i class="fas ${extrasCount > 0 ? 'fa-star' : 'fa-plus-circle'}"></i> 
                         ${extrasCount > 0 ? `${extrasCount}` : 'Extras'}
                     </button>
-                    <button class="btn-action btn-delete" onclick="excluirAgendamento(${agendamentoId})" title="Excluir">
-                        <i class="fas fa-trash"></i> Excluir
+                    <button class="btn-icon btn-delete" onclick="excluirAgendamento(${agendamentoId})" title="Excluir">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </td>
@@ -898,7 +936,6 @@ function limparFiltrosAgendamentos() {
 
     carregarListaAgendamentosComFiltro();
 }
-
 
 // ============================================
 // ATUALIZAR ESTATÍSTICAS
