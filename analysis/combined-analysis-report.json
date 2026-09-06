@@ -1,0 +1,53 @@
+{
+  "timestamp": "2026-08-31T04:37:11.622Z",
+  "duration": "0.33",
+  "totalAnalyses": 5,
+  "successfulAnalyses": 2,
+  "failedAnalyses": 3,
+  "analyses": [
+    {
+      "name": "Análise do Sistema",
+      "success": true,
+      "output": "analysis/system-analysis.json",
+      "duration": 121,
+      "log": "🔍 Iniciando análise do sistema SEE&AGENDE...\n📁 Diretório raiz: C:\\Users\\jonat\\Documents\\barbearia_nova\n\n📊 Análise concluída!\n   Total de arquivos: 102\n   Total de linhas: 69055\n   Total de diretórios: 21\n✅ Relatório salvo em: C:\\Users\\jonat\\Documents\\barbearia_nova\\analysis\\system-analysis-1788151031392.json\n✅ Relatório Markdown salvo em: C:\\Users\\jonat\\Documents\\barbearia_nova\\analysis\\system-analysis-1788151031392.md\n\n📋 FEATURES ENCONTRADAS:\n   whatsapp: ✅ OK (0 rotas, 0 arquivos)\n   financeiro: ✅ OK (0 rotas, 0 arquivos)\n   agendamentos: ✅ OK (0 rotas, 0 arquivos)\n   clientes: ✅ OK (0 rotas, 0 arquivos)\n   admin: ✅ OK (0 rotas, 0 arquivos)\n\n💡 RECOMENDAÇÕES:\n   ⚠️ Nenhuma rota WhatsApp encontrada - Verificar integração\n   ⚠️ Nenhuma rota Financeiro encontrada - Verificar módulo\n   📏 Arquivos grandes encontrados:\n      -  (795 linhas)\n      -  (6310 linhas)\n      - exportacao (770 linhas)\n      - exportacao (1937 linhas)\n      - exportacao (936 linhas)\n\n✅ Análise finalizada!\n📁 Relatórios salvos em: C:\\Users\\jonat\\Documents\\barbearia_nova\\analysis\n"
+    },
+    {
+      "name": "Análise da Lógica de Negócio",
+      "success": true,
+      "output": "analysis/business-logic-analysis.json",
+      "duration": 204,
+      "log": "🧠 Analisando lógica de negócio do SEE&AGENDE...\n\n🔍 Analisando lógica de negócio...\n📊 Análise concluída!\n\n📋 REGRAS DE NEGÓCIO ENCONTRADAS:\n   agendamentos: 144 regras\n      - regras: 78\n      - validacoes: 12\n      - fluxos: 54\n   whatsapp: 191 regras\n      - regras: 57\n      - fluxos: 84\n      - permissoes: 50\n   financeiro: 102 regras\n      - regras: 31\n      - calculos: 61\n      - relatorios: 10\n   clientes: 1776 regras\n      - regras: 77\n      - grupos: 1624\n      - promocoes: 75\n   admin: 939 regras\n      - regras: 401\n      - permissoes: 534\n      - controle: 4\n✅ Relatório de lógica de negócio salvo em: C:\\Users\\jonat\\Documents\\barbearia_nova\\analysis\\business-logic-1788151031593.json\n✅ Relatório Markdown salvo em: C:\\Users\\jonat\\Documents\\barbearia_nova\\analysis\\business-logic-1788151031597.md\n\n✅ Análise de lógica de negócio finalizada!\n"
+    },
+    {
+      "name": "Análise de Performance",
+      "success": false,
+      "error": "Script não encontrado: scripts/analyze-performance.js",
+      "output": null
+    },
+    {
+      "name": "Análise de Segurança",
+      "success": false,
+      "error": "Script não encontrado: scripts/analyze-security.js",
+      "output": null
+    },
+    {
+      "name": "Análise de Dependências",
+      "success": false,
+      "error": "Script não encontrado: scripts/analyze-dependencies.js",
+      "output": null
+    }
+  ],
+  "system": {
+    "nodeVersion": "v24.16.0",
+    "platform": "win32",
+    "cwd": "C:\\Users\\jonat\\Documents\\barbearia_nova",
+    "memory": {
+      "rss": 40054784,
+      "heapTotal": 8069120,
+      "heapUsed": 5684616,
+      "external": 1972764,
+      "arrayBuffers": 24825
+    }
+  }
+}

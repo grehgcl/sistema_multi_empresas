@@ -458,34 +458,54 @@ router.post('/mercadopago/webhook', async (req, res) => {
 
             console.log(`🔍 Consultando pagamento ID: ${paymentId}`);
 
-            const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
+            // 🔥 FORÇAR TOKEN (igual ao que funciona no create-payment)
+            const mpAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN || 
+                                 process.env.MERCADO_PAGO_ACCESS_TOKEN ||
+                                 'APP_USR-6634641127610532-061511-c9b4a2384c16fb78e17f283ae74ddf30-41050420';
+            
+            console.log(`🔑 Token usado no webhook: ${mpAccessToken.substring(0, 15)}...`);
+
             if (mpAccessToken) {
                 try {
-                    const mercadopago = require('mercadopago');
-                    mercadopago.configure({
-                        access_token: mpAccessToken
+                    // 🔥 USAR FETCH DIRETO (sem o SDK)
+                    const response = await fetch(`https://api.mercadopago.com/v1/payments/${paymentId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${mpAccessToken}`,
+                            'Content-Type': 'application/json'
+                        }
                     });
 
-                    const response = await mercadopago.payment.findById(paymentId);
-                    const payment = response.body;
+                    if (!response.ok) {
+                        console.error(`❌ Erro na consulta: ${response.status}`);
+                        const errorText = await response.text();
+                        console.error(`❌ Detalhes: ${errorText}`);
+                        return res.status(200).json({ success: false });
+                    }
 
+                    const payment = await response.json();
                     console.log('📊 Status do pagamento:', payment.status);
+                    console.log('📊 External reference:', payment.external_reference);
 
                     if (payment.status === 'approved') {
                         const externalRef = payment.external_reference || '';
                         const [empresaId, planoId] = externalRef.split('_');
 
+                        console.log(`📊 Empresa ID: ${empresaId}, Plano ID: ${planoId}`);
+
                         if (empresaId && planoId) {
                             console.log(`✅ Pagamento aprovado para empresa ${empresaId}, plano ${planoId}`);
 
-                            const planos = {
+                            // 🔥 Mapear planos para limites
+                            const planosLimites = {
                                 starter: 1,
                                 pro: 5,
                                 business: 15,
-                                enterprise: 999
+                                enterprise: 999,
+                                teste: 1  // 🔥 ADICIONAR PLANO DE TESTE
                             };
-                            const limite = planos[planoId] || 1;
+                            const limite = planosLimites[planoId] || 1;
 
+                            // 🔥 ATUALIZAR PLANO DA EMPRESA
                             const sql = isProduction
                                 ? `UPDATE empresas 
                                    SET plano = ?, 
@@ -505,9 +525,11 @@ router.post('/mercadopago/webhook', async (req, res) => {
                                     console.error('❌ Erro ao ativar plano:', err);
                                 } else {
                                     console.log(`✅ Plano ${planoId} ativado para empresa ${empresaId}`);
+                                    console.log(`📅 Válido até: ${new Date(Date.now() + 30*24*60*60*1000).toISOString().split('T')[0]}`);
                                 }
                             });
 
+                            // 🔥 ATUALIZAR TRANSAÇÃO
                             const sqlTransacao = isProduction
                                 ? `UPDATE transacoes_pagamento 
                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
@@ -516,8 +538,15 @@ router.post('/mercadopago/webhook', async (req, res) => {
                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
                                    WHERE pagamento_id = ?`;
 
-                            db.run(sqlTransacao, [paymentId]);
+                            db.run(sqlTransacao, [paymentId], function(err) {
+                                if (err) {
+                                    console.error('❌ Erro ao atualizar transação:', err);
+                                } else {
+                                    console.log(`✅ Transação ${paymentId} atualizada para approved`);
+                                }
+                            });
 
+                            // 🔥 HABILITAR WHATSAPP PARA PLANOS BUSINESS/ENTERPRISE
                             if (['business', 'enterprise'].includes(planoId)) {
                                 const sqlWhats = isProduction
                                     ? 'UPDATE empresas SET whatsapp_proprio_habilitado = 1 WHERE id = ?'
@@ -527,11 +556,17 @@ router.post('/mercadopago/webhook', async (req, res) => {
                                     else console.log(`✅ WhatsApp habilitado para empresa ${empresaId}`);
                                 });
                             }
+                        } else {
+                            console.log('⚠️ External reference não contém empresa/plano:', externalRef);
                         }
+                    } else {
+                        console.log(`⏳ Pagamento não aprovado. Status: ${payment.status}`);
                     }
                 } catch (mpError) {
                     console.error('❌ Erro ao consultar Mercado Pago:', mpError);
                 }
+            } else {
+                console.error('❌ Token do MercadoPago não configurado no webhook!');
             }
         }
 
@@ -542,7 +577,6 @@ router.post('/mercadopago/webhook', async (req, res) => {
         res.status(200).json({ success: false, error: error.message });
     }
 });
-
 // ============================================
 // POST /api/create-boleto
 // ============================================
@@ -608,73 +642,49 @@ router.post('/create-pix', auth, async (req, res) => {
     });
 });
 
-// ============================================
-// POST /api/create-payment - CHECKOUT
-// ============================================
-
 router.post('/create-payment', auth, verificarDono, async (req, res) => {
     try {
         const { plano_id, plano_nome, valor, periodo } = req.body;
         const empresaId = req.usuario.empresa_id;
 
-        console.log('💳 Criando checkout real:', { empresaId, plano_id, plano_nome, valor, periodo });
+        console.log('💳 Criando checkout PRODUÇÃO:', { empresaId, plano_id, plano_nome, valor, periodo });
 
-        const mpAccessToken = process.env.MERCADO_PAGO_ACCESS_TOKEN;
-        if (!mpAccessToken) {
-            return res.status(400).json({
-                success: false,
-                message: 'Pagamento real não configurado. Use o modo simulação.',
-                fallback: true
-            });
-        }
+        // 🔥 FORÇAR TOKEN DE PRODUÇÃO
+        const mpAccessToken = 'APP_USR-6634641127610532-061511-c9b4a2384c16fb78e17f283ae74ddf30-41050420';
+        console.log('🔑 Token PRODUÇÃO:', mpAccessToken.substring(0, 15) + '...');
+        console.log('🔑 É PRODUÇÃO?', mpAccessToken.startsWith('APP_USR') ? '✅ SIM' : '❌ NÃO');
 
-        const isRealToken = mpAccessToken.startsWith('APP_USR');
-        const isSandboxToken = mpAccessToken.startsWith('TEST');
-        const envModo = process.env.MERCADO_PAGO_ENV || 'sandbox';
+        // 🔥 DADOS DO COMPRADOR (PODE VIR DO USUÁRIO LOGADO)
+        const payerData = {
+            email: req.usuario.email || 'cliente@email.com',
+            name: req.usuario.nome || 'Cliente',
+            identification: {
+                type: 'CPF',
+                number: req.usuario.cpf || '12345678909'
+            }
+        };
 
-        let isReal = false;
-        if (isSandboxToken) {
-            isReal = false;
-            console.log('🔴 Token TEST detectado → Modo SANDBOX');
-        } else if (isRealToken && envModo === 'real') {
-            isReal = true;
-            console.log('🔴 Token APP_USR detectado → Modo REAL');
-        } else {
-            isReal = false;
-            console.log('🔴 Fallback → Modo SANDBOX');
-        }
-
-        console.log(`🔴 Modo final: ${isReal ? 'REAL' : 'SANDBOX'}`);
-
+        // 🔥 PREFERÊNCIA PARA PRODUÇÃO
         const preference = {
             items: [{
-                title: `Plano ${plano_nome} - ${periodo === 'anual' ? 'Anual' : 'Mensal'}`,
-                description: `Assinatura do plano ${plano_nome}`,
+                title: `Plano ${plano_nome}`,
+                description: `Assinatura ${periodo === 'anual' ? 'Anual' : 'Mensal'}`,
                 quantity: 1,
                 currency_id: 'BRL',
-                unit_price: valor
+                unit_price: Number(valor)
             }],
-            payer: {
-                email: req.usuario.email || 'cliente@email.com',
-                name: req.usuario.nome || 'Cliente'
-            },
-            payment_methods: {
-                installments: 12,
-                default_installments: 1,
-                excluded_payment_methods: [],
-                excluded_payment_types: []
-            },
+            payer: payerData,
             back_urls: {
-                success: `${process.env.BASE_URL || 'http://localhost:3000'}/payment-success`,
-                failure: `${process.env.BASE_URL || 'http://localhost:3000'}/payment-failure`,
-                pending: `${process.env.BASE_URL || 'http://localhost:3000'}/payment-pending`
+                success: `${process.env.BASE_URL || 'https://outline-claim-ritzy.ngrok-free.dev'}/payment-success`,
+                failure: `${process.env.BASE_URL || 'https://outline-claim-ritzy.ngrok-free.dev'}/payment-failure`,
+                pending: `${process.env.BASE_URL || 'https://outline-claim-ritzy.ngrok-free.dev'}/payment-pending`
             },
             auto_return: 'approved',
             external_reference: `${empresaId}_${plano_id}`,
-            notification_url: `${process.env.BASE_URL || 'http://localhost:3000'}/api/pagamento/mercadopago/webhook`
+            notification_url: `${process.env.BASE_URL || 'https://outline-claim-ritzy.ngrok-free.dev'}/api/pagamento/mercadopago/webhook`
         };
 
-        console.log('📤 Enviando para Mercado Pago...');
+        console.log('📤 Enviando para Mercado Pago (PRODUÇÃO)...');
 
         const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
             method: 'POST',
@@ -698,13 +708,13 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
         }
 
         console.log('✅ Pagamento criado:', payment.id);
+        console.log('📌 init_point:', payment.init_point);
 
-        let link = payment.init_point;
-        if (!isReal && payment.sandbox_init_point) {
-            link = payment.sandbox_init_point;
-        }
-        console.log('🔗 Link:', link);
+        // 🔥 USAR SEMPRE O LINK DE PRODUÇÃO
+        const link = payment.init_point;
+        console.log('🔗 Link PRODUÇÃO:', link);
 
+        // Salvar transação
         const sql = isProduction
             ? `INSERT INTO transacoes_pagamento 
                (empresa_id, plano_id, plano_nome, valor, metodo, pagamento_id, status, created_at)
@@ -719,23 +729,20 @@ router.post('/create-payment', auth, verificarDono, async (req, res) => {
 
         res.json({
             success: true,
-            init_point: payment.init_point,
-            sandbox_init_point: payment.sandbox_init_point,
-            payment_id: payment.id,
-            isReal: isReal,
             link: link,
+            payment_id: payment.id,
+            isProduction: true,
             message: 'Pagamento criado com sucesso!'
         });
 
     } catch (error) {
-        console.error('❌ Erro ao criar pagamento:', error);
+        console.error('❌ Erro:', error);
         res.status(500).json({
             success: false,
             message: error.message || 'Erro ao criar pagamento'
         });
     }
 });
-
 // ============================================
 // POST /api/pagamento/webhook - ALIAS
 // ============================================

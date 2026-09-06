@@ -1,4 +1,4 @@
-// server/services/evolution-websocket.js
+﻿// server/services/evolution-websocket.js
 const WebSocket = require('ws');
 
 class EvolutionWebSocket {
@@ -15,7 +15,10 @@ class EvolutionWebSocket {
 
     connect() {
         return new Promise((resolve, reject) => {
-            const url = `ws://163.176.218.131:8080/ws/instance/connect/${this.instanceName}?apikey=${this.apiKey}`;
+            // ✅ Monta a URL a partir do .env (sem IP fixo no código)
+            const apiUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
+            const wsUrl = apiUrl.replace(/^http/, 'ws');
+            const url = `${wsUrl}/ws/instance/connect/${this.instanceName}?apikey=${this.apiKey}`;
 
             console.log(`🔌 Conectando WebSocket: ${url}`);
 
@@ -31,8 +34,10 @@ class EvolutionWebSocket {
                     const msg = JSON.parse(data);
                     console.log(`📥 Mensagem WebSocket:`, msg);
 
-                    if (msg.qrcode) {
-                        this.qrCode = msg.qrcode;
+                    // Suporta os formatos de QR que a Evolution pode enviar
+                    const qr = msg.qrcode || msg.qrCode || (msg.data && msg.data.qrcode);
+                    if (qr) {
+                        this.qrCode = typeof qr === 'object' ? (qr.base64 || qr.base64Full) : qr;
                         if (this.onQRCode) {
                             this.onQRCode(this.qrCode);
                         }
@@ -45,7 +50,7 @@ class EvolutionWebSocket {
                         }
                     }
 
-                    if (msg.status === 'disconnected') {
+                    if (msg.status === 'disconnected' || msg.state === 'close') {
                         this.isConnected = false;
                         if (this.onDisconnected) {
                             this.onDisconnected();

@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-08-31T04:44:42.542Z",
+  "system": {
+    "name": "SEE&AGENDE",
+    "version": "2.0.0",
+    "architecture": {
+      "directoryStructure": {
+        "src": {},
+        "totalFiles": 0,
+        "totalLines": 0
+      },
+      "patterns": []
+    },
+    "modules": [],
+    "dependencies": [],
+    "services": [],
+    "models": [],
+    "controllers": [],
+    "routes": [],
+    "middlewares": [],
+    "utils": [],
+    "configs": [],
+    "tests": []
+  },
+  "businessRules": [],
+  "workflows": [],
+  "integrations": [
+    {
+      "name": "express",
+      "description": "Express.js Web Framework",
+      "version": "^4.18.2"
+    },
+    {
+      "name": "pg",
+      "description": "PostgreSQL",
+      "version": "^8.11.3"
+    },
+    {
+      "name": "axios",
+      "description": "HTTP Client",
+      "version": "^1.18.1"
+    },
+    {
+      "name": "jsonwebtoken",
+      "description": "JWT Authentication",
+      "version": "^9.0.0"
+    },
+    {
+      "name": "dotenv",
+      "description": "Environment Variables",
+      "version": "^16.6.1"
+    },
+    {
+      "name": "cors",
+      "description": "CORS Middleware",
+      "version": "^2.8.5"
+    }
+  ],
+  "security": [],
+  "performance": [],
+  "suggestions": [
+    {
+      "category": "business_logic",
+      "priority": "high",
+      "description": "Documentar melhor as regras de negócio em comentários ou documentação",
+      "impact": "Facilita a manutenção e compreensão do sistema"
+    },
+    {
+      "category": "testing",
+      "priority": "critical",
+      "description": "Implementar testes unitários e de integração",
+      "impact": "Garante a qualidade e confiabilidade do código"
+    },
+    {
+      "category": "architecture",
+      "priority": "medium",
+      "description": "Implementar Dependency Injection para melhorar a testabilidade e desacoplamento",
+      "impact": "Facilita testes e manutenção do código"
+    }
+  ]
+}

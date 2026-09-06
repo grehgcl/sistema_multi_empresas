@@ -863,7 +863,7 @@ router.put('/fiados/:id/baixar', auth, verificarDono, async (req, res) => {
                         `📞 *Contato:* ${empresa.telefone_dono || 'N/A'}\n\n` +
                         `---\n_Mensagem automática do See&Agende_`;
 
-                    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+                    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
                     const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
                     const axios = require('axios');
@@ -1074,7 +1074,7 @@ router.put('/fiados/:id/baixar', auth, verificarDono, async (req, res) => {
                         `📞 *Contato:* ${empresa.telefone_dono || 'N/A'}\n\n` +
                         `---\n_Mensagem automática do See&Agende_`;
 
-                    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+                    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
                     const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
                     const axios = require('axios');

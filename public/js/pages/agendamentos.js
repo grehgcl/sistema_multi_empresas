@@ -1176,7 +1176,7 @@ async function salvarNovoCliente(event) {
 }
 
 // ============================================
-// CARREGAR HORÁRIOS DISPONÍVEIS
+// CARREGAR HORÁRIOS DISPONÍVEIS - MODIFICADO
 // ============================================
 
 async function carregarHorariosDisponiveisDono(manterHorario = false, horarioParaRestaurar = null, forcarManterClicado = false) {
@@ -1219,12 +1219,14 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
             return;
         }
 
-        const hoje = new Date();
-        const hojeStr = hoje.toISOString().split('T')[0];
-        if (data < hojeStr) {
-            horaSelect.innerHTML = '<option value="">⚠️ Data passou</option>';
-            return;
-        }
+        // 🔥 REMOVIDA A VALIDAÇÃO DE DATA PASSADA
+        // O DONO PODE AGENDAR EM QUALQUER DATA, INCLUSIVE PASSADAS
+        // const hoje = new Date();
+        // const hojeStr = hoje.toISOString().split('T')[0];
+        // if (data < hojeStr) {
+        //     horaSelect.innerHTML = '<option value="">⚠️ Data passou</option>';
+        //     return;
+        // }
 
         const token = localStorage.getItem('token');
         if (!token) {
@@ -1273,15 +1275,21 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
 
         let horarios = result.horarios || result.data || [];
 
+        // 🔥 SÓ FILTRA HORÁRIOS ATUAIS SE FOR HOJE
+        const hoje = new Date();
+        const hojeStr = hoje.toISOString().split('T')[0];
+        const horaAtual = hoje.getHours();
+        const minutoAtual = hoje.getMinutes();
+
         if (data === hojeStr) {
-            const horaAtual = hoje.getHours();
-            const minutoAtual = hoje.getMinutes();
+            // Só bloqueia horários que já passaram se for HOJE
             horarios = horarios.filter(h => {
                 if (!h) return false;
                 const [hNum, mNum] = h.split(':').map(Number);
-                return hNum > horaAtual || (hNum === horaAtual && mNum > minutoAtual);
+                return hNum > horaAtual || (hNum === horaAtual && mNum >= minutoAtual);
             });
         }
+        // 🔥 SE FOR DATA PASSADA, NÃO FILTRA NADA - MOSTRA TODOS OS HORÁRIOS
 
         if (horarioObrigatorio && !horarios.includes(horarioObrigatorio)) {
             horarios.push(horarioObrigatorio);
@@ -1316,9 +1324,8 @@ async function carregarHorariosDisponiveisDono(manterHorario = false, horarioPar
         showToast('Erro ao carregar horários disponíveis: ' + (error.message || ''), 'error');
     }
 }
-
 // ============================================
-// FUNÇÃO: ABRIR MODAL NOVO AGENDAMENTO
+// FUNÇÃO: ABRIR MODAL NOVO AGENDAMENTO - MODIFICADO
 // ============================================
 
 async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida = null, profissionalIdPreDefinido = null) {
@@ -1402,14 +1409,13 @@ async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida
         }
     }
 
+    // 🔥 DATA INICIAL = HOJE (EM VEZ DE AMANHÃ)
     let dataInicial = dataPreDefinida;
     if (!dataInicial) {
         const hoje = new Date();
-        const amanha = new Date(hoje);
-        amanha.setDate(amanha.getDate() + 1);
-        const ano = amanha.getFullYear();
-        const mes = String(amanha.getMonth() + 1).padStart(2, '0');
-        const dia = String(amanha.getDate()).padStart(2, '0');
+        const ano = hoje.getFullYear();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dia = String(hoje.getDate()).padStart(2, '0');
         dataInicial = `${ano}-${mes}-${dia}`;
     }
 
@@ -1508,7 +1514,6 @@ async function abrirModalAgendamentoDono(dataPreDefinida = null, horaPreDefinida
         carregarHorariosDisponiveisDono(false, horaPreDefinidaValue, true);
     }, 200);
 }
-
 // ============================================
 // FUNÇÃO: FILTRAR CLIENTES
 // ============================================
@@ -1700,7 +1705,7 @@ function limparClienteSelecionado() {
 }
 
 // ============================================
-// SALVAR AGENDAMENTO
+// SALVAR AGENDAMENTO - MODIFICADO
 // ============================================
 
 let salvando = false;
@@ -1810,20 +1815,8 @@ async function salvarAgendamentoDono() {
             return;
         }
 
-        const agoraData = new Date();
-        const [ano, mes, dia] = data.split('-').map(Number);
-        const [horaNum, minutoNum] = hora.split(':').map(Number);
-        const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
-
-        if (dataHoraSelecionada < agoraData) {
-            showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
-            salvando = false;
-            if (botaoSalvar) {
-                botaoSalvar.disabled = false;
-                botaoSalvar.textContent = '💾 Salvar';
-            }
-            return;
-        }
+        // 🔥 VALIDAÇÃO REMOVIDA - DONO PODE AGENDAR EM QUALQUER DATA/HORÁRIO
+        // A validação agora é feita apenas no backend para o chatbot
 
         showLoading();
 
@@ -1844,7 +1837,8 @@ async function salvarAgendamentoDono() {
             data: data,
             hora: hora,
             valor: parseFloat(valor) || 0,
-            profissional_id: profissional_id ? parseInt(profissional_id) : null
+            profissional_id: profissional_id ? parseInt(profissional_id) : null,
+            origem: 'painel'  // 🔥 INDICA QUE VEM DO PAINEL
         };
 
         if (servico_id && servico_id !== '' && servico_id !== 'null') {
@@ -1894,7 +1888,6 @@ async function salvarAgendamentoDono() {
     }
     hideLoading();
 }
-
 function fecharModalAgendamentoDono() {
     const modal = document.getElementById("modalAgendamentoDono");
     if (modal) modal.remove();
@@ -2231,7 +2224,7 @@ async function editarAgendamento(id) {
 }
 
 // ============================================
-// CARREGAR HORÁRIOS PARA EDIÇÃO
+// CARREGAR HORÁRIOS PARA EDIÇÃO - MODIFICADO
 // ============================================
 
 async function carregarHorariosParaEdicao(data, horarioOriginal) {
@@ -2270,14 +2263,16 @@ async function carregarHorariosParaEdicao(data, horarioOriginal) {
             horarios = result.horarios;
         }
 
+        // 🔥 SÓ FILTRA HORÁRIOS ATUAIS SE FOR HOJE
         if (data === hojeStr) {
             const horaAtual = hoje.getHours();
             const minutoAtual = hoje.getMinutes();
             horarios = horarios.filter(h => {
                 const [hNum, mNum] = h.split(':').map(Number);
-                return hNum > horaAtual || (hNum === horaAtual && mNum > minutoAtual);
+                return hNum > horaAtual || (hNum === horaAtual && mNum >= minutoAtual);
             });
         }
+        // 🔥 SE FOR DATA PASSADA, NÃO FILTRA NADA - MOSTRA TODOS OS HORÁRIOS
 
         for (let h of horarios) {
             if (h !== horarioOriginal) {
@@ -2294,9 +2289,8 @@ async function carregarHorariosParaEdicao(data, horarioOriginal) {
         console.error('❌ Erro ao carregar horários:', error);
     }
 }
-
 // ============================================
-// SALVAR EDIÇÃO
+// SALVAR EDIÇÃO - MODIFICADO
 // ============================================
 
 async function salvarEdicaoAgendamentoDono(id) {
@@ -2319,15 +2313,9 @@ async function salvarEdicaoAgendamentoDono(id) {
         return;
     }
 
-    const agora = new Date();
-    const [ano, mes, dia] = data.split('-').map(Number);
-    const [horaNum, minutoNum] = hora.split(':').map(Number);
-    const dataHoraSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
-
-    if (dataHoraSelecionada < agora) {
-        showToast('⏰ Não é possível agendar em datas ou horários que já passaram!', 'warning');
-        return;
-    }
+    // 🔥 VALIDAÇÃO REMOVIDA - DONO PODE EDITAR EM QUALQUER DATA/HORÁRIO
+    // O dono pode editar agendamentos para qualquer data/horário, inclusive passados
+    // A validação agora é feita apenas no backend para o chatbot
 
     showLoading();
 
@@ -2383,7 +2371,6 @@ async function salvarEdicaoAgendamentoDono(id) {
 
     hideLoading();
 }
-
 function fecharModalEditarAgendamentoDono() {
     const modal = document.getElementById("modalEditarAgendamentoDono");
     if (modal) modal.remove();

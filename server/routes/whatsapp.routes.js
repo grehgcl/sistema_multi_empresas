@@ -218,7 +218,7 @@ router.get('/qrcode', auth, async (req, res) => {
         }
 
         try {
-            const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+            const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080/';
             const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
             let qrCode = null;
 
@@ -290,9 +290,7 @@ router.get('/status', auth, async (req, res) => {
         console.log(`📊 Verificando status WhatsApp para empresa ${empresaId}`);
 
         const empresa = await new Promise((resolve, reject) => {
-            const sql = isProduction
-                ? 'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at FROM empresas WHERE id = ?'
-                : 'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at FROM empresas WHERE id = ?';
+            const sql = 'SELECT id, nome, whatsapp_instance, whatsapp_connected, whatsapp_number, whatsapp_connected_at FROM empresas WHERE id = ?';
             db.get(sql, [empresaId], (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
@@ -334,21 +332,21 @@ router.get('/status', auth, async (req, res) => {
             console.log(`🔄 Atualizando status da empresa ${empresaId}: ${isConnected ? 'CONECTADO' : 'DESCONECTADO'}`);
 
             await new Promise((resolve, reject) => {
-                const sqlUpdate = isProduction
-                    ? `UPDATE empresas 
-                       SET whatsapp_connected = ?, 
-                           whatsapp_connected_at = ${isConnected ? 'NOW()' : 'NULL'},
-                           whatsapp_number = ?
-                       WHERE id = ?`
-                    : `UPDATE empresas 
-                       SET whatsapp_connected = ?, 
-                           whatsapp_connected_at = ${isConnected ? "datetime('now')" : 'NULL'},
-                           whatsapp_number = ?
-                       WHERE id = ?`;
+                // ✅ Data gerada no JS — funciona em SQLite E PostgreSQL (elimina o NOW())
+                const agora = isConnected ? new Date().toISOString() : null;
 
-                const params = isProduction
-                    ? [isConnected, status.number || empresa.whatsapp_number || null, empresaId]
-                    : [isConnected ? 1 : 0, status.number || empresa.whatsapp_number || null, empresaId];
+                const sqlUpdate = `UPDATE empresas 
+                   SET whatsapp_connected = ?, 
+                       whatsapp_connected_at = ?,
+                       whatsapp_number = ?
+                   WHERE id = ?`;
+
+                const params = [
+                    isConnected ? 1 : 0,
+                    agora,
+                    status.number || empresa.whatsapp_number || null,
+                    empresaId
+                ];
 
                 db.run(sqlUpdate, params, (err) => {
                     if (err) reject(err);
@@ -361,14 +359,19 @@ router.get('/status', auth, async (req, res) => {
         if (isConnected && !number) {
             try {
                 const api = EvolutionInstances.getApiClient();
-                const response = await api.get(`/instance/info/${empresa.whatsapp_instance}`);
-                if (response.data?.number) {
-                    number = response.data.number;
+                // ✅ Evolution v2: o número vem no fetchInstances (ownerJid), não em /instance/info
+                const response = await api.get(`/instance/fetchInstances?instanceName=${empresa.whatsapp_instance}`);
+                const instData = Array.isArray(response.data) ? response.data[0] : response.data;
+                const ownerJid = instData?.ownerJid || instData?.owner || instData?.profileName || null;
+
+                if (ownerJid) {
+                    // "5511999999999@s.whatsapp.net" → "5511999999999"
+                    number = String(ownerJid).split('@')[0].replace(/\D/g, '');
+                }
+
+                if (number) {
                     await new Promise((resolve) => {
-                        const sqlUpdate = isProduction
-                            ? 'UPDATE empresas SET whatsapp_number = ? WHERE id = ?'
-                            : 'UPDATE empresas SET whatsapp_number = ? WHERE id = ?';
-                        db.run(sqlUpdate, [number, empresaId], () => resolve());
+                        db.run('UPDATE empresas SET whatsapp_number = ? WHERE id = ?', [number, empresaId], () => resolve());
                     });
                 }
             } catch (err) {
@@ -382,7 +385,7 @@ router.get('/status', auth, async (req, res) => {
                 connected: isConnected,
                 status: statusState,
                 instanceName: empresa.whatsapp_instance,
-                number: status.number || empresa.whatsapp_number || null,
+                number: number || status.number || null,
                 connectedAt: empresa.whatsapp_connected_at || null
             },
             status: isConnected ? 'on' : 'off'
@@ -396,7 +399,6 @@ router.get('/status', auth, async (req, res) => {
         });
     }
 });
-
 // ============================================
 // POST /api/empresa/whatsapp/disconnect
 // ============================================
@@ -613,15 +615,12 @@ router.get('/admin/empresas/whatsapp-status', auth, verificarSuperAdmin, (req, r
 router.put('/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
-    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
     const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
     try {
         const empresa = await new Promise((resolve, reject) => {
-            const sql = isProduction
-                ? 'SELECT nome FROM empresas WHERE id = ?'
-                : 'SELECT nome FROM empresas WHERE id = ?';
-            db.get(sql, [id], (err, row) => {
+            db.get('SELECT nome FROM empresas WHERE id = ?', [id], (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
             });
@@ -647,23 +646,51 @@ router.put('/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, as
 
             const instanceName = `emp-${id}-${nomeLimpo}`;
 
-            console.log(`📱 Criando instância: ${instanceName}`);
+            console.log(`📱 Ativando WhatsApp próprio. Instância: ${instanceName}`);
+
+            // 🔥 Headers padrão pra todas as chamadas
+            const headers = {
+                'Content-Type': 'application/json',
+                'apikey': apiKey
+            };
 
             try {
-                await axios.get(`${evolutionUrl}/instance/connectionState/${instanceName}`, {
-                    headers: { 'apikey': apiKey }
-                });
+                // Verifica se a instância já existe
+                await axios.get(`${evolutionUrl}/instance/connectionState/${instanceName}`, { headers });
                 console.log(`✅ Instância ${instanceName} já existe na Evolution.`);
             } catch (err) {
                 if (err.response && err.response.status === 404) {
                     console.log(`🚀 Criando instância ${instanceName} na Evolution...`);
+
+                    // 🔥 CRIAÇÃO — 'qrcode' minúsculo (a Evolution v2 exige)
                     await axios.post(`${evolutionUrl}/instance/create`, {
                         instanceName: instanceName,
-                        qrCode: true,
+                        qrcode: true,
                         integration: 'WHATSAPP-BAILEYS'
-                    }, {
-                        headers: { 'Content-Type': 'application/json', 'apikey': apiKey }
-                    });
+                    }, { headers });
+
+                    // 🔥 REGISTRA O WEBHOOK — sem isso, mensagens recebidas não chegam no sistema
+                    const webhookUrl = `${process.env.BASE_URL || 'https://seeagende.tech'}/api/whatsapp/webhook`;
+                    try {
+                        await axios.post(`${evolutionUrl}/webhook/set/${instanceName}`, {
+                            webhook: {
+                                enabled: true,
+                                url: webhookUrl,
+                                webhook_by_events: false,
+                                events: {
+                                    QRCODE_UPDATED: true,
+                                    CONNECTION_UPDATE: true,
+                                    MESSAGES_UPSERT: true,
+                                    MESSAGES_UPDATE: true,
+                                    SEND_MESSAGE: true
+                                }
+                            }
+                        }, { headers });
+                        console.log(`✅ Webhook configurado: ${webhookUrl}`);
+                    } catch (hookErr) {
+                        // Webhook falhou, mas a instância foi criada — não bloqueia o fluxo
+                        console.error('⚠️ Falha ao configurar webhook:', hookErr.response?.data || hookErr.message);
+                    }
 
                     await new Promise((resolve, reject) => {
                         db.run('UPDATE empresas SET whatsapp_instance = ? WHERE id = ?', [instanceName, id], (err) => {
@@ -671,6 +698,10 @@ router.put('/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, as
                             else resolve();
                         });
                     });
+                } else {
+                    // 🔥 Erro que NÃO é 404 (ex: API fora do ar, auth falhou) — precisa aparecer!
+                    console.error('❌ Erro ao verificar instância na Evolution:', err.response?.data || err.message);
+                    throw err;
                 }
             }
 
@@ -687,7 +718,7 @@ router.put('/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, as
         }
 
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('❌ Erro:', error.response?.data || error.message);
         res.status(500).json({ success: false, message: error.message });
     }
 });

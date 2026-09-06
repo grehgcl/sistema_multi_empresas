@@ -273,7 +273,7 @@ async function carregarAgendaInteligente() {
 }
 
 // ============================================
-// RENDERIZAR AGENDA INTELIGENTE - COMPLETA
+// RENDERIZAR AGENDA INTELIGENTE - CORRIGIDA
 // ============================================
 
 function renderizarAgendaInteligente() {
@@ -391,7 +391,7 @@ function renderizarAgendaInteligente() {
                 </div>
                 <button onclick="alternarModoAgenda()" style="background:var(--bg-card);border:1px solid var(--border-color);padding:6px 14px;border-radius:16px;font-size:11px;font-weight:700;color:var(--text-primary);cursor:pointer;">📅 Semana</button>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px;max-height:400px;overflow-y:auto;padding-right:4px;">
+            <div style="display:flex;flex-direction:column;gap:4px;max-height:450px;overflow-y:auto;padding-right:4px;">
         `;
 
         for (let hora of base) {
@@ -511,7 +511,7 @@ function renderizarAgendaInteligente() {
     }
 
     // ============================================
-    // VERSÃO DESKTOP - TODOS OS HORÁRIOS (MAIOR)
+    // VERSÃO DESKTOP - AGENDA COMPLETA (MAIOR)
     // ============================================
 
     const horaAtual = hoje.getHours();
@@ -544,13 +544,13 @@ function renderizarAgendaInteligente() {
                   window.matchMedia('(prefers-color-scheme: dark)').matches;
 
     // 🔥 TAMANHOS MAIORES PARA DESKTOP
-    const cellPad = '10px 12px';
-    const fSize = '14px';
-    const minW = '850px';
+    const cellPad = '12px 16px';
+    const fSize = '15px';
+    const minW = '900px';
 
     let html = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-            <span style="font-size:16px;font-weight:700;color:${isDark ? '#ffffff' : '#1a1a2e'};">
+            <span style="font-size:17px;font-weight:700;color:${isDark ? '#ffffff' : '#1a1a2e'};">
                 📅 ${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
             </span>
             <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -561,11 +561,11 @@ function renderizarAgendaInteligente() {
                 <button onclick="mudarAgendaSemana(7)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">▶▶</button>
             </div>
         </div>
-        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:550px;overflow-y:auto;">
+        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:600px;overflow-y:auto;">
             <table style="width:100%;border-collapse:collapse;font-size:${fSize};min-width:${minW};">
                 <thead>
                     <tr>
-                        <th style="padding:12px 10px;background:var(--bg-hover);text-align:center;position:sticky;top:0;z-index:10;min-width:70px;font-weight:700;font-size:14px;color:var(--text-primary);">⏰</th>
+                        <th style="padding:14px 12px;background:var(--bg-hover);text-align:center;position:sticky;top:0;z-index:10;min-width:80px;font-weight:700;font-size:15px;color:var(--text-primary);">⏰</th>
     `;
 
     for (let d of dias) {
@@ -579,10 +579,10 @@ function renderizarAgendaInteligente() {
         const bg = isH ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : ab ? 'var(--bg-hover)' : 'rgba(239,68,68,0.08)';
         const col = isH ? '#fff' : ab ? (isDark ? '#ffffff' : '#1a1a2e') : '#ef4444';
         html += `
-            <th style="padding:12px 8px;background:${bg};color:${col};text-align:center;position:sticky;top:0;z-index:5;min-width:90px;">
-                <span style="display:block;font-size:11px;opacity:0.7;font-weight:600;">${nd}</span>
-                <span style="font-size:${isH ? '22px' : '18px'};font-weight:800;display:block;">${dn}</span>
-                ${!ab ? '<span style="font-size:10px;color:#ef4444;display:block;font-weight:700;">🚫 FECHADO</span>' : ''}
+            <th style="padding:14px 10px;background:${bg};color:${col};text-align:center;position:sticky;top:0;z-index:5;min-width:100px;">
+                <span style="display:block;font-size:12px;opacity:0.7;font-weight:600;">${nd}</span>
+                <span style="font-size:${isH ? '24px' : '20px'};font-weight:800;display:block;">${dn}</span>
+                ${!ab ? '<span style="font-size:11px;color:#ef4444;display:block;font-weight:700;">🚫 FECHADO</span>' : ''}
             </th>
         `;
     }
@@ -593,9 +593,9 @@ function renderizarAgendaInteligente() {
         const isAgora = (idx === idxAtual);
         html += `
             <tr style="${isAgora ? 'background:rgba(102,126,234,0.08);' : ''}">
-                <td style="padding:${cellPad};text-align:center;border-bottom:1px solid var(--border-color);font-weight:700;background:${isAgora ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'var(--bg-hover)'};color:${isAgora ? '#fff' : 'var(--text-primary)'};position:sticky;left:0;z-index:3;min-width:70px;font-size:14px;">
+                <td style="padding:${cellPad};text-align:center;border-bottom:1px solid var(--border-color);font-weight:700;background:${isAgora ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'var(--bg-hover)'};color:${isAgora ? '#fff' : 'var(--text-primary)'};position:sticky;left:0;z-index:3;min-width:80px;font-size:15px;">
                     ${isAgora ? '<span style="font-size:8px;display:block;background:rgba(255,255,255,0.25);padding:2px 8px;border-radius:8px;margin-bottom:3px;">● AGORA</span>' : ''}
-                    <span style="font-size:15px;font-weight:800;">${hora}</span>
+                    <span style="font-size:16px;font-weight:800;">${hora}</span>
                 </td>
         `;
 
@@ -614,15 +614,20 @@ function renderizarAgendaInteligente() {
             let cont = '', bg = 'transparent', click = '', tooltip = '';
 
             const dataLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-            const passou = dataLocal < hojeLocalObj;
-            const alm = ab && hora >= (horD?.almoco_inicio || '12:00') && hora < (horD?.almoco_fim || '13:00');
+// 🔥 REMOVIDO O BLOQUEIO - FORÇA COMO NÃO PASSADO
+const passou = false; // 🔥 FORÇA COMO NÃO PASSADO
+const alm = ab && hora >= (horD?.almoco_inicio || '12:00') && hora < (horD?.almoco_fim || '13:00');
 
             if (!ab || !dentro) {
                 bg = 'rgba(107,114,128,0.03)';
                 cont = `<span style="color:#9ca3af;font-size:16px;">—</span>`;
             } else if (passou) {
-                bg = 'rgba(107,114,128,0.03)';
-                cont = `<span style="opacity:0.2;font-size:18px;">✓</span>`;
+                // 🔥 CORRIGIDO: DATA PASSADA NÃO BLOQUEIA MAIS - MOSTRA COMO DISPONÍVEL
+                // O DONO PODE AGENDAR EM DATAS PASSADAS
+                bg = 'rgba(34,197,94,0.06)';
+                cont = `<span style="color:#22c55e;font-weight:800;font-size:15px;">🟢 ✨</span>`;
+                click = `abrirDetalhesSlot('${ds}','${hora}')`;
+                tooltip = 'Disponível (data passada)';
             } else if (alm) {
                 bg = 'rgba(245,158,11,0.08)';
                 cont = `<span style="font-size:18px;">🍽</span>`;
@@ -697,6 +702,7 @@ function renderizarAgendaInteligente() {
             <span>🟢 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Livre</strong></span>
             <span>🟡 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Parcial</strong></span>
             <span>🔴 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Lotado</strong></span>
+            <span>✨ <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Passado (liberado)</strong></span>
         </div>
     `;
     container.innerHTML = html;
@@ -789,7 +795,7 @@ function agendarNoHorarioDisponivel(dataStr, hora, profId) {
 }
 
 // ============================================
-// ABRIR AGENDAMENTO INTELIGENTE
+// ABRIR AGENDAMENTO INTELIGENTE - CORRIGIDA
 // ============================================
 
 async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null) {
@@ -801,17 +807,11 @@ async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null)
         return;
     }
 
-    const agora = new Date();
-    const [a, me, d] = dataStr.split('-').map(Number);
-    const [hN, mN] = horaStr.split(':').map(Number);
-    const sel = new Date(a, me - 1, d, hN || 0, mN || 0, 0, 0);
+    // 🔥 REMOVIDA A VALIDAÇÃO DE HORÁRIO PASSADO
+    // O DONO PODE AGENDAR EM QUALQUER DATA/HORÁRIO
+    // A validação agora é feita apenas no backend para o chatbot
 
-    if (sel < agora) {
-        showToast('⏰ Horário já passou!', 'warning');
-        return;
-    }
-
-    const diaSem = sel.getDay();
+    const diaSem = new Date(dataStr).getDay();
     const cfg = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
     if (!cfg || !(cfg.aberto == 1 || cfg.aberto == true)) {
         showToast('🚫 Esse dia está fechado!', 'error');
@@ -824,7 +824,6 @@ async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null)
         showToast('❌ Modal não carregado', 'error');
     }
 }
-
 // ============================================
 // FUNÇÕES DE NAVEGAÇÃO DA AGENDA
 // ============================================

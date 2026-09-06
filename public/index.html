@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-br">
 
 <head>
@@ -33,6 +33,92 @@
 
     <!-- CHART.JS -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+    <!-- ============================================ -->
+    <!-- STYLE PARA O LINK PERSONALIZADO -->
+    <!-- ============================================ -->
+    <style>
+        .input-with-copy {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .input-with-copy input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-input);
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+        .btn-copy {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #667eea;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+        .btn-copy:hover {
+            background: #5a6fd6;
+        }
+        .btn-copy.btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+        .config-section {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+        .config-section h3 {
+            margin: 0 0 16px 0;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+        .config-section .form-group {
+            margin-bottom: 12px;
+        }
+        .config-section .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        .config-section .form-group small {
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+        .config-section .form-group small a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        .config-section .form-group small a:hover {
+            text-decoration: underline;
+        }
+        #chatbotPreviewLink {
+            display: none;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        #chatbotPreviewLink:hover {
+            text-decoration: underline;
+        }
+        #chatbotSlugInfo {
+            font-size: 11px;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 4px;
+        }
+    </style>
 </head>
 
 <body>
@@ -296,12 +382,38 @@
     <script src="/js/pages/servicos.js?v=20260804"></script>
     <script src="/js/pages/planos.js?v=20260804"></script>
     <script src="/js/pages/whatsapp-config.js?v=20260804"></script>
+    
 
     <script>
         AOS.init({ duration: 800, once: true });
 
         let token = null;
         let usuario = null;
+
+        // ============================================
+        // FUNÇÃO COPIAR LINK
+        // ============================================
+        function copiarLink(id) {
+            const input = document.getElementById(id);
+            if (!input) return;
+
+            input.select();
+            input.setSelectionRange(0, 99999);
+
+            try {
+                navigator.clipboard?.writeText(input.value)
+                    .then(() => {
+                        showToast('✅ Link copiado para a área de transferência!', 'success');
+                    })
+                    .catch(() => {
+                        document.execCommand('copy');
+                        showToast('✅ Link copiado para a área de transferência!', 'success');
+                    });
+            } catch (e) {
+                document.execCommand('copy');
+                showToast('✅ Link copiado!', 'success');
+            }
+        }
 
         function togglePassword(inputId) {
             const input = document.getElementById(inputId);
@@ -583,9 +695,9 @@
             if (isSuperAdmin) {
                 botoes = [
                     { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
-                    { id: 'empresas', nome: 'Empresas', icone: 'fa-building', funcao: 'carregarEmpresas' },
-                    { id: 'whatsapp', nome: 'WhatsApp', icone: 'fa-whatsapp', funcao: 'carregarWhatsappConfig' },
-                    { id: 'planos', nome: 'Planos', icone: 'fa-crown', funcao: 'carregarPlanos' }
+                    { id: 'admin-ads', nome: 'Anúncios', icone: 'fa-ad', funcao: 'carregarAdminAds' },
+                    
+                    
                 ];
             } else if (isProfissional) {
                 botoes = [
@@ -774,7 +886,8 @@
             });
         }
     </script>
-
+<!-- Adicionar no final do body, antes do fechamento -->
+<script src="/js/pages/ads.js?v=20260905"></script>
 </body>
 
 </html>

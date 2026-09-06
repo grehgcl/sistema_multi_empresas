@@ -1291,47 +1291,49 @@ router.put('/planos-config', auth, verificarSuperAdmin, (req, res) => {
     }
 });
 
-// ============================================
-// POST /api/admin/registrar-acesso
-// ============================================
-
-router.post('/registrar-acesso', auth, (req, res) => {
+// Versão SIMPLIFICADA e FUNCIONAL
+router.post('/registrar-acesso', auth, verificarSuperAdmin, (req, res) => {
+    const { empresa_id } = req.body;
     const usuario_id = req.usuario.id;
-    const empresa_id = req.usuario.empresa_id || null;
-    const ip = req.ip || req.connection.remoteAddress || null;
-    const user_agent = req.headers['user-agent'] || null;
+    const dataHora = new Date().toISOString();
 
-    const sql = isProduction
-        ? `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES (?, ?, ?, ?)`
-        : `INSERT INTO acessos (usuario_id, empresa_id, ip, user_agent) VALUES (?, ?, ?, ?)`;
-
-    db.run(sql, [usuario_id, empresa_id, ip, user_agent], (err) => {
-        if (err) {
-            console.error('❌ Erro ao registrar acesso:', err);
+    db.run(
+        `INSERT INTO acessos (usuario_id, empresa_id, data_acesso) VALUES (?, ?, ?)`,
+        [usuario_id, empresa_id, dataHora],
+        function(err) {
+            if (err) {
+                console.error('❌ Erro:', err.message);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+            res.json({ success: true, message: 'Acesso registrado' });
         }
-        res.json({ success: true });
-    });
+    );
 });
-
 // ============================================
-// PUT /api/admin/empresas/:id/whatsapp-proprio
+// PUT /api/admin/empresas/:id/whatsapp-proprio - CORRIGIDO
 // ============================================
 
 router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
 
+    // 🔥 CARREGAR VARIÁVEIS DE AMBIENTE
+    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://http://179.199.134.127:8080/';
+    const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+    const axios = require('axios');
+
     console.log(`🔧 Super Admin - Alternando WhatsApp próprio da empresa ${id}:`, habilitado ? 'HABILITAR' : 'DESABILITAR');
+    console.log(`📱 EVOLUTION_API_URL: ${EVOLUTION_API_URL}`);
 
     try {
-        // Buscar empresa
+        // 🔥 BUSCAR A EMPRESA
         const empresa = await new Promise((resolve, reject) => {
             const sql = isProduction
-                ? 'SELECT id, nome FROM empresas WHERE id = ?'
-                : 'SELECT id, nome FROM empresas WHERE id = ?';
+                ? `SELECT id, nome, plano FROM empresas WHERE id = $1`
+                : `SELECT id, nome, plano FROM empresas WHERE id = ?`;
             db.get(sql, [id], (err, row) => {
                 if (err) reject(err);
-                resolve(row);
+                else resolve(row);
             });
         });
 
@@ -1342,43 +1344,311 @@ router.put('/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (r
             });
         }
 
-        // Atualizar WhatsApp próprio
-        const sqlUpdate = isProduction
-            ? `UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?`
-            : `UPDATE empresas SET whatsapp_proprio_habilitado = ? WHERE id = ?`;
+        // 🔥 SE HABILITOU, CRIAR INSTÂNCIA NA EVOLUTION
+        let instanceName = null;
 
-        await new Promise((resolve, reject) => {
-            db.run(sqlUpdate, [habilitado ? 1 : 0, id], function (err) {
-                if (err) reject(err);
-                resolve(this);
-            });
-        });
-
-        // Se habilitou, criar instância
         if (habilitado) {
+            // Gerar nome da instância
+            const nomeLimpo = empresa.nome
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+
+            instanceName = `emp-${id}-${nomeLimpo}`;
+
+            console.log(`📱 Criando instância: ${instanceName}`);
+            console.log(`📱 URL: ${EVOLUTION_API_URL}/instance/create`);
+
             try {
-                const evolution = require('../services/evolution-instances');
-                const instanceName = `emp-${id}-${empresa.nome.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
-                await evolution.criarInstancia(instanceName);
-                console.log(`✅ Instância ${instanceName} criada para empresa ${id}`);
-            } catch (e) {
-                console.error('❌ Erro ao criar instância:', e.message);
-                // Não falha a requisição, só loga o erro
+                // Verificar se a instância já existe
+                const checkRes = await axios.get(
+                    `${EVOLUTION_API_URL}/instance/connectionState/${instanceName}`,
+                    { headers: { 'apikey': EVOLUTION_API_KEY } }
+                );
+                console.log(`📱 Instância ${instanceName} já existe, status:`, checkRes.data);
+            } catch (checkError) {
+                // Se não existe (404), criar
+                if (checkError.response?.status === 404) {
+                    console.log(`📱 Criando nova instância: ${instanceName}`);
+                    const createRes = await axios.post(
+                        `${EVOLUTION_API_URL}/instance/create`,
+                        {
+                            instanceName: instanceName,
+                            qrcode: true,
+                            integration: 'WHATSAPP-BAILEYS'
+                        },
+                        {
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'apikey': EVOLUTION_API_KEY
+                            }
+                        }
+                    );
+                    console.log(`✅ Instância ${instanceName} criada com sucesso!`, createRes.data);
+                } else {
+                    console.error('❌ Erro ao verificar instância:', checkError.message);
+                }
             }
         }
 
+        // 🔥 ATUALIZAR O BANCO
+        await new Promise((resolve, reject) => {
+            const sql = isProduction
+                ? `UPDATE empresas SET 
+                    whatsapp_proprio_habilitado = $1,
+                    whatsapp_instance = $2,
+                    whatsapp_connected = $3
+                   WHERE id = $4`
+                : `UPDATE empresas SET 
+                    whatsapp_proprio_habilitado = ?,
+                    whatsapp_instance = ?,
+                    whatsapp_connected = ?
+                   WHERE id = ?`;
+
+            const params = isProduction
+                ? [habilitado ? 1 : 0, habilitado ? instanceName : null, 0, id]
+                : [habilitado ? 1 : 0, habilitado ? instanceName : null, 0, id];
+
+            db.run(sql, params, function(err) {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
         res.json({
             success: true,
-            message: habilitado ? 'WhatsApp próprio habilitado!' : 'WhatsApp próprio desabilitado!'
+            message: habilitado 
+                ? `WhatsApp próprio habilitado! Instância ${instanceName} criada.` 
+                : 'WhatsApp próprio desabilitado!',
+            data: {
+                habilitado: habilitado,
+                instanceName: instanceName
+            }
         });
 
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('❌ Erro ao alternar WhatsApp:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Erro ao alternar WhatsApp'
         });
     }
+});
+/**
+ * GET /api/admin/ads-stats
+ * Retorna estatísticas consolidadas de anúncios com nome da empresa
+ */
+router.get('/ads-stats', auth, verificarSuperAdmin, (req, res) => {
+    const { empresa_id, origem, data_inicio, data_fim, campanha } = req.query;
+    
+    let whereConditions = [];
+    let params = [];
+    
+    if (empresa_id) {
+        whereConditions.push('ads.empresa_id = ?');
+        params.push(empresa_id);
+    }
+    
+    if (origem) {
+        whereConditions.push('ads.origem = ?');
+        params.push(origem);
+    }
+    
+    if (campanha) {
+        whereConditions.push('ads.campanha LIKE ?');
+        params.push(`%${campanha}%`);
+    }
+    
+    if (data_inicio) {
+        whereConditions.push('ads.data_interacao >= ?');
+        params.push(data_inicio);
+    }
+    
+    if (data_fim) {
+        whereConditions.push('ads.data_interacao <= ?');
+        params.push(data_fim);
+    }
+    
+    const whereClause = whereConditions.length > 0 
+        ? `WHERE ${whereConditions.join(' AND ')}` 
+        : '';
+    
+    // 🔥 QUERY CORRIGIDA - INCLUI empresa_id e empresa_nome
+    const query = `
+        SELECT 
+            ads.id,
+            ads.empresa_id,
+            COALESCE(e.nome, 'Não identificada') as empresa_nome,
+            ads.campanha,
+            ads.origem,
+            ads.tipo,
+            ads.cliente_id,
+            ads.agendamento_id,
+            ads.valor,
+            ads.custo,
+            ads.data_interacao,
+            DATE(ads.data_interacao) as data,
+            COUNT(*) as total,
+            SUM(CASE WHEN ads.tipo = 'conversao' THEN 1 ELSE 0 END) as total_conversoes,
+            SUM(CASE WHEN ads.tipo = 'clique' THEN 1 ELSE 0 END) as total_cliques,
+            SUM(CASE WHEN ads.tipo = 'visualizacao' THEN 1 ELSE 0 END) as total_visualizacoes,
+            SUM(ads.valor) as valor_total,
+            SUM(ads.custo) as custo_total,
+            ROUND(SUM(ads.valor) / NULLIF(SUM(ads.custo), 0), 2) as roi,
+            ROUND(
+                (SUM(CASE WHEN ads.tipo = 'conversao' THEN 1 ELSE 0 END) * 100.0) / 
+                NULLIF(SUM(CASE WHEN ads.tipo = 'clique' THEN 1 ELSE 0 END), 0), 
+                2
+            ) as taxa_conversao
+        FROM ads_stats ads
+        LEFT JOIN empresas e ON ads.empresa_id = e.id
+        ${whereClause}
+        GROUP BY ads.empresa_id, ads.campanha, ads.origem, ads.tipo, DATE(ads.data_interacao)
+        ORDER BY ads.data_interacao DESC
+    `;
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao buscar ads stats:', err);
+            return res.status(500).json({ error: 'Erro ao buscar estatísticas' });
+        }
+        
+        // Calcular totais gerais
+        const totals = {
+            total_visualizacoes: 0,
+            total_cliques: 0,
+            total_conversoes: 0,
+            total_valor: 0,
+            total_custo: 0,
+            total_roi: 0,
+            taxa_conversao_media: 0
+        };
+        
+        rows.forEach(row => {
+            totals.total_visualizacoes += row.total_visualizacoes || 0;
+            totals.total_cliques += row.total_cliques || 0;
+            totals.total_conversoes += row.total_conversoes || 0;
+            totals.total_valor += row.valor_total || 0;
+            totals.total_custo += row.custo_total || 0;
+        });
+        
+        totals.total_roi = totals.total_custo > 0 
+            ? (totals.total_valor / totals.total_custo) 
+            : 0;
+            
+        totals.taxa_conversao_media = totals.total_cliques > 0
+            ? (totals.total_conversoes * 100.0 / totals.total_cliques)
+            : 0;
+        
+        res.json({
+            success: true,
+            data: rows,
+            totals: totals,
+            filters: { empresa_id, origem, data_inicio, data_fim, campanha }
+        });
+    });
+});
+/**
+ * POST /api/admin/ads-stats
+ * Registra uma nova interação com anúncio
+ */
+router.post('/ads-stats', auth, verificarSuperAdmin, (req, res) => {
+    const { 
+        empresa_id, 
+        campanha, 
+        origem, 
+        tipo, 
+        cliente_id, 
+        agendamento_id, 
+        valor, 
+        custo,
+        data_interacao 
+    } = req.body;
+    
+    // Validações básicas
+    if (!empresa_id || !campanha || !origem || !tipo) {
+        return res.status(400).json({ 
+            error: 'Campos obrigatórios: empresa_id, campanha, origem, tipo' 
+        });
+    }
+    
+    const tiposValidos = ['visualizacao', 'clique', 'conversao', 'lead'];
+    if (!tiposValidos.includes(tipo)) {
+        return res.status(400).json({ 
+            error: `Tipo inválido. Use: ${tiposValidos.join(', ')}` 
+        });
+    }
+    
+    const query = `
+        INSERT INTO ads_stats (
+            empresa_id, campanha, origem, tipo, cliente_id, 
+            agendamento_id, valor, custo, data_interacao
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    const params = [
+        empresa_id,
+        campanha,
+        origem,
+        tipo,
+        cliente_id || null,
+        agendamento_id || null,
+        valor || 0,
+        custo || 0,
+        data_interacao || new Date().toISOString()
+    ];
+    
+    db.run(query, params, function(err) {
+        if (err) {
+            console.error('❌ Erro ao registrar interação:', err);
+            return res.status(500).json({ error: 'Erro ao registrar interação' });
+        }
+        
+        res.json({
+            success: true,
+            id: this.lastID,
+            message: 'Interação registrada com sucesso!'
+        });
+    });
+});
+
+/**
+ * GET /api/admin/ads-stats/summary
+ * Resumo rápido para dashboard do superadmin
+ */
+router.get('/ads-stats/summary', auth, verificarSuperAdmin, (req, res) => {
+    const hoje = new Date().toISOString().split('T')[0];
+    const mesAtual = hoje.substring(0, 7);
+    
+    const query = `
+        SELECT 
+            origem,
+            COUNT(*) as total_interacoes,
+            SUM(CASE WHEN tipo = 'conversao' THEN 1 ELSE 0 END) as conversoes,
+            SUM(CASE WHEN tipo = 'conversao' AND data_interacao >= date('now', '-7 days') THEN 1 ELSE 0 END) as conversoes_7dias,
+            SUM(valor) as valor_total,
+            SUM(custo) as custo_total
+        FROM ads_stats
+        WHERE data_interacao >= date('now', '-30 days')
+        GROUP BY origem
+        ORDER BY total_interacoes DESC
+    `;
+    
+    db.all(query, [], (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao buscar resumo:', err);
+            return res.status(500).json({ error: 'Erro ao buscar resumo' });
+        }
+        
+        res.json({
+            success: true,
+            data: rows,
+            period: 'Últimos 30 dias'
+        });
+    });
 });
 
 module.exports = router;

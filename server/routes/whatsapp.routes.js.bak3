@@ -223,7 +223,7 @@ router.get('/qrcode', auth, async (req, res) => {
 
         // Buscar QR Code
         try {
-            const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+            const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
             const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
             let qrCode = null;
 
@@ -721,7 +721,7 @@ router.get('/admin/empresas/whatsapp-status', auth, verificarSuperAdmin, (req, r
 router.put('/admin/empresas/:id/whatsapp-proprio', auth, verificarSuperAdmin, async (req, res) => {
     const { id } = req.params;
     const { habilitado } = req.body;
-    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+    const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
     const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
     try {

@@ -185,12 +185,37 @@ function fecharSidebarMobile() {
     }
 }
 
-// ============================================
-// EXECUTAR AÇÃO E FECHAR SIDEBAR
-// ============================================
 function executarAcao(funcao, id) {
     fecharSidebarMobile();
     ativarBotao(id);
+    
+    // 🔥 CASO ESPECIAL PARA ADS
+    if (funcao === 'carregarPainelAds' || funcao === 'carregarAdminAds') {
+        if (typeof window.carregarPainelAds === 'function') {
+            window.carregarPainelAds();
+        } else {
+            console.warn('⚠️ carregarPainelAds não disponível, carregando...');
+            // Tentar carregar o script
+            const script = document.createElement('script');
+            script.src = '/js/pages/empresas.js?v=' + Date.now();
+            script.onload = function() {
+                setTimeout(() => {
+                    if (typeof window.carregarPainelAds === 'function') {
+                        window.carregarPainelAds();
+                    } else {
+                        console.error('❌ Falha ao carregar Painel ADS');
+                        if (typeof showToast === 'function') {
+                            showToast('❌ Erro ao carregar anúncios', 'error');
+                        }
+                    }
+                }, 300);
+            };
+            document.head.appendChild(script);
+        }
+        return;
+    }
+    
+    // Funções normais
     if (typeof window[funcao] === 'function') {
         window[funcao]();
     } else {
@@ -706,6 +731,97 @@ function showConfirm(mensagem, titulo = '⚠️ Confirmação', opcoes = {}) {
         });
     });
 }
+// ============================================
+// 📊 PAINEL DE ANÚNCIOS (ADS) - INTEGRADO
+// ============================================
+
+function carregarPainelAds() {
+    console.log('📊 Carregando Painel de Anúncios...');
+    
+    // Verificar se a função já existe no window
+    if (typeof window._carregarPainelAds === 'function') {
+        console.log('✅ Usando função do empresas.js');
+        window._carregarPainelAds();
+        return;
+    }
+    
+    // Verificar se o script empresas.js já foi carregado
+    const scriptExistente = document.querySelector('script[src*="empresas.js"]');
+    if (scriptExistente) {
+        console.warn('⚠️ empresas.js carregado, mas função não encontrada. Tentando recarregar...');
+        recarregarEmpresasJs();
+        return;
+    }
+    
+    // Carregar o script
+    console.log('📦 Carregando empresas.js...');
+    const script = document.createElement('script');
+    script.src = '/js/pages/empresas.js?v=' + Date.now();
+    script.onload = function() {
+        console.log('✅ empresas.js carregado!');
+        setTimeout(() => {
+            if (typeof window._carregarPainelAds === 'function') {
+                window._carregarPainelAds();
+            } else if (typeof window.carregarPainelAds === 'function') {
+                window.carregarPainelAds();
+            } else {
+                console.error('❌ Função carregarPainelAds não encontrada');
+                if (typeof showToast === 'function') {
+                    showToast('❌ Erro ao carregar painel de anúncios', 'error');
+                }
+            }
+        }, 300);
+    };
+    script.onerror = function() {
+        console.error('❌ Erro ao carregar empresas.js');
+        if (typeof showToast === 'function') {
+            showToast('❌ Erro ao carregar módulo de anúncios', 'error');
+        }
+    };
+    document.head.appendChild(script);
+}
+
+function recarregarEmpresasJs() {
+    console.log('🔄 Recarregando empresas.js...');
+    
+    // Remover scripts antigos
+    const scripts = document.querySelectorAll('script[src*="empresas.js"]');
+    scripts.forEach(s => s.remove());
+    
+    // Carregar novo
+    const script = document.createElement('script');
+    script.src = '/js/pages/empresas.js?v=' + Date.now();
+    script.onload = function() {
+        console.log('✅ empresas.js recarregado!');
+        setTimeout(() => {
+            if (typeof window._carregarPainelAds === 'function') {
+                window._carregarPainelAds();
+            } else if (typeof window.carregarPainelAds === 'function') {
+                window.carregarPainelAds();
+            }
+        }, 300);
+    };
+    document.head.appendChild(script);
+}
+
+// ============================================
+// FALLBACK PARA ADMIN ADS (COMPATIBILIDADE)
+// ============================================
+
+function carregarAdminAds() {
+    console.log('📊 Redirecionando para Painel de Anúncios...');
+    carregarPainelAds();
+}
+
+// ============================================
+// EXPORTAR FUNÇÕES ADS GLOBAIS
+// ============================================
+
+window.carregarPainelAds = carregarPainelAds;
+window.carregarAdminAds = carregarAdminAds;
+window.recarregarEmpresasJs = recarregarEmpresasJs;
+
+console.log('✅ Funções ADS registradas no UI.js');
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================

@@ -16,7 +16,7 @@ services:
       - RENDER=false
       - WHATSAPP_ENABLED=true
       - WHATSAPP_PROVIDER=evolution
-      - EVOLUTION_API_URL=http://163.176.218.131:8080
+      - EVOLUTION_API_URL=http://179.199.134.127:8080
       - EVOLUTION_API_KEY=seeagende2024
       - BASE_URL=https://seeagende.com.br
       - JWT_SECRET=8214c229111fbc5747b8a5eeb9cb98e0

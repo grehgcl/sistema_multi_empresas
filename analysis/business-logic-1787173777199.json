@@ -3391,7 +3391,7 @@
         {
           "file": "agendamentos.routes.js",
           "line": 400,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "agendamentos.routes.js",
@@ -3401,7 +3401,7 @@
         {
           "file": "agendamentos.routes.js",
           "line": 752,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "agendamentos.routes.js",
@@ -3416,7 +3416,7 @@
         {
           "file": "whatsapp.routes.js",
           "line": 197,
-          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "whatsapp.routes.js",
@@ -3491,7 +3491,7 @@
         {
           "file": "whatsapp.routes.js",
           "line": 695,
-          "content": "const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "whatsapp.routes.js",
@@ -3521,7 +3521,7 @@
         {
           "file": "evolution-instances.js",
           "line": 15,
-          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "evolution-instances.js",
@@ -3536,7 +3536,7 @@
         {
           "file": "whatsapp.js",
           "line": 13,
-          "content": "apiUrl: process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080',"
+          "content": "apiUrl: process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080',"
         },
         {
           "file": "whatsapp.js",
@@ -3761,7 +3761,7 @@
         {
           "file": "enviar-mensagem-fiado.js",
           "line": 137,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "enviar-mensagem-fiado.js",
@@ -3781,7 +3781,7 @@
         {
           "file": "lembretes-pagamento.js",
           "line": 15,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "lembretes-pagamento.js",
@@ -3791,7 +3791,7 @@
         {
           "file": "agendamentos.routes.js",
           "line": 472,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "agendamentos.routes.js",
@@ -3801,7 +3801,7 @@
         {
           "file": "agendamentos.routes.js",
           "line": 807,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "agendamentos.routes.js",
@@ -3811,7 +3811,7 @@
         {
           "file": "agendamentos.routes.js",
           "line": 980,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "agendamentos.routes.js",
@@ -3831,7 +3831,7 @@
         {
           "file": "fiados.routes.js",
           "line": 222,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "fiados.routes.js",
@@ -3841,7 +3841,7 @@
         {
           "file": "financeiro.routes.js",
           "line": 866,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "financeiro.routes.js",
@@ -3851,7 +3851,7 @@
         {
           "file": "financeiro.routes.js",
           "line": 1077,
-          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "financeiro.routes.js",
@@ -3866,7 +3866,7 @@
         {
           "file": "whatsapp.routes.js",
           "line": 221,
-          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "whatsapp.routes.js",
@@ -3931,7 +3931,7 @@
         {
           "file": "whatsapp.routes.js",
           "line": 616,
-          "content": "const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const evolutionUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "whatsapp.routes.js",
@@ -3961,7 +3961,7 @@
         {
           "file": "evolution-instances.js",
           "line": 15,
-          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';"
+          "content": "const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';"
         },
         {
           "file": "evolution-instances.js",
@@ -3976,7 +3976,7 @@
         {
           "file": "whatsapp.js",
           "line": 13,
-          "content": "apiUrl: process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080',"
+          "content": "apiUrl: process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080',"
         },
         {
           "file": "whatsapp.js",

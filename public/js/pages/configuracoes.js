@@ -1493,36 +1493,146 @@ function handleHorarioChangeMobile(e) {
 }
 
 // ============================================
-// FUNÇÕES DO CHATBOT
+// CARREGAR LINK DO CHATBOT (VERSÃO PERSONALIZADA - CORRIGIDA)
 // ============================================
 async function carregarLinkChatbot() {
-    const token = localStorage.getItem('token');
-    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-    if (!usuario.empresa_id) return;
-
     try {
-        const res = await fetch(`/api/chatbot/link/${usuario.empresa_id}`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const data = await res.json();
-        if (data.success) {
-            const linkInput = document.getElementById('chatbotLink');
-            if (linkInput) linkInput.value = data.link;
+        const token = localStorage.getItem('token');
+        if (!token) {
+            console.warn('⚠️ Token não encontrado');
+            return;
+        }
 
-            const qrDiv = document.getElementById('qrCode');
-            if (qrDiv) {
-                qrDiv.innerHTML = `
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(data.link)}" 
-                         alt="QR Code do Chatbot" 
-                         style="border-radius: 12px; background: white; padding: 8px;">
-                `;
+        let empresaId = null;
+
+        // 🔥 TENTAR PEGAR DO TOKEN
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            empresaId = payload.empresa_id || payload.empresaId || payload.id;
+            console.log('🔑 Empresa ID do token:', empresaId);
+        } catch (e) {
+            console.warn('⚠️ Não foi possível decodificar o token:', e.message);
+        }
+
+        // 🔥 SE NÃO TIVER NO TOKEN, BUSCAR DO USUÁRIO
+        if (!empresaId) {
+            try {
+                const usuarioStr = localStorage.getItem('usuario');
+                if (usuarioStr) {
+                    const usuario = JSON.parse(usuarioStr);
+                    empresaId = usuario.empresa_id || usuario.empresaId || usuario.id;
+                    console.log('👤 Empresa ID do usuário:', empresaId);
+                }
+            } catch (e) {
+                console.warn('⚠️ Erro ao ler usuário:', e.message);
+            }
+        }
+
+        // 🔥 SE AINDA NÃO TIVER, BUSCAR DA API
+        if (!empresaId) {
+            console.log('🔄 Buscando empresa ID da API...');
+            try {
+                const res = await fetch('/api/empresa/dados', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const data = await res.json();
+                if (data.success && data.data) {
+                    empresaId = data.data.id || data.data.empresa_id;
+                    console.log('📡 Empresa ID da API:', empresaId);
+                }
+            } catch (e) {
+                console.warn('⚠️ Erro ao buscar empresa da API:', e.message);
+            }
+        }
+
+        if (!empresaId) {
+            console.error('❌ Não foi possível identificar a empresa');
+            // Fallback: usar link padrão
+            const linkInput = document.getElementById('chatbotLink');
+            if (linkInput) {
+                const baseUrl = window.location.origin || 'https://seeagende.tech';
+                linkInput.value = `${baseUrl}/chatbot.html?empresa=1`;
+            }
+            return;
+        }
+
+        console.log(`🔗 Buscando link personalizado para empresa ${empresaId}...`);
+        
+        const response = await fetch(`/api/chatbot/link-personalizado/${empresaId}`, {
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        // 🔥 VERIFICAR SE A RESPOSTA É JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            console.error('❌ Resposta não é JSON:', contentType);
+            // Fallback: usar link padrão
+            const linkInput = document.getElementById('chatbotLink');
+            if (linkInput) {
+                const baseUrl = window.location.origin || 'https://seeagende.tech';
+                linkInput.value = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
+            }
+            return;
+        }
+
+        const data = await response.json();
+        console.log('📦 Resposta link:', data);
+
+        if (data.success) {
+            // 🔥 MOSTRAR O LINK PERSONALIZADO
+            const linkInput = document.getElementById('chatbotLink');
+            if (linkInput) {
+                linkInput.value = data.linkPersonalizado || data.link;
+                linkInput.style.color = '#667eea';
+                linkInput.style.fontWeight = '600';
+            }
+            
+            // Mostrar também o link padrão como fallback
+            const linkPadrao = document.getElementById('chatbotLinkPadrao');
+            if (linkPadrao) {
+                linkPadrao.value = data.link;
+                linkPadrao.style.fontSize = '11px';
+                linkPadrao.style.color = '#999';
+            }
+            
+            // Mostrar slug info
+            const slugInfo = document.getElementById('chatbotSlugInfo');
+            if (slugInfo && data.slug) {
+                slugInfo.textContent = `🔗 Slug: ${data.slug} | Empresa: ${data.empresa || empresaId}`;
+            }
+            
+            console.log('✅ Link personalizado carregado:', data.linkPersonalizado);
+        } else {
+            console.error('❌ Erro ao carregar link:', data.message);
+            // Fallback: usar link padrão
+            const linkInput = document.getElementById('chatbotLink');
+            if (linkInput) {
+                const baseUrl = window.location.origin || 'https://seeagende.tech';
+                linkInput.value = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
             }
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('❌ Erro ao carregar link do chatbot:', error);
+        // Fallback: mostrar link padrão
+        try {
+            const usuarioStr = localStorage.getItem('usuario');
+            if (usuarioStr) {
+                const usuario = JSON.parse(usuarioStr);
+                const empresaId = usuario.empresa_id || usuario.empresaId || 1;
+                const linkInput = document.getElementById('chatbotLink');
+                if (linkInput) {
+                    const baseUrl = window.location.origin || 'https://seeagende.tech';
+                    linkInput.value = `${baseUrl}/chatbot.html?empresa=${empresaId}`;
+                }
+            }
+        } catch (e) {
+            console.error('❌ Fallback também falhou:', e);
+        }
     }
 }
-
 function copiarLinkChatbot() {
     const input = document.getElementById('chatbotLink');
     if (input) {

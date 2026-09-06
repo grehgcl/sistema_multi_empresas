@@ -1,0 +1,378 @@
+{
+  "timestamp": "2026-08-31T04:36:38.987Z",
+  "analysis": {
+    "summary": {
+      "totalFiles": 102,
+      "totalLines": 68747,
+      "totalDirectories": 21,
+      "fileTypes": {
+        ".js": {
+          "count": 64,
+          "lines": 41436
+        },
+        ".json": {
+          "count": 8,
+          "lines": 16605
+        },
+        ".md": {
+          "count": 10,
+          "lines": 2897
+        },
+        ".txt": {
+          "count": 3,
+          "lines": 422
+        },
+        ".html": {
+          "count": 2,
+          "lines": 846
+        },
+        ".css": {
+          "count": 15,
+          "lines": 6541
+        }
+      },
+      "largestFiles": [
+        {
+          "path": "",
+          "lines": 795
+        },
+        {
+          "path": "",
+          "lines": 6310
+        },
+        {
+          "path": "exportacao",
+          "lines": 770
+        },
+        {
+          "path": "exportacao",
+          "lines": 1937
+        },
+        {
+          "path": "exportacao",
+          "lines": 936
+        },
+        {
+          "path": "",
+          "lines": 6436
+        },
+        {
+          "path": "public\\css",
+          "lines": 563
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 703
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 1144
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 592
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 762
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 620
+        },
+        {
+          "path": "public\\css\\pages",
+          "lines": 632
+        },
+        {
+          "path": "public\\css",
+          "lines": 1144
+        },
+        {
+          "path": "public",
+          "lines": 781
+        },
+        {
+          "path": "public\\js",
+          "lines": 1499
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 3297
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 2888
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1097
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1877
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1386
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1176
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 1639
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 3302
+        },
+        {
+          "path": "public\\js\\pages",
+          "lines": 551
+        },
+        {
+          "path": "public\\js",
+          "lines": 730
+        },
+        {
+          "path": "scripts",
+          "lines": 1024
+        },
+        {
+          "path": "scripts",
+          "lines": 689
+        },
+        {
+          "path": "scripts",
+          "lines": 1359
+        },
+        {
+          "path": "scripts",
+          "lines": 536
+        },
+        {
+          "path": "server\\routes",
+          "lines": 1445
+        },
+        {
+          "path": "server\\routes",
+          "lines": 1663
+        },
+        {
+          "path": "server\\routes",
+          "lines": 543
+        },
+        {
+          "path": "server\\routes",
+          "lines": 764
+        },
+        {
+          "path": "server\\routes",
+          "lines": 925
+        },
+        {
+          "path": "server\\routes",
+          "lines": 1282
+        },
+        {
+          "path": "server\\routes",
+          "lines": 748
+        },
+        {
+          "path": "server\\routes",
+          "lines": 685
+        },
+        {
+          "path": "server\\routes",
+          "lines": 912
+        },
+        {
+          "path": "server\\services",
+          "lines": 786
+        },
+        {
+          "path": "",
+          "lines": 709
+        }
+      ],
+      "oldestFiles": [
+        {
+          "path": "docs",
+          "modified": "2026-06-28T04:38:46.440Z"
+        },
+        {
+          "path": "docs",
+          "modified": "2026-06-11T15:51:15.894Z"
+        },
+        {
+          "path": "",
+          "modified": "2026-06-16T15:17:12.253Z"
+        }
+      ]
+    },
+    "backend": {
+      "routes": [
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes",
+        "server\\routes"
+      ],
+      "middlewares": [
+        "server\\middlewares",
+        "server\\middlewares"
+      ],
+      "services": [
+        "server\\services",
+        "server\\services",
+        "server\\services",
+        "server\\services",
+        "server\\services"
+      ],
+      "jobs": [
+        "server\\jobs",
+        "server\\jobs",
+        "server\\jobs",
+        "server\\jobs"
+      ],
+      "models": [],
+      "scripts": [
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts",
+        "scripts"
+      ]
+    },
+    "frontend": {
+      "pages": [
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages",
+        "public\\js\\pages"
+      ],
+      "components": [],
+      "styles": [
+        "public\\css",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css\\pages",
+        "public\\css"
+      ],
+      "assets": []
+    },
+    "database": {
+      "tables": [],
+      "queries": [],
+      "migrations": []
+    },
+    "features": {
+      "whatsapp": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "financeiro": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "agendamentos": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "clientes": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      },
+      "admin": {
+        "status": "✅ OK",
+        "files": [],
+        "routes": []
+      }
+    },
+    "dependencies": {
+      "packages": {
+        "@wppconnect-team/wppconnect": "^2.2.1",
+        "axios": "^1.18.1",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.6.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.0.0",
+        "mercadopago": "^3.1.0",
+        "node-cron": "^3.0.3",
+        "nodemailer": "^9.0.3",
+        "pg": "^8.11.3",
+        "stripe": "^22.2.1",
+        "ws": "^8.21.3"
+      },
+      "versions": {
+        "node": ">=18.0.0",
+        "npm": "N/A"
+      }
+    },
+    "structure": {
+      "backend": {},
+      "frontend": {},
+      "scripts": {}
+    }
+  },
+  "recommendations": [
+    "⚠️ Nenhuma rota WhatsApp encontrada - Verificar integração",
+    "⚠️ Nenhuma rota Financeiro encontrada - Verificar módulo",
+    "📏 Arquivos grandes encontrados:",
+    "   -  (795 linhas)",
+    "   -  (6310 linhas)",
+    "   - exportacao (770 linhas)",
+    "   - exportacao (1937 linhas)",
+    "   - exportacao (936 linhas)"
+  ],
+  "quickFixes": []
+}

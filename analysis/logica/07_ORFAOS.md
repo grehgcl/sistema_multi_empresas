@@ -1,0 +1,198 @@
+# 👻 POSSÍVEIS ÓRFÃOS (heurística — confirme antes de deletar!)
+
+⚠️ Falsos positivos comuns: rotas chamadas por apps externos (WhatsApp, MercadoPago), URLs montadas dinamicamente, funções chamadas via reflexão.
+
+## 🛤️ Rotas sem chamada correspondente no frontend (155)
+
+- `GET /rota` — scripts/xray-project.js:220
+- `GET /admin/stats` — server/routes/admin.routes.js:50
+- `GET /admin/empresas` — server/routes/admin.routes.js:125
+- `GET /admin/empresas/:id` — server/routes/admin.routes.js:219
+- `PUT /admin/empresas/:id` — server/routes/admin.routes.js:261
+- `DELETE /admin/empresas/:id` — server/routes/admin.routes.js:289
+- `GET /admin/usuarios` — server/routes/admin.routes.js:403
+- `GET /admin/empresa/:id` — server/routes/admin.routes.js:437
+- `GET /admin/usuarios/:id` — server/routes/admin.routes.js:481
+- `PUT /admin/usuarios/:id` — server/routes/admin.routes.js:551
+- `GET /admin/faturamento-mensal` — server/routes/admin.routes.js:637
+- `GET /admin/crescimento-empresas` — server/routes/admin.routes.js:662
+- `GET /admin/empresas/:id/usuarios` — server/routes/admin.routes.js:686
+- `GET /admin/empresas/:id/acessos` — server/routes/admin.routes.js:779
+- `GET /admin/empresas/:id/clientes` — server/routes/admin.routes.js:812
+- `GET /admin/empresas/:id/agendamentos` — server/routes/admin.routes.js:840
+- `POST /admin/empresas/:id/extender-trial` — server/routes/admin.routes.js:887
+- `GET /admin/empresas/estatisticas` — server/routes/admin.routes.js:918
+- `GET /admin/empresas/:id` — server/routes/admin.routes.js:1011
+- `PUT /admin/profissionais/:id` — server/routes/admin.routes.js:1096
+- `GET /admin/profissionais/:id` — server/routes/admin.routes.js:1171
+- `GET /admin/acessos` — server/routes/admin.routes.js:1207
+- `GET /admin/planos-config` — server/routes/admin.routes.js:1269
+- `PUT /admin/planos-config` — server/routes/admin.routes.js:1282
+- `POST /admin/registrar-acesso` — server/routes/admin.routes.js:1295
+- `PUT /admin/empresas/:id/whatsapp-proprio` — server/routes/admin.routes.js:1316
+- `GET /admin/ads-stats` — server/routes/admin.routes.js:1444
+- `POST /admin/ads-stats` — server/routes/admin.routes.js:1558
+- `GET /admin/ads-stats/summary` — server/routes/admin.routes.js:1622
+- `GET /agendamentos/` — server/routes/agendamentos.routes.js:47
+- `GET /agendamentos/:id` — server/routes/agendamentos.routes.js:109
+- `POST /agendamentos/` — server/routes/agendamentos.routes.js:163
+- `PUT /agendamentos/:id` — server/routes/agendamentos.routes.js:534
+- `PUT /agendamentos/:id/concluir` — server/routes/agendamentos.routes.js:682
+- `PUT /agendamentos/:id/confirmar` — server/routes/agendamentos.routes.js:859
+- `PUT /agendamentos/:id/cancelar` — server/routes/agendamentos.routes.js:917
+- `DELETE /agendamentos/:id` — server/routes/agendamentos.routes.js:1029
+- `PUT /agendamentos/:id/extras` — server/routes/agendamentos.routes.js:1089
+- `GET /agendamentos/periodo` — server/routes/agendamentos.routes.js:1136
+- `GET /agendamentos/horarios-disponiveis` — server/routes/agendamentos.routes.js:1190
+- `GET /agendamentos/profissionais-disponiveis` — server/routes/agendamentos.routes.js:1300
+- `PUT /agendamentos/:id/pagamento` — server/routes/agendamentos.routes.js:1357
+- `POST /agendamentos/:id/enviar-cobranca` — server/routes/agendamentos.routes.js:1658
+- `POST /login` — server/routes/auth.js:8
+- `GET /verify` — server/routes/auth.js:51
+- `POST /auth/login` — server/routes/auth.routes.js:71
+- `POST /auth/cadastro` — server/routes/auth.routes.js:179
+- `POST /auth/verificar` — server/routes/auth.routes.js:487
+- `GET /chatbot/link/:empresaId` — server/routes/chatbot.routes.js:152
+- `GET /chatbot/empresa/:id` — server/routes/chatbot.routes.js:164
+- `GET /chatbot/servicos/:empresaId` — server/routes/chatbot.routes.js:240
+- `GET /chatbot/profissionais/:empresaId` — server/routes/chatbot.routes.js:277
+- `POST /chatbot/cliente/buscar` — server/routes/chatbot.routes.js:314
+- `POST /chatbot/cliente/criar` — server/routes/chatbot.routes.js:387
+- `POST /chatbot/datas-disponiveis-mes` — server/routes/chatbot.routes.js:425
+- `POST /chatbot/horarios-disponiveis` — server/routes/chatbot.routes.js:530
+- `POST /chatbot/agendar` — server/routes/chatbot.routes.js:670
+- `GET /chatbot/link-personalizado/:empresaId` — server/routes/chatbot.routes.js:921
+- `GET /chatbot/:slug` — server/routes/chatbot.routes.js:967
+- `POST /chatbot/registrar-anuncio` — server/routes/chatbot.routes.js:1083
+- `GET /clientes/paginated` — server/routes/clientes.routes.js:18
+- `GET /clientes/` — server/routes/clientes.routes.js:208
+- `GET /clientes/grupos` — server/routes/clientes.routes.js:294
+- `GET /clientes/:id` — server/routes/clientes.routes.js:371
+- `GET /clientes/:id/grupos` — server/routes/clientes.routes.js:432
+- `POST /clientes/` — server/routes/clientes.routes.js:483
+- `PUT /clientes/:id` — server/routes/clientes.routes.js:530
+- `DELETE /clientes/:id` — server/routes/clientes.routes.js:607
+- `PUT /clientes/:id/bloquear-chatbot` — server/routes/clientes.routes.js:664
+- `PUT /clientes/:id/grupos` — server/routes/clientes.routes.js:709
+- `POST /clientes/bulk` — server/routes/clientes.routes.js:788
+- `GET /clientes/stats` — server/routes/clientes.routes.js:874
+- `GET /despesas/` — server/routes/despesas.routes.js:14
+- `GET /despesas/resumo` — server/routes/despesas.routes.js:106
+- `GET /despesas/categorias` — server/routes/despesas.routes.js:178
+- `GET /despesas/:id` — server/routes/despesas.routes.js:220
+- `POST /despesas/` — server/routes/despesas.routes.js:272
+- `PUT /despesas/:id` — server/routes/despesas.routes.js:339
+- `DELETE /despesas/:id` — server/routes/despesas.routes.js:412
+- `GET /empresa/plano` — server/routes/empresas.routes.js:43
+- `GET /empresa/dados` — server/routes/empresas.routes.js:94
+- `GET /empresa/dados-completos` — server/routes/empresas.routes.js:140
+- `PUT /empresa/dados` — server/routes/empresas.routes.js:218
+- `PUT /empresa/endereco` — server/routes/empresas.routes.js:255
+- `PUT /empresa/telefone-dono` — server/routes/empresas.routes.js:283
+- `PUT /empresa/bloqueio-geral` — server/routes/empresas.routes.js:317
+- `PUT /empresa/bloqueio-geral` — server/routes/empresas.routes.js:350
+- `GET /` — server/routes/fiados.routes.js:15
+- `PUT /:id/baixar` — server/routes/fiados.routes.js:123
+- `GET /stats` — server/routes/fiados.routes.js:274
+- `GET /financeiro/` — server/routes/financeiro.routes.js:49
+- `GET /financeiro/comparativo` — server/routes/financeiro.routes.js:239
+- `GET /financeiro/receitas` — server/routes/financeiro.routes.js:327
+- `GET /financeiro/analise-diaria` — server/routes/financeiro.routes.js:436
+- `GET /financeiro/despesas/:id` — server/routes/financeiro.routes.js:521
+- `DELETE /financeiro/:id` — server/routes/financeiro.routes.js:571
+- `GET /financeiro/fiados` — server/routes/financeiro.routes.js:662
+- `PUT /financeiro/fiados/:id/baixar` — server/routes/financeiro.routes.js:775
+- `GET /financeiro/fiados/stats` — server/routes/financeiro.routes.js:919
+- `PUT /financeiro/fiados/:id/baixar` — server/routes/financeiro.routes.js:976
+- `POST /financeiro/receitas/manual` — server/routes/financeiro.routes.js:1129
+- `DELETE /financeiro/receitas/manual/:id` — server/routes/financeiro.routes.js:1218
+- `GET /horarios/` — server/routes/horarios.routes.js:40
+- `PUT /horarios/:dia` — server/routes/horarios.routes.js:66
+- `POST /horarios/` — server/routes/horarios.routes.js:195
+- `POST /horarios/inicializar` — server/routes/horarios.routes.js:299
+- `GET /pagamento/config` — server/routes/pagamento.routes.js:103
+- `PUT /pagamento/config` — server/routes/pagamento.routes.js:130
+- `GET /pagamento/status` — server/routes/pagamento.routes.js:171
+- `POST /pagamento/simulate-payment` — server/routes/pagamento.routes.js:185
+- `POST /pagamento/simulate-pix` — server/routes/pagamento.routes.js:270
+- `POST /pagamento/simulate-card` — server/routes/pagamento.routes.js:303
+- `POST /pagamento/simulate-boleto` — server/routes/pagamento.routes.js:358
+- `POST /pagamento/confirm-simulated-payment/:paymentId` — server/routes/pagamento.routes.js:389
+- `POST /pagamento/create-boleto` — server/routes/pagamento.routes.js:584
+- `POST /pagamento/create-pix` — server/routes/pagamento.routes.js:616
+- `POST /pagamento/create-payment` — server/routes/pagamento.routes.js:645
+- `GET /planos/payment-mode` — server/routes/planos.routes.js:185
+- `GET /planos/` — server/routes/planos.routes.js:201
+- `GET /planos/empresa` — server/routes/planos.routes.js:208
+- `PUT /planos/empresa` — server/routes/planos.routes.js:225
+- `POST /planos/upgrade` — server/routes/planos.routes.js:273
+- `POST /planos/cancel-subscription` — server/routes/planos.routes.js:290
+- `POST /planos/admin/ativar-whatsapp/:id` — server/routes/planos.routes.js:312
+- `GET /profissionais/` — server/routes/profissionais.routes.js:41
+- `GET /profissionais/:id` — server/routes/profissionais.routes.js:91
+- `POST /profissionais/` — server/routes/profissionais.routes.js:135
+- `PUT /profissionais/:id` — server/routes/profissionais.routes.js:204
+- `POST /profissionais/:id/reset-senha` — server/routes/profissionais.routes.js:322
+- `DELETE /profissionais/:id` — server/routes/profissionais.routes.js:377
+- `GET /profissionais/profissional/agendamentos` — server/routes/profissionais.routes.js:425
+- `GET /profissionais/profissional/financeiro` — server/routes/profissionais.routes.js:464
+- `PUT /profissionais/profissional/agendamentos/:id` — server/routes/profissionais.routes.js:569
+- `PUT /profissionais/profissional/agendamentos/:id/concluir` — server/routes/profissionais.routes.js:637
+- `GET /servicos/` — server/routes/servicos.routes.js:14
+- `GET /servicos/todos` — server/routes/servicos.routes.js:65
+- `POST /servicos/` — server/routes/servicos.routes.js:103
+- `PUT /servicos/:id` — server/routes/servicos.routes.js:152
+- `DELETE /servicos/:id` — server/routes/servicos.routes.js:206
+- `POST /teste` — server/routes/whatsapp.js:32
+- `GET /status` — server/routes/whatsapp.js:50
+- `GET /whatsapp/info` — server/routes/whatsapp.routes.js:41
+- `POST /whatsapp/criar-instancia` — server/routes/whatsapp.routes.js:83
+- `GET /whatsapp/qrcode` — server/routes/whatsapp.routes.js:157
+- `GET /whatsapp/status` — server/routes/whatsapp.routes.js:279
+- `POST /whatsapp/disconnect` — server/routes/whatsapp.routes.js:406
+- `POST /whatsapp/contatos` — server/routes/whatsapp.routes.js:471
+- `GET /whatsapp/contatos` — server/routes/whatsapp.routes.js:525
+- `GET /whatsapp/admin/empresas/whatsapp-status` — server/routes/whatsapp.routes.js:570
+- `PUT /whatsapp/admin/empresas/:id/whatsapp-proprio` — server/routes/whatsapp.routes.js:615
+- `POST /whatsapp/enviar` — server/routes/whatsapp.routes.js:828
+- `GET /manifest.json` — server.js:129
+- `GET /sw.js` — server.js:133
+- `GET /icons/:file` — server.js:137
+- `GET /health` — server.js:704
+
+## ⚙️ Funções exportadas nunca referenciadas (28)
+
+- `adaptQuery` — server/config/db-hybrid.js
+- `HybridDB` — server/config/db-hybrid.js
+- `isSQLite` — server/config/db-hybrid.js
+- `runMigration` — server/config/migrations/run-migration.js
+- `start` — server/jobs/email-cron.js
+- `processarCobrancas` — server/jobs/lembretes-pagamento.js
+- `withEmpresaDb` — server/middlewares/empresa-db.js
+- `enviarBoasVindas` — server/services/email.js
+- `enviarBoleto` — server/services/email.js
+- `enviarPix` — server/services/email.js
+- `notificarNovoCadastro` — server/services/email.js
+- `enviarConfirmacao` — server/services/whatsapp.js
+- `enviarCancelamento` — server/services/whatsapp.js
+- `enviarConclusao` — server/services/whatsapp.js
+- `formatarDataBr` — server/services/whatsapp.js
+- `formatarTelefone` — server/services/whatsapp.js
+- `getInstanciaEmpresa` — server/services/whatsapp.js
+- `resetarContadorAgendamentos` — server/utils/helpers.js
+- `formatDate` — server/utils/sqlite-compat.js
+- `formatMonthYear` — server/utils/sqlite-compat.js
+- `coalesceSum` — server/utils/sqlite-compat.js
+- `dateInterval` — server/utils/sqlite-compat.js
+- `extractMonth` — server/utils/sqlite-compat.js
+- `extractYear` — server/utils/sqlite-compat.js
+- `extractDay` — server/utils/sqlite-compat.js
+- `lower` — server/utils/sqlite-compat.js
+- `toChar` — server/utils/sqlite-compat.js
+- `convertPlaceholders` — server/utils/sqlite-compat.js
+
+## 📦 Dependências npm não usadas
+
+- `@wppconnect-team/wppconnect` — instalada mas não usada no código
+- `mercadopago` — instalada mas não usada no código
+- `stripe` — instalada mas não usada no código

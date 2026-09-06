@@ -1,0 +1,327 @@
+// ============================================
+// ADMIN ADS - Painel de Anúncios
+// ============================================
+
+let graficoOrigens = null;
+let graficoEvolucao = null;
+let dadosAtuais = [];
+
+// ============================================
+// INICIALIZAÇÃO
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    carregarEmpresas();
+    carregarClientes();
+    carregarDados();
+    
+    // Event listeners
+    document.getElementById('formRegistro').addEventListener('submit', registrarInteracao);
+});
+
+// ============================================
+// CARREGAR DADOS
+// ============================================
+
+function carregarDados() {
+    const params = new URLSearchParams();
+    
+    const empresa = document.getElementById('filtroEmpresa').value;
+    const origem = document.getElementById('filtroOrigem').value;
+    const campanha = document.getElementById('filtroCampanha').value;
+    const dataInicio = document.getElementById('filtroDataInicio').value;
+    const dataFim = document.getElementById('filtroDataFim').value;
+    
+    if (empresa) params.append('empresa_id', empresa);
+    if (origem) params.append('origem', origem);
+    if (campanha) params.append('campanha', campanha);
+    if (dataInicio) params.append('data_inicio', dataInicio);
+    if (dataFim) params.append('data_fim', dataFim);
+    
+    const url = `/api/admin/ads-stats?${params.toString()}`;
+    
+    fetch(url, {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            dadosAtuais = data.data;
+            atualizarCards(data.totals);
+            atualizarTabela(data.data);
+            atualizarGraficos(data.data);
+        } else {
+            console.error('Erro ao carregar dados:', data);
+            alert('Erro ao carregar dados: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(err => {
+        console.error('Erro:', err);
+        alert('Erro ao carregar dados. Verifique sua conexão.');
+    });
+}
+
+function carregarEmpresas() {
+    fetch('/api/admin/empresas', {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (Array.isArray(data)) {
+            const selects = ['filtroEmpresa', 'regEmpresa'];
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    data.forEach(empresa => {
+                        const option = document.createElement('option');
+                        option.value = empresa.id;
+                        option.textContent = empresa.nome || empresa.razao_social || `Empresa ${empresa.id}`;
+                        select.appendChild(option);
+                    });
+                }
+            });
+        }
+    })
+    .catch(err => console.error('Erro ao carregar empresas:', err));
+}
+
+function carregarClientes() {
+    fetch('/api/clientes', {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (Array.isArray(data)) {
+            const select = document.getElementById('regCliente');
+            data.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                option.textContent = `${cliente.nome} (${cliente.telefone || 'sem telefone'})`;
+                select.appendChild(option);
+            });
+        }
+    })
+    .catch(err => console.error('Erro ao carregar clientes:', err));
+}
+
+// ============================================
+// ATUALIZAR CARDS
+// ============================================
+
+function atualizarCards(totals) {
+    document.getElementById('totalVisualizacoes').textContent = totals.total_visualizacoes || 0;
+    document.getElementById('totalCliques').textContent = totals.total_cliques || 0;
+    document.getElementById('totalConversoes').textContent = totals.total_conversoes || 0;
+    document.getElementById('totalROI').textContent = (totals.total_roi || 0).toFixed(2) + 'x';
+    document.getElementById('taxaConversao').textContent = (totals.taxa_conversao_media || 0).toFixed(1) + '%';
+}
+
+// ============================================
+// ATUALIZAR TABELA
+// ============================================
+
+function atualizarTabela(dados) {
+    const tbody = document.getElementById('corpoTabela');
+    
+    if (!dados || dados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8">Nenhum dado encontrado</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = dados.map(row => `
+        <tr>
+            <td>${row.data || '-'}</td>
+            <td>${row.empresa_nome || row.empresa_id || '-'}</td>
+            <td>${row.campanha || '-'}</td>
+            <td>${row.origem || '-'}</td>
+            <td>${row.tipo || '-'}</td>
+            <td>R$ ${(row.valor_total || 0).toFixed(2)}</td>
+            <td>R$ ${(row.custo_total || 0).toFixed(2)}</td>
+            <td>${(row.roi || 0).toFixed(2)}x</td>
+        </tr>
+    `).join('');
+}
+
+// ============================================
+// ATUALIZAR GRÁFICOS
+// ============================================
+
+function atualizarGraficos(dados) {
+    // Gráfico de Origens
+    const origens = {};
+    dados.forEach(row => {
+        if (row.tipo === 'conversao') {
+            origens[row.origem] = (origens[row.origem] || 0) + (row.total || 0);
+        }
+    });
+    
+    const labelsOrigens = Object.keys(origens);
+    const valuesOrigens = Object.values(origens);
+    
+    if (graficoOrigens) {
+        graficoOrigens.destroy();
+    }
+    
+    const ctxOrigens = document.getElementById('graficoOrigens').getContext('2d');
+    graficoOrigens = new Chart(ctxOrigens, {
+        type: 'bar',
+        data: {
+            labels: labelsOrigens.length > 0 ? labelsOrigens : ['Sem dados'],
+            datasets: [{
+                label: 'Conversões por Origem',
+                data: valuesOrigens.length > 0 ? valuesOrigens : [0],
+                backgroundColor: ['#4299e1', '#48bb78', '#ed8936', '#9f7aea', '#fc8181', '#68d391'],
+                borderColor: '#2d3748',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // Gráfico de Evolução Diária
+    const evolucao = {};
+    dados.forEach(row => {
+        if (row.tipo === 'conversao') {
+            const data = row.data || '2024-01-01';
+            evolucao[data] = (evolucao[data] || 0) + (row.total || 0);
+        }
+    });
+    
+    const datas = Object.keys(evolucao).sort();
+    const valores = datas.map(d => evolucao[d]);
+    
+    if (graficoEvolucao) {
+        graficoEvolucao.destroy();
+    }
+    
+    const ctxEvolucao = document.getElementById('graficoEvolucao').getContext('2d');
+    graficoEvolucao = new Chart(ctxEvolucao, {
+        type: 'line',
+        data: {
+            labels: datas.length > 0 ? datas : ['Sem dados'],
+            datasets: [{
+                label: 'Conversões por Dia',
+                data: valores.length > 0 ? valores : [0],
+                borderColor: '#4299e1',
+                backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ============================================
+// FILTROS
+// ============================================
+
+function aplicarFiltros() {
+    carregarDados();
+}
+
+// ============================================
+// MODAL
+// ============================================
+
+function abrirModalRegistro() {
+    document.getElementById('modalRegistro').style.display = 'flex';
+}
+
+function fecharModal() {
+    document.getElementById('modalRegistro').style.display = 'none';
+    document.getElementById('formRegistro').reset();
+}
+
+// Fechar modal ao clicar fora
+window.onclick = function(event) {
+    const modal = document.getElementById('modalRegistro');
+    if (event.target === modal) {
+        fecharModal();
+    }
+}
+
+// ============================================
+// REGISTRAR INTERAÇÃO
+// ============================================
+
+function registrarInteracao(e) {
+    e.preventDefault();
+    
+    const data = {
+        empresa_id: document.getElementById('regEmpresa').value,
+        campanha: document.getElementById('regCampanha').value,
+        origem: document.getElementById('regOrigem').value,
+        tipo: document.getElementById('regTipo').value,
+        cliente_id: document.getElementById('regCliente').value || null,
+        valor: parseFloat(document.getElementById('regValor').value) || 0,
+        custo: parseFloat(document.getElementById('regCusto').value) || 0,
+        data_interacao: document.getElementById('regData').value || new Date().toISOString()
+    };
+    
+    if (!data.empresa_id || !data.campanha || !data.origem || !data.tipo) {
+        alert('Preencha todos os campos obrigatórios (*)');
+        return;
+    }
+    
+    fetch('/api/admin/ads-stats', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            alert('✅ Interação registrada com sucesso!');
+            fecharModal();
+            carregarDados();
+        } else {
+            alert('❌ Erro ao registrar: ' + (result.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(err => {
+        console.error('Erro:', err);
+        alert('❌ Erro ao registrar interação');
+    });
+}

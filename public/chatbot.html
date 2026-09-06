@@ -1,65 +1,1980 @@
 ﻿<!DOCTYPE html>
-<html lang="pt-br">
-
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Agendamento Inteligente - Barbearia Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="empresa-id" content="">
+    <title>Chatbot - SEE&AGENDE</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/chatbot.css">
+    <style>
+        /* Reset e base */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        .chat-container {
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 100vh;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border-radius: 0;
+        }
 
-    <!-- CSS do Chatbot -->
-    <link rel="stylesheet" href="./css/chatbot.css">
+        /* Header */
+        .chat-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 14px 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            min-height: 60px;
+        }
+        .chat-header .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        .chat-header .info h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+        }
+        .chat-header .info p {
+            font-size: 11px;
+            opacity: 0.85;
+            margin: 1px 0 0;
+        }
+
+        /* Messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: #f8f9fc;
+        }
+
+        /* Mensagens */
+        .message {
+            display: flex;
+            gap: 8px;
+            max-width: 92%;
+            animation: fadeIn 0.3s ease;
+        }
+        .message.bot { align-self: flex-start; }
+        .message.user { align-self: flex-end; flex-direction: row-reverse; }
+
+        .message-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #e8ecf1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: #555;
+            flex-shrink: 0;
+        }
+        .message.bot .message-avatar { background: #667eea; color: white; }
+        .message.user .message-avatar { background: #10b981; color: white; }
+
+        .message-content {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 14px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            position: relative;
+            max-width: 100%;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .message.bot .message-content {
+            border-top-left-radius: 3px;
+            background: white;
+        }
+        .message.user .message-content {
+            border-top-right-radius: 3px;
+            background: #667eea;
+            color: white;
+        }
+
+        .message-text {
+            font-size: 14px;
+            line-height: 1.4;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .message-text strong { color: #667eea; }
+        .message.user .message-text strong { color: #fff; }
+
+        .message-time {
+            font-size: 9px;
+            color: #999;
+            display: block;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .message.user .message-time { color: rgba(255,255,255,0.7); }
+
+        /* Botões */
+        .message-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+            width: 100%;
+        }
+        .message-btn {
+            padding: 5px 12px;
+            border: 2px solid #667eea;
+            border-radius: 16px;
+            background: transparent;
+            color: #667eea;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            min-height: 28px;
+            flex: 0 1 auto;
+            max-width: 100%;
+        }
+        .message-btn.btn-primary {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        .message-btn:hover { background: #667eea; color: white; }
+        .message-btn.btn-primary:hover { background: #5a6fd6; border-color: #5a6fd6; }
+
+        /* Input */
+        .chat-input-area {
+            padding: 10px 12px;
+            background: white;
+            border-top: 1px solid #e8ecf1;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            min-height: 52px;
+        }
+        .chat-input-area input {
+            flex: 1;
+            padding: 8px 14px;
+            border: 2px solid #e8ecf1;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            min-height: 36px;
+        }
+        .chat-input-area input:focus { border-color: #667eea; }
+        .chat-input-area button {
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chat-input-area button:hover { background: #5a6fd6; }
+
+        /* Calendário */
+        .calendario-container {
+            margin-top: 8px;
+            background: white;
+            border-radius: 10px;
+            padding: 8px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+            width: 100%;
+            overflow: hidden;
+        }
+        .calendario-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .calendario-nav {
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            padding: 2px 10px;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .calendario-semana {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+            margin-bottom: 4px;
+        }
+        .calendario-dias {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 2px;
+        }
+        .calendario-dia {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            border-radius: 50%;
+            cursor: default;
+            transition: all 0.2s;
+            width: 100%;
+            min-height: 32px;
+        }
+        .calendario-dia.vazio { visibility: hidden; }
+        .calendario-dia:hover:not(.indisponivel):not(.vazio) {
+            transform: scale(1.05);
+        }
+
+        /* Efeito de digitando */
+        .message.digitando .message-content {
+            background: #e8ecf1;
+            padding: 12px 18px;
+            border-radius: 14px;
+            border-top-left-radius: 3px;
+        }
+        .message.digitando .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #999;
+            margin: 0 2px;
+            animation: dotPulse 1.4s infinite;
+        }
+        .message.digitando .dot:nth-child(2) { animation-delay: 0.2s; }
+        .message.digitando .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes dotPulse {
+            0%, 60%, 100% { transform: scale(0.6); opacity: 0.4; }
+            30% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Scrollbar */
+        .chat-messages::-webkit-scrollbar { width: 3px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+        /* Responsivo */
+        @media (max-width: 480px) {
+            body { padding: 0; }
+            .chat-container { height: 100vh; max-height: 100vh; border-radius: 0; }
+            .chat-header { padding: 12px 14px; min-height: 52px; }
+            .chat-header .avatar { width: 32px; height: 32px; font-size: 14px; }
+            .chat-header .info h2 { font-size: 14px; }
+            .chat-header .info p { font-size: 10px; }
+            .chat-messages { padding: 8px 10px; gap: 4px; }
+            .message { max-width: 95%; gap: 6px; }
+            .message-avatar { width: 24px; height: 24px; font-size: 10px; }
+            .message-content { padding: 6px 10px; border-radius: 10px; }
+            .message-text { font-size: 13px; line-height: 1.35; }
+            .message-btn { padding: 4px 10px; font-size: 11px; min-height: 24px; border-radius: 14px; }
+            .message-buttons { gap: 4px; margin-top: 6px; }
+            .chat-input-area { padding: 8px 10px; min-height: 44px; gap: 6px; }
+            .chat-input-area input { padding: 6px 12px; font-size: 13px; min-height: 32px; border-radius: 16px; }
+            .chat-input-area button { padding: 6px 14px; font-size: 13px; min-height: 32px; border-radius: 16px; }
+            .calendario-container { padding: 6px; }
+            .calendario-dia { font-size: 11px; min-height: 28px; }
+            .calendario-nav { font-size: 14px; padding: 0 8px; }
+            .calendario-semana { font-size: 9px; }
+            .message.digitando .message-content { padding: 10px 14px; }
+            .message.digitando .dot { width: 6px; height: 6px; }
+        }
+
+        @media (max-width: 360px) {
+            .message-text { font-size: 12px; }
+            .message-btn { font-size: 10px; padding: 3px 8px; min-height: 20px; }
+            .chat-input-area input { font-size: 12px; padding: 4px 10px; }
+            .chat-input-area button { font-size: 12px; padding: 4px 10px; }
+            .calendario-dia { font-size: 10px; min-height: 24px; }
+        }
+
+        @media (prefers-color-scheme: dark) {
+            body { background: #1a1a2e; }
+            .chat-container { background: #16213e; }
+            .chat-messages { background: #1a1a2e; }
+            .message.bot .message-content { background: #2d3748; color: #e2e8f0; }
+            .message.user .message-content { background: #667eea; color: white; }
+            .message-avatar { background: #2d3748; color: #a0aec0; }
+            .message.bot .message-avatar { background: #667eea; color: white; }
+            .chat-input-area { background: #1a1a2e; border-top-color: #2d3748; }
+            .chat-input-area input { background: #2d3748; border-color: #4a5568; color: #e2e8f0; }
+            .chat-input-area input:focus { border-color: #667eea; }
+            .chat-input-area input::placeholder { color: #718096; }
+            .message-text strong { color: #93a3f8; }
+            .message-time { color: #718096; }
+            .calendario-container { background: #2d3748; }
+            .calendario-dia { color: #e2e8f0; }
+            .calendario-dia.indisponivel { color: #4a5568; }
+            .calendario-nav { color: #93a3f8; }
+            .calendario-semana { color: #718096; }
+            .message-btn { border-color: #667eea; color: #93a3f8; }
+            .message-btn:hover { background: #667eea; color: white; }
+            .message-btn.btn-primary { background: #667eea; color: white; border-color: #667eea; }
+            .message-btn.btn-primary:hover { background: #5a6fd6; }
+            .message.digitando .message-content { background: #2d3748; }
+            .message.digitando .dot { background: #718096; }
+            .chat-header { background: linear-gradient(135deg, #4a3f8a, #5a4f9a); }
+        }
+    </style>
 </head>
-
 <body>
     <div class="chat-container">
+        <!-- Header -->
         <div class="chat-header">
-            <div class="header-info">
-                <i class="fas fa-cut"></i>
-                <div>
-                    <h2 id="empresaNome">Barbearia Pro</h2>
-                    <p>Agendamento Inteligente</p>
-                </div>
+            <div class="avatar">
+                <i class="fas fa-robot"></i>
             </div>
-            <div class="header-status">
-                <span class="status-dot"></span>
-                <span>Online</span>
+            <div class="info">
+                <h2 id="empresaNome">See&Agende</h2>
+                <p>💬 Atendimento online</p>
             </div>
         </div>
 
+        <!-- Messages -->
         <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
-                <div class="message-avatar">
-                    <i class="fas fa-robot"></i>
-                </div>
-                <div class="message-content">
-                    <div class="message-text">
-                        OlÃ¡! ðŸ‘‹ Sou o assistente virtual da barbearia.<br><br>
-                        Posso ajudar vocÃª a agendar um horÃ¡rio de forma rÃ¡pida e fÃ¡cil.<br><br>
-                        Para comeÃ§ar, por favor me informe seu <strong>nome completo</strong>:
-                    </div>
-                </div>
-            </div>
+            <!-- Mensagens inseridas pelo JavaScript -->
         </div>
 
-        <div class="chat-input-container">
-            <div class="input-wrapper">
-                <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autocomplete="off">
-                <button id="sendBtn" onclick="enviarMensagem()">
-                    <i class="fas fa-paper-plane"></i>
-                </button>
-            </div>
-            <div class="input-options" id="inputOptions" style="display: none;">
-                <!-- BotÃµes de opÃ§Ãµes dinÃ¢micos -->
-            </div>
+        <!-- Input -->
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Digite sua mensagem..." autofocus>
+            <button onclick="enviarMensagem()">
+                <i class="fas fa-paper-plane"></i> Enviar
+            </button>
         </div>
     </div>
 
-    <script src="/js/chatbot.js?v=20260730"></script>
-</body>
+    <!-- ============================================ -->
+    <!-- CHATBOT JS - VERSÃO COMPLETA COM ADS        -->
+    <!-- ============================================ -->
+    <script>
+    // ============================================
+    // CHATBOT - SEE&AGENDE (VERSÃO COMPLETA)
+    // ============================================
 
+    // ============================================
+    // VARIÁVEIS GLOBAIS
+    // ============================================
+    let estado = 'inicio';
+    let clienteAtual = null;
+    let agendamentoAtual = {};
+    let empresaId = null;
+    let servicosList = [];
+    let profissionaisList = [];
+    let dadosEmpresa = null;
+    let datasDisponiveis = [];
+    let horariosDisponiveis = [];
+    let calendarioAtual = new Date();
+    let nomeCliente = '';
+    let telefoneCliente = '';
+    let isClienteExistente = false;
+    let estaDigitando = false;
+
+    // ============================================
+    // RESPOSTAS HUMANIZADAS
+    // ============================================
+    const respostasHumanas = {
+        'boas_vindas': [
+            'Olá! 👋 Tudo bem?',
+            'Oii! 😊 Que bom te ver por aqui!',
+            'Oi! 🎉 Como posso ajudar você hoje?'
+        ],
+        'cliente_encontrado': [
+            'Que bom te ver de novo! 😍',
+            'Ah, você já é da casa! ✨',
+            'Cliente antigo é sempre especial! 🥰'
+        ],
+        'cadastro_sucesso': [
+            'Uhuul! Cadastro feito com sucesso! 🎉',
+            'Bem-vindo(a) à nossa família! 🤗',
+            'Que legal! Agora você faz parte da nossa história! 💫'
+        ],
+        'confirmar': [
+            'Perfeito! 😍 Vou confirmar seu agendamento agora...',
+            'Maravilha! ✨ Só um minutinho que já confirmo...',
+            'Show! 🎉 Já estou confirmando tudo certinho...'
+        ],
+        'sucesso': [
+            'Feito! 🎉 Seu horário está reservado! Te esperamos!',
+            'Confirmado! ✅ Arrase nesse dia especial!',
+            'Uhuul! 🥳 Agendamento realizado com sucesso!'
+        ],
+        'erro': [
+            'Opa! 😅 Algo deu errado. Vamos tentar de novo?',
+            'Putz! 😬 Tivemos um probleminha. Bora tentar novamente?',
+            'Eita! 🫠 Deu ruim aqui. Vamos recomeçar?'
+        ],
+        'cancelar': [
+            'Tudo bem! 😊 Quando quiser, estamos aqui.',
+            'Sem problemas! ✨ Qualquer coisa é só chamar.',
+            'Acontece! 🤗 Estamos à disposição.'
+        ],
+        'aguardando': [
+            'Tô aqui esperando sua resposta... 😊',
+            'Pode responder no seu tempo! ✨',
+            'Tô aqui! 😄 Só me diga o que precisa.'
+        ]
+    };
+
+    function getMensagemHumanizada(tipo) {
+        const opcoes = respostasHumanas[tipo] || ['Ok! 😊'];
+        return opcoes[Math.floor(Math.random() * opcoes.length)];
+    }
+
+    // ============================================
+    // EFEITO DE DIGITANDO
+    // ============================================
+    function mostrarDigitando() {
+        if (estaDigitando) return;
+        estaDigitando = true;
+
+        const container = document.getElementById('chatMessages');
+        if (!container) return;
+
+        esconderDigitando();
+
+        const div = document.createElement('div');
+        div.className = 'message bot digitando';
+        div.id = 'digitandoIndicator';
+        div.innerHTML = `
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="message-content">
+                <div class="message-text">
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                    <span class="dot"></span>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function esconderDigitando() {
+        estaDigitando = false;
+        const indicator = document.getElementById('digitandoIndicator');
+        if (indicator) indicator.remove();
+    }
+
+    // ============================================
+    // ADICIONAR MENSAGEM COM DELAY
+    // ============================================
+    function adicionarMensagemComDelay(texto, tipo, extra = null, delay = 800) {
+        mostrarDigitando();
+        const tempoAleatorio = 800 + Math.random() * 1200;
+        setTimeout(() => {
+            esconderDigitando();
+            adicionarMensagem(texto, tipo, extra);
+        }, tempoAleatorio);
+    }
+
+    function adicionarMensagemComBotoesComDelay(texto, botoes, delay = 1000) {
+        mostrarDigitando();
+        const tempoAleatorio = 800 + Math.random() * 1200;
+        setTimeout(() => {
+            esconderDigitando();
+            adicionarMensagemComBotoes(texto, botoes);
+        }, tempoAleatorio);
+    }
+
+    // ============================================
+    // INICIALIZAR
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function () {
+        const params = new URLSearchParams(window.location.search);
+        empresaId = params.get('empresa') || '1';
+
+        console.log('🚀 Iniciando chatbot para empresa:', empresaId);
+        
+        // 🔥 SALVAR EMPRESA NO LOCALSTORAGE PARA USAR NOS ANÚNCIOS
+        if (empresaId) {
+            localStorage.setItem('chatbot_empresa_id', empresaId);
+            window._empresaId = empresaId;
+            document.querySelector('meta[name="empresa-id"]').setAttribute('content', empresaId);
+            console.log('💾 Empresa salva no localStorage:', empresaId);
+        }
+
+        const container = document.getElementById('chatMessages');
+        if (container) container.innerHTML = '';
+
+        carregarDadosEmpresa();
+
+        document.getElementById('chatInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') enviarMensagem();
+        });
+
+        setTimeout(() => document.getElementById('chatInput').focus(), 500);
+    });
+
+    // ============================================
+    // CARREGAR DADOS DA EMPRESA
+    // ============================================
+    async function carregarDadosEmpresa() {
+        try {
+            console.log('🔍 Carregando empresa ID:', empresaId);
+
+            const res = await fetch(`/api/chatbot/empresa/${empresaId}`);
+            const data = await res.json();
+
+            console.log('📦 Resposta empresa:', data);
+
+            if (data.success && data.data) {
+                dadosEmpresa = data.data;
+                document.getElementById('empresaNome').textContent = dadosEmpresa.nome || 'See&Agende';
+
+                await carregarServicos();
+                await carregarProfissionais();
+
+                const nomeEmpresa = dadosEmpresa.nome || 'nossa empresa';
+                const saudacao = getMensagemHumanizada('boas_vindas');
+
+                adicionarMensagemComBotoesComDelay(
+                    `${saudacao}<br><br>` +
+                    `Seja bem-vindo à <strong>${nomeEmpresa}</strong>! 💇‍♂️<br><br>` +
+                    `Posso ajudar você a agendar um horário de forma rápida e fácil.<br><br>` +
+                    `<strong>Você já é cliente da ${nomeEmpresa}?</strong>`,
+                    [
+                        { label: '✅ Sim, já sou cliente', valor: 'sim', primary: true },
+                        { label: '➕ Não, sou novo cliente', valor: 'não', primary: false }
+                    ],
+                    1500
+                );
+                estado = 'aguardando_cliente';
+            } else {
+                adicionarMensagemComDelay('❌ Não foi possível carregar a empresa. Link inválido.', 'bot', null, 500);
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar empresa:', error);
+            adicionarMensagemComDelay('❌ Erro ao carregar. Tente novamente mais tarde.', 'bot', null, 500);
+        }
+    }
+
+    // ============================================
+    // CARREGAR SERVIÇOS
+    // ============================================
+    async function carregarServicos() {
+        try {
+            console.log('🔍 Buscando serviços para empresa:', empresaId);
+            const res = await fetch(`/api/chatbot/servicos/${empresaId}`);
+            const data = await res.json();
+            console.log('📦 Resposta serviços:', data);
+
+            if (data.success) {
+                servicosList = data.servicos || data.data || [];
+                console.log(`✅ ${servicosList.length} serviços carregados`);
+            } else {
+                servicosList = [];
+                console.warn('⚠ Nenhum serviço encontrado');
+            }
+        } catch (error) {
+            console.error('❌ Erro ao carregar serviços:', error);
+            servicosList = [];
+        }
+    }
+
+    // ============================================
+    // CARREGAR PROFISSIONAIS (COM DONO)
+    // ============================================
+    async function carregarProfissionais() {
+        try {
+            console.log('🔍 Buscando profissionais para empresa:', empresaId);
+            const res = await fetch(`/api/chatbot/profissionais/${empresaId}`);
+            const data = await res.json();
+            console.log('📦 Resposta profissionais:', data);
+
+            profissionaisList = [];
+
+            if (data.success) {
+                const profs = data.profissionais || data.data || [];
+                console.log(`✅ ${profs.length} profissionais carregados`);
+                for (let p of profs) {
+                    profissionaisList.push({
+                        id: p.id,
+                        nome: p.nome,
+                        comissao_percent: p.comissao_percent || 0,
+                        ativo: p.ativo
+                    });
+                }
+            }
+
+            const donoNome = dadosEmpresa?.nome_dono || 'Dono';
+            const jaExisteDono = profissionaisList.some(p => 
+                p.isDono === true || p.nome.includes('(Dono)') || p.nome.toLowerCase() === 'dono'
+            );
+
+            if (!jaExisteDono) {
+                profissionaisList.push({
+                    id: 'dono_' + Date.now(),
+                    nome: donoNome + ' (Dono)',
+                    comissao_percent: 0,
+                    isDono: true,
+                    ativo: 1
+                });
+                console.log(`✅ Dono "${donoNome}" adicionado como profissional`);
+            }
+
+            console.log(`✅ ${profissionaisList.length} profissionais disponíveis`);
+        } catch (error) {
+            console.error('❌ Erro ao carregar profissionais:', error);
+            profissionaisList = [{
+                id: 'dono_fallback',
+                nome: 'Dono (Proprietário)',
+                comissao_percent: 0,
+                isDono: true,
+                ativo: 1
+            }];
+            console.log('✅ Dono adicionado via fallback');
+        }
+    }
+
+    // ============================================
+    // FUNÇÕES DE MENSAGEM
+    // ============================================
+    function enviarMensagem() {
+        const input = document.getElementById('chatInput');
+        const texto = input.value.trim();
+        if (!texto) return;
+
+        adicionarMensagem(texto, 'user');
+        input.value = '';
+        processarResposta(texto);
+    }
+
+    function adicionarMensagem(texto, tipo, extra = null) {
+        const container = document.getElementById('chatMessages');
+        if (!container) return;
+
+        const div = document.createElement('div');
+        div.className = `message ${tipo}`;
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.innerHTML = tipo === 'bot' ? '<i class="fas fa-robot"></i>' : '<i class="fas fa-user"></i>';
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+
+        const text = document.createElement('div');
+        text.className = 'message-text';
+        text.innerHTML = texto;
+
+        const time = document.createElement('span');
+        time.className = 'message-time';
+        const now = new Date();
+        time.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        content.appendChild(text);
+        if (extra) content.appendChild(extra);
+        content.appendChild(time);
+
+        div.appendChild(avatar);
+        div.appendChild(content);
+        container.appendChild(div);
+
+        container.scrollTop = container.scrollHeight;
+        document.getElementById('chatInput').focus();
+    }
+
+    function adicionarMensagemComBotoes(texto, botoes) {
+        const container = document.getElementById('chatMessages');
+        if (!container) return;
+
+        const div = document.createElement('div');
+        div.className = 'message bot';
+
+        const avatar = document.createElement('div');
+        avatar.className = 'message-avatar';
+        avatar.innerHTML = '<i class="fas fa-robot"></i>';
+
+        const content = document.createElement('div');
+        content.className = 'message-content';
+
+        const text = document.createElement('div');
+        text.className = 'message-text';
+        text.innerHTML = texto;
+
+        const time = document.createElement('span');
+        time.className = 'message-time';
+        const now = new Date();
+        time.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        const botoesDiv = document.createElement('div');
+        botoesDiv.className = 'message-buttons';
+
+        for (let btn of botoes) {
+            const botao = document.createElement('button');
+            botao.className = `message-btn ${btn.primary ? 'btn-primary' : ''}`;
+            botao.textContent = btn.label;
+            botao.onclick = function () {
+                this.parentElement.remove();
+                adicionarMensagem(btn.label, 'user');
+                processarResposta(btn.valor);
+            };
+            botoesDiv.appendChild(botao);
+        }
+
+        content.appendChild(text);
+        content.appendChild(botoesDiv);
+        content.appendChild(time);
+
+        div.appendChild(avatar);
+        div.appendChild(content);
+        container.appendChild(div);
+
+        container.scrollTop = container.scrollHeight;
+        document.getElementById('chatInput').focus();
+    }
+
+    // ============================================
+    // PROCESSAR RESPOSTA
+    // ============================================
+    function processarResposta(texto) {
+        const mensagem = texto.trim().toLowerCase();
+        console.log('📝 Processando:', texto, 'Estado:', estado);
+
+        switch (estado) {
+            case 'aguardando_cliente': {
+                const isSim = mensagem.includes('sim');
+                const isNao = mensagem.includes('não') || mensagem.includes('nao');
+
+                if (isSim) {
+                    isClienteExistente = true;
+                    estado = 'aguardando_telefone_cliente';
+                    adicionarMensagemComDelay(
+                        `Que legal! 👍 ${getMensagemHumanizada('cliente_encontrado')}<br><br>` +
+                        `Digite seu <strong>telefone</strong> com DDD:<br><br><em>Ex: 11999999999</em>`,
+                        'bot', null, 600
+                    );
+                } else if (isNao) {
+                    isClienteExistente = false;
+                    estado = 'aguardando_nome_novo';
+                    adicionarMensagemComDelay(
+                        `Tudo bem! Vamos fazer seu cadastro rapidinho. ✨<br><br>Digite seu <strong>nome completo</strong>:`,
+                        'bot', null, 600
+                    );
+                } else {
+                    adicionarMensagemComBotoes(
+                        'Por favor, escolha uma das opções:',
+                        [
+                            { label: '✅ Sim, já sou cliente', valor: 'sim', primary: true },
+                            { label: '➕ Não, sou novo cliente', valor: 'não', primary: false }
+                        ]
+                    );
+                }
+                break;
+            }
+
+            case 'aguardando_telefone_cliente': {
+                const telefone = texto.replace(/\D/g, '');
+                if (telefone.length >= 10 && telefone.length <= 11) {
+                    telefoneCliente = telefone;
+                    buscarClientePorTelefone(telefoneCliente);
+                } else {
+                    adicionarMensagemComDelay(
+                        '⚠️ Por favor, informe um telefone válido com DDD (ex: 11999999999):',
+                        'bot', null, 500
+                    );
+                }
+                break;
+            }
+
+            case 'aguardando_nome_novo':
+                if (mensagem.length >= 3) {
+                    nomeCliente = texto.trim();
+                    estado = 'aguardando_telefone_novo';
+                    adicionarMensagemComDelay(
+                        `Prazer, <strong>${nomeCliente}</strong>! ✨<br><br>Digite seu <strong>telefone</strong> com DDD:`,
+                        'bot', null, 600
+                    );
+                } else {
+                    adicionarMensagemComDelay(
+                        'Digite seu <strong>nome completo</strong> (mínimo 3 caracteres):',
+                        'bot', null, 500
+                    );
+                }
+                break;
+
+            case 'aguardando_telefone_novo': {
+                const telefone = texto.replace(/\D/g, '');
+                if (telefone.length >= 10 && telefone.length <= 11) {
+                    telefoneCliente = telefone;
+                    cadastrarNovoCliente(nomeCliente, telefoneCliente);
+                } else {
+                    adicionarMensagemComDelay(
+                        '⚠️ Telefone inválido. Digite com DDD (ex: 11999999999):',
+                        'bot', null, 500
+                    );
+                }
+                break;
+            }
+
+            case 'aguardando_servico': {
+                if (servicosList.length === 0) {
+                    adicionarMensagemComDelay(
+                        '❌ Desculpe, não há serviços disponíveis no momento.<br><br>Por favor, entre em contato com a barbearia.',
+                        'bot', null, 600
+                    );
+                    estado = 'inicio';
+                    return;
+                }
+
+                const servicoEncontrado = servicosList.find(s =>
+                    s.nome.toLowerCase().includes(mensagem) ||
+                    mensagem.includes(s.nome.toLowerCase())
+                );
+
+                if (servicoEncontrado) {
+                    agendamentoAtual.servico_id = servicoEncontrado.id;
+                    agendamentoAtual.servico_nome = servicoEncontrado.nome;
+                    agendamentoAtual.valor = parseFloat(servicoEncontrado.valor) || 0;
+                    agendamentoAtual.duracao = servicoEncontrado.duracao || 30;
+
+                    estado = 'aguardando_profissional';
+                    perguntarProfissional();
+                } else {
+                    mostrarServicos();
+                }
+                break;
+            }
+
+            case 'aguardando_profissional': {
+                if (mensagem.includes('qualquer')) {
+                    agendamentoAtual.profissional_id = null;
+                    agendamentoAtual.profissional_nome = 'Qualquer profissional';
+                    estado = 'aguardando_data';
+                    perguntarData();
+                } else {
+                    const profissional = profissionaisList.find(p =>
+                        p.nome.toLowerCase().includes(mensagem) ||
+                        mensagem.includes(p.nome.toLowerCase())
+                    );
+                    if (profissional) {
+                        agendamentoAtual.profissional_id = profissional.isDono ? null : profissional.id;
+                        agendamentoAtual.profissional_nome = profissional.nome;
+                        estado = 'aguardando_data';
+                        perguntarData();
+                    } else {
+                        perguntarProfissional();
+                    }
+                }
+                break;
+            }
+
+            case 'aguardando_data': {
+                const dataSelecionada = texto.match(/\d{4}-\d{2}-\d{2}/);
+                if (dataSelecionada) {
+                    agendamentoAtual.data = dataSelecionada[0];
+                    estado = 'aguardando_horario';
+                    perguntarHorario(agendamentoAtual.data);
+                } else {
+                    adicionarMensagemComDelay(
+                        '⚠️ Por favor, clique em uma data disponível no calendário.',
+                        'bot', null, 500
+                    );
+                }
+                break;
+            }
+
+            case 'aguardando_horario': {
+                const horarioSelecionado = horariosDisponiveis.find(h => h === texto);
+                if (horarioSelecionado) {
+                    agendamentoAtual.hora = horarioSelecionado;
+                    estado = 'confirmando';
+                    confirmarAgendamento();
+                } else {
+                    let textoHorarios = '🕐 <strong>Horários disponíveis:</strong><br><br>';
+                    for (let h of horariosDisponiveis) {
+                        textoHorarios += `• ${h}<br>`;
+                    }
+                    textoHorarios += '<br>Digite o horário que você prefere (ex: 10:00):';
+                    adicionarMensagemComDelay(textoHorarios, 'bot', null, 500);
+                }
+                break;
+            }
+
+            case 'confirmando': {
+                const isSimConfirm = mensagem === 'sim' || mensagem.includes('sim');
+                if (isSimConfirm) {
+                    const msg = getMensagemHumanizada('confirmar');
+                    adicionarMensagemComDelay(msg, 'bot', null, 600);
+                    verificarEConfirmar();
+                } else if (mensagem === 'não' || mensagem === 'nao' || mensagem.includes('não') || mensagem.includes('nao')) {
+                    estado = 'inicio';
+                    agendamentoAtual = {};
+                    const msgCancel = getMensagemHumanizada('cancelar');
+                    adicionarMensagemComDelay(`❌ ${msgCancel}`, 'bot', null, 500);
+                    setTimeout(() => {
+                        const nomeEmpresa = dadosEmpresa?.nome || 'nossa empresa';
+                        const saudacao = getMensagemHumanizada('boas_vindas');
+                        adicionarMensagemComBotoesComDelay(
+                            `${saudacao}<br><br>Seja bem-vindo à <strong>${nomeEmpresa}</strong>! 💇‍♂️<br><br><strong>Você já é cliente?</strong>`,
+                            [
+                                { label: '✅ Sim', valor: 'sim', primary: true },
+                                { label: '➕ Não', valor: 'não', primary: false }
+                            ],
+                            1000
+                        );
+                        estado = 'aguardando_cliente';
+                    }, 1500);
+                } else {
+                    confirmarAgendamento();
+                }
+                break;
+            }
+
+            default:
+                const msgDefault = getMensagemHumanizada('erro');
+                adicionarMensagemComDelay(`⚠️ ${msgDefault}`, 'bot', null, 500);
+                estado = 'inicio';
+                const nomeEmpresa = dadosEmpresa?.nome || 'nossa empresa';
+                setTimeout(() => {
+                    const saudacao = getMensagemHumanizada('boas_vindas');
+                    adicionarMensagemComBotoesComDelay(
+                        `${saudacao}<br><br>Seja bem-vindo à <strong>${nomeEmpresa}</strong>! 💇‍♂️<br><br><strong>Você já é cliente?</strong>`,
+                        [
+                            { label: '✅ Sim', valor: 'sim', primary: true },
+                            { label: '➕ Não', valor: 'não', primary: false }
+                        ],
+                        1000
+                    );
+                    estado = 'aguardando_cliente';
+                }, 1500);
+                break;
+        }
+    }
+
+    // ============================================
+    // BUSCAR CLIENTE POR TELEFONE
+    // ============================================
+    async function buscarClientePorTelefone(telefone) {
+        try {
+            const telefoneLimpo = String(telefone).replace(/\D/g, '');
+            console.log('🔍 Buscando cliente:', telefoneLimpo);
+
+            const res = await fetch('/api/chatbot/cliente/buscar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telefone: telefoneLimpo,
+                    empresaId: empresaId
+                })
+            });
+            const data = await res.json();
+
+            console.log('📦 Resposta busca:', data);
+
+            if (data.success && data.cliente) {
+                clienteAtual = data.cliente;
+                window.clienteAtual = clienteAtual;
+                const msg = getMensagemHumanizada('cliente_encontrado');
+                adicionarMensagemComDelay(
+                    `✅ ${msg}<br><br>Bem-vindo de volta, <strong>${clienteAtual.nome}</strong>! ✨`,
+                    'bot', null, 600
+                );
+                estado = 'aguardando_servico';
+                mostrarServicos();
+            } else {
+                adicionarMensagemComDelay(
+                    '❌ Cliente não encontrado.<br><br>Vamos cadastrar você! 📝<br><br>Digite seu <strong>nome completo</strong>:',
+                    'bot', null, 600
+                );
+                estado = 'aguardando_nome_novo';
+            }
+        } catch (error) {
+            console.error('❌ Erro ao buscar cliente:', error);
+            adicionarMensagemComDelay('❌ Erro ao buscar cliente. Tente novamente.', 'bot', null, 500);
+        }
+    }
+
+    // ============================================
+    // CADASTRAR NOVO CLIENTE
+    // ============================================
+    async function cadastrarNovoCliente(nome, telefone) {
+        try {
+            console.log('📝 Cadastrando cliente:', nome, telefone);
+
+            const res = await fetch('/api/chatbot/cliente/criar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nome: nome,
+                    telefone: telefone,
+                    email: '',
+                    empresaId: empresaId
+                })
+            });
+            const data = await res.json();
+
+            console.log('📦 Resposta cadastro:', data);
+
+            if (data.success) {
+                const resBusca = await fetch('/api/chatbot/cliente/buscar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telefone: telefone,
+                        empresaId: empresaId
+                    })
+                });
+                const dataBusca = await resBusca.json();
+
+                if (dataBusca.success && dataBusca.cliente) {
+                    clienteAtual = dataBusca.cliente;
+                } else {
+                    clienteAtual = { id: data.clienteId, nome: nome, telefone: telefone };
+                }
+                window.clienteAtual = clienteAtual;
+
+                const msg = getMensagemHumanizada('cadastro_sucesso');
+                adicionarMensagemComDelay(
+                    `🎉 ${msg}<br><br>Bem-vindo(a), <strong>${nome}</strong>!<br><br>Vamos prosseguir com seu agendamento.`,
+                    'bot', null, 600
+                );
+                estado = 'aguardando_servico';
+                mostrarServicos();
+            } else {
+                adicionarMensagemComDelay('❌ Erro ao cadastrar cliente. Tente novamente.', 'bot', null, 500);
+                estado = 'inicio';
+            }
+        } catch (error) {
+            console.error('❌ Erro ao cadastrar cliente:', error);
+            adicionarMensagemComDelay('❌ Erro ao cadastrar cliente. Tente novamente.', 'bot', null, 500);
+            estado = 'inicio';
+        }
+    }
+
+    // ============================================
+    // MOSTRAR SERVIÇOS
+    // ============================================
+    function mostrarServicos() {
+        if (servicosList.length === 0) {
+            adicionarMensagemComDelay(
+                '❌ Desculpe, não há serviços disponíveis no momento.',
+                'bot', null, 600
+            );
+            estado = 'inicio';
+            return;
+        }
+
+        const botoes = servicosList.map(s => ({
+            label: `${s.nome} - R$ ${(parseFloat(s.valor) || 0).toFixed(2).replace('.', ',')}`,
+            valor: s.nome
+        }));
+
+        adicionarMensagemComBotoesComDelay('📋 <strong>Escolha o serviço desejado:</strong>', botoes, 800);
+    }
+
+    // ============================================
+    // PERGUNTAR PROFISSIONAL
+    // ============================================
+    function perguntarProfissional() {
+        if (profissionaisList.length === 0) {
+            agendamentoAtual.profissional_id = null;
+            agendamentoAtual.profissional_nome = 'Qualquer profissional';
+            estado = 'aguardando_data';
+            perguntarData();
+            return;
+        }
+
+        const botoes = profissionaisList.map(p => ({ label: p.nome, valor: p.nome }));
+        botoes.push({ label: '👤 Qualquer profissional', valor: 'qualquer' });
+
+        adicionarMensagemComBotoesComDelay(
+            '💇 <strong>Escolha o profissional que deseja atender você:</strong>',
+            botoes, 800
+        );
+    }
+
+    // ============================================
+    // PERGUNTAR DATA
+    // ============================================
+    async function perguntarData() {
+        const hoje = new Date();
+        const mes = hoje.getMonth() + 1;
+        const ano = hoje.getFullYear();
+
+        await carregarDatasDisponiveis(mes, ano);
+
+        if (datasDisponiveis.length === 0) {
+            adicionarMensagemComDelay(
+                '⚠️ Não encontrei datas disponíveis para este mês.<br><br>Tente os próximos dias ou entre em contato com a barbearia.',
+                'bot', null, 600
+            );
+            estado = 'aguardando_data';
+            return;
+        }
+
+        const datasOrdenadas = [...datasDisponiveis].sort();
+        const primeiraData = datasOrdenadas[0];
+        const partes = primeiraData.split('-');
+        const mesData = parseInt(partes[1]);
+        const anoData = parseInt(partes[0]);
+
+        calendarioAtual = new Date(anoData, mesData - 1, 1);
+
+        const calendario = renderizarCalendario();
+        adicionarMensagemComDelay('📅 <strong>Selecione uma data disponível no calendário:</strong>', 'bot', calendario, 800);
+
+        estado = 'aguardando_data';
+    }
+
+    // ============================================
+    // CARREGAR DATAS DISPONÍVEIS
+    // ============================================
+    async function carregarDatasDisponiveis(mes, ano) {
+        const mesAtual = parseInt(mes) || new Date().getMonth() + 1;
+        const anoAtual = parseInt(ano) || new Date().getFullYear();
+
+        try {
+            const res = await fetch('/api/chatbot/datas-disponiveis-mes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    empresaId: empresaId,
+                    mes: mesAtual,
+                    ano: anoAtual
+                })
+            });
+            const data = await res.json();
+
+            if (data.success && data.diasDisponiveis && data.diasDisponiveis.length > 0) {
+                datasDisponiveis = data.diasDisponiveis;
+            } else {
+                datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
+            }
+        } catch (error) {
+            datasDisponiveis = gerarDatasFallback(mesAtual, anoAtual);
+        }
+    }
+
+    function gerarDatasFallback(mes, ano) {
+        const datas = [];
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        for (let i = 0; i <= 15; i++) {
+            const data = new Date(hoje);
+            data.setDate(data.getDate() + i);
+            datas.push(data.toISOString().split('T')[0]);
+        }
+        return datas;
+    }
+
+    // ============================================
+    // RENDERIZAR CALENDÁRIO
+    // ============================================
+    function renderizarCalendario() {
+        const container = document.createElement('div');
+        container.className = 'calendario-container';
+
+        const mes = calendarioAtual.getMonth();
+        const ano = calendarioAtual.getFullYear();
+        const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+        const header = document.createElement('div');
+        header.className = 'calendario-header';
+        header.innerHTML = `
+            <button class="calendario-nav" onclick="mudarMesCalendario(-1)">◀</button>
+            <span style="font-weight:bold;font-size:16px;">${meses[mes]} ${ano}</span>
+            <button class="calendario-nav" onclick="mudarMesCalendario(1)">▶</button>
+        `;
+        container.appendChild(header);
+
+        const semanaDiv = document.createElement('div');
+        semanaDiv.className = 'calendario-semana';
+        for (let d of diasSemana) {
+            const span = document.createElement('span');
+            span.className = 'calendario-dia-semana';
+            span.textContent = d;
+            semanaDiv.appendChild(span);
+        }
+        container.appendChild(semanaDiv);
+
+        const diasDiv = document.createElement('div');
+        diasDiv.className = 'calendario-dias';
+
+        const primeiroDia = new Date(ano, mes, 1);
+        const ultimoDia = new Date(ano, mes + 1, 0);
+        const primeiroDiaSemana = primeiroDia.getDay();
+        const diasNoMes = ultimoDia.getDate();
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const hojeStr = hoje.toISOString().split('T')[0];
+
+        for (let i = 0; i < primeiroDiaSemana; i++) {
+            const vazio = document.createElement('div');
+            vazio.className = 'calendario-dia vazio';
+            diasDiv.appendChild(vazio);
+        }
+
+        for (let dia = 1; dia <= diasNoMes; dia++) {
+            const dataStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+            const isHoje = dataStr === hojeStr;
+            const isDisponivel = datasDisponiveis.includes(dataStr);
+
+            const diaDiv = document.createElement('div');
+            diaDiv.className = 'calendario-dia';
+            diaDiv.textContent = dia;
+
+            if (isDisponivel) {
+                diaDiv.style.cursor = 'pointer';
+                diaDiv.style.backgroundColor = '#10b981';
+                diaDiv.style.color = 'white';
+                diaDiv.style.borderRadius = '50%';
+                diaDiv.style.fontWeight = 'bold';
+                diaDiv.style.width = '36px';
+                diaDiv.style.height = '36px';
+                diaDiv.style.display = 'flex';
+                diaDiv.style.alignItems = 'center';
+                diaDiv.style.justifyContent = 'center';
+
+                (function (dataSelecionada) {
+                    diaDiv.onclick = function () {
+                        adicionarMensagemComDelay('📅 ' + formatarDataBr(dataSelecionada), 'user', null, 300);
+                        agendamentoAtual.data = dataSelecionada;
+                        estado = 'aguardando_horario';
+                        perguntarHorario(dataSelecionada);
+                    };
+                })(dataStr);
+
+                diaDiv.onmouseover = function () {
+                    this.style.transform = 'scale(1.1)';
+                    this.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+                };
+                diaDiv.onmouseout = function () {
+                    this.style.transform = 'scale(1)';
+                    this.style.boxShadow = 'none';
+                };
+            } else {
+                diaDiv.style.color = '#9ca3af';
+                diaDiv.style.width = '36px';
+                diaDiv.style.height = '36px';
+                diaDiv.style.display = 'flex';
+                diaDiv.style.alignItems = 'center';
+                diaDiv.style.justifyContent = 'center';
+            }
+
+            if (isHoje) {
+                diaDiv.style.border = '2px solid #667eea';
+                diaDiv.style.backgroundColor = '#e0e7ff';
+                diaDiv.style.color = '#667eea';
+                diaDiv.style.fontWeight = 'bold';
+            }
+
+            diasDiv.appendChild(diaDiv);
+        }
+
+        container.appendChild(diasDiv);
+
+        const legenda = document.createElement('div');
+        legenda.style.cssText = `
+            display: flex; justify-content: center; gap: 20px;
+            margin-top: 12px; padding-top: 12px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px; color: #6b7280;
+            flex-wrap: wrap;
+        `;
+        legenda.innerHTML = `
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#10b981;margin-right:4px;"></span> Disponível</span>
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e5e7eb;margin-right:4px;"></span> Indisponível</span>
+            <span><span style="display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid #667eea;margin-right:4px;"></span> Hoje</span>
+        `;
+        container.appendChild(legenda);
+
+        return container;
+    }
+
+    // ============================================
+    // MUDAR MÊS DO CALENDÁRIO
+    // ============================================
+    window.mudarMesCalendario = async function (delta) {
+        calendarioAtual.setMonth(calendarioAtual.getMonth() + delta);
+        const mes = calendarioAtual.getMonth() + 1;
+        const ano = calendarioAtual.getFullYear();
+
+        await carregarDatasDisponiveis(mes, ano);
+
+        const containers = document.querySelectorAll('.calendario-container');
+        const ultimoContainer = containers[containers.length - 1];
+        if (ultimoContainer) {
+            const parent = ultimoContainer.closest('.message-content');
+            if (parent) {
+                const novoCalendario = renderizarCalendario();
+                parent.innerHTML = '';
+                const newText = document.createElement('div');
+                newText.className = 'message-text';
+                newText.innerHTML = '📅 <strong>Selecione uma data:</strong>';
+                parent.appendChild(newText);
+                parent.appendChild(novoCalendario);
+                const timeDiv = document.createElement('span');
+                timeDiv.className = 'message-time';
+                timeDiv.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                parent.appendChild(timeDiv);
+            }
+        }
+    };
+
+    // ============================================
+    // PERGUNTAR HORÁRIO
+    // ============================================
+    async function perguntarHorario(data) {
+        try {
+            const body = { empresaId: empresaId, data: data };
+            if (agendamentoAtual.profissional_id && agendamentoAtual.profissional_id !== 'dono_') {
+                body.profissionalId = agendamentoAtual.profissional_id;
+            }
+
+            const res = await fetch('/api/chatbot/horarios-disponiveis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            const result = await res.json();
+
+            if (result.success && result.horarios && result.horarios.length > 0) {
+                let horarios = result.horarios;
+                const hoje = new Date();
+                const hojeStr = hoje.toISOString().split('T')[0];
+                const horaAtual = hoje.getHours();
+                const minutoAtual = hoje.getMinutes();
+
+                if (data === hojeStr) {
+                    horarios = horarios.filter(h => {
+                        const [hNum, mNum] = h.split(':').map(Number);
+                        return hNum > horaAtual || (hNum === horaAtual && mNum >= minutoAtual);
+                    });
+                }
+
+                if (horarios.length === 0) {
+                    adicionarMensagemComDelay(
+                        '⏰ Nenhum horário disponível para hoje.<br><br>Por favor, selecione outra data.',
+                        'bot', null, 600
+                    );
+                    estado = 'aguardando_data';
+                    perguntarData();
+                    return;
+                }
+
+                horariosDisponiveis = horarios;
+                const dataFormatada = formatarDataBr(data);
+                const botoes = horariosDisponiveis.map(h => ({ label: h, valor: h }));
+
+                adicionarMensagemComBotoesComDelay(
+                    `⏰ Para o dia <strong>${dataFormatada}</strong>, escolha o horário desejado:`,
+                    botoes, 600
+                );
+            } else {
+                adicionarMensagemComDelay(
+                    '❌ Não há horários disponíveis para este profissional nesta data.<br><br>Por favor, escolha outra data ou outro profissional.',
+                    'bot', null, 600
+                );
+                estado = 'aguardando_data';
+                perguntarData();
+            }
+        } catch (error) {
+            console.error('Erro ao carregar horários:', error);
+            adicionarMensagemComDelay('❌ Erro ao carregar horários. Tente novamente.', 'bot', null, 500);
+            estado = 'aguardando_data';
+            perguntarData();
+        }
+    }
+
+    // ============================================
+    // CONFIRMAR AGENDAMENTO
+    // ============================================
+    function confirmarAgendamento() {
+        if (!clienteAtual) {
+            adicionarMensagemComDelay('❌ Erro: Cliente não identificado.', 'bot', null, 500);
+            estado = 'inicio';
+            return;
+        }
+        
+        if (!agendamentoAtual.servico_id) {
+            adicionarMensagemComDelay('❌ Erro: Serviço não identificado.', 'bot', null, 500);
+            estado = 'inicio';
+            return;
+        }
+        
+        if (!agendamentoAtual.data || !agendamentoAtual.hora) {
+            adicionarMensagemComDelay('❌ Erro: Data ou hora não selecionados.', 'bot', null, 500);
+            estado = 'inicio';
+            return;
+        }
+
+        const nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
+        const servico = agendamentoAtual.servico_nome || 'Não definido';
+        const valor = parseFloat(agendamentoAtual.valor) || 0;
+        const valorFormatado = valor.toFixed(2).replace('.', ',');
+        const data = formatarDataBr(agendamentoAtual.data);
+        const hora = agendamentoAtual.hora;
+
+        adicionarMensagemComBotoesComDelay(
+            '📋 <strong>Confirme os dados do agendamento:</strong><br><br>' +
+            '👤 <strong>Cliente:</strong> ' + clienteAtual.nome + '<br>' +
+            '📞 <strong>Telefone:</strong> ' + clienteAtual.telefone + '<br>' +
+            '✂️ <strong>Serviço:</strong> ' + servico + '<br>' +
+            '💰 <strong>Valor:</strong> R$ ' + valorFormatado + '<br>' +
+            '⏱️ <strong>Duração:</strong> ' + (agendamentoAtual.duracao || 30) + 'min<br>' +
+            '👨‍💼 <strong>Profissional:</strong> ' + nomeProfissional + '<br>' +
+            '📅 <strong>Data:</strong> ' + data + '<br>' +
+            '⏰ <strong>Horário:</strong> ' + hora + '<br><br>' +
+            '<strong>Deseja confirmar o agendamento?</strong>',
+            [
+                { label: '✅ SIM, confirmar', valor: 'sim', primary: true },
+                { label: '❌ NÃO, cancelar', valor: 'não', primary: false }
+            ],
+            500
+        );
+    }
+
+    // ============================================
+    // VERIFICAR E CONFIRMAR
+    // ============================================
+    async function verificarEConfirmar() {
+        try {
+            const res = await fetch('/api/chatbot/horarios-disponiveis', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    empresaId: empresaId,
+                    profissionalId: agendamentoAtual.profissional_id,
+                    data: agendamentoAtual.data
+                })
+            });
+            const result = await res.json();
+
+            if (result.success && result.horarios && result.horarios.includes(agendamentoAtual.hora)) {
+                await finalizarAgendamento();
+            } else {
+                adicionarMensagemComDelay(
+                    '😔 Puts, alguém acabou de agendar esse horário enquanto você confirmava.<br><br>Mas relaxa, vamos escolher outro:',
+                    'bot', null, 600
+                );
+                estado = 'aguardando_horario';
+                perguntarHorario(agendamentoAtual.data);
+            }
+        } catch (error) {
+            console.error('Erro ao verificar horário:', error);
+            await finalizarAgendamento();
+        }
+    }
+
+    // ============================================
+    // VALIDAR DATA/HORA
+    // ============================================
+    function validarDataHora(data, hora) {
+        if (!data || !hora) {
+            return { valido: false, mensagem: '⚠️ Data e hora são obrigatórias.' };
+        }
+
+        const agora = new Date();
+        const [ano, mes, dia] = data.split('-').map(Number);
+        const [horaNum, minutoNum] = hora.split(':').map(Number);
+
+        const dataSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
+
+        if (dataSelecionada < agora) {
+            const hoje = new Date();
+            const isHoje = dataSelecionada.getDate() === hoje.getDate() &&
+                dataSelecionada.getMonth() === hoje.getMonth() &&
+                dataSelecionada.getFullYear() === hoje.getFullYear();
+
+            let mensagem = '⏰ Não é possível agendar em datas ou horários que já passaram!';
+            if (isHoje) {
+                mensagem = '⏰ Este horário já passou hoje! Por favor, selecione um horário futuro.';
+            } else {
+                mensagem = '⏰ Esta data já passou! Por favor, selecione uma data futura.';
+            }
+
+            return { valido: false, mensagem: mensagem };
+        }
+
+        return { valido: true, mensagem: '✅ Data e hora válidas!' };
+    }
+
+    // ============================================
+    // FINALIZAR AGENDAMENTO
+    // ============================================
+    async function finalizarAgendamento() {
+        try {
+            const validacao = validarDataHora(agendamentoAtual.data, agendamentoAtual.hora);
+            if (!validacao.valido) {
+                adicionarMensagemComDelay(`❌ ${validacao.mensagem}`, 'bot', null, 600);
+                estado = 'aguardando_horario';
+                perguntarHorario(agendamentoAtual.data);
+                return;
+            }
+
+            if (!clienteAtual || !clienteAtual.id) {
+                adicionarMensagemComDelay('❌ Erro: Cliente não identificado.', 'bot', null, 500);
+                estado = 'inicio';
+                return;
+            }
+
+            if (!agendamentoAtual.servico_id) {
+                adicionarMensagemComDelay('❌ Erro: Serviço não identificado.', 'bot', null, 500);
+                estado = 'inicio';
+                return;
+            }
+
+            if (!agendamentoAtual.data || !agendamentoAtual.hora) {
+                adicionarMensagemComDelay('❌ Erro: Data ou horário não selecionados.', 'bot', null, 500);
+                estado = 'inicio';
+                return;
+            }
+
+            let valorFinal = parseFloat(agendamentoAtual.valor) || 0;
+
+            if (valorFinal === 0 && agendamentoAtual.servico_id) {
+                try {
+                    const resServico = await fetch(`/api/chatbot/servico/${agendamentoAtual.servico_id}`);
+                    const dataServico = await resServico.json();
+                    if (dataServico.success && dataServico.servico) {
+                        valorFinal = parseFloat(dataServico.servico.valor) || 0;
+                        if (dataServico.servico.nome) {
+                            agendamentoAtual.servico_nome = dataServico.servico.nome;
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            if (valorFinal === 0 && servicosList.length > 0) {
+                const servicoEncontrado = servicosList.find(s =>
+                    s.id == agendamentoAtual.servico_id ||
+                    s.nome === agendamentoAtual.servico_nome
+                );
+                if (servicoEncontrado) {
+                    valorFinal = parseFloat(servicoEncontrado.valor) || 0;
+                    if (servicoEncontrado.nome) {
+                        agendamentoAtual.servico_nome = servicoEncontrado.nome;
+                    }
+                }
+            }
+
+            agendamentoAtual.valor = valorFinal;
+
+            let empresaIdFinal = empresaId;
+            if (!empresaIdFinal) {
+                const params = new URLSearchParams(window.location.search);
+                empresaIdFinal = params.get('empresa') || '1';
+            }
+
+            let profissionalId = agendamentoAtual.profissional_id;
+            if (profissionalId && typeof profissionalId === 'string' && profissionalId.includes('dono')) {
+                profissionalId = null;
+            }
+            if (agendamentoAtual.profissional_nome === 'Qualquer profissional') {
+                profissionalId = null;
+            }
+
+            const body = {
+                clienteId: parseInt(clienteAtual.id),
+                servicoId: parseInt(agendamentoAtual.servico_id),
+                profissionalId: profissionalId ? parseInt(profissionalId) : null,
+                data: agendamentoAtual.data,
+                hora: agendamentoAtual.hora,
+                empresaId: parseInt(empresaIdFinal),
+                valor: valorFinal,
+                servicoNome: agendamentoAtual.servico_nome || '',
+                origem: 'chatbot'
+            };
+
+            console.log('📤 Enviando agendamento:', body);
+
+            const res = await fetch('/api/chatbot/agendar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+
+            const result = await res.json();
+
+            if (result.success) {
+                const dataFormatada = formatarDataBr(agendamentoAtual.data);
+                const valorExibicao = parseFloat(agendamentoAtual.valor) || 0;
+                const valorFinalFormatado = valorExibicao.toFixed(2).replace('.', ',');
+                const msgSucesso = getMensagemHumanizada('sucesso');
+
+                adicionarMensagemComDelay(
+                    `✅ <strong>AGENDAMENTO CONFIRMADO, ${clienteAtual.nome}!</strong><br><br>` +
+                    `${msgSucesso}<br><br>` +
+                    '📋 <strong>Resumo:</strong><br>' +
+                    '📅 Data: ' + dataFormatada + ' às ' + agendamentoAtual.hora + '<br>' +
+                    '👨‍💼 Profissional: ' + (agendamentoAtual.profissional_nome || 'Não definido') + '<br>' +
+                    '✂️ Serviço: ' + agendamentoAtual.servico_nome + '<br>' +
+                    '💰 Valor: R$ ' + valorFinalFormatado + '<br><br>' +
+                    '🔔 Você receberá um lembrete próximo ao horário.<br><br>' +
+                    'Obrigado por escolher a ' + (dadosEmpresa?.nome || 'nossa barbearia') + '! ✨',
+                    'bot', null, 800
+                );
+                estado = 'inicio';
+                agendamentoAtual = {};
+            } else {
+                const msgErro = getMensagemHumanizada('erro');
+                adicionarMensagemComDelay(
+                    `❌ ${msgErro}<br><br>${result.message || 'Erro desconhecido'}<br><br>Tente novamente.`,
+                    'bot', null, 600
+                );
+                estado = 'inicio';
+            }
+        } catch (error) {
+            console.error('❌ Erro ao finalizar agendamento:', error);
+            const msgErro = getMensagemHumanizada('erro');
+            adicionarMensagemComDelay(`❌ ${msgErro}`, 'bot', null, 500);
+            estado = 'inicio';
+        }
+    }
+
+    // ============================================
+    // FORMATAR DATA BR
+    // ============================================
+    function formatarDataBr(dataStr) {
+        if (!dataStr) return '-';
+        try {
+            if (typeof dataStr === 'string' && dataStr.includes('-')) {
+                const partes = dataStr.split('-');
+                if (partes.length === 3) {
+                    return partes[2] + '/' + partes[1] + '/' + partes[0];
+                }
+            }
+            return dataStr;
+        } catch {
+            return dataStr;
+        }
+    }
+
+    // ============================================
+    // EXPORTAR FUNÇÕES GLOBAIS
+    // ============================================
+    window.enviarMensagem = enviarMensagem;
+    window.mudarMesCalendario = window.mudarMesCalendario;
+    window.empresaId = empresaId;
+    window.clienteAtual = clienteAtual;
+
+    console.log('✅ chatbot.js carregado com sucesso! (VERSÃO COMPLETA)');
+    </script>
+
+    <!-- ============================================ -->
+    <!-- SISTEMA DE ANÚNCIOS                         -->
+    <!-- ============================================ -->
+    <script>
+    // ============================================
+    // 📢 SISTEMA DE ANÚNCIOS COMPLETO COM ADS
+    // ============================================
+    (function() {
+        console.log('📢 ANÚNCIOS COM ADS INTEGRADO INICIANDO...');
+
+        const ads = [
+            { 
+                id: 1,
+                empresa: 'Mercado do Zé', 
+                descricao: '10% OFF com código SEEAGENDE', 
+                cor: '#f59e0b', 
+                emoji: '🛒', 
+                link: 'https://mercadodoze.com.br',
+                categoria: 'varejo'
+            },
+            { 
+                id: 2,
+                empresa: 'Pizzaria do João', 
+                descricao: '2ª pizza com 50% OFF!', 
+                cor: '#ef4444', 
+                emoji: '🍕', 
+                link: 'https://pizzariadojoao.com.br',
+                categoria: 'alimentacao'
+            },
+            { 
+                id: 3,
+                empresa: 'Auto Center Express', 
+                descricao: 'Revisão completa com 20% OFF', 
+                cor: '#3b82f6', 
+                emoji: '🚗', 
+                link: 'https://autocenter.com.br',
+                categoria: 'automotivo'
+            },
+            { 
+                id: 4,
+                empresa: 'Academia Fitness Gold', 
+                descricao: 'Matrícula grátis + 1 mês', 
+                cor: '#22c55e', 
+                emoji: '💪', 
+                link: 'https://academiafitness.com.br',
+                categoria: 'saude'
+            },
+            { 
+                id: 5,
+                empresa: 'Drogaria Popular', 
+                descricao: 'Medicamentos com até 30% OFF', 
+                cor: '#ec4899', 
+                emoji: '💊', 
+                link: 'https://drogariapopular.com.br',
+                categoria: 'saude'
+            }
+        ];
+
+        let idx = 0;
+        let empresaAtualId = null;
+
+function registrarEventoAdsBackend(tipo, adId, adEmpresa, adCategoria) {
+    // 🔥 PEGAR EMPRESA DE VÁRIAS FONTES
+    let empresaId = null;
+    
+    // 1. Tentar da variável global da página principal
+    if (typeof window._empresaId !== 'undefined' && window._empresaId) {
+        empresaId = window._empresaId;
+        console.log('📢 Empresa da window._empresaId:', empresaId);
+    }
+    
+    // 2. Tentar da variável do chatbot
+    if (!empresaId && typeof empresaIdGlobal !== 'undefined' && empresaIdGlobal) {
+        empresaId = empresaIdGlobal;
+        console.log('📢 Empresa da empresaIdGlobal:', empresaId);
+    }
+    
+    // 3. Tentar da URL
+    if (!empresaId) {
+        const params = new URLSearchParams(window.location.search);
+        empresaId = params.get('empresa') || null;
+        console.log('📢 Empresa da URL:', empresaId);
+    }
+    
+    // 4. Tentar do localStorage
+    if (!empresaId) {
+        try {
+            const salva = localStorage.getItem('chatbot_empresa_id');
+            if (salva) {
+                empresaId = salva;
+                console.log('📢 Empresa do localStorage:', empresaId);
+            }
+        } catch(e) {}
+    }
+    
+    // 5. Tentar do meta tag
+    if (!empresaId) {
+        const meta = document.querySelector('meta[name="empresa-id"]');
+        if (meta) {
+            empresaId = meta.getAttribute('content');
+            console.log('📢 Empresa do meta:', empresaId);
+        }
+    }
+    
+    // 🔥 SE NÃO TIVER, NÃO REGISTRA
+    if (!empresaId) {
+        console.error('❌ NENHUMA EMPRESA ENCONTRADA!');
+        return;
+    }
+    
+    const empresaIdInt = parseInt(empresaId);
+    if (isNaN(empresaIdInt) || empresaIdInt <= 0) {
+        console.error('❌ empresa_id inválido:', empresaId);
+        return;
+    }
+    
+    // 🔥 PEGAR CLIENTE
+    let clienteId = null;
+    try {
+        if (window.clienteAtual && window.clienteAtual.id) {
+            clienteId = window.clienteAtual.id;
+        } else if (typeof clienteAtual !== 'undefined' && clienteAtual && clienteAtual.id) {
+            clienteId = clienteAtual.id;
+        }
+    } catch(e) {}
+    
+    const campanha = `anuncio_${adEmpresa.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    
+    const data = {
+        empresa_id: empresaIdInt,
+        campanha: campanha,
+        origem: 'chatbot_anuncio',
+        tipo: tipo,
+        cliente_id: clienteId ? parseInt(clienteId) : null,
+        valor: 0,
+        custo: 0
+    };
+    
+    console.log('📤 ENVIANDO ADS:', JSON.stringify(data, null, 2));
+    
+    fetch('/api/chatbot/registrar-anuncio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(result => {
+        if (result.success) {
+            console.log(`✅ ADS SALVO! ${tipo} | ${adEmpresa} | Empresa: ${empresaIdInt}`);
+        } else {
+            console.error('❌ Falha ao salvar ADS:', result);
+        }
+    })
+    .catch(err => {
+        console.error('❌ Erro na requisição:', err);
+    });
+}
+
+        // ============================================
+        // MOSTRAR ANÚNCIO
+        // ============================================
+        function mostrarAnuncio() {
+            const container = document.getElementById('chatMessages');
+            if (!container) {
+                setTimeout(mostrarAnuncio, 500);
+                return;
+            }
+
+            container.querySelectorAll('.ad-embed').forEach(el => el.remove());
+
+            const ad = ads[idx % ads.length];
+            idx++;
+
+            registrarEventoAdsBackend('visualizacao', ad.id, ad.empresa, ad.categoria);
+
+            const div = document.createElement('div');
+            div.className = 'ad-embed';
+            div.dataset.adId = ad.id;
+            div.dataset.adEmpresa = ad.empresa;
+            div.style.cssText = `
+                background: linear-gradient(135deg, ${ad.cor}20, ${ad.cor}05);
+                border: 2px solid ${ad.cor}50;
+                border-radius: 14px;
+                padding: 14px 18px;
+                margin: 0 0 12px 0;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 16px ${ad.cor}20;
+                width: 100%;
+                box-sizing: border-box;
+                animation: fadeIn 0.5s ease;
+            `;
+            div.innerHTML = `
+                <div style="display:flex;align-items:center;gap:14px;">
+                    <span style="font-size:32px;flex-shrink:0;">${ad.emoji}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;font-size:15px;color:${ad.cor};">${ad.empresa}</div>
+                        <div style="font-size:13px;color:#4b5563;margin-top:2px;">${ad.descricao}</div>
+                    </div>
+                    <span style="background:${ad.cor};color:white;padding:3px 12px;border-radius:14px;font-size:9px;font-weight:700;flex-shrink:0;">📢 Anúncio</span>
+                </div>
+                <div style="font-size:8px;color:${ad.cor};opacity:0.3;text-align:right;margin-top:2px;">
+                    Clique para saber mais →
+                </div>
+            `;
+
+            div.addEventListener('click', function(e) {
+                e.stopPropagation();
+                
+                const adId = this.dataset.adId;
+                const adEmpresa = this.dataset.adEmpresa;
+                const adObj = ads.find(a => a.id == adId);
+                
+                console.log(`👆 Clique no anúncio: ${adEmpresa}`);
+                
+                registrarEventoAdsBackend('clique', adId, adEmpresa, adObj?.categoria || 'outros');
+                
+                if (adObj && adObj.link) {
+                    window.open(adObj.link, '_blank');
+                }
+            });
+
+            const firstMessage = container.querySelector('.message');
+            if (firstMessage) {
+                container.insertBefore(div, firstMessage);
+            } else {
+                container.appendChild(div);
+            }
+
+            console.log(`✅ Anúncio exibido: ${ad.empresa}`);
+        }
+
+        // ============================================
+        // INICIALIZAR
+        // ============================================
+        function initAds() {
+            const params = new URLSearchParams(window.location.search);
+            empresaAtualId = params.get('empresa') || null;
+            console.log(`📢 Empresa atual: ${empresaAtualId || 'não identificada'}`);
+
+            setTimeout(mostrarAnuncio, 3000);
+            setInterval(mostrarAnuncio, 15000);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initAds);
+        } else {
+            initAds();
+        }
+
+        const observer = new MutationObserver(function() {
+            const container = document.getElementById('chatMessages');
+            if (container && container.querySelectorAll('.ad-embed').length === 0) {
+                const msgs = container.querySelectorAll('.message');
+                if (msgs.length >= 1) {
+                    mostrarAnuncio();
+                }
+            }
+        });
+
+        setTimeout(() => {
+            const container = document.getElementById('chatMessages');
+            if (container) {
+                observer.observe(container, { childList: true, subtree: true });
+            }
+        }, 2000);
+
+        window.registrarEventoAdsBackend = registrarEventoAdsBackend;
+        window.mostrarAnuncio = mostrarAnuncio;
+
+        console.log('📢 Sistema de Anúncios carregado!');
+    })();
+    </script>
+</body>
 </html>

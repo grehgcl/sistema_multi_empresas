@@ -561,3 +561,70 @@ body {
         font-size: 0.8125rem !important;
     }
 }
+
+/* ============================================
+   ANÚNCIOS - ESTILOS
+   ============================================ */
+
+.ad-banner {
+    animation: slideInAd 0.6s ease;
+    position: relative;
+    z-index: 5;
+}
+
+@keyframes slideInAd {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.ad-banner:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 8px 30px rgba(102,126,234,0.3) !important;
+}
+
+.ad-header {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* ===== MODO ESCURO ===== */
+@media (prefers-color-scheme: dark) {
+    .ad-banner {
+        border-color: rgba(255,255,255,0.1) !important;
+    }
+    .ad-banner div[style*="color: var(--text-secondary)"] {
+        color: #a8a8a8 !important;
+    }
+}
+
+/* ===== RESPONSIVO ===== */
+@media (max-width: 480px) {
+    .ad-banner {
+        padding: 12px 14px !important;
+        margin: 6px 0 10px 0 !important;
+        border-radius: 12px !important;
+    }
+    .ad-banner span[style*="font-size:32px"] {
+        font-size: 24px !important;
+    }
+    .ad-banner div[style*="font-weight:700;font-size:15px"] {
+        font-size: 13px !important;
+    }
+    .ad-banner div[style*="font-size:13px"] {
+        font-size: 12px !important;
+    }
+    .ad-banner span[style*="padding:4px 12px"] {
+        padding: 3px 10px !important;
+        font-size: 9px !important;
+    }
+}   

@@ -20,6 +20,15 @@ require('dotenv').config();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
 
+// 🔥 DEBUG
+console.log('🔍 ============================================');
+console.log('🔍 CARREGANDO VARIÁVEIS DE AMBIENTE');
+console.log('🔍 ============================================');
+console.log('PAYMENT_MODE:', process.env.PAYMENT_MODE);
+console.log('MERCADOPAGO_ACCESS_TOKEN:', process.env.MERCADOPAGO_ACCESS_TOKEN ? '✅ Presente' : '❌ Ausente');
+console.log('MERCADOPAGO_ACCESS_TOKEN (primeiros 10):', process.env.MERCADOPAGO_ACCESS_TOKEN?.substring(0, 10));
+console.log('🔍 ============================================');
+
 // ============================================
 // CARREGAR JOBS
 // ============================================
@@ -31,6 +40,7 @@ try {
 } catch (error) {
     console.error('❌ Erro ao carregar job de lembretes de pagamento:', error.message);
 }
+
 // ============================================
 // IMPORTS DAS PARTES EXTRATÍDAS
 // ============================================
@@ -144,53 +154,167 @@ app.use((req, res, next) => {
 });
 
 // ============================================================
-// ROTAS (TUDO EXTRAÍDO!) - APENAS UMA VEZ!
+// ROTAS - VERSÃO CORRIGIDA (SEM DUPLICAÇÃO)
 // ============================================================
 
-// 🔥 ROTAS PRINCIPAIS (via index.js)
-const routes = require('./server/routes');
-app.use('/api', routes);
+console.log('📋 REGISTRANDO ROTAS...');
 
-// 🔥 ROTAS INDIVIDUAIS (PARA GARANTIR QUE FUNCIONAM)
-const empresasRoutes = require('./server/routes/empresas.routes');
-app.use('/api/empresa', empresasRoutes);
-
-const chatbotRoutes = require('./server/routes/chatbot.routes');
-app.use('/api/chatbot', chatbotRoutes);
-
-// const adminRoutes = require('./server/routes/admin.routes');
-// app.use('/api/admin', adminRoutes);
-
-const clientesRoutes = require('./server/routes/clientes.routes');
-app.use('/api/clientes', clientesRoutes);
-
-const servicosRoutes = require('./server/routes/servicos.routes');
-app.use('/api/servicos', servicosRoutes);
-
-const agendamentosRoutes = require('./server/routes/agendamentos.routes');
-app.use('/api/agendamentos', agendamentosRoutes);
-
-const profissionaisRoutes = require('./server/routes/profissionais.routes');
-app.use('/api/profissionais', profissionaisRoutes);
-
-const financeiroRoutes = require('./server/routes/financeiro.routes');
-app.use('/api/financeiro', financeiroRoutes);
-
-const despesasRoutes = require('./server/routes/despesas.routes');
-app.use('/api/despesas', despesasRoutes);
-
-const horariosRoutes = require('./server/routes/horarios.routes');
-app.use('/api/horarios', horariosRoutes);
-
-// WhatsApp
-const whatsappRoutes = require('./server/routes/whatsapp.routes');
-app.use('/api/empresa/whatsapp', whatsappRoutes);
-app.use('/api/whatsapp', whatsappRoutes);
 // ============================================
-// ROTAS DE FIADOS
+// 1. ROTAS DE AUTENTICAÇÃO (PÚBLICAS)
 // ============================================
-const fiadosRoutes = require('./server/routes/fiados.routes');
-app.use('/api/fiados', fiadosRoutes);
+try {
+    const authRoutes = require('./server/routes/auth.routes');
+    app.use('/api/auth', authRoutes);
+    console.log('✅ /api/auth registrado');
+} catch (err) {
+    console.error('❌ Erro em auth:', err.message);
+}
+
+// ============================================
+// 2. ROTAS DE PAGAMENTO (PÚBLICAS + WEBHOOK)
+// ============================================
+try {
+    const pagamentoRoutes = require('./server/routes/pagamento.routes');
+    app.use('/api/pagamento', pagamentoRoutes);
+    console.log('✅ /api/pagamento registrado');
+} catch (err) {
+    console.error('❌ Erro em pagamento:', err.message);
+}
+
+// ============================================
+// 3. ROTAS DE PLANOS (PÚBLICAS)
+// ============================================
+try {
+    const planosRoutes = require('./server/routes/planos.routes');
+    app.use('/api/planos', planosRoutes);
+    console.log('✅ /api/planos registrado');
+} catch (err) {
+    console.error('❌ Erro em planos:', err.message);
+}
+
+// ============================================
+// 4. CHATBOT (PÚBLICO - NÃO EXIGE AUTENTICAÇÃO) ⭐
+// ============================================
+try {
+    const chatbotRoutes = require('./server/routes/chatbot.routes');
+    
+    app.use('/api/chatbot', chatbotRoutes);
+    console.log('✅ /api/chatbot registrado (PÚBLICO)');
+    
+    // 🔥🔥🔥 ADICIONE ESTA LINHA 🔥🔥🔥
+    app.use('/chatbot', chatbotRoutes);
+    console.log('✅ /chatbot registrado (links personalizados)');
+    
+} catch (err) {
+    console.error('❌ Erro ao carregar chatbot:', err.message);
+}
+// ============================================
+// 5. ROTAS PROTEGIDAS (EXIGEM AUTENTICAÇÃO)
+// ============================================
+
+// ADMIN
+try {
+    const adminRoutes = require('./server/routes/admin.routes');
+    app.use('/api/admin', auth, adminRoutes);
+    console.log('✅ /api/admin registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em admin:', err.message);
+}
+
+// EMPRESAS
+try {
+    const empresasRoutes = require('./server/routes/empresas.routes');
+    app.use('/api/empresa', auth, empresasRoutes);
+    console.log('✅ /api/empresa registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em empresas:', err.message);
+}
+
+// CLIENTES
+try {
+    const clientesRoutes = require('./server/routes/clientes.routes');
+    app.use('/api/clientes', auth, clientesRoutes);
+    console.log('✅ /api/clientes registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em clientes:', err.message);
+}
+
+// SERVIÇOS
+try {
+    const servicosRoutes = require('./server/routes/servicos.routes');
+    app.use('/api/servicos', auth, servicosRoutes);
+    console.log('✅ /api/servicos registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em servicos:', err.message);
+}
+
+// AGENDAMENTOS
+try {
+    const agendamentosRoutes = require('./server/routes/agendamentos.routes');
+    app.use('/api/agendamentos', auth, agendamentosRoutes);
+    console.log('✅ /api/agendamentos registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em agendamentos:', err.message);
+}
+
+// PROFISSIONAIS
+try {
+    const profissionaisRoutes = require('./server/routes/profissionais.routes');
+    app.use('/api/profissionais', auth, profissionaisRoutes);
+    console.log('✅ /api/profissionais registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em profissionais:', err.message);
+}
+
+// FINANCEIRO
+try {
+    const financeiroRoutes = require('./server/routes/financeiro.routes');
+    app.use('/api/financeiro', auth, financeiroRoutes);
+    console.log('✅ /api/financeiro registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em financeiro:', err.message);
+}
+
+// DESPESAS
+try {
+    const despesasRoutes = require('./server/routes/despesas.routes');
+    app.use('/api/despesas', auth, despesasRoutes);
+    console.log('✅ /api/despesas registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em despesas:', err.message);
+}
+
+// HORÁRIOS
+try {
+    const horariosRoutes = require('./server/routes/horarios.routes');
+    app.use('/api/horarios', auth, horariosRoutes);
+    console.log('✅ /api/horarios registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em horarios:', err.message);
+}
+
+// WHATSAPP
+try {
+    const whatsappRoutes = require('./server/routes/whatsapp.routes');
+    app.use('/api/empresa/whatsapp', auth, whatsappRoutes);
+    app.use('/api/whatsapp', auth, whatsappRoutes);
+    console.log('✅ /api/whatsapp registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em whatsapp:', err.message);
+}
+
+// FIADOS
+try {
+    const fiadosRoutes = require('./server/routes/fiados.routes');
+    app.use('/api/fiados', auth, fiadosRoutes);
+    console.log('✅ /api/fiados registrado (protegido)');
+} catch (err) {
+    console.error('❌ Erro em fiados:', err.message);
+}
+
+console.log('✅ TODAS AS ROTAS REGISTRADAS!');
+console.log('📌 CHATBOT: PÚBLICO (não exige login)');
+console.log('📌 DEMAIS ROTAS: PROTEGIDAS (exigem login)');
 
 // ============================================
 // FUNÇÃO AUXILIAR
@@ -334,20 +458,72 @@ setTimeout(() => {
 
         console.log('✅ Tabela configuracoes verificada/criada');
 
-        // Inserir valor padrão se não existir
-        const sqlInsert = isProduction
-            ? `INSERT INTO configuracoes (chave, valor) VALUES ('payment_mode', 'simulation') ON CONFLICT (chave) DO NOTHING`
-            : `INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES ('payment_mode', 'simulation')`;
+        const envMode = process.env.PAYMENT_MODE || 'real';
+        console.log(`📊 Modo de pagamento do .env: ${envMode}`);
 
-        db.run(sqlInsert, [], (err) => {
+        const sqlUpsert = isProduction
+            ? `INSERT INTO configuracoes (chave, valor) 
+               VALUES ('payment_mode', ?) 
+               ON CONFLICT (chave) DO UPDATE SET valor = ?`
+            : `INSERT OR REPLACE INTO configuracoes (chave, valor) 
+               VALUES ('payment_mode', ?)`;
+
+        db.run(sqlUpsert, isProduction ? [envMode, envMode] : [envMode], function(err) {
             if (err) {
-                console.error('❌ Erro ao inserir configuração padrão:', err);
+                console.error('❌ Erro ao atualizar configuração:', err);
             } else {
-                console.log('✅ Configuração payment_mode = simulation');
+                console.log(`✅ Configuração payment_mode = ${envMode} (sincronizado com .env)`);
             }
         });
     });
 }, 1000);
+
+// ============================================
+// 🆕 CRIAR TABELA DE TRANSAÇÕES DE PAGAMENTO
+// ============================================
+setTimeout(() => {
+    console.log('🔧 Verificando tabela transacoes_pagamento...');
+
+    const sqlTransacoes = isProduction
+        ? `CREATE TABLE IF NOT EXISTS transacoes_pagamento (
+            id SERIAL PRIMARY KEY,
+            empresa_id INTEGER NOT NULL,
+            plano_id TEXT NOT NULL,
+            plano_nome TEXT NOT NULL,
+            valor REAL NOT NULL,
+            metodo TEXT NOT NULL,
+            pagamento_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            qr_code TEXT,
+            qr_code_base64 TEXT,
+            boleto_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`
+        : `CREATE TABLE IF NOT EXISTS transacoes_pagamento (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empresa_id INTEGER NOT NULL,
+            plano_id TEXT NOT NULL,
+            plano_nome TEXT NOT NULL,
+            valor REAL NOT NULL,
+            metodo TEXT NOT NULL,
+            pagamento_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            qr_code TEXT,
+            qr_code_base64 TEXT,
+            boleto_url TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`;
+
+    db.run(sqlTransacoes, [], (err) => {
+        if (err) {
+            console.error('❌ Erro ao criar tabela transacoes_pagamento:', err);
+        } else {
+            console.log('✅ Tabela transacoes_pagamento verificada/criada');
+        }
+    });
+}, 1500);
 
 // ============================================================
 // CRIAR SUPER ADMIN E EMPRESA TESTE
@@ -390,136 +566,7 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
         });
     }
 });
-// ============================================================
-// ROTAS (TUDO EXTRAÍDO!) - VERSÃO CORRIGIDA
-// ============================================================
 
-console.log('📋 REGISTRANDO ROTAS...');
-
-// 1. ROTAS PRINCIPAIS (via index.js)
-try {
-    const routes = require('./server/routes');
-    app.use('/api', routes);
-    console.log('✅ /api registrado via index.js');
-} catch (err) {
-    console.error('❌ Erro ao carregar /api:', err.message);
-}
-
-// 2. CHATBOT - FORÇADO DIRETAMENTE (IGNORANDO O INDEX)
-try {
-    const chatbotRoutes = require('./server/routes/chatbot.routes');
-    app.use('/api/chatbot', chatbotRoutes);
-    console.log('✅ /api/chatbot registrado DIRETAMENTE');
-    
-    // 🔥 VERIFICAR SE A ROTA /horarios-disponiveis EXISTE
-    let hasHorarios = false;
-    if (chatbotRoutes.stack) {
-        chatbotRoutes.stack.forEach(layer => {
-            if (layer.route && layer.route.path === '/horarios-disponiveis') {
-                hasHorarios = true;
-                console.log('   ✅ Rota /horarios-disponiveis ENCONTRADA');
-            }
-        });
-    }
-    if (!hasHorarios) {
-        console.log('   ⚠️ Rota /horarios-disponiveis NÃO encontrada no chatbot.routes.js');
-    }
-} catch (err) {
-    console.error('❌ Erro ao carregar chatbot:', err.message);
-}
-
-// 3. EMPRESAS
-try {
-    const empresasRoutes = require('./server/routes/empresas.routes');
-    app.use('/api/empresa', empresasRoutes);
-    console.log('✅ /api/empresa registrado');
-} catch (err) {
-    console.error('❌ Erro em empresas:', err.message);
-}
-
-// 4. ADMIN
-try {
-    const adminRoutes = require('./server/routes/admin.routes');
-    app.use('/api/admin', adminRoutes);
-    console.log('✅ /api/admin registrado');
-} catch (err) {
-    console.error('❌ Erro em admin:', err.message);
-}
-
-// 5. CLIENTES
-try {
-    const clientesRoutes = require('./server/routes/clientes.routes');
-    app.use('/api/clientes', clientesRoutes);
-    console.log('✅ /api/clientes registrado');
-} catch (err) {
-    console.error('❌ Erro em clientes:', err.message);
-}
-
-// 6. SERVIÇOS
-try {
-    const servicosRoutes = require('./server/routes/servicos.routes');
-    app.use('/api/servicos', servicosRoutes);
-    console.log('✅ /api/servicos registrado');
-} catch (err) {
-    console.error('❌ Erro em servicos:', err.message);
-}
-
-// 7. AGENDAMENTOS
-try {
-    const agendamentosRoutes = require('./server/routes/agendamentos.routes');
-    app.use('/api/agendamentos', agendamentosRoutes);
-    console.log('✅ /api/agendamentos registrado');
-} catch (err) {
-    console.error('❌ Erro em agendamentos:', err.message);
-}
-
-// 8. PROFISSIONAIS
-try {
-    const profissionaisRoutes = require('./server/routes/profissionais.routes');
-    app.use('/api/profissionais', profissionaisRoutes);
-    console.log('✅ /api/profissionais registrado');
-} catch (err) {
-    console.error('❌ Erro em profissionais:', err.message);
-}
-
-// 9. FINANCEIRO
-try {
-    const financeiroRoutes = require('./server/routes/financeiro.routes');
-    app.use('/api/financeiro', financeiroRoutes);
-    console.log('✅ /api/financeiro registrado');
-} catch (err) {
-    console.error('❌ Erro em financeiro:', err.message);
-}
-
-// 10. DESPESAS
-try {
-    const despesasRoutes = require('./server/routes/despesas.routes');
-    app.use('/api/despesas', despesasRoutes);
-    console.log('✅ /api/despesas registrado');
-} catch (err) {
-    console.error('❌ Erro em despesas:', err.message);
-}
-
-// 11. HORÁRIOS
-try {
-    const horariosRoutes = require('./server/routes/horarios.routes');
-    app.use('/api/horarios', horariosRoutes);
-    console.log('✅ /api/horarios registrado');
-} catch (err) {
-    console.error('❌ Erro em horarios:', err.message);
-}
-
-// 12. WHATSAPP
-try {
-    const whatsappRoutes = require('./server/routes/whatsapp.routes');
-    app.use('/api/empresa/whatsapp', whatsappRoutes);
-    app.use('/api/whatsapp', whatsappRoutes);
-    console.log('✅ /api/whatsapp registrado');
-} catch (err) {
-    console.error('❌ Erro em whatsapp:', err.message);
-}
-
-console.log('✅ TODAS AS ROTAS REGISTRADAS!');
 // ============================================================
 // CRIAR EMPRESA DE TESTE
 // ============================================================
@@ -674,14 +721,7 @@ app.use((err, req, res, next) => {
         error: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
-// Adicionar antes do app.listen
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime()
-    });
-});
+
 // ============================================================
 // INICIAR SERVIDOR
 // ============================================================
@@ -700,6 +740,7 @@ app.listen(PORT, HOST, () => {
     console.log(`\n📱 WhatsApp: ${process.env.WHATSAPP_ENABLED === 'true' ? '✅ ATIVADO' : '❌ DESABILITADO'}`);
     console.log(`\n✅ Todas as rotas foram extraídas para server/routes/`);
     console.log(`📁 Total de arquivos de rotas: 13\n`);
+    console.log(`📌 CHATBOT DISPONÍVEL EM: /api/chatbot (PÚBLICO)`);
 });
 
 // ============================================================

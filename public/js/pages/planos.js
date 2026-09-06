@@ -1,34 +1,117 @@
+// public/js/pages/planos.js
 // ============================================
-// PLANOS.JS - VERSÃO SIMPLIFICADA (2 PLANOS)
-// ULTIMA ATUALIZACAO: 22/08/2026
+// PLANOS.JS - SEE&AGENDE
+// Versão melhorada com pagamento real
 // ============================================
 
 let periodoSelecionado = 'mensal';
-let modoPagamento = 'simulation';
-
+let modoPagamento = null;
 // ============================================
-// PLANOS DISPONÍVEIS (SIMPLIFICADO)
+// TOAST NOTIFICATIONS
 // ============================================
-
+function showToast(message, type = 'success') {
+    // Remover toasts existentes
+    const existingToasts = document.querySelectorAll('.custom-toast');
+    existingToasts.forEach(t => t.remove());
+    
+    const toast = document.createElement('div');
+    toast.className = 'custom-toast';
+    
+    const colors = {
+        success: '#22c55e',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+    
+    toast.style.cssText = `
+        position: fixed;
+        top: 30px;
+        right: 30px;
+        padding: 18px 28px;
+        background: ${colors[type] || '#22c55e'};
+        color: white;
+        border-radius: 14px;
+        font-weight: 600;
+        font-size: 15px;
+        z-index: 99999;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+        animation: slideInRight 0.4s ease;
+        max-width: 450px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        border: 1px solid rgba(255,255,255,0.15);
+        backdrop-filter: blur(10px);
+    `;
+    
+    toast.innerHTML = `
+        <span style="font-size: 24px;">${icons[type] || '✅'}</span>
+        <span>${message}</span>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Adicionar estilo de animação se não existir
+    if (!document.getElementById('toast-styles')) {
+        const style = document.createElement('style');
+        style.id = 'toast-styles';
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Remover após 4 segundos
+    setTimeout(() => {
+        toast.style.animation = 'fadeOut 0.3s ease';
+        setTimeout(() => {
+            if (toast.parentNode) toast.remove();
+        }, 300);
+    }, 4000);
+}
 const PLANOS_CONFIG = {
-    trial: {
-        id: 'trial',
-        nome: 'Trial (Starter)',
-        valor_mensal: 0,
-        valor_anual: 0,
+    teste: {
+        id: 'teste',
+        nome: '💰 Teste R$ 1,00',
+        valor_mensal: 1.00,
+        valor_anual: 12.00,
         profs: 1,
-        agendamentos: '100/mês',
+        agendamentos: '10/mês',
+        cor: '#10b981',
         popular: false,
-        cor: '#6b7280',
         recursos: [
-            '✅ Até 1 profissional',
-            '✅ 100 agendamentos por mês',
-            '✅ Dashboard básico',
-            '✅ Suporte por email'
+            '✅ Plano de teste',
+            '✅ Apenas R$ 1,00',
+            '✅ Para validar pagamento',
+            '✅ Válido por 1 dia'
         ],
         limitacoes: [
+            '❌ Apenas 1 profissional',
+            '❌ 10 agendamentos/mês',
             '❌ Sem WhatsApp',
-            '❌ Sem envio de promoções',
+            '❌ Sem promoções',
             '❌ Sem fiados'
         ]
     },
@@ -39,18 +122,18 @@ const PLANOS_CONFIG = {
         valor_anual: 287.04,
         profs: 1,
         agendamentos: '100/mês',
-        popular: false,
         cor: '#667eea',
+        popular: false,
         recursos: [
-            '✅ Até 1 profissional',
-            '✅ 100 agendamentos por mês',
-            '✅ Dashboard básico',
-            '✅ Suporte por email'
+            'Até 1 profissional',
+            '100 agendamentos por mês',
+            'Dashboard básico',
+            'Suporte por email'
         ],
         limitacoes: [
-            '❌ Sem WhatsApp',
-            '❌ Sem envio de promoções',
-            '❌ Sem fiados'
+            'Sem WhatsApp',
+            'Sem envio de promoções',
+            'Sem fiados'
         ]
     },
     pro: {
@@ -59,778 +142,348 @@ const PLANOS_CONFIG = {
         valor_mensal: 59.90,
         valor_anual: 575.04,
         profs: 5,
-        agendamentos: '♾️ Ilimitado',
-        popular: true,
+        agendamentos: 'Ilimitado',
         cor: '#f59e0b',
+        popular: true,
         recursos: [
-            '✅ Até 5 profissionais',
-            '✅ Agendamentos ilimitados',
-            '✅ WhatsApp Business',
-            '✅ Envio de promoções',
-            '✅ Sistema de fiados',
-            '✅ Dashboard completo',
-            '✅ Relatórios avançados'
+            'Até 5 profissionais',
+            'Agendamentos ilimitados',
+            'WhatsApp Business',
+            'Envio de promoções',
+            'Sistema de fiados',
+            'Dashboard completo',
+            'Relatórios avançados'
         ],
         limitacoes: []
     }
 };
 
-// ============================================
-// BUSCAR MODO DE PAGAMENTO ATUAL
-// ============================================
+function tokenAtual() {
+    return localStorage.getItem('token');
+}
+
+async function requisicao(url, options = {}) {
+    const resposta = await fetch(url, {
+        ...options,
+        headers: {
+            ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+            'Authorization': 'Bearer ' + tokenAtual(),
+            ...(options.headers || {})
+        }
+    });
+    let dados = {};
+    try {
+        dados = await resposta.json();
+    } catch (_) {}
+    if (!resposta.ok) throw new Error(dados.message || 'Não foi possível concluir a operação');
+    return dados;
+}
 
 async function buscarModoPagamento() {
     try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('/api/pagamento/config', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            if (data.success) {
-                modoPagamento = data.data.mode;
-                console.log(`💳 Modo de pagamento atual: ${modoPagamento}`);
-                return modoPagamento;
-            }
-        }
-        return 'simulation';
-    } catch (error) {
-        console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
-        return 'simulation';
+        const dados = await requisicao('/api/planos/payment-mode');
+        modoPagamento = dados?.data?.mode === 'real' ? 'real' : 'simulation';
+        return modoPagamento;
+    } catch (erro) {
+        modoPagamento = null;
+        console.error('Modo de pagamento indisponível:', erro);
+        return null;
     }
 }
-
-// ============================================
-// CARREGAR PLANOS
-// ============================================
 
 async function carregarPlanos() {
-    if (typeof window.carregarCSS === 'function') {
-        window.carregarCSS('planos');
-    }
-    console.log('🔄 Carregando planos...');
-    showLoading();
-
-    const token = localStorage.getItem('token');
-    const isMobile = window.innerWidth < 768;
-
+    if (typeof window.carregarCSS === 'function') window.carregarCSS('planos');
+    if (typeof showLoading === 'function') showLoading();
+    
     try {
-        // Buscar modo de pagamento
-        let modoAtual = 'simulation';
-        try {
-            const resModo = await fetch('/api/pagamento/config', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (resModo.ok) {
-                const dataModo = await resModo.json();
-                if (dataModo.success) {
-                    modoAtual = dataModo.data.mode;
-                    modoPagamento = modoAtual;
-                    console.log(`💳 Modo de pagamento: ${modoAtual === 'real' ? '🔴 REAL' : '🟡 SIMULAÇÃO'}`);
-                }
-            }
-        } catch (error) {
-            console.warn('⚠️ Erro ao buscar modo de pagamento:', error);
-        }
-
-        // Buscar plano atual da empresa
-        const resPlano = await fetch('/api/planos/empresa', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const planoData = await resPlano.json();
-
-        let planoAtual = 'trial';
-        let limiteAtual = 1;
-        let diasRestantes = 0;
-        let validaAte = 'N/A';
-        let isTrial = true;
-        let agendamentosMes = 0;
-        let planoNome = 'Trial (Starter)';
-        let whatsappHabilitado = false;
-
-        if (planoData.success && planoData.data) {
-            planoAtual = planoData.data.plano || 'trial';
-            limiteAtual = planoData.data.limite_profissionais || 1;
-            diasRestantes = planoData.data.dias_restantes || 0;
-            
-            // 🔥 CORREÇÃO: PEGAR DATA DE VALIDADE
-            if (planoData.data.data_validade_formatada) {
-                validaAte = planoData.data.data_validade_formatada;
-            } else if (planoData.data.assinatura_valida_ate) {
-                try {
-                    validaAte = new Date(planoData.data.assinatura_valida_ate).toLocaleDateString('pt-BR');
-                } catch {
-                    validaAte = planoData.data.assinatura_valida_ate || 'N/A';
-                }
-            } else if (planoData.data.trial_expira) {
-                try {
-                    validaAte = new Date(planoData.data.trial_expira).toLocaleDateString('pt-BR');
-                } catch {
-                    validaAte = planoData.data.trial_expira || 'N/A';
-                }
-            }
-            
-            isTrial = planoData.data.is_trial || (planoAtual === 'trial');
-            agendamentosMes = planoData.data.agendamentos_mes || 0;
-            planoNome = planoData.data.plano_display || planoData.data.plano_nome || planoAtual;
-            whatsappHabilitado = planoData.data.whatsapp?.habilitado || false;
-        }
-
-        const isReal = modoAtual === 'real';
-        const modoLabel = isReal ? '🔴 Pagamentos Reais' : '🟡 Modo Simulação';
-        const modoCor = isReal ? '#ef4444' : '#f59e0b';
-        const modoBg = isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)';
-        const modoBorder = isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
-
-        const planoInfo = PLANOS_CONFIG[planoAtual] || PLANOS_CONFIG.trial;
-
-        // ==========================================
-        // HTML
-        // ==========================================
-        let html = `
-            <div class="fade-in">
-                <div class="dashboard-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'flex-start' : 'center'}; gap: ${isMobile ? '8px' : '0'};">
-                    <div>
-                        <h2 class="page-title" style="font-size: ${isMobile ? '20px' : '24px'};">💎 Planos e Assinaturas</h2>
-                        <p class="page-subtitle" style="font-size: ${isMobile ? '13px' : '14px'};">
-                            <i class="fas fa-rocket"></i> Escolha o plano ideal para o seu negócio
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Modo de Pagamento -->
-                <div style="
-                    background: ${modoBg}; 
-                    border: 1px solid ${modoBorder}; 
-                    border-radius: 12px; 
-                    padding: ${isMobile ? '12px 16px' : '14px 20px'}; 
-                    margin-bottom: 20px;
-                    display: flex; 
-                    justify-content: space-between; 
-                    align-items: center; 
-                    flex-wrap: wrap;
-                    gap: 10px;
-                ">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 24px;">${isReal ? '🔴' : '🟡'}</span>
-                        <div>
-                            <div style="font-size: ${isMobile ? '14px' : '16px'}; font-weight: 600; color: var(--text-primary);">
-                                💳 Modo de Pagamento: <span style="color: ${modoCor};">${modoLabel}</span>
-                            </div>
-                            <div style="font-size: ${isMobile ? '11px' : '13px'}; color: var(--text-muted); margin-top: 2px;">
-                                ${isReal ? '⚠️ Pagamentos REAIS estão ativos!' : '🔸 Modo SIMULAÇÃO ativo. Nenhum pagamento real é processado.'}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Plano Atual -->
-                <div style="
-                    background: linear-gradient(135deg, #667eea, #764ba2); 
-                    border-radius: 16px; 
-                    padding: ${isMobile ? '20px' : '30px'}; 
-                    margin-bottom: 24px; 
-                    color: white;
-                ">
-                    <div style="display: flex; flex-direction: ${isMobile ? 'column' : 'row'}; justify-content: space-between; align-items: ${isMobile ? 'center' : 'center'}; gap: ${isMobile ? '16px' : '20px'}; text-align: ${isMobile ? 'center' : 'left'};">
-                        <div>
-                            <h3 style="color: white; margin: 0 0 8px 0; font-size: ${isMobile ? '16px' : '18px'};">
-                                <i class="fas fa-crown"></i> Plano Atual
-                            </h3>
-                            <p style="font-size: ${isMobile ? '24px' : '32px'}; font-weight: bold; margin: 0;">
-                                ${isTrial ? '🎯 Trial (Teste Grátis)' : planoInfo?.nome || planoAtual}
-                            </p>
-                            ${isTrial ? `
-                                <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
-                                    ⏳ ${diasRestantes} dias restantes de teste
-                                </p>
-                            ` : `
-                                <p style="margin: 8px 0 0 0; opacity: 0.9; font-size: ${isMobile ? '14px' : '16px'};">
-                                    📅 Válido até: <strong>${validaAte}</strong>
-                                </p>
-                            `}
-                            <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
-                                👥 ${limiteAtual} profissional(is) ativo(s)
-                            </p>
-                            ${whatsappHabilitado ? `
-                                <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
-                                    📱 <span style="color: #22c55e;">✅ WhatsApp habilitado</span>
-                                </p>
-                            ` : `
-                                <p style="margin: 4px 0 0 0; opacity: 0.6; font-size: ${isMobile ? '13px' : '14px'};">
-                                    📱 <span style="color: #f59e0b;">⚠️ WhatsApp não habilitado</span>
-                                </p>
-                            `}
-                            ${!isTrial && planoInfo?.agendamentos ? `
-                                <p style="margin: 4px 0 0 0; opacity: 0.8; font-size: ${isMobile ? '13px' : '14px'};">
-                                    📊 ${planoInfo.agendamentos} agendamentos
-                                </p>
-                            ` : ''}
-                        </div>
-                        ${isTrial ? `
-                            <div style="
-                                text-align: center; 
-                                background: rgba(255,255,255,0.2); 
-                                padding: ${isMobile ? '16px 24px' : '20px 30px'}; 
-                                border-radius: 12px;
-                            ">
-                                <div style="font-size: ${isMobile ? '36px' : '48px'}; font-weight: bold;">${diasRestantes}</div>
-                                <div style="font-size: ${isMobile ? '12px' : '14px'}; opacity: 0.9;">dias restantes</div>
-                            </div>
-                        ` : `
-                            <button onclick="cancelarAssinatura()" style="
-                                background: rgba(255,255,255,0.2); 
-                                color: white; 
-                                border: 1px solid rgba(255,255,255,0.3); 
-                                padding: ${isMobile ? '10px 20px' : '10px 20px'}; 
-                                border-radius: 8px; 
-                                cursor: pointer;
-                            ">
-                                ❌ Cancelar Assinatura
-                            </button>
-                        `}
-                    </div>
-                </div>
-
-                <!-- Aviso Trial -->
-                ${isTrial && diasRestantes <= 7 && diasRestantes > 0 ? `
-                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: ${isMobile ? '12px 16px' : '15px 20px'}; border-radius: 8px; margin-bottom: 20px;">
-                        <p style="margin: 0; color: #92400e; font-size: ${isMobile ? '13px' : '14px'};">
-                            ⚠️ <strong>Atenção!</strong> Seu período de teste termina em <strong>${diasRestantes} dias</strong>. 
-                            Escolha um plano abaixo para não perder o acesso ao sistema.
-                        </p>
-                    </div>
-                ` : ''}
-
-                <!-- Toggle Mensal/Anual -->
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <div style="display: inline-flex; gap: 8px; background: var(--bg-hover); padding: 4px; border-radius: 30px;">
-                        <button onclick="togglePeriodo('mensal')" id="btnMensal" 
-                            style="
-                                padding: ${isMobile ? '8px 16px' : '10px 24px'}; 
-                                border: none; 
-                                border-radius: 24px; 
-                                background: #667eea; 
-                                color: white; 
-                                cursor: pointer; 
-                                font-weight: bold; 
-                                transition: all 0.3s;
-                                font-size: ${isMobile ? '13px' : '14px'};
-                            ">
-                            📅 Mensal
-                        </button>
-                        <button onclick="togglePeriodo('anual')" id="btnAnual" 
-                            style="
-                                padding: ${isMobile ? '8px 16px' : '10px 24px'}; 
-                                border: none; 
-                                border-radius: 24px; 
-                                background: transparent; 
-                                color: var(--text-muted); 
-                                cursor: pointer; 
-                                transition: all 0.3s;
-                                font-size: ${isMobile ? '13px' : '14px'};
-                            ">
-                            📆 Anual 
-                            <span style="background: #10b981; color: white; padding: 2px 8px; border-radius: 12px; font-size: ${isMobile ? '9px' : '11px'}; margin-left: 4px;">
-                                -20%
-                            </span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Cards dos Planos -->
-                <div id="planosContainer" style="display: grid; grid-template-columns: ${isMobile ? '1fr' : '1fr 1fr'}; gap: ${isMobile ? '16px' : '24px'}; max-width: 800px; margin: 0 auto;">
-        `;
-
-        // Mostrar Starter e Pro (esconder Trial)
-        const planosParaMostrar = ['starter', 'pro'];
-
-        for (const key of planosParaMostrar) {
-            const plano = PLANOS_CONFIG[key];
-            const isCurrent = planoAtual === key;
+        const [modo, respostaPlano] = await Promise.all([
+            buscarModoPagamento(),
+            requisicao('/api/planos/empresa')
+        ]);
+        
+        const dados = respostaPlano.data || {};
+        const planoAtual = String(dados.plano || 'trial').toLowerCase();
+        const configAtual = PLANOS_CONFIG[planoAtual];
+        const isTrial = planoAtual === 'trial' || dados.is_trial === true;
+        const modoDisponivel = modo !== null;
+        const modoTexto = !modoDisponivel ? 'Indisponível' : 
+                         modo === 'real' ? '🟢 Pagamentos reais (MercadoPago)' : '🟡 Modo simulação';
+        const validade = dados.data_validade_formatada || 'N/A';
+        const diasRestantes = dados.dias_restantes || 0;
+        
+        // Montar cards dos planos
+        const cards = Object.values(PLANOS_CONFIG).map(plano => {
+            const atual = plano.id === planoAtual;
             const valor = periodoSelecionado === 'anual' ? plano.valor_anual : plano.valor_mensal;
-            const periodoLabel = periodoSelecionado === 'anual' ? '/ano' : '/mês';
-            const isPro = key === 'pro';
-
-            html += `
-                <div class="plano-card" style="
-                    background: var(--bg-card); 
-                    border-radius: 16px; 
-                    padding: ${isMobile ? '20px 16px' : '30px 25px'}; 
-                    text-align: center; 
-                    transition: all 0.3s ease; 
-                    border: 2px solid ${isCurrent ? plano.cor : 'var(--border-color)'};
-                    box-shadow: ${isCurrent ? `0 10px 40px -5px ${plano.cor}40` : 'var(--shadow)'};
-                    position: relative;
-                    ${isPro ? 'transform: scale(1.02);' : ''}
-                    ${isPro ? 'border-color: #f59e0b;' : ''}
-                "
-                onmouseenter="this.style.transform='translateY(-4px)${isPro ? ' scale(1.02)' : ''}'" 
-                onmouseleave="this.style.transform='translateY(0)${isPro ? ' scale(1.02)' : ''}'"
-                onclick="selecionarPlano('${key}')"
-                >
-                    ${isPro ? `
-                        <div style="
-                            position: absolute; 
-                            top: -10px; 
-                            left: 50%; 
-                            transform: translateX(-50%); 
-                            background: linear-gradient(135deg, #f59e0b, #d97706); 
-                            color: white; 
-                            padding: ${isMobile ? '3px 12px' : '4px 16px'}; 
-                            border-radius: 20px; 
-                            font-size: ${isMobile ? '10px' : '12px'}; 
-                            font-weight: bold; 
-                            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-                            white-space: nowrap;
-                        ">
-                            ⭐ MAIS POPULAR
-                        </div>
-                    ` : ''}
-                    ${isCurrent ? `
-                        <div style="
-                            position: absolute; 
-                            top: 10px; 
-                            right: 10px; 
-                            background: #10b981; 
-                            color: white; 
-                            padding: ${isMobile ? '2px 10px' : '4px 12px'}; 
-                            border-radius: 20px; 
-                            font-size: ${isMobile ? '9px' : '11px'}; 
-                            font-weight: bold;
-                        ">
-                            ✅ ATUAL
-                        </div>
-                    ` : ''}
-                    
-                    <div style="font-size: ${isMobile ? '16px' : '20px'}; font-weight: 700; color: ${plano.cor}; margin-bottom: 4px;">
-                        ${plano.nome}
+            const valorFormatado = valor.toFixed(2).replace('.', ',');
+            const periodoTexto = periodoSelecionado === 'anual' ? 'ano' : 'mês';
+            
+            const recursos = plano.recursos.map(item => 
+                `<li><span class="check">✅</span> ${item}</li>`
+            ).join('');
+            
+            const limitacoes = plano.limitacoes.map(item => 
+                `<li><span class="xmark">❌</span> ${item}</li>`
+            ).join('');
+            
+            const podeContratar = !atual && modoDisponivel;
+            const botaoTexto = atual ? '✅ Plano atual' : 
+                              !modoDisponivel ? 'Pagamento indisponível' :
+                              modo === 'real' ? '💳 Pagar agora' : 'Escolher plano';
+            
+            const isPopular = plano.popular ? 'plano-popular' : '';
+            
+            return `
+                <article class="plano-card ${isPopular}">
+                    ${plano.popular ? '<strong class="selo">⭐ Mais popular</strong>' : ''}
+                    ${atual ? '<span class="badge-atual">ATUAL</span>' : ''}
+                    <h3 class="nome">${plano.nome}</h3>
+                    <div class="preco">
+                        R$ ${valorFormatado}
+                        <small>/${periodoTexto}</small>
                     </div>
-                    
-                    <div style="font-size: ${isMobile ? '32px' : '42px'}; font-weight: bold; color: ${plano.cor}; margin: 8px 0 4px 0;">
-                        R$ ${valor.toFixed(2)}
-                        <span style="font-size: ${isMobile ? '12px' : '14px'}; color: var(--text-muted); font-weight: normal;">${periodoLabel}</span>
-                    </div>
-                    
-                    <div style="
-                        font-size: ${isMobile ? '12px' : '14px'}; 
-                        background: var(--bg-hover); 
-                        padding: ${isMobile ? '6px 10px' : '8px 12px'}; 
-                        border-radius: 8px; 
-                        margin-bottom: 14px; 
-                        display: inline-block;
-                    ">
-                        👥 ${plano.profs === 1 ? '1 profissional' : `Até ${plano.profs} profissionais`}
-                        ${plano.agendamentos ? ` • 📊 ${plano.agendamentos}` : ''}
-                    </div>
-                    
-                    <ul style="list-style: none; padding: 0; margin: 14px 0; text-align: left;">
-                        ${plano.recursos.map(r => `
-                            <li style="padding: ${isMobile ? '4px 0' : '6px 0'}; font-size: ${isMobile ? '13px' : '14px'}; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-                                <span style="color: #10b981;">✅</span> ${r.replace('✅ ', '')}
-                            </li>
-                        `).join('')}
-                        ${plano.limitacoes.map(l => `
-                            <li style="padding: ${isMobile ? '4px 0' : '6px 0'}; font-size: ${isMobile ? '13px' : '14px'}; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; opacity: 0.6;">
-                                <span style="color: #ef4444;">❌</span> ${l.replace('❌ ', '')}
-                            </li>
-                        `).join('')}
+                    <p class="subtitle">👥 ${plano.profs} profissional(is) · 📊 ${plano.agendamentos}</p>
+                    <ul class="features">
+                        ${recursos}${limitacoes}
                     </ul>
-                    
-                    ${isCurrent ? `
-                        <button disabled style="
-                            background: #10b981; 
-                            color: white; 
-                            padding: ${isMobile ? '10px 20px' : '12px 32px'}; 
-                            border: none; 
-                            border-radius: 10px; 
-                            cursor: default; 
-                            font-weight: bold; 
-                            width: 100%;
-                            font-size: ${isMobile ? '13px' : '14px'};
-                        ">
-                            ✅ Plano Atual
-                        </button>
-                    ` : `
-                        <button onclick="event.stopPropagation(); escolherPlano('${key}')" 
-                            style="
-                                background: ${isReal ? 'linear-gradient(135deg, #ef4444, #dc2626)' : `linear-gradient(135deg, ${plano.cor}, ${plano.cor}dd)`}; 
-                                color: white; 
-                                padding: ${isMobile ? '10px 20px' : '12px 32px'}; 
-                                border: none; 
-                                border-radius: 10px; 
-                                cursor: pointer; 
-                                font-weight: bold; 
-                                width: 100%; 
-                                transition: all 0.3s;
-                                font-size: ${isMobile ? '13px' : '14px'};
-                            ">
-                            <i class="fas ${isReal ? 'fa-credit-card' : 'fa-rocket'}"></i> 
-                            ${isReal ? 'Pagar Agora' : 'Escolher Plano'}
-                        </button>
-                    `}
-                </div>
+                    <button class="btn-plano ${atual ? 'atual' : ''}" 
+                            ${!podeContratar ? 'disabled' : ''} 
+                            onclick="escolherPlano('${plano.id}')">
+                        ${botaoTexto}
+                    </button>
+                </article>
             `;
-        }
-
-        html += `
+        }).join('');
+        
+        // Montar HTML completo (SEM CSS INLINE)
+        document.getElementById('content').innerHTML = `
+            <section class="plans-page">
+                <header>
+                    <h2>💎 Planos e assinaturas</h2>
+                    <p>Escolha o plano ideal para o seu negócio. Comece grátis com Trial de 45 dias!</p>
+                </header>
+                
+                <div class="modo-pagamento">
+                    💳 <strong>${modoTexto}</strong>
+                    ${modo === 'real' ? ' — a cobrança será processada pelo MercadoPago.' : ''}
+                    ${modo === 'simulation' ? ' — ativação imediata para testes.' : ''}
                 </div>
                 
-                <!-- Tabela Comparativa -->
-                <div style="margin-top: 32px; background: var(--bg-card); border-radius: 16px; padding: ${isMobile ? '16px' : '24px'}; border: 1px solid var(--border-color);">
-                    <h3 style="text-align: center; margin-bottom: 16px; font-size: ${isMobile ? '16px' : '18px'};">
-                        📊 Comparação de Planos ${periodoSelecionado === 'anual' ? '(Anual)' : '(Mensal)'}
-                    </h3>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: ${isMobile ? '12px' : '14px'};">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left; padding: 10px 12px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color);">Recurso</th>
-                                    <th style="text-align: center; padding: 10px 12px; background: var(--bg-hover); border-bottom: 2px solid var(--border-color); color: #667eea;">Starter</th>
-                                    <th style="text-align: center; padding: 10px 12px; background: #1e293b; border-bottom: 2px solid #f59e0b; color: #f59e0b;">⭐ Pro</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-weight: 500;">💰 Valor</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color);">R$ ${periodoSelecionado === 'anual' ? '287,04' : '29,90'}</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-weight: 700; color: #f59e0b; background: #fef9e7;">R$ ${periodoSelecionado === 'anual' ? '575,04' : '59,90'}</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color);">👥 Profissionais</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color);">1</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-weight: 600;">Até 5</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color);">📊 Agendamentos</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color);">100/mês</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: #10b981;">♾️ Ilimitado</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color);">📱 WhatsApp</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); color: #ef4444;">❌</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); color: #10b981; font-weight: 600;">✅</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color);">📢 Envio de Promoções</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); color: #ef4444;">❌</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); color: #10b981; font-weight: 600;">✅</td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 8px 12px; border-bottom: 1px solid var(--border-color);">💰 Sistema de Fiados</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); color: #ef4444;">❌</td>
-                                    <td style="text-align: center; padding: 8px 12px; border-bottom: 1px solid var(--border-color); color: #10b981; font-weight: 600;">✅</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="plano-atual">
+                    <h3>📋 Plano Atual: ${isTrial ? '🆓 Trial (Starter)' : (configAtual?.nome || planoAtual)}</h3>
+                    ${isTrial ? `
+                        <p>⏳ <strong>${diasRestantes}</strong> dias restantes de Trial</p>
+                        <p>📅 Expira em: ${validade}</p>
+                    ` : `
+                        <p>📅 Válido até: <strong>${validade}</strong></p>
+                        <p>👥 ${dados.limite_profissionais || 1} profissional(is)</p>
+                    `}
+                    <p>📱 WhatsApp: ${dados.whatsapp?.habilitado ? '✅ habilitado' : '⚠️ não habilitado'}</p>
+                    ${!isTrial ? '<button class="btn-cancelar" onclick="cancelarAssinatura()">❌ Cancelar assinatura</button>' : ''}
                 </div>
-            </div>
-        `;
-
-        document.getElementById('content').innerHTML = html;
-        atualizarTogglePeriodo();
-
-    } catch (error) {
-        console.error('❌ Erro ao carregar planos:', error);
-        document.getElementById('content').innerHTML = `
-            <div class="fade-in">
-                <h2 class="page-title">💎 Planos</h2>
-                <div style="background: #fee2e2; padding: 20px; border-radius: 8px; text-align: center;">
-                    <p>❌ Erro ao carregar planos</p>
-                    <button onclick="carregarPlanos()" class="btn-primary" style="margin-top: 10px;">
-                        🔄 Tentar novamente
+                
+                <div class="periodos">
+                    <button onclick="togglePeriodo('mensal')" class="${periodoSelecionado === 'mensal' ? 'ativo' : ''}">
+                        📆 Mensal
+                    </button>
+                    <button onclick="togglePeriodo('anual')" class="${periodoSelecionado === 'anual' ? 'ativo' : ''}">
+                        📅 Anual — 20% OFF
                     </button>
                 </div>
+                
+                <div class="planos-grid">
+                    ${cards}
+                </div>
+            </section>
+        `;
+        
+    } catch (erro) {
+        console.error('Erro ao carregar planos:', erro);
+        document.getElementById('content').innerHTML = `
+            <div class="erro-planos">
+                ❌ ${erro.message}
+                <br>
+                <button onclick="carregarPlanos()">Tentar novamente</button>
             </div>
         `;
+    } finally {
+        if (typeof hideLoading === 'function') hideLoading();
     }
-    hideLoading();
 }
-
-// ============================================
-// ESCOLHER PLANO
-// ============================================
-
 async function escolherPlano(planoId) {
-    const planoConfig = PLANOS_CONFIG[planoId];
-    if (!planoConfig) {
-        showToast('Plano não encontrado', 'error');
+    const plano = PLANOS_CONFIG[planoId];
+    if (!plano) return showToast?.('Plano não encontrado', 'error');
+    if (!modoPagamento) return showToast?.('Modo de pagamento indisponível', 'error');
+    
+    const valor = periodoSelecionado === 'anual' ? plano.valor_anual : plano.valor_mensal;
+    const valorFormatado = valor.toFixed(2).replace('.', ',');
+    const periodoTexto = periodoSelecionado === 'anual' ? 'ano' : 'mês';
+    
+    if (!confirm(`📋 Escolher ${plano.nome}?\n\n💰 R$ ${valorFormatado} / ${periodoTexto}\n${modoPagamento === 'real' ? '💳 Pagamento via MercadoPago' : '🟡 Ativação imediata (simulação)'}`)) {
         return;
     }
-
-    const valor = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
-    const periodoLabel = periodoSelecionado === 'anual' ? 'ano' : 'mês';
-    const nomePlano = planoConfig.nome;
-
-    // Verificar modo de pagamento
-    let modoAtual = 'simulation';
-    try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('/api/pagamento/config', {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        if (res.ok) {
-            const data = await res.json();
-            if (data.success) {
-                modoAtual = data.data.mode;
-            }
-        }
-    } catch (error) {
-        console.warn('⚠️ Erro ao buscar modo:', error);
-    }
-
-    const isReal = modoAtual === 'real';
-
-    const modalContent = `
-        <div style="padding: 10px;">
-            <p style="font-size: 16px; margin-bottom: 8px;">
-                Você está escolhendo o plano <strong style="color: ${planoConfig.cor};">${nomePlano}</strong>
-            </p>
-            <p style="font-size: 18px; font-weight: bold; margin-bottom: 4px;">
-                R$ ${valor.toFixed(2)} / ${periodoLabel}
-            </p>
-            ${periodoSelecionado === 'anual' ? `<p style="color: #10b981;">🎉 Economia de 20% no plano anual!</p>` : ''}
-            
-            <div style="margin: 16px 0; padding: 12px; border-radius: 8px; background: ${isReal ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)'}; border: 1px solid ${isReal ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'};">
-                <p style="margin: 0; font-size: 13px; color: ${isReal ? '#ef4444' : '#f59e0b'};">
-                    <strong>${isReal ? '🔴 MODO REAL' : '🟡 MODO SIMULAÇÃO'}</strong>
-                    ${isReal ? ' - O pagamento será processado com cobrança real' : ' - Nenhum pagamento real é processado'}
-                </p>
-            </div>
-            
-            <button onclick="confirmarUpgrade('${planoId}')" style="
-                width: 100%;
-                padding: 12px;
-                background: ${isReal ? 'linear-gradient(135deg, #ef4444, #dc2626)' : `linear-gradient(135deg, ${planoConfig.cor}, ${planoConfig.cor}dd)`};
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-weight: 600;
-                font-size: 16px;
-                cursor: pointer;
-                margin-top: 16px;
-            ">
-                ${isReal ? '🔴 Pagar Agora' : '✅ Confirmar Escolha'}
-            </button>
-        </div>
-    `;
-
-    showModal('Confirmar Plano', modalContent, null);
+    
+    await confirmarUpgrade(planoId);
 }
 
-// ============================================
-// CONFIRMAR UPGRADE
-// ============================================
-
 async function confirmarUpgrade(planoId) {
-    showLoading();
-    fecharModal('modalUpgrade');
-
+    if (typeof showLoading === 'function') showLoading();
+    
     try {
-        const token = localStorage.getItem('token');
-        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-        const empresaId = usuario.empresa_id || usuario.empresaId;
-
-        if (!empresaId) {
-            showToast('Erro: Empresa não identificada', 'error');
-            hideLoading();
-            return;
-        }
-
-        // Verificar modo de pagamento
-        let modoAtual = 'simulation';
-        try {
-            const res = await fetch('/api/pagamento/config', {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.success) {
-                    modoAtual = data.data.mode;
-                }
-            }
-        } catch (error) {
-            console.warn('⚠️ Erro ao buscar modo:', error);
-        }
-
-        const isReal = modoAtual === 'real';
-
-        if (isReal) {
-            showToast('🔴 Redirecionando para pagamento...', 'info');
-
-            const planoConfig = PLANOS_CONFIG[planoId];
-            const valor = periodoSelecionado === 'anual' ? planoConfig.valor_anual : planoConfig.valor_mensal;
-
-            const response = await fetch('/api/pagamento/create-payment', {
+        const modo = await buscarModoPagamento();
+        if (!modo) throw new Error('Modo de pagamento indisponível');
+        
+        const plano = PLANOS_CONFIG[planoId];
+        
+        if (modo === 'real') {
+            // Pagamento REAL via MercadoPago
+            const valor = periodoSelecionado === 'anual' ? plano.valor_anual : plano.valor_mensal;
+            
+            const resultado = await requisicao('/api/pagamento/create-payment', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer ' + token
-                },
                 body: JSON.stringify({
                     plano_id: planoId,
-                    plano_nome: planoConfig.nome,
+                    plano_nome: plano.nome,
                     valor: valor,
                     periodo: periodoSelecionado
                 })
             });
-
-            const result = await response.json();
-            hideLoading();
-
-            if (result.success) {
-                const url = result.link || result.init_point || result.sandbox_init_point;
-                if (url) {
-                    window.open(url, '_blank');
-                    showToast(result.isReal ? '🔴 Redirecionando para pagamento REAL...' : '🟡 Redirecionando para pagamento de teste...', 'info');
-                } else {
-                    showToast('❌ Erro ao gerar link de pagamento', 'error');
-                }
-            } else {
-                showToast(result.message || '❌ Erro ao criar pagamento', 'error');
+            
+            // Verificar diferentes formatos de resposta
+            const linkPagamento = resultado.link || 
+                                 resultado.init_point || 
+                                 resultado.sandbox_init_point ||
+                                 resultado.payment_url;
+            
+            if (!linkPagamento) {
+                throw new Error('O provedor não retornou um link de pagamento');
             }
+            
+            // 🔥 SALVAR NO SESSION STORAGE QUE O PAGAMENTO FOI INICIADO
+            sessionStorage.setItem('payment_status', 'pending');
+            sessionStorage.setItem('payment_plan', plano.nome);
+            
+            // Abrir em nova janela
+            window.open(linkPagamento, '_blank', 'noopener,noreferrer');
+            showToast?.('🔗 Redirecionando para o MercadoPago...', 'info');
+            
+            // 🔥 MONITORAR O PAGAMENTO EM BACKGROUND
+            monitorarPagamento();
+            
             return;
         }
-
-        // Modo SIMULAÇÃO
-        const response = await fetch('/api/planos/empresa', {
+        
+        // Modo SIMULAÇÃO (ativação imediata)
+        await requisicao('/api/planos/empresa', {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
             body: JSON.stringify({
                 plano: planoId,
-                assinatura_ativa: true,
-                assinatura_valida_ate: new Date(new Date().setMonth(new Date().getMonth() + 1)).toISOString().split('T')[0]
+                periodo: periodoSelecionado
             })
         });
+        
+        showToast?.(`✅ Plano ${plano.nome} ativado com sucesso!`, 'success');
+        atualizarUsuarioLocal(planoId);
+        setTimeout(carregarPlanos, 500);
+        
+    } catch (erro) {
+        console.error('Erro ao confirmar upgrade:', erro);
+        showToast?.(erro.message || 'Erro ao processar upgrade', 'error');
+    } finally {
+        if (typeof hideLoading === 'function') hideLoading();
+    }
+}
 
-        const result = await response.json();
-        hideLoading();
-
-        if (result.success) {
-            showToast(`✅ Plano ${PLANOS_CONFIG[planoId]?.nome || planoId} ativado com sucesso!`, 'success');
-
-            if (usuario) {
-                usuario.plano = planoId;
-                localStorage.setItem('usuario', JSON.stringify(usuario));
+// 🔥 NOVA FUNÇÃO: MONITORAR O PAGAMENTO
+function monitorarPagamento() {
+    console.log('🔍 Monitorando status do pagamento...');
+    
+    // Verificar a cada 5 segundos se o plano foi ativado
+    const interval = setInterval(async () => {
+        try {
+            const response = await fetch('/api/planos/empresa', {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                }
+            });
+            const data = await response.json();
+            
+            if (data.data?.assinatura_ativa === true) {
+                console.log('✅ Pagamento confirmado! Plano ativado!');
+                clearInterval(interval);
+                sessionStorage.removeItem('payment_status');
+                
+                // Mostrar mensagem de sucesso
+                showToast?.('✅ Pagamento aprovado! Plano ativado com sucesso!', 'success');
+                
+                // Recarregar a página de planos
+                setTimeout(() => {
+                    carregarPlanos();
+                }, 1500);
             }
-
-            setTimeout(() => {
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
-                }
-            }, 500);
-        } else {
-            showToast('❌ ' + (result.message || 'Erro ao ativar plano'), 'error');
+        } catch (error) {
+            console.error('Erro ao monitorar pagamento:', error);
         }
-
-    } catch (error) {
-        console.error('❌ Erro ao confirmar upgrade:', error);
-        hideLoading();
-        showToast('❌ Erro ao processar upgrade', 'error');
-    }
+    }, 5000); // Verificar a cada 5 segundos
+    
+    // Parar após 5 minutos (timeout)
+    setTimeout(() => {
+        clearInterval(interval);
+        console.log('⏰ Monitoramento finalizado por timeout');
+    }, 300000);
 }
 
-// ============================================
-// CANCELAR ASSINATURA
-// ============================================
-
+// 🔥 VERIFICAR SE O PAGAMENTO FOI CONCLUÍDO AO CARREGAR A PÁGINA
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar se o usuário voltou de um pagamento
+    const paymentStatus = sessionStorage.getItem('payment_status');
+    if (paymentStatus === 'pending') {
+        console.log('🔄 Verificando status do pagamento pendente...');
+        monitorarPagamento();
+    }
+});
 async function cancelarAssinatura() {
-    if (!confirm('Tem certeza que deseja cancelar sua assinatura?')) return;
-
-    showLoading();
-    const token = localStorage.getItem('token');
-
+    if (!confirm('⚠️ Tem certeza que deseja cancelar sua assinatura?\n\nVocê terá 7 dias de Trial gratuito.')) return;
+    
+    if (typeof showLoading === 'function') showLoading();
+    
     try {
-        const res = await fetch('/api/planos/empresa', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + token
-            },
-            body: JSON.stringify({
-                plano: 'trial',
-                assinatura_ativa: false,
-                assinatura_valida_ate: null
-            })
+        await requisicao('/api/planos/cancel-subscription', {
+            method: 'POST',
+            body: JSON.stringify({})
         });
-
-        const data = await res.json();
-        hideLoading();
-
-        if (data.success) {
-            showToast('✅ Assinatura cancelada. Você está no plano Trial.', 'success');
-
-            const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-            usuario.plano = 'trial';
-            localStorage.setItem('usuario', JSON.stringify(usuario));
-
-            setTimeout(() => {
-                carregarPlanos();
-                if (typeof carregarDashboard === 'function') {
-                    carregarDashboard();
-                }
-            }, 500);
-        } else {
-            showToast(data.message || '❌ Erro ao cancelar', 'error');
-        }
-    } catch (error) {
-        hideLoading();
-        console.error('Erro:', error);
-        showToast('❌ Erro ao cancelar assinatura', 'error');
+        
+        showToast?.('✅ Assinatura cancelada. Você está no plano Trial por 7 dias.', 'success');
+        atualizarUsuarioLocal('trial');
+        setTimeout(carregarPlanos, 500);
+        
+    } catch (erro) {
+        showToast?.(erro.message || 'Erro ao cancelar assinatura', 'error');
+    } finally {
+        if (typeof hideLoading === 'function') hideLoading();
     }
 }
 
-// ============================================
-// FUNÇÕES AUXILIARES
-// ============================================
+function atualizarUsuarioLocal(plano) {
+    try {
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        usuario.plano = plano;
+        localStorage.setItem('usuario', JSON.stringify(usuario));
+    } catch (_) {}
+}
 
 function togglePeriodo(periodo) {
-    periodoSelecionado = periodo;
+    periodoSelecionado = periodo === 'anual' ? 'anual' : 'mensal';
     carregarPlanos();
 }
 
-function atualizarTogglePeriodo() {
-    const btnMensal = document.getElementById('btnMensal');
-    const btnAnual = document.getElementById('btnAnual');
-
-    if (btnMensal && btnAnual) {
-        if (periodoSelecionado === 'mensal') {
-            btnMensal.style.background = '#667eea';
-            btnMensal.style.color = 'white';
-            btnAnual.style.background = 'transparent';
-            btnAnual.style.color = '#6b7280';
-        } else {
-            btnAnual.style.background = '#667eea';
-            btnAnual.style.color = 'white';
-            btnMensal.style.background = 'transparent';
-            btnMensal.style.color = '#6b7280';
-        }
-    }
-}
-
-function selecionarPlano(planoId) {
-    document.querySelector(`.plano-card[onclick*="${planoId}"]`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center'
-    });
-}
-
-// ============================================
-// EXPORTAR FUNÇÕES
-// ============================================
-
+// Expor funções globalmente
 window.carregarPlanos = carregarPlanos;
 window.escolherPlano = escolherPlano;
 window.confirmarUpgrade = confirmarUpgrade;
 window.cancelarAssinatura = cancelarAssinatura;
 window.togglePeriodo = togglePeriodo;
-window.selecionarPlano = selecionarPlano;
+window.selecionarPlano = escolherPlano;
+window.showToast = showToast;
 
-console.log('✅ planos.js carregado - Versão simplificada com 2 planos');
-console.log('📊 Planos disponíveis:', Object.keys(PLANOS_CONFIG));
+console.log('📦 planos.js carregado — versão com pagamento real');

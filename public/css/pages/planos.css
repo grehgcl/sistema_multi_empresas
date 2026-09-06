@@ -1,86 +1,548 @@
 /* ============================================
-    - ESTILOS ESPEC�FICOS
-   ULTIMA ATUALIZACAO: 31/07/2026
-   ============================================ */
-
-/* Estilos da p�gina */
-/* ============================================
    PLANOS.CSS - ESTILOS ESPECÍFICOS
-   ULTIMA ATUALIZACAO: 31/07/2026
+   VERSÃO CORRIGIDA
+   ULTIMA ATUALIZACAO: 31/08/2026
    ============================================ */
 
-.plano-card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 24px;
-    border: 2px solid var(--border-color);
+/* ============================================
+   CONTAINER PRINCIPAL
+   ============================================ */
+.plans-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 30px 20px;
+    background: linear-gradient(135deg, #f0f4ff 0%, #e8edf5 100%);
+    min-height: 100vh;
+}
+
+/* ============================================
+   CABEÇALHO
+   ============================================ */
+.plans-page header {
     text-align: center;
+    margin-bottom: 40px;
+    padding: 30px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    color: white;
+    box-shadow: 0 10px 40px rgba(102, 126, 234, 0.3);
+}
+
+.plans-page header h2 {
+    font-size: 2.2rem;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: white;
+}
+
+.plans-page header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+    color: rgba(255,255,255,0.9);
+}
+
+/* ============================================
+   MODO DE PAGAMENTO
+   ============================================ */
+.modo-pagamento {
+    padding: 16px 24px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    margin: 16px 0 24px;
+    border: 2px solid #f59e0b;
+    font-size: 15px;
+    font-weight: 500;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
+}
+
+/* ============================================
+   PLANO ATUAL
+   ============================================ */
+.plano-atual {
+    padding: 28px 32px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 30px rgba(102, 126, 234, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.plano-atual::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 50%;
+}
+
+.plano-atual h3 {
+    font-size: 1.3rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+}
+
+.plano-atual p {
+    margin: 6px 0;
+    opacity: 0.92;
+    font-size: 15px;
+    position: relative;
+    z-index: 1;
+}
+
+.btn-cancelar {
+    margin-top: 12px;
+    padding: 8px 20px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+    cursor: pointer;
     transition: all 0.3s;
+    font-weight: 600;
+    font-size: 14px;
+    position: relative;
+    z-index: 1;
+}
+
+.btn-cancelar:hover {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.7);
+}
+
+/* ============================================
+   PERÍODOS
+   ============================================ */
+.periodos {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin: 28px 0 32px;
+}
+
+.periodos button {
+    padding: 12px 32px;
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: 600;
+    font-size: 15px;
+    color: #4b5563;
+}
+
+.periodos button:hover {
+    border-color: #667eea;
+    background: #f8faff;
+    transform: translateY(-2px);
+}
+
+.periodos .ativo {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-color: #667eea;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+}
+
+/* ============================================
+   GRID DE PLANOS
+   ============================================ */
+.planos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 28px;
+    margin-top: 8px;
+}
+
+/* ============================================
+   CARD DO PLANO - BASE
+   ============================================ */
+.plano-card {
+    border-radius: 20px;
+    padding: 32px 28px 28px;
+    border: 2px solid #e5e7eb;
+    text-align: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
 }
 
 .plano-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+    transform: translateY(-8px);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.1);
 }
 
-.plano-card.destaque {
-    border-color: var(--primary);
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.15);
+/* ============================================
+   CARD - STARTER (BRANCO COM AZUL)
+   ============================================ */
+.plano-card:not(.plano-popular) {
+    border-color: #c7d2fe;
+    background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
 }
 
+.plano-card:not(.plano-popular)::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #818cf8);
+}
+
+.plano-card:not(.plano-popular) .preco {
+    color: #667eea;
+}
+
+.plano-card:not(.plano-popular) .btn-plano {
+    background: linear-gradient(135deg, #667eea 0%, #818cf8 100%);
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.25);
+}
+
+.plano-card:not(.plano-popular) .btn-plano:hover:not(:disabled) {
+    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.35);
+}
+
+/* ============================================
+   CARD - PRO (DOURADO - POPULAR)
+   ============================================ */
+.plano-card.plano-popular {
+    border-color: #f59e0b;
+    background: linear-gradient(180deg, #fffbeb 0%, #ffffff 100%);
+    box-shadow: 0 8px 32px rgba(245, 158, 11, 0.15);
+    transform: scale(1.02);
+}
+
+.plano-card.plano-popular::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+.plano-card.plano-popular:hover {
+    transform: scale(1.02) translateY(-8px);
+    box-shadow: 0 12px 48px rgba(245, 158, 11, 0.25);
+}
+
+.plano-card.plano-popular .preco {
+    color: #f59e0b;
+}
+
+.plano-card.plano-popular .btn-plano {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 4px 16px rgba(245, 158, 11, 0.3);
+}
+
+.plano-card.plano-popular .btn-plano:hover:not(:disabled) {
+    box-shadow: 0 6px 24px rgba(245, 158, 11, 0.4);
+}
+
+.plano-card.plano-popular .nome {
+    color: #d97706;
+}
+
+/* ============================================
+   SELO "MAIS POPULAR"
+   ============================================ */
+.selo {
+    display: inline-block;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 4px 18px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.3);
+}
+
+/* ============================================
+   BADGE "PLANO ATUAL"
+   ============================================ */
+.badge-atual {
+    display: inline-block;
+    background: linear-gradient(135deg, #22c55e, #16a34a);
+    color: white;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 12px rgba(34, 197, 94, 0.3);
+}
+
+/* ============================================
+   NOME DO PLANO
+   ============================================ */
 .plano-card .nome {
-    font-size: 20px;
-    font-weight: 700;
+    font-size: 22px;
+    font-weight: 800;
+    color: #1f2937;
+    margin-bottom: 4px;
 }
 
+/* ============================================
+   PREÇO
+   ============================================ */
 .plano-card .preco {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--primary);
+    font-size: 38px;
+    font-weight: 800;
     margin: 8px 0;
 }
 
 .plano-card .preco small {
-    font-size: 14px;
-    font-weight: 400;
-    color: var(--text-muted);
+    font-size: 15px;
+    font-weight: 500;
+    color: #9ca3af;
 }
 
+/* ============================================
+   SUBTÍTULO
+   ============================================ */
+.plano-card .subtitle {
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 4px 0 16px;
+    padding: 8px 12px;
+    background: #f3f4f6;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+/* ============================================
+   LISTA DE FEATURES
+   ============================================ */
 .plano-card .features {
     list-style: none;
     padding: 0;
-    margin: 16px 0;
+    margin: 18px 0 24px;
     text-align: left;
 }
 
 .plano-card .features li {
-    padding: 6px 0;
-    font-size: 13px;
-    color: var(--text-secondary);
+    padding: 7px 0;
+    font-size: 14px;
+    color: #374151;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.plano-card .features li:last-child {
+    border-bottom: none;
 }
 
 .plano-card .features li .check {
     color: #22c55e;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
 }
 
 .plano-card .features li .xmark {
     color: #ef4444;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
 }
 
-/* ----- MOBILE ----- */
+/* ============================================
+   BOTÃO DO PLANO
+   ============================================ */
+.plano-card .btn-plano {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: white;
+}
+
+.plano-card .btn-plano:hover:not(:disabled) {
+    transform: scale(1.02);
+}
+
+.plano-card .btn-plano:disabled {
+    background: #d1d5db !important;
+    cursor: not-allowed;
+    box-shadow: none;
+    color: #9ca3af;
+}
+
+/* ============================================
+   BOTÃO DO PLANO ATUAL
+   ============================================ */
+.plano-card .btn-plano.atual {
+    background: #9ca3af !important;
+    box-shadow: none;
+    cursor: default;
+}
+
+/* ============================================
+   RESPONSIVO
+   ============================================ */
 @media (max-width: 768px) {
+    .plans-page {
+        padding: 16px 12px;
+    }
+    
+    .plans-page header {
+        padding: 24px 16px;
+        border-radius: 14px;
+    }
+    
+    .plans-page header h2 {
+        font-size: 1.6rem;
+    }
+    
     .plano-card {
-        padding: 16px;
+        padding: 20px 16px;
+        border-radius: 14px;
     }
-
+    
     .plano-card .nome {
-        font-size: 16px;
+        font-size: 18px;
     }
-
+    
     .plano-card .preco {
-        font-size: 24px;
+        font-size: 28px;
+    }
+    
+    .plano-card.plano-popular {
+        transform: scale(1);
+    }
+    
+    .plano-card.plano-popular:hover {
+        transform: translateY(-4px);
+    }
+    
+    .periodos {
+        flex-direction: column;
+        gap: 8px;
+        align-items: center;
+    }
+    
+    .periodos button {
+        width: 100%;
+        max-width: 280px;
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+    
+    .planos-grid {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .planos-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .plano-card.plano-popular {
+        transform: scale(1);
+    }
+    
+    .plano-card.plano-popular:hover {
+        transform: translateY(-4px);
+    }
+}
+
+/* ============================================
+   ANIMAÇÃO
+   ============================================ */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.plano-card {
+    animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.plano-card:nth-child(1) { animation-delay: 0.05s; }
+.plano-card:nth-child(2) { animation-delay: 0.15s; }
+
+/* ============================================
+   TEMA ESCURO
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+    .plans-page {
+        background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+    }
+    
+    .plano-card:not(.plano-popular) {
+        background: linear-gradient(180deg, #1e293b 0%, #1f2937 100%);
+        border-color: #374151;
+    }
+    
+    .plano-card .nome {
+        color: #f9fafb;
+    }
+    
+    .plano-card .features li {
+        color: #d1d5db;
+        border-bottom-color: #374151;
+    }
+    
+    .plano-card.plano-popular {
+        background: linear-gradient(180deg, #1e293b 0%, #1f2937 100%);
+        border-color: #f59e0b;
+    }
+    
+    .periodos button {
+        background: #1f2937;
+        color: #d1d5db;
+        border-color: #374151;
+    }
+    
+    .periodos button:hover {
+        border-color: #667eea;
+        background: #2d3748;
+    }
+    
+    .periodos .ativo {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: #667eea;
+    }
+    
+    .modo-pagamento {
+        background: linear-gradient(135deg, #1e293b 0%, #2d3748 100%);
+        border-color: #f59e0b;
+        color: #fcd34d;
     }
 }

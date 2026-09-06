@@ -1,0 +1,4344 @@
+{
+  "timestamp": "2026-09-01T05:01:34.093Z",
+  "system": {
+    "name": "SEE&AGENDE",
+    "version": "2.0.0",
+    "description": "Sistema de agendamento para barbearias/salões"
+  },
+  "architecture": {
+    "backend": {
+      "services": [
+        {
+          "name": "email",
+          "file": "email.js",
+          "functions": [
+            "enviarBoasVindas",
+            "enviarBoleto",
+            "enviarPix",
+            "notificarNovoCadastro"
+          ],
+          "description": "server/services/email.js"
+        },
+        {
+          "name": "evolution-instances",
+          "file": "evolution-instances.js",
+          "functions": [
+            "EvolutionInstances"
+          ],
+          "description": "============================================"
+        },
+        {
+          "name": "evolution-websocket",
+          "file": "evolution-websocket.js",
+          "functions": [
+            "EvolutionWebSocket"
+          ],
+          "description": "server/services/evolution-websocket.js"
+        },
+        {
+          "name": "mercadopago",
+          "file": "mercadopago.js",
+          "functions": [
+            "MercadoPagoService"
+          ],
+          "description": "============================================"
+        },
+        {
+          "name": "whatsapp",
+          "file": "whatsapp.js",
+          "functions": [
+            "formatarDataBr",
+            "formatarTelefone",
+            "formatNumber",
+            "getInstanciaEmpresa",
+            "send",
+            "gerarLinkChatbot",
+            "gerarMensagemConfirmacao",
+            "enviarConfirmacao",
+            "enviarCancelamento",
+            "enviarConclusao"
+          ],
+          "description": "============================================"
+        }
+      ]
+    },
+    "frontend": {},
+    "database": {},
+    "infrastructure": {},
+    "structure": {
+      "directories": [
+        ".render",
+        ".vscode",
+        "database",
+        "docs",
+        "exportacao",
+        "icons",
+        "public",
+        "public\\admin",
+        "public\\css",
+        "public\\css\\pages",
+        "public\\icons",
+        "public\\js",
+        "public\\js\\pages",
+        "public\\screenshots",
+        "scripts",
+        "server",
+        "server\\config",
+        "server\\jobs",
+        "server\\middlewares",
+        "server\\routes",
+        "server\\services",
+        "server\\utils"
+      ],
+      "files": {
+        ".vscode\\extensions.json": {
+          "size": 84,
+          "lines": 5,
+          "extension": ".json",
+          "lastModified": "2026-06-19T18:57:28.135Z"
+        },
+        ".vscode\\settings.json": {
+          "size": 4,
+          "lines": 2,
+          "extension": ".json",
+          "lastModified": "2026-08-24T04:48:13.679Z"
+        },
+        "analisar-projeto-completo.js": {
+          "size": 31093,
+          "lines": 795,
+          "extension": ".js",
+          "lastModified": "2026-08-24T15:29:40.457Z"
+        },
+        "database-compatibility-report.json": {
+          "size": 158491,
+          "lines": 6310,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:14:10.463Z"
+        },
+        "docs\\DEV_GUIDE.md": {
+          "size": 15526,
+          "lines": 252,
+          "extension": ".md",
+          "lastModified": "2026-08-20T04:14:10.491Z"
+        },
+        "docs\\ESTRUTURA.md": {
+          "size": 7994,
+          "lines": 238,
+          "extension": ".md",
+          "lastModified": "2026-08-20T04:14:10.492Z"
+        },
+        "docs\\IA_CONTEXT.md": {
+          "size": 16798,
+          "lines": 258,
+          "extension": ".md",
+          "lastModified": "2026-08-20T04:14:10.492Z"
+        },
+        "docs\\PROJETO.md": {
+          "size": 1250,
+          "lines": 26,
+          "extension": ".md",
+          "lastModified": "2026-06-11T15:51:15.894Z"
+        },
+        "exportacao\\comparativo.json": {
+          "size": 15437,
+          "lines": 770,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:14:10.494Z"
+        },
+        "exportacao\\dados.json": {
+          "size": 51650,
+          "lines": 1937,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:14:10.495Z"
+        },
+        "exportacao\\estrutura.json": {
+          "size": 17392,
+          "lines": 936,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:14:10.496Z"
+        },
+        "manifest.json": {
+          "size": 5006,
+          "lines": 102,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:19:25.263Z"
+        },
+        "package-lock.json": {
+          "size": 235685,
+          "lines": 6436,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:23:52.564Z"
+        },
+        "package.json": {
+          "size": 1211,
+          "lines": 48,
+          "extension": ".json",
+          "lastModified": "2026-08-20T04:21:27.202Z"
+        },
+        "public\\chatbot.html": {
+          "size": 2408,
+          "lines": 65,
+          "extension": ".html",
+          "lastModified": "2026-08-24T05:07:01.406Z"
+        },
+        "public\\css\\chatbot.css": {
+          "size": 11451,
+          "lines": 563,
+          "extension": ".css",
+          "lastModified": "2026-08-24T16:14:44.205Z"
+        },
+        "public\\css\\pages\\agendamentos-profissional.css": {
+          "size": 184,
+          "lines": 7,
+          "extension": ".css",
+          "lastModified": "2026-08-24T05:07:01.808Z"
+        },
+        "public\\css\\pages\\agendamentos.css": {
+          "size": 15423,
+          "lines": 703,
+          "extension": ".css",
+          "lastModified": "2026-08-25T15:18:17.070Z"
+        },
+        "public\\css\\pages\\clientes.css": {
+          "size": 26571,
+          "lines": 1144,
+          "extension": ".css",
+          "lastModified": "2026-08-26T04:37:39.950Z"
+        },
+        "public\\css\\pages\\configuracoes.css": {
+          "size": 1712,
+          "lines": 81,
+          "extension": ".css",
+          "lastModified": "2026-08-24T05:07:01.889Z"
+        },
+        "public\\css\\pages\\dashboard-profissional.css": {
+          "size": 184,
+          "lines": 7,
+          "extension": ".css",
+          "lastModified": "2026-08-24T05:07:02.014Z"
+        },
+        "public\\css\\pages\\dashboard.css": {
+          "size": 12747,
+          "lines": 592,
+          "extension": ".css",
+          "lastModified": "2026-08-26T05:11:53.367Z"
+        },
+        "public\\css\\pages\\empresas.css": {
+          "size": 1577,
+          "lines": 76,
+          "extension": ".css",
+          "lastModified": "2026-08-24T05:07:01.766Z"
+        },
+        "public\\css\\pages\\financeiro.css": {
+          "size": 16552,
+          "lines": 762,
+          "extension": ".css",
+          "lastModified": "2026-08-26T05:15:43.547Z"
+        },
+        "public\\css\\pages\\landing.css": {
+          "size": 11830,
+          "lines": 620,
+          "extension": ".css",
+          "lastModified": "2026-08-24T16:18:24.862Z"
+        },
+        "public\\css\\pages\\planos.css": {
+          "size": 12552,
+          "lines": 548,
+          "extension": ".css",
+          "lastModified": "2026-08-31T16:07:37.960Z"
+        },
+        "public\\css\\pages\\profissionais.css": {
+          "size": 1254,
+          "lines": 59,
+          "extension": ".css",
+          "lastModified": "2026-08-24T05:07:02.098Z"
+        },
+        "public\\css\\pages\\servicos.css": {
+          "size": 13828,
+          "lines": 632,
+          "extension": ".css",
+          "lastModified": "2026-08-25T16:12:16.684Z"
+        },
+        "public\\css\\pages\\whatsapp.css": {
+          "size": 1224,
+          "lines": 65,
+          "extension": ".css",
+          "lastModified": "2026-08-24T05:07:01.930Z"
+        },
+        "public\\css\\style.css": {
+          "size": 23887,
+          "lines": 1144,
+          "extension": ".css",
+          "lastModified": "2026-08-26T05:38:56.932Z"
+        },
+        "public\\index.html": {
+          "size": 35774,
+          "lines": 781,
+          "extension": ".html",
+          "lastModified": "2026-08-24T05:07:02.593Z"
+        },
+        "public\\js\\chatbot.js": {
+          "size": 59012,
+          "lines": 1499,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:03.588Z"
+        },
+        "public\\js\\pages\\agendamentos-profissional.js": {
+          "size": 17647,
+          "lines": 422,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:02.940Z"
+        },
+        "public\\js\\pages\\agendamentos.js": {
+          "size": 151819,
+          "lines": 3297,
+          "extension": ".js",
+          "lastModified": "2026-08-25T15:22:43.125Z"
+        },
+        "public\\js\\pages\\clientes.js": {
+          "size": 133926,
+          "lines": 2888,
+          "extension": ".js",
+          "lastModified": "2026-08-26T04:52:00.925Z"
+        },
+        "public\\js\\pages\\clientes_back.js": {
+          "size": 53839,
+          "lines": 1097,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:03.484Z"
+        },
+        "public\\js\\pages\\configuracoes.js": {
+          "size": 92547,
+          "lines": 1877,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:03.537Z"
+        },
+        "public\\js\\pages\\dashboard-profissional.js": {
+          "size": 6429,
+          "lines": 160,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:03.159Z"
+        },
+        "public\\js\\pages\\dashboard.js": {
+          "size": 73476,
+          "lines": 1386,
+          "extension": ".js",
+          "lastModified": "2026-08-26T05:07:57.699Z"
+        },
+        "public\\js\\pages\\dashboard_backup.js": {
+          "size": 58829,
+          "lines": 1176,
+          "extension": ".js",
+          "lastModified": "2026-08-22T05:44:40.938Z"
+        },
+        "public\\js\\pages\\empresas.js": {
+          "size": 89147,
+          "lines": 1486,
+          "extension": ".js",
+          "lastModified": "2026-08-31T16:30:09.986Z"
+        },
+        "public\\js\\pages\\financeiro.js": {
+          "size": 165666,
+          "lines": 3302,
+          "extension": ".js",
+          "lastModified": "2026-08-25T16:22:33.249Z"
+        },
+        "public\\js\\pages\\planos.js": {
+          "size": 18185,
+          "lines": 489,
+          "extension": ".js",
+          "lastModified": "2026-09-01T04:47:49.392Z"
+        },
+        "public\\js\\pages\\servicos.js": {
+          "size": 23757,
+          "lines": 551,
+          "extension": ".js",
+          "lastModified": "2026-08-25T16:12:39.310Z"
+        },
+        "public\\js\\pages\\whatsapp-config.js": {
+          "size": 18701,
+          "lines": 462,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:03.431Z"
+        },
+        "public\\js\\ui.js": {
+          "size": 28114,
+          "lines": 730,
+          "extension": ".js",
+          "lastModified": "2026-08-26T05:37:20.418Z"
+        },
+        "public\\manifest.json": {
+          "size": 1520,
+          "lines": 66,
+          "extension": ".json",
+          "lastModified": "2026-08-24T05:07:03.641Z"
+        },
+        "public\\sw.js": {
+          "size": 1859,
+          "lines": 74,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:03.692Z"
+        },
+        "README.md": {
+          "size": 1994,
+          "lines": 40,
+          "extension": ".md",
+          "lastModified": "2026-06-16T15:17:12.253Z"
+        },
+        "scripts\\analisar-arquivos.js": {
+          "size": 6143,
+          "lines": 184,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.561Z"
+        },
+        "scripts\\analisar-sistema-completo.js": {
+          "size": 8704,
+          "lines": 226,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.561Z"
+        },
+        "scripts\\analisar-whatsapp.js": {
+          "size": 12049,
+          "lines": 308,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.562Z"
+        },
+        "scripts\\ANALISE_CSS.md": {
+          "size": 19175,
+          "lines": 1024,
+          "extension": ".md",
+          "lastModified": "2026-08-24T16:21:10.460Z"
+        },
+        "scripts\\ANALISE_PROJETO.md": {
+          "size": 7251,
+          "lines": 414,
+          "extension": ".md",
+          "lastModified": "2026-08-29T05:51:20.454Z"
+        },
+        "scripts\\ANALISE_PROJETO_V2.md": {
+          "size": 7332,
+          "lines": 226,
+          "extension": ".md",
+          "lastModified": "2026-08-24T15:55:07.197Z"
+        },
+        "scripts\\analyze-business-logic-deep.js": {
+          "size": 26858,
+          "lines": 672,
+          "extension": ".js",
+          "lastModified": "2026-08-31T04:44:34.702Z"
+        },
+        "scripts\\analyze-business-logic.js": {
+          "size": 12950,
+          "lines": 339,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.563Z"
+        },
+        "scripts\\analyze-css.js": {
+          "size": 23653,
+          "lines": 689,
+          "extension": ".js",
+          "lastModified": "2026-08-24T16:06:24.801Z"
+        },
+        "scripts\\analyze-full-source.js": {
+          "size": 40790,
+          "lines": 951,
+          "extension": ".js",
+          "lastModified": "2026-08-31T04:46:50.872Z"
+        },
+        "scripts\\analyze-payment-system.js": {
+          "size": 1286,
+          "lines": 30,
+          "extension": ".js",
+          "lastModified": "2026-08-31T04:50:00.309Z"
+        },
+        "scripts\\analyze-project.js": {
+          "size": 51516,
+          "lines": 1359,
+          "extension": ".js",
+          "lastModified": "2026-08-24T15:55:03.442Z"
+        },
+        "scripts\\analyze-system.js": {
+          "size": 17400,
+          "lines": 536,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.564Z"
+        },
+        "scripts\\diagnostic-plans.js": {
+          "size": 7555,
+          "lines": 207,
+          "extension": ".js",
+          "lastModified": "2026-08-31T14:23:28.845Z"
+        },
+        "scripts\\export-system-context.js": {
+          "size": 30639,
+          "lines": 776,
+          "extension": ".js",
+          "lastModified": "2026-09-01T05:01:29.100Z"
+        },
+        "scripts\\full-analysis.js": {
+          "size": 25314,
+          "lines": 690,
+          "extension": ".js",
+          "lastModified": "2026-08-31T04:42:15.308Z"
+        },
+        "scripts\\gerar-icones.js": {
+          "size": 2591,
+          "lines": 83,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:19:59.997Z"
+        },
+        "scripts\\QUICK_REPORT.md": {
+          "size": 704,
+          "lines": 35,
+          "extension": ".md",
+          "lastModified": "2026-08-24T15:55:07.198Z"
+        },
+        "scripts\\xray-project.js": {
+          "size": 18501,
+          "lines": 438,
+          "extension": ".js",
+          "lastModified": "2026-08-24T16:05:43.082Z"
+        },
+        "scripts\\XRAY_PROJETO.md": {
+          "size": 10036,
+          "lines": 384,
+          "extension": ".md",
+          "lastModified": "2026-08-29T05:51:20.454Z"
+        },
+        "server\\config\\database.js": {
+          "size": 8393,
+          "lines": 220,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.567Z"
+        },
+        "server\\config\\db-hybrid.js": {
+          "size": 4606,
+          "lines": 127,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.568Z"
+        },
+        "server\\jobs\\email-cron.js": {
+          "size": 1503,
+          "lines": 54,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.570Z"
+        },
+        "server\\jobs\\lembretes-pagamento.js": {
+          "size": 13002,
+          "lines": 342,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:44:42.829Z"
+        },
+        "server\\jobs\\lembretes.js": {
+          "size": 6140,
+          "lines": 147,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.571Z"
+        },
+        "server\\jobs\\reset-contador.js": {
+          "size": 2807,
+          "lines": 78,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.572Z"
+        },
+        "server\\middlewares\\auth.js": {
+          "size": 14770,
+          "lines": 385,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.573Z"
+        },
+        "server\\middlewares\\empresa-db.js": {
+          "size": 413,
+          "lines": 17,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.573Z"
+        },
+        "server\\routes\\admin.routes.js": {
+          "size": 58161,
+          "lines": 1445,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:42:39.485Z"
+        },
+        "server\\routes\\agendamentos.routes.js": {
+          "size": 65360,
+          "lines": 1663,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:51:20.445Z"
+        },
+        "server\\routes\\auth.js": {
+          "size": 1999,
+          "lines": 66,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.500Z"
+        },
+        "server\\routes\\auth.routes.js": {
+          "size": 20494,
+          "lines": 543,
+          "extension": ".js",
+          "lastModified": "2026-08-30T04:58:59.774Z"
+        },
+        "server\\routes\\chatbot.routes.js": {
+          "size": 29248,
+          "lines": 764,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.604Z"
+        },
+        "server\\routes\\clientes.routes.js": {
+          "size": 30523,
+          "lines": 925,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.656Z"
+        },
+        "server\\routes\\despesas.routes.js": {
+          "size": 14239,
+          "lines": 457,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.709Z"
+        },
+        "server\\routes\\empresas.routes.js": {
+          "size": 13264,
+          "lines": 372,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.761Z"
+        },
+        "server\\routes\\fiados.routes.js": {
+          "size": 12105,
+          "lines": 327,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:43:23.419Z"
+        },
+        "server\\routes\\financeiro.routes.js": {
+          "size": 47602,
+          "lines": 1282,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:51:20.450Z"
+        },
+        "server\\routes\\horarios.routes.js": {
+          "size": 14495,
+          "lines": 362,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.927Z"
+        },
+        "server\\routes\\index.js": {
+          "size": 1527,
+          "lines": 37,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:04.980Z"
+        },
+        "server\\routes\\pagamento.routes.js": {
+          "size": 31219,
+          "lines": 755,
+          "extension": ".js",
+          "lastModified": "2026-08-31T15:02:09.464Z"
+        },
+        "server\\routes\\planos.routes.js": {
+          "size": 13767,
+          "lines": 338,
+          "extension": ".js",
+          "lastModified": "2026-08-31T16:13:17.619Z"
+        },
+        "server\\routes\\profissionais.routes.js": {
+          "size": 22761,
+          "lines": 685,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:05.136Z"
+        },
+        "server\\routes\\servicos.routes.js": {
+          "size": 8794,
+          "lines": 249,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:05.187Z"
+        },
+        "server\\routes\\whatsapp.js": {
+          "size": 1706,
+          "lines": 57,
+          "extension": ".js",
+          "lastModified": "2026-08-24T05:07:05.240Z"
+        },
+        "server\\routes\\whatsapp.routes.js": {
+          "size": 34531,
+          "lines": 912,
+          "extension": ".js",
+          "lastModified": "2026-08-29T06:27:26.525Z"
+        },
+        "server\\services\\email.js": {
+          "size": 16845,
+          "lines": 425,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.606Z"
+        },
+        "server\\services\\evolution-instances.js": {
+          "size": 30636,
+          "lines": 786,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:45:34.959Z"
+        },
+        "server\\services\\evolution-websocket.js": {
+          "size": 3164,
+          "lines": 93,
+          "extension": ".js",
+          "lastModified": "2026-08-29T05:28:33.974Z"
+        },
+        "server\\services\\mercadopago.js": {
+          "size": 10403,
+          "lines": 272,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.608Z"
+        },
+        "server\\services\\whatsapp.js": {
+          "size": 11692,
+          "lines": 311,
+          "extension": ".js",
+          "lastModified": "2026-08-31T04:40:55.208Z"
+        },
+        "server\\utils\\constants.js": {
+          "size": 887,
+          "lines": 23,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.610Z"
+        },
+        "server\\utils\\helpers.js": {
+          "size": 5477,
+          "lines": 154,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.611Z"
+        },
+        "server\\utils\\sqlite-compat.js": {
+          "size": 1164,
+          "lines": 59,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:14:12.612Z"
+        },
+        "server.js": {
+          "size": 28483,
+          "lines": 772,
+          "extension": ".js",
+          "lastModified": "2026-09-01T04:33:25.491Z"
+        },
+        "sw.js": {
+          "size": 13784,
+          "lines": 249,
+          "extension": ".js",
+          "lastModified": "2026-08-20T04:19:41.201Z"
+        },
+        "verificar-agendamentos.js": {
+          "size": 7253,
+          "lines": 198,
+          "extension": ".js",
+          "lastModified": "2026-08-21T04:29:59.296Z"
+        }
+      }
+    }
+  },
+  "modules": [],
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/admin/stats",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/empresas/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/admin/empresas/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/usuarios",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresa/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/usuarios/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/usuarios/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/faturamento-mensal",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/crescimento-empresas",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/:id/usuarios",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/:id/acessos",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/:id/clientes",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/:id/agendamentos",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/empresas/:id/extender-trial",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/estatisticas",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/empresas/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/profissionais/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/profissionais/:id",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/acessos",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/planos-config",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/planos-config",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/registrar-acesso",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/admin/empresas/:id/whatsapp-proprio",
+      "file": "admin.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/agendamentos/",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/agendamentos/:id",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/agendamentos/",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/agendamentos/:id",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/agendamentos/:id/concluir",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/agendamentos/:id/confirmar",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/agendamentos/:id/cancelar",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/agendamentos/:id",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/agendamentos/:id/extras",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/agendamentos/periodo",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/agendamentos/horarios-disponiveis",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/agendamentos/profissionais-disponiveis",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/agendamentos/:id/pagamento",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/agendamentos/:id/enviar-cobranca",
+      "file": "agendamentos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "file": "auth.js",
+      "description": "Login"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/verify",
+      "file": "auth.js",
+      "description": "Verificar token"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "file": "auth.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/cadastro",
+      "file": "auth.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/verificar",
+      "file": "auth.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/chatbot/link/:empresaId",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/chatbot/empresa/:id",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/chatbot/servicos/:empresaId",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/chatbot/profissionais/:empresaId",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/chatbot/dono/:empresaId",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/chatbot/cliente/buscar",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/chatbot/cliente/criar",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/chatbot/datas-disponiveis-mes",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/chatbot/horarios-disponiveis",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/chatbot/agendar",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/chatbot/servico/:id",
+      "file": "chatbot.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/clientes/paginated",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/clientes/",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/clientes/grupos",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/clientes/:id",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/clientes/:id/grupos",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/clientes/",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/clientes/:id",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/clientes/:id",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/clientes/:id/bloquear-chatbot",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/clientes/:id/grupos",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/clientes/bulk",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/clientes/stats",
+      "file": "clientes.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/despesas/",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/despesas/resumo",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/despesas/categorias",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/despesas/:id",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/despesas/",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/despesas/:id",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/despesas/:id",
+      "file": "despesas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/empresas/plano",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/empresas/dados",
+      "file": "empresas.routes.js",
+      "description": "🔥 CORREÇÃO: usar req.user (NÃO req.usuario)"
+    },
+    {
+      "method": "GET",
+      "path": "/empresas/dados-completos",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/empresas/dados",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/empresas/endereco",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/empresas/telefone-dono",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/empresas/bloqueio-geral",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/empresas/bloqueio-geral",
+      "file": "empresas.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/fiados/",
+      "file": "fiados.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/fiados/:id/baixar",
+      "file": "fiados.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/fiados/stats",
+      "file": "fiados.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/comparativo",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/receitas",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/analise-diaria",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/despesas/:id",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/financeiro/:id",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/fiados",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/financeiro/fiados/:id/baixar",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/financeiro/fiados/stats",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/financeiro/fiados/:id/baixar",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/financeiro/receitas/manual",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/financeiro/receitas/manual/:id",
+      "file": "financeiro.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/horarios/",
+      "file": "horarios.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/horarios/:dia",
+      "file": "horarios.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/horarios/",
+      "file": "horarios.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/horarios/inicializar",
+      "file": "horarios.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/pagamento/config",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/pagamento/config",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/pagamento/status",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/simulate-payment",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/simulate-pix",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/simulate-card",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/simulate-boleto",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/confirm-simulated-payment/:paymentId",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/mercadopago/webhook",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/create-boleto",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/create-pix",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/create-payment",
+      "file": "pagamento.routes.js",
+      "description": ""
+    },
+    {
+      "method": "POST",
+      "path": "/pagamento/webhook",
+      "file": "pagamento.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/planos/payment-mode",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/planos/",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/planos/empresa",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/planos/empresa",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/planos/upgrade",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/planos/cancel-subscription",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/planos/admin/ativar-whatsapp/:id",
+      "file": "planos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/profissionais/",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/profissionais/:id",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/profissionais/",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/profissionais/:id",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/profissionais/:id/reset-senha",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/profissionais/:id",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/profissionais/profissional/agendamentos",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/profissionais/profissional/financeiro",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/profissionais/profissional/agendamentos/:id",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/profissionais/profissional/agendamentos/:id/concluir",
+      "file": "profissionais.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/servicos/",
+      "file": "servicos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/servicos/todos",
+      "file": "servicos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/servicos/",
+      "file": "servicos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/servicos/:id",
+      "file": "servicos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "DELETE",
+      "path": "/servicos/:id",
+      "file": "servicos.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/webhook/wati",
+      "file": "whatsapp.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/teste",
+      "file": "whatsapp.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/status",
+      "file": "whatsapp.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/info",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/criar-instancia",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/qrcode",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/status",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/disconnect",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/contatos",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/contatos",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/admin/empresas/whatsapp-status",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "PUT",
+      "path": "/whatsapp/admin/empresas/:id/whatsapp-proprio",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/webhook",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "GET",
+      "path": "/whatsapp/webhook",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    },
+    {
+      "method": "POST",
+      "path": "/whatsapp/enviar",
+      "file": "whatsapp.routes.js",
+      "description": "============================================"
+    }
+  ],
+  "services": [
+    {
+      "name": "email",
+      "file": "email.js",
+      "functions": [
+        "enviarBoasVindas",
+        "enviarBoleto",
+        "enviarPix",
+        "notificarNovoCadastro"
+      ],
+      "description": "server/services/email.js"
+    },
+    {
+      "name": "evolution-instances",
+      "file": "evolution-instances.js",
+      "functions": [
+        "EvolutionInstances"
+      ],
+      "description": "============================================"
+    },
+    {
+      "name": "evolution-websocket",
+      "file": "evolution-websocket.js",
+      "functions": [
+        "EvolutionWebSocket"
+      ],
+      "description": "server/services/evolution-websocket.js"
+    },
+    {
+      "name": "mercadopago",
+      "file": "mercadopago.js",
+      "functions": [
+        "MercadoPagoService"
+      ],
+      "description": "============================================"
+    },
+    {
+      "name": "whatsapp",
+      "file": "whatsapp.js",
+      "functions": [
+        "formatarDataBr",
+        "formatarTelefone",
+        "formatNumber",
+        "getInstanciaEmpresa",
+        "send",
+        "gerarLinkChatbot",
+        "gerarMensagemConfirmacao",
+        "enviarConfirmacao",
+        "enviarCancelamento",
+        "enviarConclusao"
+      ],
+      "description": "============================================"
+    }
+  ],
+  "functions": [
+    {
+      "file": "analisar-projeto-completo.js",
+      "functions": [
+        "shouldIgnore",
+        "readFileSafe",
+        "getAllFiles",
+        "countLines",
+        "extractPattern",
+        "analyzePackageJson",
+        "analyzeServerJs",
+        "analyzeRoutes",
+        "analyzeServices",
+        "analyzePublic",
+        "analyzeDatabase",
+        "analyzeSecurity",
+        "generateReport",
+        "count"
+      ]
+    },
+    {
+      "file": "public\\js\\chatbot.js",
+      "functions": [
+        "carregarDadosEmpresa",
+        "carregarServicos",
+        "carregarProfissionais",
+        "enviarMensagem",
+        "adicionarMensagem",
+        "adicionarMensagemComBotoes",
+        "processarResposta",
+        "buscarClientePorTelefone",
+        "cadastrarNovoCliente",
+        "verificarLimiteAgendamentos",
+        "mostrarServicos",
+        "perguntarProfissional",
+        "perguntarData",
+        "carregarDatasDisponiveis",
+        "gerarDatasFallback",
+        "renderizarCalendario",
+        "selecionarDataCalendario",
+        "perguntarHorario",
+        "confirmarAgendamento",
+        "verificarEConfirmar",
+        "validarDataHora",
+        "finalizarAgendamento",
+        "formatarDataBr",
+        "isMesAtual"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\agendamentos-profissional.js",
+      "functions": [
+        "isAberto",
+        "isAtivo",
+        "toNumber",
+        "formatMoney",
+        "carregarAgendamentosProfissional",
+        "carregarListaAgendamentosProfComFiltro",
+        "aplicarFiltrosAgendamentosProf",
+        "limparFiltrosAgendamentosProf",
+        "carregarHorariosDisponiveisProf",
+        "formatarHoraCompleta",
+        "abrirModalAgendamentoProfissional",
+        "fecharModalAgendamentoProfissional",
+        "atualizarValorPorServicoProf",
+        "salvarAgendamentoProfissional",
+        "concluirAgendamentoProfissional",
+        "formatarDataBr",
+        "escapeHtml"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\agendamentos.js",
+      "functions": [
+        "formatarDataBr",
+        "escapeHtml",
+        "carregarAgendamentos",
+        "carregarListaAgendamentosComFiltro",
+        "renderizarLinhaAgendamento",
+        "aplicarFiltrosAgendamentos",
+        "limparFiltrosAgendamentos",
+        "atualizarEstatisticasAgendamentos",
+        "formatarHoraBr",
+        "abrirModalNovoCliente",
+        "fecharModalNovoCliente",
+        "salvarNovoCliente",
+        "carregarHorariosDisponiveisDono",
+        "abrirModalAgendamentoDono",
+        "filtrarClientesDono",
+        "selecionarClienteDono",
+        "limparClienteSelecionado",
+        "salvarAgendamentoDono",
+        "fecharModalAgendamentoDono",
+        "atualizarValorPorServicoDono",
+        "concluirAgendamento",
+        "excluirAgendamento",
+        "editarAgendamento",
+        "carregarHorariosParaEdicao",
+        "salvarEdicaoAgendamentoDono",
+        "fecharModalEditarAgendamentoDono",
+        "atualizarValorPorServicoEditDono",
+        "abrirModalExtra",
+        "adicionarExtraPersonalizado",
+        "fecharModalExtras",
+        "adicionarExtraNoModal",
+        "removerExtraDoModal",
+        "salvarExtrasModal",
+        "abrirModalPagamento",
+        "selecionarFormaPagamento",
+        "fecharModalPagamento",
+        "salvarFormaPagamento",
+        "selecionado",
+        "isAtivo",
+        "valorExibicao",
+        "nome",
+        "telefone",
+        "email"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\clientes.js",
+      "functions": [
+        "isAberto",
+        "isAtivo",
+        "toNumber",
+        "formatMoney",
+        "escapeHtml",
+        "formatarDataBr",
+        "limparNome",
+        "limparTelefone",
+        "carregarGruposCliente",
+        "carregarClientes",
+        "carregarClientesBackground",
+        "renderizarClientesOtimizado",
+        "renderizarClientesBatches",
+        "renderizarBatch",
+        "setFiltroClientes",
+        "setFiltroGrupo",
+        "filtrarPorLetra",
+        "limparFiltroLetra",
+        "buscarClientes",
+        "limparBuscaClientes",
+        "renderizarListaClientes",
+        "aplicarFiltrosClientes",
+        "atualizarBotoesFiltro",
+        "abrirModalCliente",
+        "fecharModalCliente",
+        "salvarCliente",
+        "editarCliente",
+        "fecharModalEditarCliente",
+        "atualizarCliente",
+        "excluirCliente",
+        "bloquearChatbot",
+        "desbloquearChatbot",
+        "verHistoricoCliente",
+        "fecharModalHistorico",
+        "apagarTodosClientes",
+        "abrirModalGrupos",
+        "fecharModalGrupos",
+        "toggleGrupoCliente",
+        "criarNovoGrupo",
+        "atualizarGruposAtuais",
+        "salvarGruposCliente",
+        "excluirGrupoCliente",
+        "abrirModalImportarCSV",
+        "fecharModalImportarCSV",
+        "handleFileSelectDesktop",
+        "processarArquivoContatosDesktop",
+        "parseVCFMobile",
+        "parseCSVMobile",
+        "salvarLoteClientesDesktop",
+        "abrirModalPromocao",
+        "fecharModalPromocao",
+        "filtrarClientesPromocao",
+        "selecionarTodosClientes",
+        "atualizarContadorSelecionados",
+        "normalizarNumero",
+        "enviarPromocao",
+        "getDelay",
+        "getMensagemComNome",
+        "forcarAtualizacaoGrupos",
+        "nome"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\clientes_back.js",
+      "functions": [
+        "isAberto",
+        "isAtivo",
+        "toNumber",
+        "formatMoney",
+        "escapeHtml",
+        "formatarDataBr",
+        "carregarClientes",
+        "buscarClientes",
+        "limparBuscaClientes",
+        "setFiltroClientes",
+        "apagarTodosClientes",
+        "verHistoricoCliente",
+        "fecharModalHistorico",
+        "abrirModalCliente",
+        "fecharModalCliente",
+        "salvarCliente",
+        "editarCliente",
+        "fecharModalEditarCliente",
+        "atualizarCliente",
+        "excluirCliente",
+        "bloquearChatbot",
+        "desbloquearChatbot",
+        "abrirModalImportarCSV",
+        "fecharModalImportarCSV",
+        "handleFileSelect",
+        "processarArquivoContatos",
+        "parseVCF",
+        "parseCSV",
+        "salvarLoteClientes",
+        "abrirModalPromocao",
+        "fecharModalPromocao",
+        "enviarPromocao"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\configuracoes.js",
+      "functions": [
+        "carregarConfiguracoes",
+        "switchConfigTab",
+        "carregarDadosEmpresa",
+        "renderDadosEmpresa",
+        "salvarDadosEmpresa",
+        "carregarBloqueioGeral",
+        "renderBloqueioGeral",
+        "salvarBloqueioGeral",
+        "carregarHorarios",
+        "carregarChatbot",
+        "renderProfissionaisMobile",
+        "renderProfissionaisList",
+        "renderHorarios",
+        "renderChatbot",
+        "renderTema",
+        "toggleTheme",
+        "inicializarHorariosEvents",
+        "handleStatusChange",
+        "handleHorarioChange",
+        "salvarHorario",
+        "handleStatusChangeMobile",
+        "handleHorarioChangeMobile",
+        "carregarLinkChatbot",
+        "copiarLinkChatbot",
+        "abrirModalProfissional",
+        "salvarProfissional",
+        "editarProfissional",
+        "resetarSenhaProfissional",
+        "alternarStatusProfissional",
+        "excluirProfissional",
+        "fecharModalPersonalizado",
+        "escapeHtml",
+        "formatarData",
+        "carregarPlanos"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\dashboard-profissional.js",
+      "functions": [
+        "isAberto",
+        "isAtivo",
+        "toNumber",
+        "formatMoney",
+        "carregarDashboardProfissional",
+        "escapeHtml"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\dashboard.js",
+      "functions": [
+        "criarDataLocal",
+        "hojeLocal",
+        "formatarDataLocal",
+        "horaParaMinutos",
+        "minutosParaHora",
+        "isMobileScreen",
+        "formatarMoeda",
+        "escapeHtml",
+        "isHorarioOcupadoComDuracao",
+        "gerarHorariosDoDiaConfig",
+        "atualizarModoAgendaPorTela",
+        "irParaDiaDisponivel",
+        "mudarAgendaSemana",
+        "concluirAgendamentosVencidos",
+        "carregarAgendaInteligente",
+        "renderizarAgendaInteligente",
+        "abrirDetalhesSlot",
+        "fecharModalDetalhesSlot",
+        "agendarNoHorarioDisponivel",
+        "abrirAgendamentoInteligente",
+        "alternarModoAgenda",
+        "irAgendaHoje",
+        "carregarDashboard",
+        "carregarDashboardDono",
+        "carregarDashboardSuperAdmin",
+        "renderizarDashboardSuperAdmin",
+        "carregarServicos",
+        "carregarAgendamentos",
+        "carregarClientes",
+        "carregarPlanos",
+        "profs",
+        "isAgora",
+        "agendamentos",
+        "clientes",
+        "financeiro",
+        "profissionais",
+        "assinaturaAtiva"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\dashboard_backup.js",
+      "functions": [
+        "criarDataLocal",
+        "hojeLocal",
+        "formatarDataLocal",
+        "horaParaMinutos",
+        "minutosParaHora",
+        "isMobileScreen",
+        "formatarMoeda",
+        "escapeHtml",
+        "isHorarioOcupadoComDuracao",
+        "gerarHorariosDoDiaConfig",
+        "atualizarModoAgendaPorTela",
+        "concluirAgendamentosVencidos",
+        "carregarAgendaInteligente",
+        "renderizarAgendaInteligente",
+        "abrirDetalhesSlot",
+        "fecharModalDetalhesSlot",
+        "agendarNoHorarioDisponivel",
+        "abrirAgendamentoInteligente",
+        "alternarModoAgenda",
+        "mudarAgendaSemana",
+        "irAgendaHoje",
+        "carregarDashboard",
+        "carregarDashboardDono",
+        "carregarDashboardSuperAdmin",
+        "renderizarDashboardSuperAdmin",
+        "carregarServicos",
+        "carregarAgendamentos",
+        "carregarClientes",
+        "carregarPlanos",
+        "profs",
+        "isAgora",
+        "agendamentos",
+        "clientes",
+        "financeiro",
+        "profissionais",
+        "assinaturaAtiva"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\empresas.js",
+      "functions": [
+        "carregarDashboardSuperAdmin",
+        "alternarModoPagamento",
+        "toggleWhatsAppProprio",
+        "filtrarEmpresas",
+        "verEmpresa",
+        "editarEmpresa",
+        "salvarEmpresa",
+        "editarUsuario",
+        "fecharModalEditarUsuario",
+        "salvarUsuario",
+        "estenderTrial",
+        "deletarEmpresa",
+        "fecharModal",
+        "conectarFormEmpresa",
+        "formatarDataHora",
+        "formatarDataBr",
+        "formatarMoeda",
+        "escapeHtml",
+        "showModal",
+        "stats",
+        "empresas",
+        "usuarios",
+        "empresa",
+        "clientes",
+        "agendamentos",
+        "acessos"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\financeiro.js",
+      "functions": [
+        "isAberto",
+        "isAtivo",
+        "toNumber",
+        "formatMoney",
+        "formatarDataBr",
+        "escapeHtml",
+        "carregarFinanceiro",
+        "renderizarFinanceiroV2",
+        "renderizarVisaoProfissional",
+        "switchFinanceiroTab",
+        "renderTabReceitas",
+        "renderTabDespesas",
+        "renderTabComissoes",
+        "renderTabAnaliseDiaria",
+        "renderTabFiados",
+        "criarModalDespesa",
+        "abrirModalDespesa",
+        "salvarDespesa",
+        "carregarDespesaParaEdicao",
+        "carregarDespesasTab",
+        "excluirDespesa",
+        "carregarReceitas",
+        "carregarComissoesTab",
+        "carregarAnaliseDiaria",
+        "aplicarFiltroReceitas",
+        "carregarFiados",
+        "criarModalBaixarFiado",
+        "abrirModalBaixarFiado",
+        "fecharModalBaixarFiado",
+        "confirmarBaixarFiado",
+        "showToast",
+        "abrirModalReceitaManual",
+        "fecharModalReceitaManual",
+        "salvarReceitaManual",
+        "variacaoLucro",
+        "isMesAtual"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\planos.js",
+      "functions": [
+        "showToast",
+        "tokenAtual",
+        "requisicao",
+        "buscarModoPagamento",
+        "carregarPlanos",
+        "escolherPlano",
+        "confirmarUpgrade",
+        "monitorarPagamento",
+        "cancelarAssinatura",
+        "atualizarUsuarioLocal",
+        "togglePeriodo"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\servicos.js",
+      "functions": [
+        "carregarServicos",
+        "carregarListaServicos",
+        "escapeHtml",
+        "abrirModalServico",
+        "fecharModalServico",
+        "salvarServico",
+        "editarServico",
+        "toggleServico",
+        "excluirServico",
+        "isAtivo",
+        "valorFormatado",
+        "acao"
+      ]
+    },
+    {
+      "file": "public\\js\\pages\\whatsapp-config.js",
+      "functions": [
+        "carregarConfigWhatsApp",
+        "criarInstancia",
+        "buscarQrCode",
+        "verificarStatus",
+        "confirmarConexao",
+        "desconectarWhatsApp",
+        "irParaPlanos",
+        "gerarQrCode",
+        "verificarConexao"
+      ]
+    },
+    {
+      "file": "public\\js\\ui.js",
+      "functions": [
+        "carregarCSS",
+        "showToast",
+        "showLoading",
+        "hideLoading",
+        "showModal",
+        "initResponsiveSidebar",
+        "openSidebar",
+        "closeSidebar",
+        "fecharSidebarMobile",
+        "executarAcao",
+        "controlarMenu",
+        "forcarCoresHeader",
+        "formatarDataBr",
+        "mostrarLanding",
+        "mostrarLogin",
+        "mostrarCadastro",
+        "atualizarStatusWhatsApp",
+        "iniciarMonitoramentoWhatsApp",
+        "gerarMenu",
+        "showConfirm"
+      ]
+    },
+    {
+      "file": "scripts\\analisar-sistema-completo.js",
+      "functions": [
+        "analisarArquivoJS",
+        "funcoes",
+        "consoleLogs",
+        "tryCatch",
+        "comentarios"
+      ]
+    },
+    {
+      "file": "scripts\\analisar-whatsapp.js",
+      "functions": [
+        "analisarArquivo",
+        "comentarios",
+        "comentariosBloco"
+      ]
+    },
+    {
+      "file": "scripts\\analyze-business-logic-deep.js",
+      "functions": [
+        "walkDir",
+        "walk",
+        "BusinessLogicAnalyzer"
+      ]
+    },
+    {
+      "file": "scripts\\analyze-business-logic.js",
+      "functions": [
+        "extractBusinessRules",
+        "analyzeBusinessLogic",
+        "walkDir",
+        "generateBusinessReport",
+        "saveBusinessReport",
+        "generateBusinessMarkdown",
+        "main"
+      ]
+    },
+    {
+      "file": "scripts\\analyze-css.js",
+      "functions": [
+        "log",
+        "readFile",
+        "exists",
+        "isDirectory",
+        "walkDir",
+        "getFileSize",
+        "analyzeCSSStructure",
+        "analyzeCSSQuality",
+        "analyzeCSSPerformance",
+        "analyzeCSSCompatibility",
+        "analyzeCSSSpecificity",
+        "analyzeCSSColors",
+        "analyzeCSS",
+        "importantCount",
+        "prefixCount",
+        "commentCount",
+        "pxCount",
+        "remCount",
+        "emCount",
+        "idCount",
+        "classCount",
+        "elementCount"
+      ]
+    },
+    {
+      "file": "scripts\\analyze-full-source.js",
+      "functions": [
+        "walk",
+        "FullSourceAnalyzer"
+      ]
+    },
+    {
+      "file": "scripts\\analyze-project.js",
+      "functions": [
+        "log",
+        "readFile",
+        "exists",
+        "isDirectory",
+        "walkDir",
+        "extractRoutes",
+        "extractMiddlewares",
+        "extractSessionConfig",
+        "extractDBConfig",
+        "extractAPIRoutes",
+        "extractModels",
+        "extractAuthMiddleware",
+        "extractProtectedRoutes",
+        "extractUserRoles",
+        "extractDeployConfig",
+        "analyzeSecurity",
+        "analyzePerformance",
+        "analyzeLogging",
+        "analyzeServer",
+        "analyzePackageJson",
+        "analyzePublic",
+        "analyzeRoutes",
+        "analyzeServices",
+        "analyzeDB",
+        "analyzeEnv",
+        "analyzeScripts",
+        "analyzeProjectStructure",
+        "generateRecommendations",
+        "generateUserFlows",
+        "generateReport",
+        "generateQuickReport",
+        "analyze",
+        "showNextSteps"
+      ]
+    },
+    {
+      "file": "scripts\\analyze-system.js",
+      "functions": [
+        "getFileStats",
+        "countLines",
+        "getFileExtension",
+        "isDirectory",
+        "shouldIgnore",
+        "analyzeDirectory",
+        "classifyFile",
+        "identifyFeature",
+        "generateReport",
+        "generateRecommendations",
+        "generateQuickFixes",
+        "saveReport",
+        "generateMarkdownReport",
+        "main"
+      ]
+    },
+    {
+      "file": "scripts\\diagnostic-plans.js",
+      "functions": [
+        "diagnosticar"
+      ]
+    },
+    {
+      "file": "scripts\\export-system-context.js",
+      "functions": [
+        "walk",
+        "SystemContextExporter"
+      ]
+    },
+    {
+      "file": "scripts\\full-analysis.js",
+      "functions": [
+        "toggleData",
+        "duration",
+        "progress",
+        "FullAnalyzer"
+      ]
+    },
+    {
+      "file": "scripts\\gerar-icones.js",
+      "functions": [
+        "generateIcon",
+        "generateAllIcons"
+      ]
+    },
+    {
+      "file": "scripts\\xray-project.js",
+      "functions": [
+        "log",
+        "readFile",
+        "exists",
+        "isDirectory",
+        "walkDir",
+        "extractRegexFromFile",
+        "analyzeGit",
+        "analyzeServer",
+        "analyzePublic",
+        "analyzeDeepDB",
+        "analyzeBackendFolder",
+        "findCodeSmells",
+        "analyzeEnv",
+        "analyzePackageJson",
+        "generateReport",
+        "analyze"
+      ]
+    },
+    {
+      "file": "server\\config\\database.js",
+      "functions": [
+        "prepareSqlForSQLite",
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "initDatabase",
+        "inserirHorariosPadrao",
+        "verificarColunaDiasBloqueio"
+      ]
+    },
+    {
+      "file": "server\\config\\db-hybrid.js",
+      "functions": [
+        "adaptQuery",
+        "HybridDB"
+      ]
+    },
+    {
+      "file": "server\\jobs\\email-cron.js",
+      "functions": [
+        "enviarDicas",
+        "verificarTrial",
+        "start"
+      ]
+    },
+    {
+      "file": "server\\jobs\\lembretes-pagamento.js",
+      "functions": [
+        "enviarMensagemCobranca",
+        "formatarDataBr",
+        "processarCobrancas",
+        "valorFormatado"
+      ]
+    },
+    {
+      "file": "server\\jobs\\lembretes.js",
+      "functions": [
+        "LembreteJob"
+      ]
+    },
+    {
+      "file": "server\\jobs\\reset-contador.js",
+      "functions": [
+        "resetarContadores"
+      ]
+    },
+    {
+      "file": "server\\middlewares\\auth.js",
+      "functions": [
+        "auth",
+        "verificarSuperAdmin",
+        "verificarDono",
+        "verificarLimiteProfissionais",
+        "verificarAcessoAgendamentos",
+        "verificarLimiteAgendamentos",
+        "incrementarContadorAgendamentos",
+        "incrementar",
+        "planoLower",
+        "temLimite"
+      ]
+    },
+    {
+      "file": "server\\middlewares\\empresa-db.js",
+      "functions": [
+        "withEmpresaDb"
+      ]
+    },
+    {
+      "file": "server\\routes\\admin.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "formatMonthYear",
+        "dateInterval"
+      ]
+    },
+    {
+      "file": "server\\routes\\agendamentos.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "finalizarResposta",
+        "continuarUpdate",
+        "formatarDataBr",
+        "valorFormatado"
+      ]
+    },
+    {
+      "file": "server\\routes\\auth.routes.js",
+      "functions": [
+        "getCurrentTimestamp",
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "gerarNomeBanco"
+      ]
+    },
+    {
+      "file": "server\\routes\\chatbot.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "horaParaMinutos",
+        "minutosParaHora",
+        "gerarHorariosDoDia"
+      ]
+    },
+    {
+      "file": "server\\routes\\clientes.routes.js",
+      "functions": [
+        "offset"
+      ]
+    },
+    {
+      "file": "server\\routes\\empresas.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum"
+      ]
+    },
+    {
+      "file": "server\\routes\\fiados.routes.js",
+      "functions": [
+        "valorFormatado"
+      ]
+    },
+    {
+      "file": "server\\routes\\financeiro.routes.js",
+      "functions": [
+        "lower",
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesce",
+        "coalesceSum",
+        "getDados",
+        "forma",
+        "valorFormatado"
+      ]
+    },
+    {
+      "file": "server\\routes\\horarios.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum"
+      ]
+    },
+    {
+      "file": "server\\routes\\pagamento.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "getPaymentMode"
+      ]
+    },
+    {
+      "file": "server\\routes\\planos.routes.js",
+      "functions": [
+        "getPaymentModeFromDB",
+        "normalizarPlano",
+        "booleano",
+        "dataValida",
+        "diasAte",
+        "adicionarDias",
+        "assinaturaAtiva",
+        "montarResposta",
+        "buscarEmpresa",
+        "atualizarWhatsApp"
+      ]
+    },
+    {
+      "file": "server\\routes\\profissionais.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum",
+        "comissao"
+      ]
+    },
+    {
+      "file": "server\\routes\\whatsapp.routes.js",
+      "functions": [
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "formatDate",
+        "coalesceSum"
+      ]
+    },
+    {
+      "file": "server\\services\\email.js",
+      "functions": [
+        "enviarBoasVindas",
+        "enviarBoleto",
+        "enviarPix",
+        "notificarNovoCadastro"
+      ]
+    },
+    {
+      "file": "server\\services\\evolution-instances.js",
+      "functions": [
+        "EvolutionInstances"
+      ]
+    },
+    {
+      "file": "server\\services\\evolution-websocket.js",
+      "functions": [
+        "EvolutionWebSocket"
+      ]
+    },
+    {
+      "file": "server\\services\\mercadopago.js",
+      "functions": [
+        "MercadoPagoService"
+      ]
+    },
+    {
+      "file": "server\\services\\whatsapp.js",
+      "functions": [
+        "formatarDataBr",
+        "formatarTelefone",
+        "formatNumber",
+        "getInstanciaEmpresa",
+        "send",
+        "gerarLinkChatbot",
+        "gerarMensagemConfirmacao",
+        "enviarConfirmacao",
+        "enviarCancelamento",
+        "enviarConclusao"
+      ]
+    },
+    {
+      "file": "server\\utils\\helpers.js",
+      "functions": [
+        "formatarDataBr",
+        "incrementarContadorAgendamentos",
+        "resetarContadorAgendamentos",
+        "verificarLimiteAgendamentos",
+        "verificarDisponibilidadeHorario"
+      ]
+    },
+    {
+      "file": "server\\utils\\sqlite-compat.js",
+      "functions": [
+        "formatDate",
+        "formatMonthYear",
+        "coalesceSum",
+        "dateInterval",
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "lower",
+        "toChar",
+        "convertPlaceholders"
+      ]
+    },
+    {
+      "file": "server.js",
+      "functions": [
+        "formatDate",
+        "formatMonthYear",
+        "coalesceSum",
+        "dateInterval",
+        "extractMonth",
+        "extractYear",
+        "extractDay",
+        "lower",
+        "formatarDataBr",
+        "gerarHorariosDoDia",
+        "verificarDisponibilidadeHorario"
+      ]
+    },
+    {
+      "file": "verificar-agendamentos.js",
+      "functions": [
+        "verificarBancoPrincipal",
+        "verificarBancosEmpresas",
+        "verificarStudioSandro",
+        "verificarClienteDigregorio",
+        "main"
+      ]
+    }
+  ],
+  "businessRules": [
+    {
+      "type": "business_rule",
+      "description": "if (!data.server.security.hasRateLimit) {",
+      "file": "analisar-projeto-completo.js",
+      "line": 447
+    },
+    {
+      "type": "limit",
+      "description": "if (!data.server.security.hasRateLimit) important.push(`Adicionar \\`express-rate-limit\\` para proteger endpoints de login e API contra brute-force`);",
+      "file": "analisar-projeto-completo.js",
+      "line": 679
+    },
+    {
+      "type": "business_rule",
+      "description": "const podeAgendar = await verificarLimiteAgendamentos(clienteAtual.id);",
+      "file": "public\\js\\chatbot.js",
+      "line": 545
+    },
+    {
+      "type": "business_rule",
+      "description": "async function verificarLimiteAgendamentos(clienteId) {",
+      "file": "public\\js\\chatbot.js",
+      "line": 628
+    },
+    {
+      "type": "business_rule",
+      "description": "if (dataAg >= dataLimite) {",
+      "file": "public\\js\\chatbot.js",
+      "line": 671
+    },
+    {
+      "type": "limit",
+      "description": "console.error('Erro ao verificar limite:', error);",
+      "file": "public\\js\\chatbot.js",
+      "line": 679
+    },
+    {
+      "type": "check",
+      "description": "if (check) check.remove();",
+      "file": "public\\js\\pages\\agendamentos.js",
+      "line": 3169
+    },
+    {
+      "type": "check",
+      "description": "if (!selecionado.querySelector('.fa-check-circle')) {",
+      "file": "public\\js\\pages\\agendamentos.js",
+      "line": 3176
+    },
+    {
+      "type": "check",
+      "description": "if (!checkbox) continue;",
+      "file": "public\\js\\pages\\clientes.js",
+      "line": 2477
+    },
+    {
+      "type": "check",
+      "description": "if (checkbox) {",
+      "file": "public\\js\\pages\\clientes.js",
+      "line": 2525
+    },
+    {
+      "type": "check",
+      "description": "if (checkbox && checkbox.checked) {",
+      "file": "public\\js\\pages\\clientes.js",
+      "line": 2556
+    },
+    {
+      "type": "check",
+      "description": "if (checkbox && checkbox.checked) {",
+      "file": "public\\js\\pages\\clientes.js",
+      "line": 2618
+    },
+    {
+      "type": "check",
+      "description": "if (input !== e.target && input.type !== 'checkbox') {",
+      "file": "public\\js\\pages\\configuracoes.js",
+      "line": 1476
+    },
+    {
+      "type": "permission",
+      "description": "if (u.role === 'superadmin') { roleColor = '#ef4444'; roleLabel = '🔴 Super'; }",
+      "file": "public\\js\\pages\\empresas.js",
+      "line": 493
+    },
+    {
+      "type": "permission",
+      "description": "else if (u.role === 'profissional') { roleColor = '#818cf8'; roleLabel = '🔵 Prof'; }",
+      "file": "public\\js\\pages\\empresas.js",
+      "line": 494
+    },
+    {
+      "type": "permission",
+      "description": "if (role) dados.role = role;",
+      "file": "public\\js\\pages\\empresas.js",
+      "line": 1262
+    },
+    {
+      "type": "permission",
+      "description": "if (usuario.role !== 'dono') {",
+      "file": "public\\js\\pages\\servicos.js",
+      "line": 12
+    },
+    {
+      "type": "permission",
+      "description": "if (usuario && usuario.role === 'superadmin') {",
+      "file": "public\\js\\ui.js",
+      "line": 258
+    },
+    {
+      "type": "permission",
+      "description": "} else if (usuario && usuario.role === 'profissional') {",
+      "file": "public\\js\\ui.js",
+      "line": 260
+    },
+    {
+      "type": "permission",
+      "description": "if (usuario.role === 'dono') {",
+      "file": "public\\js\\ui.js",
+      "line": 436
+    },
+    {
+      "type": "permission",
+      "description": "// Verificações de role",
+      "file": "scripts\\analisar-whatsapp.js",
+      "line": 73
+    },
+    {
+      "type": "permission",
+      "description": "'verifica_dono': conteudo.match(/dono|isDono|role\\s*===\\s*['\"]dono['\"]/i),",
+      "file": "scripts\\analisar-whatsapp.js",
+      "line": 75
+    },
+    {
+      "type": "permission",
+      "description": "// Verificar se tem verificação de role",
+      "file": "scripts\\analisar-whatsapp.js",
+      "line": 206
+    },
+    {
+      "type": "validation",
+      "description": "if (line.includes('validate') || line.includes('isValid') || line.includes('check')) {",
+      "file": "scripts\\analyze-business-logic-deep.js",
+      "line": 296
+    },
+    {
+      "type": "limit",
+      "description": "regra: /(?:regra|rule|business|negocio|valid|check|verify|permit|allow|block|restrict|limite|max|min|required|obrigatorio|deve|precisa|somente|apenas|nao|não|proibido|permitido|autorizado)/i,",
+      "file": "scripts\\analyze-business-logic.js",
+      "line": 44
+    },
+    {
+      "type": "validation",
+      "description": "validacao: /(?:valid|check|verify|validate|required|obrigatorio|precisa)/i,",
+      "file": "scripts\\analyze-business-logic.js",
+      "line": 45
+    },
+    {
+      "type": "permission",
+      "description": "if (line.toLowerCase().includes('controle') || line.toLowerCase().includes('control')) {",
+      "file": "scripts\\analyze-business-logic.js",
+      "line": 170
+    },
+    {
+      "type": "check",
+      "description": "const regex = /(?:isAuthenticated|auth|checkAuth|verifyToken|requireLogin|ensureAuth)\\s*[=:]/gi;",
+      "file": "scripts\\analyze-project.js",
+      "line": 149
+    },
+    {
+      "type": "permission",
+      "description": "return [...new Set(roles)];",
+      "file": "scripts\\analyze-project.js",
+      "line": 180
+    },
+    {
+      "type": "limit",
+      "description": "// Verificar rate limiting",
+      "file": "scripts\\analyze-project.js",
+      "line": 226
+    },
+    {
+      "type": "limit",
+      "description": "if (!content.includes('rateLimit') && !content.includes('rate-limit')) {",
+      "file": "scripts\\analyze-project.js",
+      "line": 227
+    },
+    {
+      "type": "limit",
+      "description": "// Verificar queries sem limite",
+      "file": "scripts\\analyze-project.js",
+      "line": 274
+    },
+    {
+      "type": "limit",
+      "description": "if (content.includes('.find(') && !content.includes('.limit(')) {",
+      "file": "scripts\\analyze-project.js",
+      "line": 275
+    },
+    {
+      "type": "permission",
+      "description": "if (data.server.roles.length > 0) {",
+      "file": "scripts\\analyze-project.js",
+      "line": 1079
+    },
+    {
+      "type": "validation",
+      "description": "if (line.includes('validate')) return 'validation';",
+      "file": "scripts\\export-system-context.js",
+      "line": 488
+    },
+    {
+      "type": "permission",
+      "description": "if (line.includes('permission') || line.includes('role')) return 'permission';",
+      "file": "scripts\\export-system-context.js",
+      "line": 489
+    },
+    {
+      "type": "limit",
+      "description": "if (line.includes('limit')) return 'limit';",
+      "file": "scripts\\export-system-context.js",
+      "line": 490
+    },
+    {
+      "type": "check",
+      "description": "if (line.includes('check')) return 'check';",
+      "file": "scripts\\export-system-context.js",
+      "line": 491
+    },
+    {
+      "type": "block",
+      "description": "if (line.includes('blocked')) return 'block';",
+      "file": "scripts\\export-system-context.js",
+      "line": 492
+    },
+    {
+      "type": "permission",
+      "description": "if (usuario.role === 'dono' || usuario.role === 'Dono') {",
+      "file": "server\\middlewares\\auth.js",
+      "line": 102
+    },
+    {
+      "type": "business_rule",
+      "description": "function verificarLimiteProfissionais(req, res, next) {",
+      "file": "server\\middlewares\\auth.js",
+      "line": 117
+    },
+    {
+      "type": "limit",
+      "description": "console.log(`🔍 Verificando limite de profissionais para empresa ${empresaId}`);",
+      "file": "server\\middlewares\\auth.js",
+      "line": 121
+    },
+    {
+      "type": "limit",
+      "description": "console.error('❌ Erro ao verificar limite:', err);",
+      "file": "server\\middlewares\\auth.js",
+      "line": 135
+    },
+    {
+      "type": "limit",
+      "description": "if (empresa.total_profs >= empresa.limite_profissionais) {",
+      "file": "server\\middlewares\\auth.js",
+      "line": 145
+    },
+    {
+      "type": "business_rule",
+      "description": "function verificarLimiteAgendamentos(req, res, next) {",
+      "file": "server\\middlewares\\auth.js",
+      "line": 241
+    },
+    {
+      "type": "limit",
+      "description": "console.log(`🔍 Verificando limite de agendamentos para empresa ${empresaId}`);",
+      "file": "server\\middlewares\\auth.js",
+      "line": 246
+    },
+    {
+      "type": "limit",
+      "description": "message: 'Erro ao verificar limite de agendamentos'",
+      "file": "server\\middlewares\\auth.js",
+      "line": 257
+    },
+    {
+      "type": "business_rule",
+      "description": "if (temLimite) {",
+      "file": "server\\middlewares\\auth.js",
+      "line": 272
+    },
+    {
+      "type": "business_rule",
+      "description": "if (agendamentosAtuais >= LIMITE_MAXIMO) {",
+      "file": "server\\middlewares\\auth.js",
+      "line": 293
+    },
+    {
+      "type": "business_rule",
+      "description": "verificarLimiteProfissionais,",
+      "file": "server\\middlewares\\auth.js",
+      "line": 381
+    },
+    {
+      "type": "business_rule",
+      "description": "verificarLimiteAgendamentos,      // 🔥 NOVO",
+      "file": "server\\middlewares\\auth.js",
+      "line": 383
+    },
+    {
+      "type": "permission",
+      "description": "if (usuario.role === 'profissional') {",
+      "file": "server\\routes\\admin.routes.js",
+      "line": 502
+    },
+    {
+      "type": "business_rule",
+      "description": "if (novaRole === 'dono' && telefoneLimpo && empresaId) {",
+      "file": "server\\routes\\admin.routes.js",
+      "line": 608
+    },
+    {
+      "type": "check",
+      "description": "if (checkError.response?.status === 404) {",
+      "file": "server\\routes\\admin.routes.js",
+      "line": 1378
+    },
+    {
+      "type": "check",
+      "description": "console.error('❌ Erro ao verificar instância:', checkError.message);",
+      "file": "server\\routes\\admin.routes.js",
+      "line": 1396
+    },
+    {
+      "type": "limit",
+      "description": "if (limit && !isNaN(parseInt(limit))) {",
+      "file": "server\\routes\\clientes.routes.js",
+      "line": 246
+    },
+    {
+      "type": "permission",
+      "description": "if (role === 'profissional') {",
+      "file": "server\\routes\\financeiro.routes.js",
+      "line": 62
+    },
+    {
+      "type": "permission",
+      "description": "if (role === 'dono') {",
+      "file": "server\\routes\\financeiro.routes.js",
+      "line": 126
+    },
+    {
+      "type": "check",
+      "description": "if (!check) {",
+      "file": "server\\routes\\financeiro.routes.js",
+      "line": 610
+    },
+    {
+      "type": "permission",
+      "description": "if (req.usuario.role !== 'profissional') {",
+      "file": "server\\routes\\profissionais.routes.js",
+      "line": 426
+    },
+    {
+      "type": "permission",
+      "description": "if (req.usuario.role !== 'profissional') {",
+      "file": "server\\routes\\profissionais.routes.js",
+      "line": 465
+    },
+    {
+      "type": "permission",
+      "description": "if (req.usuario.role !== 'profissional') {",
+      "file": "server\\routes\\profissionais.routes.js",
+      "line": 570
+    },
+    {
+      "type": "permission",
+      "description": "if (req.usuario.role !== 'profissional') {",
+      "file": "server\\routes\\profissionais.routes.js",
+      "line": 638
+    },
+    {
+      "type": "business_rule",
+      "description": "function verificarLimiteAgendamentos(empresaId, callback) {",
+      "file": "server\\utils\\helpers.js",
+      "line": 70
+    },
+    {
+      "type": "business_rule",
+      "description": "if (planosLimitados.includes(empresa.plano)) {",
+      "file": "server\\utils\\helpers.js",
+      "line": 91
+    },
+    {
+      "type": "business_rule",
+      "description": "verificarLimiteAgendamentos",
+      "file": "server\\utils\\helpers.js",
+      "line": 153
+    },
+    {
+      "type": "business_rule",
+      "description": "verificarLimiteProfissionais,",
+      "file": "server.js",
+      "line": 50
+    },
+    {
+      "type": "business_rule",
+      "description": "verificarLimiteAgendamentos,",
+      "file": "server.js",
+      "line": 52
+    }
+  ],
+  "dependencies": {
+    "production": 13,
+    "development": 4,
+    "list": {
+      "production": {
+        "@wppconnect-team/wppconnect": "^2.2.1",
+        "axios": "^1.18.1",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.6.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.0.0",
+        "mercadopago": "^3.1.0",
+        "node-cron": "^3.0.3",
+        "nodemailer": "^9.0.3",
+        "pg": "^8.11.3",
+        "stripe": "^22.2.1",
+        "ws": "^8.21.3"
+      },
+      "development": {
+        "nodemon": "^3.0.1",
+        "sharp": "^0.35.3",
+        "sqlite": "^5.1.1",
+        "sqlite3": "^5.1.7"
+      }
+    },
+    "scripts": {
+      "start": "node server.js",
+      "dev": "nodemon server.js",
+      "migrate": "node scripts/migrate-whatsapp.js",
+      "fix-bloqueio": "node scripts/fix-bloqueio-geral.js",
+      "teste:on": "node scripts/toggle-plano-teste.js on",
+      "teste:off": "node scripts/toggle-plano-teste.js off"
+    }
+  },
+  "config": {
+    "NODE_ENV": "development",
+    "RENDER": "false",
+    "WHATSAPP_ENABLED": "true",
+    "WHATSAPP_PROVIDER": "evolution",
+    "EVOLUTION_API_URL": "http://179.199.134.127:8080",
+    "EVOLUTION_API_KEY": "seeagende2024",
+    "JWT_SECRET": "***",
+    "PORT": "3000",
+    "TZ": "America/Sao_Paulo",
+    "BASE_URL": "https://outline-claim-ritzy.ngrok-free.dev",
+    "": "",
+    "MERCADOPAGO_ACCESS_TOKEN": "***",
+    "MERCADOPAGO_PUBLIC_KEY": "APP_USR-b4406c0d-865d-4be6-a9e5-9a1e8e4e6579",
+    "PAYMENT_MODE": "real",
+    "EMAIL_HOST": "smtp.gmail.com",
+    "EMAIL_PORT": "587",
+    "EMAIL_USER": "digregorioleal@gmail.com",
+    "EMAIL_PASSWORD": "***"
+  },
+  "api": {
+    "endpoints": [
+      {
+        "method": "GET",
+        "path": "/admin/stats",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/admin/empresas/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/admin/empresas/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/usuarios",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresa/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/usuarios/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/admin/usuarios/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/faturamento-mensal",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/crescimento-empresas",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/:id/usuarios",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/:id/acessos",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/:id/clientes",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/:id/agendamentos",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/empresas/:id/extender-trial",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/estatisticas",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/empresas/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/admin/profissionais/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/profissionais/:id",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/acessos",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/admin/planos-config",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/admin/planos-config",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/admin/registrar-acesso",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/admin/empresas/:id/whatsapp-proprio",
+        "file": "admin.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/agendamentos/",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/agendamentos/:id",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/agendamentos/",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/agendamentos/:id",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/agendamentos/:id/concluir",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/agendamentos/:id/confirmar",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/agendamentos/:id/cancelar",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/agendamentos/:id",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/agendamentos/:id/extras",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/agendamentos/periodo",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/agendamentos/horarios-disponiveis",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/agendamentos/profissionais-disponiveis",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/agendamentos/:id/pagamento",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/agendamentos/:id/enviar-cobranca",
+        "file": "agendamentos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/auth/login",
+        "file": "auth.js",
+        "description": "Login"
+      },
+      {
+        "method": "GET",
+        "path": "/auth/verify",
+        "file": "auth.js",
+        "description": "Verificar token"
+      },
+      {
+        "method": "POST",
+        "path": "/auth/login",
+        "file": "auth.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/auth/cadastro",
+        "file": "auth.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/auth/verificar",
+        "file": "auth.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/chatbot/link/:empresaId",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/chatbot/empresa/:id",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/chatbot/servicos/:empresaId",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/chatbot/profissionais/:empresaId",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/chatbot/dono/:empresaId",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/chatbot/cliente/buscar",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/chatbot/cliente/criar",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/chatbot/datas-disponiveis-mes",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/chatbot/horarios-disponiveis",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/chatbot/agendar",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/chatbot/servico/:id",
+        "file": "chatbot.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/clientes/paginated",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/clientes/",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/clientes/grupos",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/clientes/:id",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/clientes/:id/grupos",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/clientes/",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/clientes/:id",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/clientes/:id",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/clientes/:id/bloquear-chatbot",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/clientes/:id/grupos",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/clientes/bulk",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/clientes/stats",
+        "file": "clientes.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/despesas/",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/despesas/resumo",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/despesas/categorias",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/despesas/:id",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/despesas/",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/despesas/:id",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/despesas/:id",
+        "file": "despesas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/empresas/plano",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/empresas/dados",
+        "file": "empresas.routes.js",
+        "description": "🔥 CORREÇÃO: usar req.user (NÃO req.usuario)"
+      },
+      {
+        "method": "GET",
+        "path": "/empresas/dados-completos",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/empresas/dados",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/empresas/endereco",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/empresas/telefone-dono",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/empresas/bloqueio-geral",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/empresas/bloqueio-geral",
+        "file": "empresas.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/fiados/",
+        "file": "fiados.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/fiados/:id/baixar",
+        "file": "fiados.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/fiados/stats",
+        "file": "fiados.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/comparativo",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/receitas",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/analise-diaria",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/despesas/:id",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/financeiro/:id",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/fiados",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/financeiro/fiados/:id/baixar",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/financeiro/fiados/stats",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/financeiro/fiados/:id/baixar",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/financeiro/receitas/manual",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/financeiro/receitas/manual/:id",
+        "file": "financeiro.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/horarios/",
+        "file": "horarios.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/horarios/:dia",
+        "file": "horarios.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/horarios/",
+        "file": "horarios.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/horarios/inicializar",
+        "file": "horarios.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/pagamento/config",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/pagamento/config",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/pagamento/status",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/simulate-payment",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/simulate-pix",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/simulate-card",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/simulate-boleto",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/confirm-simulated-payment/:paymentId",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/mercadopago/webhook",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/create-boleto",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/create-pix",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/create-payment",
+        "file": "pagamento.routes.js",
+        "description": ""
+      },
+      {
+        "method": "POST",
+        "path": "/pagamento/webhook",
+        "file": "pagamento.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/planos/payment-mode",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/planos/",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/planos/empresa",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/planos/empresa",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/planos/upgrade",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/planos/cancel-subscription",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/planos/admin/ativar-whatsapp/:id",
+        "file": "planos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/profissionais/",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/profissionais/:id",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/profissionais/",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/profissionais/:id",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/profissionais/:id/reset-senha",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/profissionais/:id",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/profissionais/profissional/agendamentos",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/profissionais/profissional/financeiro",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/profissionais/profissional/agendamentos/:id",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/profissionais/profissional/agendamentos/:id/concluir",
+        "file": "profissionais.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/servicos/",
+        "file": "servicos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/servicos/todos",
+        "file": "servicos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/servicos/",
+        "file": "servicos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/servicos/:id",
+        "file": "servicos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "DELETE",
+        "path": "/servicos/:id",
+        "file": "servicos.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/webhook/wati",
+        "file": "whatsapp.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/teste",
+        "file": "whatsapp.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/status",
+        "file": "whatsapp.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/info",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/criar-instancia",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/qrcode",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/status",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/disconnect",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/contatos",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/contatos",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/admin/empresas/whatsapp-status",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "PUT",
+        "path": "/whatsapp/admin/empresas/:id/whatsapp-proprio",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/webhook",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "GET",
+        "path": "/whatsapp/webhook",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      },
+      {
+        "method": "POST",
+        "path": "/whatsapp/enviar",
+        "file": "whatsapp.routes.js",
+        "description": "============================================"
+      }
+    ],
+    "webhooks": [
+      {
+        "path": "/api/pagamento/simulate-payment",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/simulate-pix",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/simulate-card",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/simulate-boleto",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/confirm-simulated-payment/:paymentId",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/mercadopago/webhook",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/create-boleto",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/create-pix",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/create-payment",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      },
+      {
+        "path": "/api/pagamento/webhook",
+        "method": "POST",
+        "description": "Webhook do MercadoPago para confirmação de pagamentos"
+      }
+    ]
+  },
+  "security": {
+    "auth": {
+      "enabled": true,
+      "type": "JWT",
+      "middleware": "auth.js"
+    },
+    "cors": {
+      "enabled": true
+    },
+    "rateLimit": false,
+    "validation": true
+  },
+  "performance": {},
+  "suggestions": [
+    {
+      "category": "documentation",
+      "description": "Adicionar comentários JSDoc nas funções principais",
+      "impact": "Facilita a compreensão do código por outras IAs e desenvolvedores"
+    },
+    {
+      "category": "testing",
+      "description": "Implementar testes unitários para as regras de negócio",
+      "impact": "Garante a confiabilidade do sistema"
+    },
+    {
+      "category": "security",
+      "description": "Adicionar rate limiting nas rotas de pagamento",
+      "impact": "Protege contra ataques de força bruta"
+    }
+  ],
+  "lastChanges": {
+    "recentCommits": [
+      "03ff0abb update: enviando todas as atualizações PWA, CSS e JS",
+      "23aa0522 fix: alterando HOST para 0.0.0.0 para aceitar conexões externas"
+    ],
+    "modifiedFiles": [
+      ".dockerignore",
+      ".env",
+      ".env.backup",
+      ".env.dev",
+      ".env.local",
+      ".env.sqlite.backup",
+      ".gitignore",
+      "Dockerfile",
+      "adicionar-coluna-grupos-todas.js",
+      "adicionar-colunas-faltantes.js",
+      "adicionar-colunas-pagamento-agendamentos.js",
+      "adicionar-intervalo-todas-empresas.js",
+      "analysis/business-logic-1787173777199.json",
+      "analysis/business-logic-1787173777207.md",
+      "analysis/system-analysis-1787173776801.json",
+      "analysis/system-analysis-1787173776802.md",
+      "atualizar-senhas.js",
+      "atualizar-valor-total.js",
+      "atualizar-whatsapp.js",
+      "backup_2026-07-02_11-41.zip"
+    ],
+    "totalCommits": 2
+  },
+  "deployCommands": {
+    "vps": {
+      "ip": "179.199.134.127",
+      "user": "root",
+      "projectPath": "/var/www/barbearia_nova",
+      "commands": [
+        "ssh root@179.199.134.127",
+        "cd /var/www/barbearia_nova",
+        "pm2 restart seeagende",
+        "pm2 logs seeagende --lines 20"
+      ],
+      "scpCommands": [
+        "scp public/js/pages/planos.js root@179.199.134.127:/var/www/barbearia_nova/public/js/pages/",
+        "scp public/js/pages/empresas.js root@179.199.134.127:/var/www/barbearia_nova/public/js/pages/",
+        "scp server/routes/*.js root@179.199.134.127:/var/www/barbearia_nova/server/routes/",
+        "scp server.js root@179.199.134.127:/var/www/barbearia_nova/",
+        "scp .env root@179.199.134.127:/var/www/barbearia_nova/"
+      ]
+    },
+    "localCommands": [
+      "npm start",
+      "npm run dev",
+      "node scripts/export-system-context.js"
+    ]
+  },
+  "folderStructure": {
+    "public": {
+      "description": "Arquivos públicos (frontend)",
+      "subfolders": {
+        "css/pages": "Estilos das páginas",
+        "js/pages": "JavaScript das páginas",
+        "admin": "Painel administrativo",
+        "icons": "Ícones do sistema"
+      }
+    },
+    "server": {
+      "description": "Backend do sistema",
+      "subfolders": {
+        "config": "Configurações (banco de dados, etc)",
+        "routes": "Rotas da API (151 endpoints)",
+        "services": "Serviços (email, whatsapp, mercadopago)",
+        "middlewares": "Middlewares (auth, validação)",
+        "jobs": "Jobs agendados (cron)",
+        "utils": "Funções utilitárias"
+      }
+    },
+    "database": "Arquivos de banco de dados SQLite",
+    "scripts": "Scripts de automação e análise"
+  },
+  "userFlows": {
+    "agendamento": {
+      "description": "Fluxo de agendamento",
+      "steps": [
+        "1. Cliente acessa o chatbot",
+        "2. Seleciona serviço",
+        "3. Escolhe profissional (opcional)",
+        "4. Seleciona data e horário",
+        "5. Confirma agendamento",
+        "6. Recebe confirmação via WhatsApp"
+      ]
+    },
+    "pagamento": {
+      "description": "Fluxo de pagamento de plano",
+      "steps": [
+        "1. Usuário acessa página de planos",
+        "2. Escolhe plano (Starter/Pro)",
+        "3. Clica em \"Pagar agora\"",
+        "4. Redirecionado para MercadoPago",
+        "5. Realiza pagamento (PIX/Cartão/Boleto)",
+        "6. Webhook confirma pagamento",
+        "7. Plano é ativado automaticamente"
+      ]
+    },
+    "admin": {
+      "description": "Fluxo do Super Admin",
+      "steps": [
+        "1. Acessa o dashboard",
+        "2. Vê lista de empresas",
+        "3. Pode editar/ativar/deletar empresas",
+        "4. Pode ativar WhatsApp em qualquer plano",
+        "5. Gerencia usuários"
+      ]
+    }
+  },
+  "knownIssues": [
+    {
+      "id": "issue-001",
+      "title": "Tabela transacoes_pagamento não existe",
+      "status": "resolvido",
+      "solution": "Criar tabela manualmente ou adicionar no server.js",
+      "file": "server.js"
+    },
+    {
+      "id": "issue-002",
+      "title": "Webhook MercadoPago 404",
+      "status": "resolvido",
+      "solution": "Adicionar rota /api/pagamento no server.js",
+      "file": "server.js"
+    },
+    {
+      "id": "issue-003",
+      "title": "Modo de pagamento simulation mesmo com .env real",
+      "status": "resolvido",
+      "solution": "Sincronizar banco de dados com .env",
+      "file": "server.js + planos.routes.js"
+    }
+  ],
+  "nextSteps": [
+    "1. ✅ Pagamento com PIX - FUNCIONANDO",
+    "2. ✅ Pagamento com Cartão - FUNCIONANDO",
+    "3. ✅ Ativação automática via webhook - FUNCIONANDO",
+    "4. 🔄 Melhorar feedback visual (toast) - EM ANDAMENTO",
+    "5. 🔄 Criar página de sucesso/erro - EM ANDAMENTO",
+    "6. ⏳ Implementar testes unitários - PENDENTE",
+    "7. ⏳ Adicionar rate limiting - PENDENTE"
+  ],
+  "envConfig": {
+    "required": [
+      {
+        "key": "NODE_ENV",
+        "example": "production",
+        "description": "Ambiente (development/production)"
+      },
+      {
+        "key": "PORT",
+        "example": "3000",
+        "description": "Porta do servidor"
+      },
+      {
+        "key": "BASE_URL",
+        "example": "https://seeagende.tech",
+        "description": "URL pública do sistema"
+      },
+      {
+        "key": "JWT_SECRET",
+        "example": "****",
+        "description": "Chave secreta para JWT"
+      },
+      {
+        "key": "PAYMENT_MODE",
+        "example": "real",
+        "description": "Modo de pagamento (real/simulation)"
+      },
+      {
+        "key": "MERCADOPAGO_ACCESS_TOKEN",
+        "example": "APP_USR-****",
+        "description": "Token do MercadoPago"
+      }
+    ],
+    "optional": [
+      {
+        "key": "WHATSAPP_ENABLED",
+        "example": "true",
+        "description": "Habilitar WhatsApp"
+      },
+      {
+        "key": "EVOLUTION_API_URL",
+        "example": "http://localhost:8080",
+        "description": "URL da Evolution API"
+      }
+    ]
+  },
+  "summary": {
+    "totalFiles": 106,
+    "totalEndpoints": 151,
+    "totalServices": 5,
+    "totalBusinessRules": 68,
+    "totalWebhooks": 10,
+    "mainTechnologies": [
+      "Node.js",
+      "Express",
+      "SQLite",
+      "MercadoPago"
+    ]
+  }
+}

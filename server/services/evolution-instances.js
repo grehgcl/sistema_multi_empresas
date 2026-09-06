@@ -12,7 +12,7 @@ class EvolutionInstances {
     // ============================================
 
     static getApiClient() {
-        const apiUrl = process.env.EVOLUTION_API_URL || 'http://163.176.218.131:8080';
+        const apiUrl = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
         const apiKey = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
         console.log(`ðŸ”‘ API URL: ${apiUrl}`);
@@ -216,64 +216,81 @@ class EvolutionInstances {
             };
         }
     }
+// ============================================
+// OBTER QR CODE - CORRIGIDO
+// ============================================
 
-    static async getQrCode(instanceName, empresaId, nomeEmpresa) {
+static async getQrCode(instanceName, empresaId, nomeEmpresa) {
+    try {
+        console.log(`📱 Obtendo QR Code para ${instanceName}...`);
+
+        const api = this.getApiClient();
+
+        // Verificar status atual
+        const status = await this.getStatus(instanceName);
+        console.log(`📊 Status atual:`, status);
+
+        if (status.connected) {
+            return {
+                success: true,
+                alreadyConnected: true,
+                message: 'Já está conectado!',
+                qrCode: null
+            };
+        }
+
+        // 🔥 FORÇAR CONEXÃO PARA GERAR QR CODE
+        console.log(`🔌 Forçando conexão para gerar QR Code...`);
+        
         try {
-            console.log(`ðŸ“± Obtendo QR Code para ${instanceName}...`);
-
-            const api = this.getApiClient();
-
-            // ðŸ”¥ Verificar status
-            const status = await this.getStatus(instanceName);
-            console.log(`ðŸ“Š Status:`, status);
-
-            if (status.connected) {
-                return {
-                    success: true,
-                    alreadyConnected: true,
-                    message: 'JÃ¡ conectado!',
-                    qrCode: null
-                };
+            // Tentar conectar primeiro
+            const connectResponse = await api.get(`/instance/connect/${instanceName}`);
+            console.log(`📥 Resposta do connect:`, JSON.stringify(connectResponse.data, null, 2));
+        } catch (connectErr) {
+            console.log(`⚠️ Erro ao conectar:`, connectErr.message);
+            // Se a instância não existe, criar
+            if (connectErr.response?.status === 404) {
+                console.log(`🔄 Instância não encontrada, recriando...`);
+                await api.post('/instance/create', {
+                    instanceName: instanceName,
+                    qrcode: true,
+                    integration: 'WHATSAPP-BAILEYS'
+                });
+                // Aguardar criação
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                // Tentar conectar novamente
+                await api.get(`/instance/connect/${instanceName}`);
             }
+        }
 
-            // ðŸ”¥ DELETAR A INSTÃ‚NCIA EXISTENTE
-            console.log(`ðŸ”„ Deletando instÃ¢ncia ${instanceName}...`);
-            try {
-                await api.delete(`/instance/delete/${instanceName}`);
-                console.log(`âœ… InstÃ¢ncia deletada`);
-            } catch (err) {
-                console.log(`âš ï¸ Erro ao deletar:`, err.message);
-            }
+        // Aguardar QR Code ser gerado
+        await new Promise(resolve => setTimeout(resolve, 3000));
 
-            // Aguardar 2 segundos
-            await new Promise(resolve => setTimeout(resolve, 2000));
+        // 🔥 BUSCAR QR CODE
+        try {
+            const qrResponse = await api.get(`/instance/qrcode/${instanceName}`);
+            console.log(`📥 Resposta QR:`, JSON.stringify(qrResponse.data, null, 2));
 
-            // ðŸ”¥ RECRIAR A INSTÃ‚NCIA
-            console.log(`ðŸ“± Recriando instÃ¢ncia ${instanceName}...`);
-            const createResponse = await api.post('/instance/create', {
-                instanceName: instanceName,
-                qrcode: true,
-                integration: 'WHATSAPP-BAILEYS'
-            });
-
-            console.log(`âœ… InstÃ¢ncia recriada`);
-            console.log(`ðŸ“¥ Resposta:`, JSON.stringify(createResponse.data, null, 2));
-
-            // ðŸ”¥ EXTRAIR QR CODE
             let qrCode = null;
-            if (createResponse.data?.base64) {
-                qrCode = createResponse.data.base64;
-            } else if (createResponse.data?.qrcode) {
-                qrCode = createResponse.data.qrcode;
+            
+            // Extrair QR Code de diferentes formatos
+            if (qrResponse.data?.base64) {
+                qrCode = qrResponse.data.base64;
+            } else if (qrResponse.data?.qrcode) {
+                qrCode = qrResponse.data.qrcode;
+            } else if (qrResponse.data?.qrCode) {
+                qrCode = qrResponse.data.qrCode;
+            } else if (typeof qrResponse.data === 'string') {
+                qrCode = qrResponse.data;
             }
 
             if (qrCode) {
-                // Atualizar o banco com a nova instÃ¢ncia
-                const { db } = require('../config/database');
-                await new Promise((resolve) => {
-                    db.run('UPDATE empresas SET whatsapp_instance = ? WHERE id = ?', [instanceName, empresaId], () => resolve());
-                });
+                // Se for base64 puro, adicionar prefixo
+                if (typeof qrCode === 'string' && !qrCode.startsWith('data:image')) {
+                    qrCode = `data:image/png;base64,${qrCode}`;
+                }
 
+                console.log(`✅ QR Code obtido com sucesso!`);
                 return {
                     success: true,
                     qrCode: qrCode,
@@ -282,21 +299,80 @@ class EvolutionInstances {
                 };
             }
 
+            // Se não conseguiu o QR, tentar mais uma vez com connect
+            console.log(`🔄 Tentando novamente com connect...`);
+            await api.get(`/instance/connect/${instanceName}`);
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            const qrResponse2 = await api.get(`/instance/qrcode/${instanceName}`);
+            if (qrResponse2.data?.base64 || qrResponse2.data?.qrcode) {
+                let qrCode2 = qrResponse2.data?.base64 || qrResponse2.data?.qrcode;
+                if (typeof qrCode2 === 'string' && !qrCode2.startsWith('data:image')) {
+                    qrCode2 = `data:image/png;base64,${qrCode2}`;
+                }
+                return {
+                    success: true,
+                    qrCode: qrCode2,
+                    alreadyConnected: false,
+                    message: 'QR Code gerado! Escaneie com o WhatsApp.'
+                };
+            }
+
             return {
                 success: false,
-                message: 'QR Code nÃ£o disponÃ­vel. Tente novamente.',
+                message: 'QR Code não disponível. Tente novamente.',
                 qrCode: null
             };
 
-        } catch (error) {
-            console.error('âŒ Erro ao buscar QR Code:', error.message);
+        } catch (qrError) {
+            console.error('❌ Erro ao buscar QR Code:', qrError.message);
+            
+            // Tentar último recurso: recriar instância
+            if (qrError.response?.status === 404) {
+                console.log(`🔄 Último recurso: recriando instância...`);
+                await api.delete(`/instance/delete/${instanceName}`).catch(() => {});
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                await api.post('/instance/create', {
+                    instanceName: instanceName,
+                    qrcode: true,
+                    integration: 'WHATSAPP-BAILEYS'
+                });
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                await api.get(`/instance/connect/${instanceName}`);
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                
+                const qrResponse3 = await api.get(`/instance/qrcode/${instanceName}`);
+                if (qrResponse3.data?.base64 || qrResponse3.data?.qrcode) {
+                    let qrCode3 = qrResponse3.data?.base64 || qrResponse3.data?.qrcode;
+                    if (typeof qrCode3 === 'string' && !qrCode3.startsWith('data:image')) {
+                        qrCode3 = `data:image/png;base64,${qrCode3}`;
+                    }
+                    return {
+                        success: true,
+                        qrCode: qrCode3,
+                        alreadyConnected: false,
+                        message: 'QR Code gerado! Escaneie com o WhatsApp.'
+                    };
+                }
+            }
+
             return {
                 success: false,
-                message: error.message || 'Erro ao buscar QR Code',
+                message: qrError.message || 'Erro ao buscar QR Code',
                 qrCode: null
             };
         }
+
+    } catch (error) {
+        console.error('❌ Erro ao obter QR Code:', error.message);
+        return {
+            success: false,
+            message: error.message || 'Erro ao obter QR Code',
+            qrCode: null
+        };
     }
+}
     static async getStatus(instanceName) {
         try {
             const api = this.getApiClient();

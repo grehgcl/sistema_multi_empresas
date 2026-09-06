@@ -20,9 +20,9 @@ const fs = require('fs');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// 🔥 FUNÇÃO PARA DATA/HORA ATUAL (COMPATÍVEL)
+// ✅ Banco real é SQLite — datetime('now') é o correto (NOW() é PostgreSQL)
 function getCurrentTimestamp() {
-    return isProduction ? 'NOW()' : "datetime('now')";
+    return "datetime('now')";
 }
 
 function extractMonth(field) {
@@ -173,7 +173,7 @@ router.post('/login', (req, res) => {
 });
 
 // ============================================
-// POST /api/auth/cadastro - CORRIGIDO PARA BOOLEAN
+// POST /api/auth/cadastro - UNIFICADO (SQLite)
 // ============================================
 
 router.post('/cadastro', async (req, res) => {
@@ -211,10 +211,7 @@ router.post('/cadastro', async (req, res) => {
     try {
         // 1. Verificar se email já existe
         const usuarioExistente = await new Promise((resolve) => {
-            const sql = isProduction
-                ? `SELECT id FROM usuarios WHERE email = $1`
-                : `SELECT id FROM usuarios WHERE email = ?`;
-            db.get(sql, [email], (err, row) => {
+            db.get('SELECT id FROM usuarios WHERE email = ?', [email], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar email:', err);
                     resolve(null);
@@ -238,87 +235,32 @@ router.post('/cadastro', async (req, res) => {
         trialExpira.setDate(trialExpira.getDate() + 45);
         const trialExpiraStr = trialExpira.toISOString().split('T')[0];
 
-        let empresaId = null;
-
-        // 🔥 CORREÇÃO: USAR BOOLEAN NO POSTGRESQL
-        if (isProduction) {
-            // PostgreSQL - Usar FALSE em vez de 0
-            const sqlEmpresa = `
-                INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, telefone_dono, whatsapp_proprio_habilitado, created_at) 
-                VALUES ($1, 'trial', 1, $2, $3, FALSE, NOW()) 
-                RETURNING id
-            `;
-
-            const result = await new Promise((resolve, reject) => {
-                db.get(sqlEmpresa, [empresa_nome, trialExpiraStr, telefoneLimpo], (err, row) => {
+        // ✅ SQLite real — lastID retorna o ID direto (sem $1, sem NOW(), sem RETURNING)
+        const empresaId = await new Promise((resolve, reject) => {
+            db.run(`INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, telefone_dono, whatsapp_proprio_habilitado, created_at) 
+                    VALUES (?, 'trial', 1, ?, ?, 0, datetime('now'))`,
+                [empresa_nome, trialExpiraStr, telefoneLimpo],
+                function(err) {
                     if (err) {
-                        console.error('❌ Erro ao criar empresa (PG):', err);
+                        console.error('❌ Erro ao criar empresa:', err);
                         reject(err);
                     } else {
-                        console.log('📊 Resultado PG:', row);
-                        resolve(row);
+                        console.log(`   📊 Empresa ID (lastID): ${this.lastID}`);
+                        resolve(this.lastID);
                     }
-                });
-            });
+                }
+            );
+        });
 
-            empresaId = result?.id;
-            console.log(`   📊 Empresa ID retornado: ${empresaId}`);
-
-        } else {
-            // SQLite - Usar 0 (inteiro)
-            const sqlEmpresa = `
-                INSERT INTO empresas (nome, plano, limite_profissionais, trial_expira, telefone_dono, whatsapp_proprio_habilitado, created_at) 
-                VALUES (?, 'trial', 1, ?, ?, 0, datetime('now'))
-            `;
-
-            await new Promise((resolve, reject) => {
-                db.run(sqlEmpresa, [empresa_nome, trialExpiraStr, telefoneLimpo], function(err) {
-                    if (err) {
-                        console.error('❌ Erro ao criar empresa (SQLite):', err);
-                        reject(err);
-                    } else {
-                        empresaId = this.lastID;
-                        console.log(`   📊 Empresa ID (lastID): ${empresaId}`);
-                        resolve();
-                    }
-                });
-            });
-        }
-
-        // Verificar se o ID foi gerado
         if (!empresaId || isNaN(empresaId) || empresaId <= 0) {
-            console.error('❌ ID da empresa inválido:', empresaId);
-            
-            const empresaBuscada = await new Promise((resolve) => {
-                const sql = isProduction
-                    ? `SELECT id FROM empresas WHERE nome = $1 ORDER BY created_at DESC LIMIT 1`
-                    : `SELECT id FROM empresas WHERE nome = ? ORDER BY created_at DESC LIMIT 1`;
-                db.get(sql, [empresa_nome], (err, row) => {
-                    if (err) {
-                        console.error('❌ Erro ao buscar empresa:', err);
-                        resolve(null);
-                    } else {
-                        resolve(row);
-                    }
-                });
-            });
-
-            if (empresaBuscada) {
-                empresaId = empresaBuscada.id;
-                console.log(`   🔄 Empresa encontrada pelo nome! ID: ${empresaId}`);
-            } else {
-                throw new Error(`Não foi possível obter o ID da empresa: ${empresaId}`);
-            }
+            throw new Error(`Não foi possível obter o ID da empresa: ${empresaId}`);
         }
 
-        console.log(`   ✅ Empresa criada/confirmada com ID: ${empresaId}`);
+        console.log(`   ✅ Empresa criada com ID: ${empresaId}`);
 
         // 3. Verificar empresa
         const empresaVerificada = await new Promise((resolve) => {
-            const sql = isProduction
-                ? `SELECT id, nome FROM empresas WHERE id = $1`
-                : `SELECT id, nome FROM empresas WHERE id = ?`;
-            db.get(sql, [empresaId], (err, row) => {
+            db.get('SELECT id, nome FROM empresas WHERE id = ?', [empresaId], (err, row) => {
                 if (err) {
                     console.error('❌ Erro ao verificar empresa:', err);
                     resolve(null);
@@ -497,26 +439,20 @@ router.post('/cadastro', async (req, res) => {
 
         const senhaHash = bcrypt.hashSync(senha, 10);
 
-        const sqlUsuario = isProduction
-            ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone, created_at) 
-               VALUES ($1, $2, $3, 'dono', $4, $5, NOW())`
-            : `INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone, created_at) 
-               VALUES (?, ?, ?, 'dono', ?, ?, datetime('now'))`;
-
-        const paramsUsuario = isProduction
-            ? [nome, email, senhaHash, empresaId, telefoneLimpo]
-            : [nome, email, senhaHash, empresaId, telefoneLimpo];
-
         await new Promise((resolve, reject) => {
-            db.run(sqlUsuario, paramsUsuario, function(err) {
-                if (err) {
-                    console.error('❌ Erro ao criar usuário:', err);
-                    reject(err);
-                } else {
-                    console.log(`   ✅ Usuário criado com ID: ${this.lastID}`);
-                    resolve();
+            db.run(`INSERT INTO usuarios (nome, email, senha, role, empresa_id, telefone, created_at) 
+                    VALUES (?, ?, ?, 'dono', ?, ?, datetime('now'))`,
+                [nome, email, senhaHash, empresaId, telefoneLimpo],
+                function(err) {
+                    if (err) {
+                        console.error('❌ Erro ao criar usuário:', err);
+                        reject(err);
+                    } else {
+                        console.log(`   ✅ Usuário criado com ID: ${this.lastID}`);
+                        resolve();
+                    }
                 }
-            });
+            );
         });
 
         console.log('========================================');
@@ -544,7 +480,6 @@ router.post('/cadastro', async (req, res) => {
         });
     }
 });
-
 // ============================================
 // POST /api/auth/verificar - VERIFICAR TOKEN
 // ============================================

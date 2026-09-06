@@ -1,7 +1,7 @@
 ﻿// ============================================
 // ROTAS DE CLIENTES - SEE&AGENDE
 // COMPATÍVEL SQLite e PostgreSQL
-// ULTIMA ATUALIZACAO: 19/08/2026
+// ULTIMA ATUALIZACAO: 22/08/2026
 // ============================================
 
 const express = require('express');
@@ -12,28 +12,194 @@ const { auth, verificarDono } = require('../middlewares/auth');
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
 // ============================================
-// FUNÇÕES DE COMPATIBILIDADE
+// ROTA: GET /api/clientes/paginated - COM PAGINAÇÃO
 // ============================================
 
-function extractMonth(field) {
-    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
-}
+router.get('/paginated', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario.empresa_id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const offset = (page - 1) * limit;
+        const search = req.query.search || '';
+        const letra = req.query.letra || '';
 
-function extractYear(field) {
-    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
-}
+        console.log(`📊 Buscando clientes paginados: página ${page}, limite ${limit}, empresa ${empresaId}`);
 
-function extractDay(field) {
-    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
-}
+        const db = getEmpresaDb(empresaId);
 
-function formatDate(field) {
-    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
-}
+        if (!db) {
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao conectar ao banco da empresa'
+            });
+        }
 
-function coalesceSum(field) {
-    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
-}
+        // 🔥 CONSTRUIR QUERY COM TODOS OS CAMPOS
+        let sql = `
+            SELECT 
+                id, 
+                nome, 
+                telefone, 
+                email, 
+                grupos, 
+                bloqueado_chatbot, 
+                dias_bloqueio, 
+                created_at,
+                -- 🔥 CAMPOS ADICIONAIS QUE O FRONTEND ESPERA
+                0 as total_concluidos,
+                0 as ticket_medio,
+                'regular' as classificacao,
+                '👤' as icone,
+                NULL as dias_sem_visita
+            FROM clientes 
+            WHERE empresa_id = ?
+        `;
+        let params = [empresaId];
+
+        if (search && search.trim() !== '') {
+            const searchTerm = `%${search.trim()}%`;
+            sql += ` AND (nome LIKE ? OR telefone LIKE ? OR email LIKE ?)`;
+            params.push(searchTerm, searchTerm, searchTerm);
+        }
+
+        if (letra && letra !== 'todos' && letra !== '') {
+            sql += ` AND nome LIKE ?`;
+            params.push(`${letra}%`);
+        }
+
+        // 🔥 CONTAR TOTAL
+        const countSql = sql.replace(
+            'SELECT id, nome, telefone, email, grupos, bloqueado_chatbot, dias_bloqueio, created_at, 0 as total_concluidos, 0 as ticket_medio, \'regular\' as classificacao, \'👤\' as icone, NULL as dias_sem_visita',
+            'SELECT COUNT(*) as total'
+        );
+
+        const totalResult = await new Promise((resolve, reject) => {
+            db.get(countSql, params, (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        const total = totalResult?.total || 0;
+
+        // 🔥 BUSCAR COM PAGINAÇÃO
+        sql += ` ORDER BY nome LIMIT ? OFFSET ?`;
+        params.push(limit, offset);
+
+        const clientes = await new Promise((resolve, reject) => {
+            db.all(sql, params, (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows);
+            });
+        });
+
+        // 🔥 PROCESSAR GRUPOS E CALCULAR ESTATÍSTICAS
+        const clientesComDados = await Promise.all(clientes.map(async (c) => {
+            let grupos = [];
+            try {
+                if (c.grupos) {
+                    grupos = typeof c.grupos === 'string' ? JSON.parse(c.grupos) : c.grupos;
+                }
+            } catch (e) {
+                grupos = [];
+            }
+
+            // 🔥 BUSCAR AGENDAMENTOS CONCLUÍDOS DO CLIENTE
+            let totalConcluidos = 0;
+            let ticketMedio = 0;
+            let diasSemVisita = null;
+            let classificacao = 'regular';
+            let icone = '👤';
+
+            try {
+                // Buscar agendamentos concluídos
+                const agsSql = `
+                    SELECT COUNT(*) as total, COALESCE(SUM(valor_total), 0) as soma_valor, MAX(data) as ultima_data
+                    FROM agendamentos 
+                    WHERE cliente_id = ? AND empresa_id = ? AND status = 'concluido'
+                `;
+                
+                const agsResult = await new Promise((resolve, reject) => {
+                    db.get(agsSql, [c.id, empresaId], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+                });
+
+                if (agsResult) {
+                    totalConcluidos = agsResult.total || 0;
+                    const somaValor = agsResult.soma_valor || 0;
+                    ticketMedio = totalConcluidos > 0 ? somaValor / totalConcluidos : 0;
+
+                    if (agsResult.ultima_data) {
+                        const ultima = new Date(agsResult.ultima_data);
+                        const hoje = new Date();
+                        hoje.setHours(0, 0, 0, 0);
+                        const diffTime = hoje - ultima;
+                        diasSemVisita = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    }
+                }
+
+                // Classificação
+                if (totalConcluidos >= 10 && ticketMedio >= 100) {
+                    classificacao = 'vip';
+                    icone = '⭐';
+                } else if (totalConcluidos >= 5) {
+                    classificacao = 'frequente';
+                    icone = '🔥';
+                } else if (diasSemVisita !== null && diasSemVisita > 60) {
+                    classificacao = 'sumido';
+                    icone = '😴';
+                } else if (totalConcluidos <= 1) {
+                    classificacao = 'novo';
+                    icone = '🌱';
+                }
+
+            } catch (e) {
+                console.error('❌ Erro ao buscar agendamentos do cliente:', e);
+            }
+
+            return {
+                id: c.id,
+                nome: c.nome || 'Sem nome',
+                telefone: c.telefone || '',
+                email: c.email || '',
+                grupos: grupos,
+                bloqueado_chatbot: c.bloqueado_chatbot || 0,
+                dias_bloqueio: c.dias_bloqueio || null,
+                created_at: c.created_at,
+                total_concluidos: totalConcluidos,
+                ticket_medio: ticketMedio,
+                dias_sem_visita: diasSemVisita,
+                classificacao: classificacao,
+                icone: icone
+            };
+        }));
+
+        console.log(`✅ ${clientesComDados.length} clientes encontrados (total: ${total})`);
+
+        res.json({
+            success: true,
+            data: clientesComDados,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: offset + clientesComDados.length < total
+            }
+        });
+
+    } catch (error) {
+        console.error('❌ Erro ao buscar clientes paginados:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro ao buscar clientes',
+            error: error.message
+        });
+    }
+});
 
 // ============================================
 // GET /api/clientes - LISTAR CLIENTES

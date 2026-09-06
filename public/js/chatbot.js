@@ -1,6 +1,6 @@
-// js/chatbot.js - Versão Completa com Profissionais e Calendário
 // ============================================
 // CHATBOT INTELIGENTE - SEE&AGENDE
+// VERSÃO CORRIGIDA - SEM LISTA DE DATAS E HOJE DISPONÍVEL
 // ============================================
 
 // ============================================
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 // ============================================
-// CARREGAR DADOS DA EMPRESA
+// CARREGAR DADOS DA EMPRESA - CORRIGIDO
 // ============================================
 async function carregarDadosEmpresa() {
     try {
@@ -57,10 +57,9 @@ async function carregarDadosEmpresa() {
             await carregarServicos();
             await carregarProfissionais();
 
-            // ✅ USA O NOME DA EMPRESA DINAMICAMENTE (NADA DE "barbearia")
             const nomeEmpresa = dadosEmpresa.nome || 'nossa empresa';
 
-            // ✅ MENSAGEM ÚNICA (sem duplicação do "Olá") e PERSONALIZADA
+            // ✅ MENSAGEM ÚNICA
             adicionarMensagemComBotoes(
                 `Olá! 👋 Seja bem-vindo à <strong>${nomeEmpresa}</strong>!<br><br>` +
                 `Posso ajudar você a agendar um horário de forma rápida e fácil.<br><br>` +
@@ -72,7 +71,6 @@ async function carregarDadosEmpresa() {
             );
             estado = 'aguardando_cliente';
         } else {
-            // ✅ MENSAGEM DE ERRO TAMBÉM PERSONALIZADA
             adicionarMensagem('❌ Não foi possível carregar a empresa. Link inválido.', 'bot');
         }
     } catch (error) {
@@ -82,7 +80,7 @@ async function carregarDadosEmpresa() {
 }
 
 // ============================================
-// CARREGAR SERVIÇOS - CORRIGIDO
+// CARREGAR SERVIÇOS
 // ============================================
 async function carregarServicos() {
     try {
@@ -92,11 +90,8 @@ async function carregarServicos() {
         console.log('📦 Resposta serviços (RAW):', JSON.stringify(data, null, 2));
 
         if (data.success) {
-            // 🔥 O BACKEND RETORNA COMO "servicos" (plural)
             servicosList = data.servicos || data.data || [];
             console.log(`✅ ${servicosList.length} serviços carregados`);
-
-            // 🔥 LOG DE CADA SERVIÇO
             servicosList.forEach((s, i) => {
                 console.log(`  ${i + 1}. ${s.nome} - R$ ${s.valor}`);
             });
@@ -109,7 +104,6 @@ async function carregarServicos() {
         servicosList = [];
     }
 
-    // 🔥 SE NÃO TIVER SERVIÇOS, TENTA BUSCAR DE OUTRA FORMA (FALLBACK)
     if (servicosList.length === 0) {
         console.log('🔄 Tentando buscar serviços via rota alternativa...');
         try {
@@ -127,7 +121,7 @@ async function carregarServicos() {
 }
 
 // ============================================
-// CARREGAR PROFISSIONAIS - CORRIGIDO
+// CARREGAR PROFISSIONAIS
 // ============================================
 async function carregarProfissionais() {
     try {
@@ -139,13 +133,10 @@ async function carregarProfissionais() {
         if (token) {
             try {
                 const res = await fetch(`/api/profissionais`, {
-                    headers: {
-                        'Authorization': 'Bearer ' + token
-                    }
+                    headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const data = await res.json();
                 console.log('📦 Resposta profissionais (com token):', data);
-
                 if (data.success && data.data && data.data.length > 0) {
                     profissionaisEncontrados = data.data;
                 }
@@ -159,7 +150,6 @@ async function carregarProfissionais() {
                 const res = await fetch(`/api/chatbot/profissionais/${empresaId}`);
                 const data = await res.json();
                 console.log('📦 Resposta profissionais (chatbot):', data);
-
                 if (data.success) {
                     profissionaisEncontrados = data.profissionais || data.data || [];
                 }
@@ -406,8 +396,10 @@ function processarResposta(texto) {
             if (servicoEncontrado) {
                 agendamentoAtual.servico_id = servicoEncontrado.id;
                 agendamentoAtual.servico_nome = servicoEncontrado.nome;
-                agendamentoAtual.valor = servicoEncontrado.valor;
+                agendamentoAtual.valor = parseFloat(servicoEncontrado.valor) || 0;
                 agendamentoAtual.duracao = servicoEncontrado.duracao || 30;
+
+                console.log(`✅ Serviço selecionado: ${servicoEncontrado.nome} - R$ ${agendamentoAtual.valor}`);
 
                 estado = 'aguardando_profissional';
                 perguntarProfissional();
@@ -500,7 +492,9 @@ function processarResposta(texto) {
             const nomeEmpresa = dadosEmpresa?.nome || 'nossa barbearia';
             setTimeout(() => {
                 adicionarMensagemComBotoes(
-                    `Olá! 👋 Seja bem-vindo à <strong>${nomeEmpresa}</strong>!<br><br><strong>Você já é cliente da barbearia?</strong>`,
+                    `Olá! 👋 Seja bem-vindo à <strong>${nomeEmpresa}</strong>!<br><br>` +
+                    `Posso ajudar você a agendar um horário de forma rápida e fácil.<br><br>` +
+                    `<strong>Você já é cliente da ${nomeEmpresa}?</strong>`,
                     [
                         { label: '✅ Sim, já sou cliente', valor: 'sim', primary: true },
                         { label: '➕ Não, sou novo cliente', valor: 'não', primary: false }
@@ -513,84 +507,53 @@ function processarResposta(texto) {
 }
 
 // ============================================
-// BUSCAR CLIENTE POR TELEFONE - COM BLOQUEIO GERAL
+// BUSCAR CLIENTE POR TELEFONE - CORRIGIDO
 // ============================================
 async function buscarClientePorTelefone(telefone) {
     try {
+        // 🔥 REMOVER TODOS OS CARACTERES NÃO NUMÉRICOS
+        const telefoneLimpo = String(telefone).replace(/\D/g, '');
+        console.log('🔍 Buscando cliente:', telefoneLimpo);
+
         const res = await fetch('/api/chatbot/cliente/buscar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                telefone: telefone,
+                telefone: telefoneLimpo,  // 🔥 ENVIAR LIMPO
                 empresaId: empresaId
             })
         });
         const data = await res.json();
 
+        console.log('📦 Resposta busca:', data);
+
         if (data.success && data.cliente) {
             clienteAtual = data.cliente;
-
-            if (clienteAtual.bloqueado_chatbot === 1) {
-                adicionarMensagem(
-                    '⚠️ Desculpe, mas você está <strong>bloqueado</strong> para agendamentos online.<br><br>Entre em contato com a barbearia para mais informações.',
-                    'bot'
-                );
-                estado = 'inicio';
-                return;
-            }
-
-            // ============================================
-            // 🔥 VERIFICAR LIMITE COM BLOQUEIO GERAL
-            // ============================================
-            const podeAgendar = await verificarLimiteAgendamentos(clienteAtual.id);
-            if (!podeAgendar) {
-                // Buscar quantos dias estão configurados no bloqueio geral
-                let diasBloqueioGeral = 0;
-                try {
-                    const resEmpresa = await fetch('/api/empresa/dados', {
-                        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
-                    });
-                    const dataEmpresa = await resEmpresa.json();
-                    if (dataEmpresa.success && dataEmpresa.data) {
-                        diasBloqueioGeral = dataEmpresa.data.dias_bloqueio_geral || 0;
-                    }
-                } catch (e) {
-                    console.warn('Erro ao buscar bloqueio geral:', e);
-                }
-
-                const mensagem = diasBloqueioGeral > 0
-                    ? `⚠️ Você já fez um agendamento nos últimos <strong>${diasBloqueioGeral} dias</strong>.<br><br>Por favor, aguarde para fazer um novo agendamento.`
-                    : `⚠️ Você já possui um agendamento para este dia. Cada cliente só pode fazer UM agendamento por dia.`;
-
-                adicionarMensagem(mensagem, 'bot');
-                estado = 'inicio';
-                return;
-            }
-
             adicionarMensagem(
-                `✅ Cliente encontrado!<br><br>Bem-vindo de volta, <strong>${clienteAtual.nome}</strong>! ✨<br><br>Vamos prosseguir com seu agendamento.`,
+                `✅ Cliente encontrado!<br><br>Bem-vindo de volta, <strong>${clienteAtual.nome}</strong>! ✨`,
                 'bot'
             );
             estado = 'aguardando_servico';
             mostrarServicos();
         } else {
             adicionarMensagem(
-                '❌ Não encontramos nenhum cliente com este telefone.<br><br>Vamos fazer seu cadastro! 📝<br><br>Por favor, digite seu <strong>nome completo</strong>:',
+                '❌ Cliente não encontrado.<br><br>Vamos cadastrar você! 📝<br><br>Digite seu <strong>nome completo</strong>:',
                 'bot'
             );
             estado = 'aguardando_nome_novo';
         }
     } catch (error) {
-        console.error('Erro ao buscar cliente:', error);
+        console.error('❌ Erro ao buscar cliente:', error);
         adicionarMensagem('❌ Erro ao buscar cliente. Tente novamente.', 'bot');
     }
 }
-
 // ============================================
 // CADASTRAR NOVO CLIENTE
 // ============================================
 async function cadastrarNovoCliente(nome, telefone) {
     try {
+        console.log('📝 Cadastrando novo cliente:', nome, telefone, 'empresa:', empresaId);
+
         const res = await fetch('/api/chatbot/cliente/criar', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -603,8 +566,25 @@ async function cadastrarNovoCliente(nome, telefone) {
         });
         const data = await res.json();
 
+        console.log('📦 Resposta cadastro:', data);
+
         if (data.success) {
-            clienteAtual = { id: data.clienteId, nome: nome, telefone: telefone };
+            const resBusca = await fetch('/api/chatbot/cliente/buscar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telefone: telefone,
+                    empresaId: empresaId
+                })
+            });
+            const dataBusca = await resBusca.json();
+
+            if (dataBusca.success && dataBusca.cliente) {
+                clienteAtual = dataBusca.cliente;
+            } else {
+                clienteAtual = { id: data.clienteId, nome: nome, telefone: telefone };
+            }
+
             adicionarMensagem(
                 `🎉 <strong>Cadastro realizado com sucesso!</strong><br><br>Bem-vindo(a), <strong>${nome}</strong>!<br><br>Vamos prosseguir com seu agendamento.`,
                 'bot'
@@ -623,16 +603,11 @@ async function cadastrarNovoCliente(nome, telefone) {
 }
 
 // ============================================
-// VERIFICAR LIMITE DE AGENDAMENTOS (USANDO DIAS_BLOQUEIO_GERAL)
+// VERIFICAR LIMITE DE AGENDAMENTOS
 // ============================================
 async function verificarLimiteAgendamentos(clienteId) {
     try {
-        // ============================================
-        // 🔥 BUSCAR DIAS_BLOQUEIO_GERAL DA EMPRESA
-        // ============================================
-        const resEmpresa = await fetch('/api/empresa/dados', {
-            headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
-        });
+        const resEmpresa = await fetch(`/api/chatbot/empresa/${empresaId}`);
         const dataEmpresa = await resEmpresa.json();
 
         let diasBloqueioGeral = 0;
@@ -643,26 +618,20 @@ async function verificarLimiteAgendamentos(clienteId) {
 
         console.log(`📋 Empresa - Dias de bloqueio geral: ${diasBloqueioGeral} dias`);
 
-        // Se for 0, não tem restrição (apenas a regra de 1 agendamento por dia, que é validada no backend)
         if (diasBloqueioGeral === 0) {
-            console.log('✅ Sem bloqueio geral, permitindo agendamento (respeitando 1 por dia)');
+            console.log('✅ Sem bloqueio geral, permitindo agendamento');
             return true;
         }
 
-        // ============================================
-        // BUSCAR ÚLTIMO AGENDAMENTO DO CLIENTE
-        // ============================================
-        const res = await fetch(`/api/agendamentos?cliente=${clienteId}`, {
-            headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
-        });
+        const res = await fetch(`/api/chatbot/cliente/agendamentos/${clienteId}`);
         const data = await res.json();
 
-        if (data.success && data.data) {
+        if (data.success && data.agendamentos) {
             const agora = new Date();
             const dataLimite = new Date(agora);
             dataLimite.setDate(dataLimite.getDate() - diasBloqueioGeral);
 
-            const agendamentosRecentes = data.data.filter(a =>
+            const agendamentosRecentes = data.agendamentos.filter(a =>
                 a.status === 'concluido' || a.status === 'pendente' || a.status === 'agendado'
             );
 
@@ -682,7 +651,7 @@ async function verificarLimiteAgendamentos(clienteId) {
 }
 
 // ============================================
-// MOSTRAR SERVIÇOS - CORRIGIDO
+// MOSTRAR SERVIÇOS
 // ============================================
 function mostrarServicos() {
     if (servicosList.length === 0) {
@@ -744,7 +713,7 @@ function perguntarProfissional() {
 }
 
 // ============================================
-// PERGUNTAR DATA
+// PERGUNTAR DATA - CORRIGIDO (sem lista de datas)
 // ============================================
 async function perguntarData() {
     var hoje = new Date();
@@ -758,14 +727,14 @@ async function perguntarData() {
     if (datasDisponiveis.length === 0) {
         adicionarMensagem(
             '⚠️ <strong>Não encontrei datas disponíveis para este mês.</strong><br><br>' +
-            'Tente os próximos dias ou entre em contato com a barbearia.<br><br>' +
-            '📞 <strong>Telefone:</strong> (11) 99999-9999',
+            'Tente os próximos dias ou entre em contato com a barbearia.',
             'bot'
         );
         estado = 'aguardando_data';
         return;
     }
 
+    // ✅ CORREÇÃO: Ajustar calendário para a PRIMEIRA data disponível
     var datasOrdenadas = [...datasDisponiveis].sort();
     var primeiraData = datasOrdenadas[0];
     var partes = primeiraData.split('-');
@@ -776,26 +745,15 @@ async function perguntarData() {
 
     console.log('📅 Calendário ajustado para:', calendarioAtual.getMonth() + 1, '/', calendarioAtual.getFullYear());
 
-    var textoDatas = '📅 <strong>Datas disponíveis:</strong><br><br>';
-    var maxDatas = Math.min(datasOrdenadas.length, 10);
-    for (var i = 0; i < maxDatas; i++) {
-        textoDatas += '• ' + formatarDataBr(datasOrdenadas[i]) + '<br>';
-    }
-    if (datasOrdenadas.length > 10) {
-        textoDatas += '... e mais ' + (datasOrdenadas.length - 10) + ' datas';
-    }
-    textoDatas += '<br><br>Selecione uma data no calendário abaixo:';
-
-    adicionarMensagem(textoDatas, 'bot');
-
+    // ✅ CORREÇÃO: NÃO MOSTRA A LISTA DE DATAS, SÓ O CALENDÁRIO
     var calendario = renderizarCalendario();
-    adicionarMensagem('📅 <strong>Calendário:</strong>', 'bot', calendario);
+    adicionarMensagem('📅 <strong>Selecione uma data disponível no calendário:</strong>', 'bot', calendario);
 
     estado = 'aguardando_data';
 }
 
 // ============================================
-// CARREGAR DATAS DISPONÍVEIS - COM FALLBACK
+// CARREGAR DATAS DISPONÍVEIS
 // ============================================
 async function carregarDatasDisponiveis(mes, ano) {
     var mesAtual = parseInt(mes) || new Date().getMonth() + 1;
@@ -839,7 +797,8 @@ function gerarDatasFallback(mes, ano) {
     var hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    for (var i = 1; i <= 15; i++) {
+    // ✅ CORREÇÃO: Inclui HOJE se ainda não passou
+    for (var i = 0; i <= 15; i++) {
         var data = new Date(hoje);
         data.setDate(data.getDate() + i);
         var dataStr = data.toISOString().split('T')[0];
@@ -850,7 +809,7 @@ function gerarDatasFallback(mes, ano) {
 }
 
 // ============================================
-// RENDERIZAR CALENDÁRIO - CORRIGIDO
+// RENDERIZAR CALENDÁRIO - CORRIGIDO (HOJE DISPONÍVEL)
 // ============================================
 function renderizarCalendario() {
     const hoje = new Date();
@@ -916,15 +875,17 @@ function renderizarCalendario() {
     for (let dia = 1; dia <= diasNoMes; dia++) {
         const dataAtual = new Date(ano, mes, dia);
         const dataStr = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-        const isPassado = dataAtual < hoje;
-        const isDisponivel = datasDoMes.includes(dataStr) && !isPassado;
+        
+        // ✅ CORREÇÃO: HOJE NÃO É MAIS BLOQUEADO
         const isHoje = dataStr === hojeStr;
+        const isPassado = dataAtual < hoje && !isHoje;
+        const isDisponivel = datasDoMes.includes(dataStr);
 
         const diaDiv = document.createElement('div');
         diaDiv.className = 'calendario-dia';
         diaDiv.textContent = dia;
 
-        if (isDisponivel) {
+        if (isDisponivel && !isPassado) {
             temDataDisponivel = true;
             diaDiv.classList.add('calendario-data-disponivel');
             diaDiv.style.cursor = 'pointer';
@@ -939,7 +900,6 @@ function renderizarCalendario() {
             diaDiv.style.justifyContent = 'center';
             diaDiv.title = 'Disponível - Clique para selecionar';
 
-            // 🔥 CORREÇÃO: Capturar o valor correto da data usando closure
             (function (dataSelecionada) {
                 diaDiv.onclick = function () {
                     selecionarDataCalendario(dataSelecionada);
@@ -1037,36 +997,37 @@ function renderizarCalendario() {
 
     return container;
 }
+
 // ============================================
 // MUDAR MÊS DO CALENDÁRIO
 // ============================================
-window.mudarMesCalendario = function (delta) {
+window.mudarMesCalendario = async function (delta) {
     calendarioAtual.setMonth(calendarioAtual.getMonth() + delta);
     var mes = calendarioAtual.getMonth() + 1;
     var ano = calendarioAtual.getFullYear();
 
     console.log('🔄 Mudando para mês: ' + mes + '/' + ano);
 
-    carregarDatasDisponiveis(mes, ano).then(function () {
-        var containers = document.querySelectorAll('.calendario-container');
-        var ultimoContainer = containers[containers.length - 1];
-        if (ultimoContainer) {
-            var parent = ultimoContainer.closest('.message-content');
-            if (parent) {
-                var novoCalendario = renderizarCalendario();
-                parent.innerHTML = '';
-                var newText = document.createElement('div');
-                newText.className = 'message-text';
-                newText.innerHTML = '📅 <strong>Calendário:</strong>';
-                parent.appendChild(newText);
-                parent.appendChild(novoCalendario);
-                var timeDiv = document.createElement('span');
-                timeDiv.className = 'message-time';
-                timeDiv.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-                parent.appendChild(timeDiv);
-            }
+    await carregarDatasDisponiveis(mes, ano);
+
+    var containers = document.querySelectorAll('.calendario-container');
+    var ultimoContainer = containers[containers.length - 1];
+    if (ultimoContainer) {
+        var parent = ultimoContainer.closest('.message-content');
+        if (parent) {
+            var novoCalendario = renderizarCalendario();
+            parent.innerHTML = '';
+            var newText = document.createElement('div');
+            newText.className = 'message-text';
+            newText.innerHTML = '📅 <strong>Selecione uma data disponível no calendário:</strong>';
+            parent.appendChild(newText);
+            parent.appendChild(novoCalendario);
+            var timeDiv = document.createElement('span');
+            timeDiv.className = 'message-time';
+            timeDiv.textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            parent.appendChild(timeDiv);
         }
-    });
+    }
 };
 
 // ============================================
@@ -1078,7 +1039,7 @@ function selecionarDataCalendario(dataStr) {
 }
 
 // ============================================
-// PERGUNTAR HORÁRIO - COM FILTRO DE HORÁRIOS PASSADOS
+// PERGUNTAR HORÁRIO
 // ============================================
 async function perguntarHorario(data) {
     try {
@@ -1091,6 +1052,8 @@ async function perguntarHorario(data) {
             body.profissionalId = agendamentoAtual.profissional_id;
         }
 
+        console.log('🔍 Buscando horários para:', body);
+
         var res = await fetch('/api/chatbot/horarios-disponiveis', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1098,8 +1061,9 @@ async function perguntarHorario(data) {
         });
         var result = await res.json();
 
+        console.log('📦 Resposta horários:', result);
+
         if (result.success && result.horarios && result.horarios.length > 0) {
-            // 🔥 FILTRAR HORÁRIOS QUE JÁ PASSARAM (SE FOR HOJE)
             let horarios = result.horarios;
             const hoje = new Date();
             const hojeStr = hoje.toISOString().split('T')[0];
@@ -1152,11 +1116,13 @@ async function perguntarHorario(data) {
     } catch (error) {
         console.error('Erro ao carregar horários:', error);
         adicionarMensagem('❌ Erro ao carregar horários. Tente novamente.', 'bot');
+        estado = 'aguardando_data';
+        perguntarData();
     }
 }
 
 // ============================================
-// CONFIRMAR AGENDAMENTO - CORRIGIDO
+// CONFIRMAR AGENDAMENTO
 // ============================================
 function confirmarAgendamento() {
     var nomeProfissional = agendamentoAtual.profissional_nome || 'Não definido';
@@ -1215,10 +1181,10 @@ async function verificarEConfirmar() {
         await finalizarAgendamento();
     }
 }
-// ============================================
-// VALIDAR DATA/HORA - NÃO PERMITIR PASSADO
-// ============================================
 
+// ============================================
+// VALIDAR DATA/HORA
+// ============================================
 function validarDataHora(data, hora) {
     if (!data || !hora) {
         return {
@@ -1231,12 +1197,9 @@ function validarDataHora(data, hora) {
     const [ano, mes, dia] = data.split('-').map(Number);
     const [horaNum, minutoNum] = hora.split(':').map(Number);
 
-    // Criar data selecionada
     const dataSelecionada = new Date(ano, mes - 1, dia, horaNum || 0, minutoNum || 0, 0, 0);
 
-    // 🔥 VERIFICAR SE A DATA/HORA JÁ PASSOU
     if (dataSelecionada < agora) {
-        // Verificar se é hoje
         const hoje = new Date();
         const isHoje = dataSelecionada.getDate() === hoje.getDate() &&
             dataSelecionada.getMonth() === hoje.getMonth() &&
@@ -1260,8 +1223,9 @@ function validarDataHora(data, hora) {
         mensagem: '✅ Data e hora válidas!'
     };
 }
+
 // ============================================
-// FINALIZAR AGENDAMENTO - CORRIGIDO (COM VALIDAÇÃO DE DATA/HORA)
+// FINALIZAR AGENDAMENTO - VERSÃO CORRIGIDA
 // ============================================
 async function finalizarAgendamento() {
     try {
@@ -1270,13 +1234,9 @@ async function finalizarAgendamento() {
         console.log('  - agendamentoAtual:', agendamentoAtual);
         console.log('  - empresaId:', empresaId);
 
-        // ============================================
-        // 🔥 VALIDAR DATA/HORA ANTES DE AGENDAR
-        // ============================================
         const validacao = validarDataHora(agendamentoAtual.data, agendamentoAtual.hora);
         if (!validacao.valido) {
             adicionarMensagem(`❌ ${validacao.mensagem}`, 'bot');
-            // Voltar para escolher outro horário
             estado = 'aguardando_horario';
             perguntarHorario(agendamentoAtual.data);
             return;
@@ -1286,7 +1246,6 @@ async function finalizarAgendamento() {
             console.log('⚠️ Cliente não identificado, tentando buscar...');
 
             if (telefoneCliente) {
-                console.log('🔍 Buscando cliente pelo telefone:', telefoneCliente);
                 try {
                     var res = await fetch('/api/chatbot/cliente/buscar', {
                         method: 'POST',
@@ -1297,8 +1256,6 @@ async function finalizarAgendamento() {
                         })
                     });
                     var data = await res.json();
-                    console.log('📦 Resposta da busca:', data);
-
                     if (data.success && data.cliente) {
                         clienteAtual = data.cliente;
                         console.log('✅ Cliente encontrado novamente:', clienteAtual);
@@ -1309,31 +1266,10 @@ async function finalizarAgendamento() {
             }
 
             if (!clienteAtual || !clienteAtual.id) {
-                try {
-                    var res2 = await fetch('/api/clientes', {
-                        headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('token') || '') }
-                    });
-                    var data2 = await res2.json();
-                    if (data2.success && data2.data) {
-                        var encontrado = data2.data.find(function (c) {
-                            return c.nome.toLowerCase() === nomeCliente?.toLowerCase();
-                        });
-                        if (encontrado) {
-                            clienteAtual = encontrado;
-                            console.log('✅ Cliente encontrado pelo nome:', clienteAtual);
-                        }
-                    }
-                } catch (error) {
-                    console.error('❌ Erro ao buscar cliente pelo nome:', error);
-                }
+                adicionarMensagem('❌ Erro: Cliente não identificado. Tente novamente.', 'bot');
+                estado = 'inicio';
+                return;
             }
-        }
-
-        if (!clienteAtual || !clienteAtual.id) {
-            console.log('❌ Cliente ainda não identificado após tentativas');
-            adicionarMensagem('❌ Erro: Cliente não identificado. Tente novamente.', 'bot');
-            estado = 'inicio';
-            return;
         }
 
         if (!agendamentoAtual.servico_id) {
@@ -1348,18 +1284,8 @@ async function finalizarAgendamento() {
             return;
         }
 
-        // ============================================
-        // 🔥 CORREÇÃO: GARANTIR QUE O VALOR ESTÁ CORRETO
-        // ============================================
-        let valorFinal = 0;
+        let valorFinal = parseFloat(agendamentoAtual.valor) || 0;
 
-        // 1. Tentar pegar do agendamentoAtual
-        if (agendamentoAtual.valor && parseFloat(agendamentoAtual.valor) > 0) {
-            valorFinal = parseFloat(agendamentoAtual.valor);
-            console.log(`💰 Valor obtido do agendamentoAtual: R$ ${valorFinal}`);
-        }
-
-        // 2. Se ainda for 0, buscar do banco pelo ID do serviço
         if (valorFinal === 0 && agendamentoAtual.servico_id) {
             try {
                 console.log('🔍 Buscando valor do serviço no banco (ID:', agendamentoAtual.servico_id, ')');
@@ -1379,7 +1305,6 @@ async function finalizarAgendamento() {
             }
         }
 
-        // 3. Se ainda for 0, buscar da lista de serviços carregada
         if (valorFinal === 0 && servicosList.length > 0) {
             const servicoEncontrado = servicosList.find(s =>
                 s.id == agendamentoAtual.servico_id ||
@@ -1394,7 +1319,6 @@ async function finalizarAgendamento() {
             }
         }
 
-        // 4. Atualizar o valor no agendamentoAtual
         agendamentoAtual.valor = valorFinal;
         console.log(`💰 Valor final a ser enviado: R$ ${valorFinal}`);
 
@@ -1402,16 +1326,12 @@ async function finalizarAgendamento() {
         if (!empresaIdFinal) {
             var params = new URLSearchParams(window.location.search);
             empresaIdFinal = params.get('empresa') || '1';
-            console.log('🏢 empresaId recuperado da URL:', empresaIdFinal);
         }
 
         var profissionalId = agendamentoAtual.profissional_id;
-
         if (profissionalId && typeof profissionalId === 'string' && profissionalId.includes('dono')) {
             profissionalId = null;
-            console.log('👨‍💼 Profissional é o Dono, enviando como null');
         }
-
         if (agendamentoAtual.profissional_nome === 'Qualquer profissional') {
             profissionalId = null;
         }
@@ -1424,7 +1344,8 @@ async function finalizarAgendamento() {
             hora: agendamentoAtual.hora,
             empresaId: parseInt(empresaIdFinal),
             valor: valorFinal,
-            servicoNome: agendamentoAtual.servico_nome || ''
+            servicoNome: agendamentoAtual.servico_nome || '',
+            origem: 'chatbot'  // 🔥 ADICIONADO: IDENTIFICA QUE VEM DO CHATBOT
         };
 
         console.log('📤 Enviando agendamento:', JSON.stringify(body, null, 2));
@@ -1459,7 +1380,7 @@ async function finalizarAgendamento() {
             agendamentoAtual = {};
         } else {
             adicionarMensagem(
-                '❌ Erro ao confirmar agendamento: ' + result3.message + '<br><br>Tente novamente.',
+                '❌ Erro ao confirmar agendamento: ' + (result3.message || 'Erro desconhecido') + '<br><br>Tente novamente.',
                 'bot'
             );
             estado = 'inicio';
@@ -1470,11 +1391,9 @@ async function finalizarAgendamento() {
         estado = 'inicio';
     }
 }
-
 // ============================================
-// FORMATAR DATA BR - CHATBOT (SEM TIMEZONE)
+// FORMATAR DATA BR
 // ============================================
-
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
@@ -1496,4 +1415,4 @@ function formatarDataBr(dataStr) {
 window.enviarMensagem = enviarMensagem;
 window.mudarMesCalendario = window.mudarMesCalendario;
 
-console.log('✅ chatbot.js carregado com BLOQUEIO GERAL!');
+console.log('✅ chatbot.js carregado com todas as correções! (sem lista de datas e hoje disponível)');
