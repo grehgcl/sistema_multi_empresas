@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const { getEmpresaDb } = require('../config/database');
-const { auth, verificarDono } = require('../middlewares/auth');
+const { auth, verificarDono,verificarAcessoAgendamentos  } = require('../middlewares/auth');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -480,7 +480,7 @@ router.get('/:id/grupos', auth, (req, res) => {
 // POST /api/clientes - CRIAR CLIENTE
 // ============================================
 
-router.post('/', auth, (req, res) => {
+router.post('/', auth,verificarAcessoAgendamentos, (req, res) => {
     const { nome, telefone, email, grupos } = req.body;
     const empresaId = req.usuario.empresa_id;
 
@@ -527,7 +527,7 @@ router.post('/', auth, (req, res) => {
 // PUT /api/clientes/:id - ATUALIZAR CLIENTE
 // ============================================
 
-router.put('/:id', auth, verificarDono, (req, res) => {
+router.put('/:id', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const { nome, telefone, email, grupos, bloqueado_chatbot } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -604,7 +604,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 // DELETE /api/clientes/:id - EXCLUIR CLIENTE
 // ============================================
 
-router.delete('/:id', auth, verificarDono, (req, res) => {
+router.delete('/:id', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 
@@ -661,7 +661,7 @@ router.delete('/:id', auth, verificarDono, (req, res) => {
 // PUT /api/clientes/:id/bloquear-chatbot - BLOQUEAR/DESBLOQUEAR
 // ============================================
 
-router.put('/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
+router.put('/:id/bloquear-chatbot', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const { bloqueado } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -706,7 +706,7 @@ router.put('/:id/bloquear-chatbot', auth, verificarDono, (req, res) => {
 // PUT /api/clientes/:id/grupos - ATUALIZAR GRUPOS
 // ============================================
 
-router.put('/:id/grupos', auth, (req, res) => {
+router.put('/:id/grupos', auth,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
     const { grupos } = req.body;
@@ -785,7 +785,7 @@ router.put('/:id/grupos', auth, (req, res) => {
 // POST /api/clientes/bulk - IMPORTAR LOTE DE CLIENTES
 // ============================================
 
-router.post('/bulk', auth, verificarDono, async (req, res) => {
+router.post('/bulk', auth, verificarDono,verificarAcessoAgendamentos, async (req, res) => {
     try {
         const { clientes } = req.body;
         const empresaId = req.usuario.empresa_id;

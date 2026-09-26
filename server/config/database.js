@@ -1,9 +1,8 @@
-// server/config/database.js - HÍBRIDO DEFINITIVO (Local + VPS)
+﻿// server/config/database.js - HÍBRIDO DEFINITIVO (Local + VPS) - CORRIGIDO COM AUTO-CRIAÇÃO
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const fs = require('fs');
 
-// Lógica: Se tem DATABASE_URL, é Postgres. Senão, é SQLite.
 const hasPostgres = !!process.env.DATABASE_URL;
 let db;
 const dbDir = path.join(__dirname, '../../database');
@@ -18,32 +17,134 @@ if (!fs.existsSync(dbDir)) {
 function prepareSqlForSQLite(sql) {
     let cleanSql = sql;
 
-    // 1. Placeholders: ?, ?, ? -> ?
     cleanSql = cleanSql.replace(/\$\d+/g, '?');
 
-    // 2. Funções de Data PG -> SQLite (Regex robusta com \s para espaços)
-    // EXTRACT(MONTH FROM data) ou EXTRACT(MONTH FROM a.data)
     cleanSql = cleanSql.replace(/EXTRACT\(\s*MONTH\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%m', ?)");
     cleanSql = cleanSql.replace(/EXTRACT\(\s*YEAR\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%Y', ?)");
     cleanSql = cleanSql.replace(/EXTRACT\(\s*DAY\s+FROM\s+([\w\.]+)\s*\)/gi, "strftime('%d', ?)");
 
-    // ${formatDate('data')} -> date(data)
     cleanSql = cleanSql.replace(/to_char\(\s*([\w\.]+)\s*,\s*'YYYY-MM-DD'\s*\)/gi, "date(?)");
 
-    // 3. Booleanos: true/false -> 1/0 (apenas em comparações simples)
     cleanSql = cleanSql.replace(/=\s*true/gi, '= 1');
     cleanSql = cleanSql.replace(/=\s*false/gi, '= 0');
 
-    // 4. ILIKE -> LIKE (SQLite não tem ILIKE)
     cleanSql = cleanSql.replace(/\bILIKE\b/gi, 'LIKE');
 
     return cleanSql;
 }
 
+// ============================================
+// 🔥 ENCONTRAR BANCO DA EMPRESA
+// ============================================
+function encontrarArquivoEmpresa(empresaId) {
+    try {
+        const files = fs.readdirSync(dbDir);
+        const idNum = parseInt(empresaId);
+
+        let file = files.find(f => {
+            if (f.startsWith('empresa_')) return false;
+            const match = f.match(/_(\d+)\.db$/);
+            if (!match) return false;
+            return parseInt(match[1]) === idNum;
+        });
+
+        if (!file) {
+            file = files.find(f => {
+                const match = f.match(/^empresa_(\d+)_[\w-]+\.db$/);
+                if (!match) return false;
+                return parseInt(match[1]) === idNum;
+            });
+        }
+
+        if (!file) {
+            file = files.find(f => f === `empresa_${empresaId}.db`);
+        }
+
+        if (!file) {
+            file = files.find(f => f.includes(`_${empresaId}.db`));
+        }
+
+        return file || null;
+    } catch (e) {
+        console.error(`❌ Erro ao listar arquivos de banco:`, e.message);
+        return null;
+    }
+}
+
+// ============================================
+// 🚫 AUTO-CRIAR TABELAS NOVAS NA EMPRESA
+// ============================================
+function garantirTabelasEmpresa(empresaDb) {
+    // Tabela: bloqueios_agenda
+    empresaDb.run(`
+        CREATE TABLE IF NOT EXISTS bloqueios_agenda (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            empresa_id INTEGER NOT NULL,
+            profissional_id INTEGER,
+            tipo TEXT NOT NULL DEFAULT 'periodo',
+            data_inicio TEXT NOT NULL,
+            data_fim TEXT,
+            datas_especificas TEXT DEFAULT '[]',
+            dia_inteiro INTEGER DEFAULT 1,
+            hora_inicio TEXT,
+            hora_fim TEXT,
+            motivo TEXT,
+            criado_por INTEGER,
+            ativo INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `, (err) => {
+        if (err) {
+            console.error('❌ Erro ao criar tabela bloqueios_agenda:', err.message);
+        }
+    });
+
+    empresaDb.run(`
+        CREATE INDEX IF NOT EXISTS idx_bloqueios_empresa 
+        ON bloqueios_agenda(empresa_id, data_inicio, data_fim, ativo)
+    `, () => {});
+
+    empresaDb.run(`
+        CREATE INDEX IF NOT EXISTS idx_bloqueios_profissional 
+        ON bloqueios_agenda(empresa_id, profissional_id, ativo)
+    `, () => {});
+}
+
+// ============================================
+// 🔥 ABRIR BANCO DA EMPRESA
+// ============================================
+function abrirBancoEmpresa(empresaId) {
+    const file = encontrarArquivoEmpresa(empresaId);
+
+    if (!file) {
+        console.warn(`⚠️ Nenhum banco encontrado para empresa ${empresaId}`);
+        return null;
+    }
+
+    try {
+        console.log(`📁 Empresa ${empresaId} → ${file}`);
+        const empresaDb = new sqlite3.Database(path.join(dbDir, file));
+
+        // 🚫 Auto-criar tabelas novas
+        garantirTabelasEmpresa(empresaDb);
+
+        return {
+            get: (sql, p, c) => empresaDb.get(prepareSqlForSQLite(sql), p, c),
+            all: (sql, p, c) => empresaDb.all(prepareSqlForSQLite(sql), p, c),
+            run: (sql, p, c) => empresaDb.run(prepareSqlForSQLite(sql), p, c),
+            _file: file,
+            _raw: empresaDb
+        };
+    } catch (e) {
+        console.error(`❌ Erro ao abrir banco da empresa ${empresaId} (${file}):`, e.message);
+        return null;
+    }
+}
+
+// ============================================
+// MODO VPS / PRODUÇÃO (PostgreSQL)
+// ============================================
 if (hasPostgres) {
-    // ============================================
-    // MODO VPS / PRODUÇÃO (PostgreSQL)
-    // ============================================
     console.log('🔵 Conectando ao PostgreSQL (VPS/Produção)...');
     const { Pool } = require('pg');
     const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: false });
@@ -52,11 +153,8 @@ if (hasPostgres) {
         get: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
-            
-            // Converte ? para ?, ? (Postgres)
             let i = 0;
             const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
-            
             pool.query(sqlPg, params, (err, res) => {
                 if (err) console.error('❌ PG Error (get):', err.message);
                 cb(err, res?.rows[0]);
@@ -65,10 +163,8 @@ if (hasPostgres) {
         all: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
-
             let i = 0;
             const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
-
             pool.query(sqlPg, params, (err, res) => {
                 if (err) console.error('❌ PG Error (all):', err.message);
                 cb(err, res?.rows);
@@ -77,10 +173,8 @@ if (hasPostgres) {
         run: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
-
             let i = 0;
             const sqlPg = sql.replace(/\?/g, () => `$${++i}`);
-
             pool.query(sqlPg, params, (err, res) => {
                 if (err) console.error('❌ PG Error (run):', err.message);
                 cb(err, { lastID: res?.rows[0]?.id, changes: res?.rowCount });
@@ -89,23 +183,7 @@ if (hasPostgres) {
         pool: pool
     };
 
-    // Na VPS, bancos de empresa são SQLite (arquivos .db)
-    db.getEmpresaDb = (empresaId) => {
-        try {
-            const files = fs.readdirSync(dbDir);
-            const file = files.find(f => f.includes(`_${empresaId}.db`));
-            if (file) {
-                const empresaDb = new sqlite3.Database(path.join(dbDir, file));
-                // Retorna um wrapper simples para o banco da empresa
-                return {
-                    get: (sql, p, c) => empresaDb.get(prepareSqlForSQLite(sql), p, c),
-                    all: (sql, p, c) => empresaDb.all(prepareSqlForSQLite(sql), p, c),
-                    run: (sql, p, c) => empresaDb.run(prepareSqlForSQLite(sql), p, c)
-                };
-            }
-        } catch(e) {}
-        return null;
-    };
+    db.getEmpresaDb = (empresaId) => abrirBancoEmpresa(empresaId);
 
 } else {
     // ============================================
@@ -119,9 +197,7 @@ if (hasPostgres) {
         get: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
-            
             const sqlFinal = prepareSqlForSQLite(sql);
-            // console.log('🔍 SQL GET:', sqlFinal); // Debug
             mainDb.get(sqlFinal, params, (err, row) => {
                 if (err) console.error('❌ SQLite Error (get):', err.message);
                 cb(err, row);
@@ -130,9 +206,7 @@ if (hasPostgres) {
         all: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
-
             const sqlFinal = prepareSqlForSQLite(sql);
-            // console.log('🔍 SQL ALL:', sqlFinal); // Debug
             mainDb.all(sqlFinal, params, (err, rows) => {
                 if (err) console.error('❌ SQLite Error (all):', err.message);
                 cb(err, rows);
@@ -141,7 +215,6 @@ if (hasPostgres) {
         run: (sql, params, cb) => {
             if (typeof params === 'function') { cb = params; params = []; }
             if (!Array.isArray(params)) params = [params];
-
             const sqlFinal = prepareSqlForSQLite(sql);
             mainDb.run(sqlFinal, params, function(err) {
                 if (err) console.error('❌ SQLite Error (run):', err.message);
@@ -150,54 +223,11 @@ if (hasPostgres) {
         }
     };
 
-    db.getEmpresaDb = (empresaId) => {
-        try {
-            const files = fs.readdirSync(dbDir);
-            const file = files.find(f => f.includes(`_${empresaId}.db`));
-            if (file) {
-                const empresaDb = new sqlite3.Database(path.join(dbDir, file));
-
-// ============================================
-// COMPATIBILIDADE SQLite / PostgreSQL
-// ============================================
-
-const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
-
-function extractMonth(field) {
-    return isProduction ? `EXTRACT(MONTH FROM ${field})` : `strftime('%m', ${field})`;
-}
-
-function extractYear(field) {
-    return isProduction ? `EXTRACT(YEAR FROM ${field})` : `strftime('%Y', ${field})`;
-}
-
-function extractDay(field) {
-    return isProduction ? `EXTRACT(DAY FROM ${field})` : `strftime('%d', ${field})`;
-}
-
-function formatDate(field) {
-    return isProduction ? `${formatDate('${field}')}` : `date(${field})`;
-}
-
-function coalesceSum(field) {
-    return isProduction ? `COALESCE(SUM(${field}), 0)` : `COALESCE(SUM(${field}), 0)`;
+    db.getEmpresaDb = (empresaId) => abrirBancoEmpresa(empresaId);
 }
 
 // ============================================
-
-                return {
-                    get: (sql, p, c) => empresaDb.get(prepareSqlForSQLite(sql), p, c),
-                    all: (sql, p, c) => empresaDb.all(prepareSqlForSQLite(sql), p, c),
-                    run: (sql, p, c) => empresaDb.run(prepareSqlForSQLite(sql), p, c)
-                };
-            }
-        } catch(e) {}
-        return mainDb; // Fallback pro principal se não achar
-    };
-}
-
-// ============================================
-// FUNÇÕES AUXILIARES (Obrigatórias para o server.js)
+// FUNÇÕES AUXILIARES
 // ============================================
 function initDatabase() {
     console.log('✅ Database inicializado');

@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const { db, getEmpresaDb } = require('../config/database');
-const { auth, verificarDono } = require('../middlewares/auth');
+const { auth, verificarDono,verificarAcessoAgendamentos } = require('../middlewares/auth');
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
@@ -100,7 +100,7 @@ router.get('/todos', auth, verificarDono, (req, res) => {
 // ============================================
 // POST /api/servicos - CORRIGIDO
 // ============================================
-router.post('/', auth, (req, res) => {
+router.post('/', auth,verificarAcessoAgendamentos, (req, res) => {
     try {
         const empresaId = req.usuario.empresa_id;
         const { nome, descricao, valor, duracao, ativo } = req.body;
@@ -149,7 +149,7 @@ router.post('/', auth, (req, res) => {
 // ============================================
 // PUT /api/servicos/:id - CORRIGIDO
 // ============================================
-router.put('/:id', auth, verificarDono, (req, res) => {
+router.put('/:id', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     try {
         const { id } = req.params;
         const { nome, descricao, valor, duracao, ativo } = req.body;
@@ -203,7 +203,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 // ============================================
 // DELETE /api/servicos/:id - CORRIGIDO
 // ============================================
-router.delete('/:id', auth, verificarDono, (req, res) => {
+router.delete('/:id', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     try {
         const { id } = req.params;
         const empresaId = req.usuario.empresa_id;

@@ -92,29 +92,6 @@ function showToast(message, type = 'success') {
     }, 4000);
 }
 const PLANOS_CONFIG = {
-    teste: {
-        id: 'teste',
-        nome: '💰 Teste R$ 1,00',
-        valor_mensal: 1.00,
-        valor_anual: 12.00,
-        profs: 1,
-        agendamentos: '10/mês',
-        cor: '#10b981',
-        popular: false,
-        recursos: [
-            '✅ Plano de teste',
-            '✅ Apenas R$ 1,00',
-            '✅ Para validar pagamento',
-            '✅ Válido por 1 dia'
-        ],
-        limitacoes: [
-            '❌ Apenas 1 profissional',
-            '❌ 10 agendamentos/mês',
-            '❌ Sem WhatsApp',
-            '❌ Sem promoções',
-            '❌ Sem fiados'
-        ]
-    },
     starter: {
         id: 'starter',
         nome: 'Starter',
@@ -155,9 +132,51 @@ const PLANOS_CONFIG = {
             'Relatórios avançados'
         ],
         limitacoes: []
+    },
+    business: {
+        id: 'business',
+        nome: 'Business',
+        valor_mensal: 119.90,
+        valor_anual: 1151.04,
+        profs: 15,
+        agendamentos: 'Ilimitado',
+        cor: '#8b5cf6',
+        popular: false,
+        recursos: [
+            'Até 15 profissionais',
+            'Agendamentos ilimitados',
+            'WhatsApp Business',
+            'Envio de promoções',
+            'Sistema de fiados',
+            'Dashboard completo',
+            'Relatórios avançados',
+            'Suporte prioritário'
+        ],
+        limitacoes: []
+    },
+    enterprise: {
+        id: 'enterprise',
+        nome: 'Enterprise',
+        valor_mensal: 249.90,
+        valor_anual: 2399.04,
+        profs: 9999,
+        agendamentos: 'Ilimitado',
+        cor: '#ef4444',
+        popular: false,
+        recursos: [
+            'Profissionais ilimitados',
+            'Agendamentos ilimitados',
+            'WhatsApp Business',
+            'Envio de promoções',
+            'Sistema de fiados',
+            'Dashboard completo',
+            'Relatórios avançados',
+            'Suporte prioritário 24/7',
+            'Gerente de conta dedicado'
+        ],
+        limitacoes: []
     }
 };
-
 function tokenAtual() {
     return localStorage.getItem('token');
 }

@@ -1,7 +1,13 @@
-﻿// Configurações Unificadas - Profissionais + Horários + Chatbot + Tema + BLOQUEIO GERAL + DADOS DA EMPRESA
+﻿// Configurações Unificadas - Profissionais + Horários + Chatbot + Tema + BLOQUEIO GERAL + DADOS DA EMPRESA + BLOQUEIOS DE AGENDA
 
 let profissionaisData = [];
 let planoInfo = { plano: 'trial', limite: 1, ativos: 0, podeAdicionar: true };
+
+// 🔥 VARIÁVEIS DA ABA BLOQUEIOS
+let bloqueiosCache = [];
+let profissionaisParaBloqueio = [];
+let bloqueioEditandoId = null;
+let datasEspecificasTemp = [];
 
 // ============================================
 // FUNÇÃO PRINCIPAL (chamada pelo menu) - MOBILE MELHORADO
@@ -112,6 +118,24 @@ async function carregarConfiguracoes() {
                     ">
                         <i class="fas fa-clock" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Horários' : 'Horários'}
                     </button>
+                    <button class="config-tab" onclick="switchConfigTab('bloqueios')" style="
+                        padding: ${isMobile ? '8px 14px' : '10px 20px'};
+                        border: none;
+                        border-radius: ${isMobile ? '8px' : '12px'};
+                        background: transparent;
+                        color: var(--text-secondary);
+                        font-weight: 600;
+                        font-size: ${isMobile ? '12px' : '14px'};
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        align-items: center;
+                        gap: ${isMobile ? '4px' : '8px'};
+                        white-space: nowrap;
+                        flex-shrink: 0;
+                    ">
+                        <i class="fas fa-calendar-times" style="font-size: ${isMobile ? '14px' : '16px'};"></i> ${isMobile ? 'Bloq.' : 'Bloqueios'}
+                    </button>
                     <button class="config-tab" onclick="switchConfigTab('bloqueio')" style="
                         padding: ${isMobile ? '8px 14px' : '10px 20px'};
                         border: none;
@@ -220,7 +244,7 @@ function switchConfigTab(tab) {
     });
 
     const tabs = document.querySelectorAll('.config-tab');
-    const index = ['profissionais', 'horarios', 'bloqueio', 'chatbot', 'tema', 'empresa'].indexOf(tab);
+    const index = ['profissionais', 'horarios', 'bloqueios', 'bloqueio', 'chatbot', 'tema', 'empresa'].indexOf(tab);
     if (tabs[index]) {
         tabs[index].classList.add('active');
         tabs[index].style.background = 'var(--gradient)';
@@ -235,6 +259,9 @@ function switchConfigTab(tab) {
             break;
         case 'horarios':
             carregarHorarios();
+            break;
+        case 'bloqueios':
+            carregarBloqueios();
             break;
         case 'bloqueio':
             carregarBloqueioGeral();
@@ -316,6 +343,19 @@ function renderDadosEmpresa(empresa) {
                            required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
                 </div>
                 
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">
+                        <i class="fab fa-instagram"></i> Instagram (opcional)
+                    </label>
+                    <input type="text" id="emp-instagram" class="form-control" 
+                           value="${escapeHtml(empresa.instagram || '')}" 
+                           placeholder="@seu_instagram"
+                           style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                    <small style="color: var(--text-muted); font-size: 12px; display: block; margin-top: 4px;">
+                        💡 Aparecerá nas mensagens do WhatsApp enviadas aos clientes
+                    </small>
+                </div>
+                
                 <div class="form-group" style="margin-bottom: 20px;">
                     <label style="font-weight: 600; display: block; margin-bottom: 4px; font-size: 14px; color: var(--text-primary);">
                         <i class="fas fa-map-marker-alt"></i> Endereço
@@ -372,12 +412,12 @@ function renderDadosEmpresa(empresa) {
                     <li>📱 <strong>Mensagens de conclusão</strong> após o serviço</li>
                     <li>📍 <strong>Endereço</strong> aparece para orientar os clientes</li>
                     <li>📞 <strong>Telefone</strong> para contato direto com o estabelecimento</li>
+                    <li>📸 <strong>Instagram</strong> aparece nas mensagens do WhatsApp</li>
                 </ul>
             </div>
         </div>
     `;
 }
-
 // ============================================
 // SALVAR DADOS DA EMPRESA
 // ============================================
@@ -387,6 +427,7 @@ async function salvarDadosEmpresa(event) {
     const nome = document.getElementById('emp-nome')?.value;
     const telefone = document.getElementById('emp-telefone')?.value;
     const endereco = document.getElementById('emp-endereco')?.value;
+    const instagram = document.getElementById('emp-instagram')?.value;  // ← NOVO
 
     if (!nome || !telefone) {
         showToast('Preencha o nome e telefone do estabelecimento', 'warning');
@@ -406,7 +447,8 @@ async function salvarDadosEmpresa(event) {
             body: JSON.stringify({
                 nome: nome.trim(),
                 telefone_dono: telefone.trim(),
-                endereco: endereco ? endereco.trim() : ''
+                endereco: endereco ? endereco.trim() : '',
+                instagram: instagram ? instagram.trim() : ''  // ← NOVO
             })
         });
 
@@ -416,7 +458,6 @@ async function salvarDadosEmpresa(event) {
         if (data.success) {
             showToast('✅ Dados do estabelecimento atualizados com sucesso!', 'success');
 
-            // Atualizar o nome da empresa no localStorage se mudou
             const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
             if (usuario.empresa_nome !== nome) {
                 usuario.empresa_nome = nome;
@@ -433,7 +474,6 @@ async function salvarDadosEmpresa(event) {
         showToast('Erro ao salvar dados da empresa', 'error');
     }
 }
-
 // ============================================
 // CARREGAR BLOQUEIO GERAL
 // ============================================
@@ -579,7 +619,6 @@ async function salvarBloqueioGeral() {
     const dias = parseInt(select.value) || 0;
     const token = localStorage.getItem('token');
 
-    // Pegar a descrição para mostrar na confirmação
     const opcoes = [
         { value: 0, label: '❌ Desativado (0 dias)', desc: 'Cliente pode agendar no dia seguinte (mas não no mesmo dia)' },
         { value: 7, label: '📅 7 dias', desc: 'Cliente só pode agendar 1 vez por semana' },
@@ -611,12 +650,10 @@ async function salvarBloqueioGeral() {
 
         if (data.success) {
             showToast(data.message, 'success');
-            // Atualizar a descrição
             const descEl = document.getElementById('bloqueioDescricao');
             if (descEl && opcao) {
                 descEl.innerHTML = `<i class="fas fa-info-circle"></i> ${opcao.desc}`;
             }
-            // Atualizar o select
             if (select) {
                 select.value = dias;
             }
@@ -628,6 +665,674 @@ async function salvarBloqueioGeral() {
         hideLoading();
         console.error('Erro:', error);
         showToast('Erro ao salvar bloqueio', 'error');
+    }
+}
+
+// ============================================
+// 🚫 CARREGAR BLOQUEIOS DE AGENDA
+// ============================================
+async function carregarBloqueios() {
+    showLoading();
+    const token = localStorage.getItem('token');
+    const isMobile = window.innerWidth < 768;
+
+    try {
+        const [bloqueiosRes, profissionaisRes] = await Promise.all([
+            fetch('/api/horarios/bloqueios', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }),
+            fetch('/api/profissionais', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            })
+        ]);
+
+        const bloqueiosData = await bloqueiosRes.json();
+        const profData = await profissionaisRes.json();
+
+        bloqueiosCache = bloqueiosData.success ? (bloqueiosData.data || []) : [];
+        profissionaisParaBloqueio = profData.success ? (profData.data || []) : [];
+
+        document.getElementById('configContent').innerHTML = renderBloqueios(bloqueiosCache, isMobile);
+
+    } catch (error) {
+        console.error('❌ Erro ao carregar bloqueios:', error);
+        showToast('Erro ao carregar bloqueios', 'error');
+        document.getElementById('configContent').innerHTML = `
+            <div class="card" style="padding: 20px; text-align: center;">
+                <p style="color: var(--text-muted);">Erro ao carregar bloqueios.</p>
+                <button onclick="carregarBloqueios()" style="
+                    margin-top: 12px;
+                    padding: 10px 20px;
+                    background: var(--gradient);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                ">Tentar novamente</button>
+            </div>
+        `;
+    }
+    hideLoading();
+}
+
+function formatarDataBR(dataIso) {
+    if (!dataIso) return '-';
+    const [ano, mes, dia] = dataIso.split('-');
+    return `${dia}/${mes}/${ano}`;
+}
+
+function formatarPeriodo(b) {
+    if (b.tipo === 'periodo') {
+        if (b.data_inicio === b.data_fim) {
+            return formatarDataBR(b.data_inicio);
+        }
+        return `${formatarDataBR(b.data_inicio)} até ${formatarDataBR(b.data_fim)}`;
+    }
+    const datas = b.datas_especificas || [];
+    if (datas.length === 0) return '-';
+    if (datas.length <= 3) {
+        return datas.map(formatarDataBR).join(', ');
+    }
+    return `${datas.slice(0, 3).map(formatarDataBR).join(', ')} +${datas.length - 3}`;
+}
+
+function descreverHorario(b) {
+    if (b.dia_inteiro) return 'Dia inteiro';
+    if (b.hora_inicio && b.hora_fim) return `${b.hora_inicio} às ${b.hora_fim}`;
+    return 'Horário parcial';
+}
+
+function renderBloqueios(bloqueios, isMobile) {
+    const cardStyle = `
+        background: var(--bg-card);
+        border-radius: 12px;
+        padding: ${isMobile ? '14px' : '16px'};
+        border: 1px solid var(--border-color);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    `;
+
+    const botaoNovo = `
+        <button onclick="abrirModalBloqueio()" style="
+            padding: ${isMobile ? '10px 16px' : '10px 24px'};
+            background: var(--gradient);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: ${isMobile ? '13px' : '14px'};
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            justify-content: center;
+            ${isMobile ? 'width: 100%;' : ''}
+        ">
+            <i class="fas fa-plus"></i> Novo Bloqueio
+        </button>
+    `;
+
+    const lista = bloqueios.length > 0
+        ? bloqueios.map(b => {
+            const profNome = b.profissional_id
+                ? (b.profissional_nome || `Profissional #${b.profissional_id}`)
+                : 'Todos os profissionais';
+
+            const corProf = b.profissional_id ? '#667eea' : '#f59e0b';
+
+            return `
+                <div style="${cardStyle}; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px;">
+                        <div style="flex: 1; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;">
+                                <i class="fas fa-calendar-times" style="color: #ef4444; font-size: ${isMobile ? '14px' : '16px'};"></i>
+                                <strong style="font-size: ${isMobile ? '14px' : '15px'}; color: var(--text-primary);">
+                                    ${formatarPeriodo(b)}
+                                </strong>
+                            </div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; font-size: ${isMobile ? '12px' : '13px'}; color: var(--text-muted); margin-top: 6px;">
+                                <span><i class="fas fa-clock"></i> ${descreverHorario(b)}</span>
+                                <span style="color: ${corProf}; font-weight: 600;">
+                                    <i class="fas fa-user"></i> ${escapeHtml(profNome)}
+                                </span>
+                            </div>
+                            ${b.motivo ? `
+                                <div style="margin-top: 6px; font-size: ${isMobile ? '12px' : '13px'}; color: var(--text-secondary);">
+                                    <i class="fas fa-comment-alt"></i> ${escapeHtml(b.motivo)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border-color);">
+                        <button onclick="abrirModalBloqueio(${b.id})" style="
+                            padding: 6px 14px;
+                            border-radius: 8px;
+                            border: 1px solid rgba(102,126,234,0.3);
+                            background: var(--bg-hover);
+                            color: var(--primary);
+                            font-size: 12px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 4px;
+                            flex: 1;
+                            justify-content: center;
+                        ">
+                            <i class="fas fa-pen"></i> Editar
+                        </button>
+                        <button onclick="excluirBloqueio(${b.id})" style="
+                            padding: 6px 14px;
+                            border-radius: 8px;
+                            border: 1px solid rgba(239,68,68,0.3);
+                            background: var(--bg-hover);
+                            color: #ef4444;
+                            font-size: 12px;
+                            font-weight: 500;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 4px;
+                            flex: 1;
+                            justify-content: center;
+                        ">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('')
+        : `
+            <div style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
+                <i class="fas fa-calendar-check" style="font-size: 42px; opacity: 0.3; display: block; margin-bottom: 12px;"></i>
+                <p style="margin: 0 0 6px 0; font-weight: 600; color: var(--text-primary);">Nenhum bloqueio cadastrado</p>
+                <p style="margin: 0; font-size: 13px;">Clique em <strong>Novo Bloqueio</strong> para começar.</p>
+            </div>
+        `;
+
+    return `
+        <div class="card" style="padding: ${isMobile ? '14px' : '24px'};">
+            <div class="card-header" style="flex-direction: ${isMobile ? 'column' : 'row'}; align-items: ${isMobile ? 'stretch' : 'center'}; gap: ${isMobile ? '10px' : '0'}; margin-bottom: 16px;">
+                <div>
+                    <h3 style="font-size: ${isMobile ? '16px' : '18px'}; margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-calendar-times" style="color: var(--primary);"></i> Bloqueios de Agenda
+                    </h3>
+                    <p class="text-muted" style="font-size: ${isMobile ? '12px' : '13px'}; margin: 4px 0 0 0;">
+                        Bloqueie dias ou horários específicos por profissional. Feriados, férias, reuniões...
+                    </p>
+                </div>
+                ${botaoNovo}
+            </div>
+
+            <div style="
+                background: #fef3c720;
+                padding: ${isMobile ? '12px' : '14px'};
+                border-radius: 10px;
+                margin-bottom: 16px;
+                border-left: 4px solid #f59e0b;
+                font-size: ${isMobile ? '12px' : '13px'};
+                color: var(--text-secondary);
+            ">
+                <i class="fas fa-info-circle" style="color: #f59e0b;"></i>
+                Os bloqueios <strong>impedem novos agendamentos</strong> em todos os canais (painel + chatbot).
+                ${!isMobile ? '<br>' : ' '}
+                Bloqueios por profissional não afetam os demais.
+            </div>
+
+            ${lista}
+        </div>
+    `;
+}
+
+// ============================================
+// 🚫 MODAL DE BLOQUEIO
+// ============================================
+function abrirModalBloqueio(id = null) {
+    bloqueioEditandoId = id;
+    datasEspecificasTemp = [];
+
+    const isEdit = id !== null;
+    const b = isEdit ? bloqueiosCache.find(x => x.id === id) : null;
+
+    if (b && b.tipo === 'datas') {
+        datasEspecificasTemp = [...(b.datas_especificas || [])];
+    }
+
+    const optsProf = `
+        <option value="">Todos os profissionais</option>
+        ${profissionaisParaBloqueio.map(p => `
+            <option value="${p.id}" ${b && b.profissional_id == p.id ? 'selected' : ''}>
+                ${escapeHtml(p.nome)}
+            </option>
+        `).join('')}
+    `;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'modalBloqueio';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        padding: 20px;
+        overflow-y: auto;
+    `;
+
+    overlay.innerHTML = `
+        <div style="
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 520px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            position: relative;
+        ">
+            <button onclick="fecharModalBloqueio()" style="
+                position: absolute;
+                top: 12px;
+                right: 16px;
+                background: none;
+                border: none;
+                font-size: 24px;
+                color: var(--text-muted);
+                cursor: pointer;
+            ">✕</button>
+
+            <h3 style="margin: 0 0 18px 0; font-size: 20px; color: var(--text-primary);">
+                ${isEdit ? '✏️ Editar Bloqueio' : '🚫 Novo Bloqueio'}
+            </h3>
+
+            <form id="formBloqueio" onsubmit="salvarBloqueio(event)">
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 14px; color: var(--text-primary); display: block; margin-bottom: 8px;">
+                        Tipo de bloqueio:
+                    </label>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <label style="
+                            flex: 1;
+                            min-width: 140px;
+                            padding: 10px 14px;
+                            border: 2px solid var(--border-color);
+                            border-radius: 10px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            font-size: 13px;
+                            background: var(--bg-input);
+                        " id="labelTipoPeriodo">
+                            <input type="radio" name="tipoBloqueio" value="periodo" 
+                                ${(!b || b.tipo === 'periodo') ? 'checked' : ''} 
+                                onchange="atualizarTipoBloqueio()"
+                                style="accent-color: var(--primary);">
+                            📅 Período
+                        </label>
+                        <label style="
+                            flex: 1;
+                            min-width: 140px;
+                            padding: 10px 14px;
+                            border: 2px solid var(--border-color);
+                            border-radius: 10px;
+                            cursor: pointer;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            font-size: 13px;
+                            background: var(--bg-input);
+                        " id="labelTipoDatas">
+                            <input type="radio" name="tipoBloqueio" value="datas" 
+                                ${b && b.tipo === 'datas' ? 'checked' : ''} 
+                                onchange="atualizarTipoBloqueio()"
+                                style="accent-color: var(--primary);">
+                            📌 Datas específicas
+                        </label>
+                    </div>
+                </div>
+
+                <div id="camposPeriodo" style="margin-bottom: 16px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 4px;">
+                                Data início *
+                            </label>
+                            <input type="date" id="bloq-data-inicio" 
+                                value="${b && b.data_inicio ? b.data_inicio : ''}"
+                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        </div>
+                        <div style="flex: 1; min-width: 140px;">
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 4px;">
+                                Data fim *
+                            </label>
+                            <input type="date" id="bloq-data-fim" 
+                                value="${b && b.data_fim ? b.data_fim : ''}"
+                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="camposDatas" style="margin-bottom: 16px; display: none;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 6px;">
+                        Adicione as datas:
+                    </label>
+                    <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <input type="date" id="bloq-nova-data" 
+                            style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        <button type="button" onclick="adicionarDataEspecifica()" style="
+                            padding: 10px 16px;
+                            background: var(--gradient);
+                            color: white;
+                            border: none;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                        ">+ Add</button>
+                    </div>
+                    <div id="chipsDatas" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px;"></div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 14px; color: var(--text-primary); display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer;">
+                        <input type="checkbox" id="bloq-dia-inteiro" 
+                            ${(!b || b.dia_inteiro) ? 'checked' : ''}
+                            onchange="atualizarHorarioBloqueio()"
+                            style="accent-color: var(--primary);">
+                        Dia inteiro
+                    </label>
+
+                    <div id="camposHorario" style="display: none; gap: 10px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 120px;">
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 4px;">
+                                Hora início
+                            </label>
+                            <input type="time" id="bloq-hora-inicio" 
+                                value="${b && b.hora_inicio ? b.hora_inicio : '12:00'}"
+                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        </div>
+                        <div style="flex: 1; min-width: 120px;">
+                            <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 4px;">
+                                Hora fim
+                            </label>
+                            <input type="time" id="bloq-hora-fim" 
+                                value="${b && b.hora_fim ? b.hora_fim : '14:00'}"
+                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 4px;">
+                        Profissional
+                    </label>
+                    <select id="bloq-profissional" style="
+                        width: 100%;
+                        padding: 10px;
+                        border-radius: 8px;
+                        border: 1px solid var(--border-color);
+                        background: var(--bg-input);
+                        color: var(--text-primary);
+                        font-size: 14px;
+                    ">
+                        ${optsProf}
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-weight: 600; font-size: 13px; color: var(--text-primary); display: block; margin-bottom: 4px;">
+                        Motivo (opcional)
+                    </label>
+                    <input type="text" id="bloq-motivo" 
+                        value="${b && b.motivo ? escapeHtml(b.motivo) : ''}"
+                        placeholder="Ex: Férias, Feriado, Reunião..."
+                        style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);">
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: var(--gradient);
+                        color: white;
+                        border: none;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 14px;
+                    ">
+                        <i class="fas fa-save"></i> ${isEdit ? 'Atualizar' : 'Salvar'}
+                    </button>
+                    <button type="button" onclick="fecharModalBloqueio()" style="
+                        flex: 1;
+                        padding: 12px;
+                        background: var(--bg-hover);
+                        color: var(--text-primary);
+                        border: 1px solid var(--border-color);
+                        border-radius: 10px;
+                        cursor: pointer;
+                        font-weight: 600;
+                        font-size: 14px;
+                    ">
+                        Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    atualizarTipoBloqueio();
+    atualizarHorarioBloqueio();
+    renderChipsDatas();
+}
+
+function fecharModalBloqueio() {
+    const m = document.getElementById('modalBloqueio');
+    if (m) m.remove();
+    bloqueioEditandoId = null;
+    datasEspecificasTemp = [];
+}
+
+function atualizarTipoBloqueio() {
+    const tipo = document.querySelector('input[name="tipoBloqueio"]:checked')?.value || 'periodo';
+    const camposPeriodo = document.getElementById('camposPeriodo');
+    const camposDatas = document.getElementById('camposDatas');
+    const labelP = document.getElementById('labelTipoPeriodo');
+    const labelD = document.getElementById('labelTipoDatas');
+
+    if (tipo === 'periodo') {
+        if (camposPeriodo) camposPeriodo.style.display = 'block';
+        if (camposDatas) camposDatas.style.display = 'none';
+        if (labelP) { labelP.style.borderColor = 'var(--primary)'; labelP.style.background = 'rgba(102,126,234,0.08)'; }
+        if (labelD) { labelD.style.borderColor = 'var(--border-color)'; labelD.style.background = 'var(--bg-input)'; }
+    } else {
+        if (camposPeriodo) camposPeriodo.style.display = 'none';
+        if (camposDatas) camposDatas.style.display = 'block';
+        if (labelP) { labelP.style.borderColor = 'var(--border-color)'; labelP.style.background = 'var(--bg-input)'; }
+        if (labelD) { labelD.style.borderColor = 'var(--primary)'; labelD.style.background = 'rgba(102,126,234,0.08)'; }
+    }
+}
+
+function atualizarHorarioBloqueio() {
+    const diaInteiro = document.getElementById('bloq-dia-inteiro')?.checked;
+    const camposHorario = document.getElementById('camposHorario');
+    if (camposHorario) {
+        camposHorario.style.display = diaInteiro ? 'none' : 'flex';
+    }
+}
+
+function adicionarDataEspecifica() {
+    const input = document.getElementById('bloq-nova-data');
+    if (!input) return;
+
+    const data = input.value;
+    if (!data) {
+        showToast('Selecione uma data', 'warning');
+        return;
+    }
+    if (datasEspecificasTemp.includes(data)) {
+        showToast('Data já adicionada', 'warning');
+        return;
+    }
+
+    datasEspecificasTemp.push(data);
+    datasEspecificasTemp.sort();
+    input.value = '';
+    renderChipsDatas();
+}
+
+function removerDataEspecifica(data) {
+    datasEspecificasTemp = datasEspecificasTemp.filter(d => d !== data);
+    renderChipsDatas();
+}
+
+function renderChipsDatas() {
+    const container = document.getElementById('chipsDatas');
+    if (!container) return;
+
+    if (datasEspecificasTemp.length === 0) {
+        container.innerHTML = `<span style="font-size: 12px; color: var(--text-muted); font-style: italic;">Nenhuma data adicionada ainda</span>`;
+        return;
+    }
+
+    container.innerHTML = datasEspecificasTemp.map(d => `
+        <span style="
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: rgba(102,126,234,0.15);
+            color: var(--primary);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        ">
+            ${formatarDataBR(d)}
+            <button type="button" onclick="removerDataEspecifica('${d}')" style="
+                background: none;
+                border: none;
+                color: var(--primary);
+                cursor: pointer;
+                font-size: 14px;
+                padding: 0;
+                line-height: 1;
+            ">✕</button>
+        </span>
+    `).join('');
+}
+
+async function salvarBloqueio(event) {
+    event.preventDefault();
+
+    const tipo = document.querySelector('input[name="tipoBloqueio"]:checked')?.value || 'periodo';
+    const diaInteiro = document.getElementById('bloq-dia-inteiro')?.checked ?? true;
+    const profissionalId = document.getElementById('bloq-profissional')?.value || null;
+    const motivo = document.getElementById('bloq-motivo')?.value?.trim() || '';
+
+    const payload = {
+        tipo,
+        dia_inteiro: diaInteiro,
+        profissional_id: profissionalId ? parseInt(profissionalId) : null,
+        motivo
+    };
+
+    if (tipo === 'periodo') {
+        const di = document.getElementById('bloq-data-inicio')?.value;
+        const df = document.getElementById('bloq-data-fim')?.value;
+
+        if (!di) { showToast('Informe a data início', 'warning'); return; }
+        if (!df) { showToast('Informe a data fim', 'warning'); return; }
+        if (df < di) { showToast('Data fim não pode ser antes da data início', 'warning'); return; }
+
+        payload.data_inicio = di;
+        payload.data_fim = df;
+    } else {
+        if (datasEspecificasTemp.length === 0) {
+            showToast('Adicione pelo menos uma data', 'warning');
+            return;
+        }
+        payload.datas_especificas = [...datasEspecificasTemp];
+        payload.data_inicio = datasEspecificasTemp[0];
+    }
+
+    if (!diaInteiro) {
+        const hi = document.getElementById('bloq-hora-inicio')?.value;
+        const hf = document.getElementById('bloq-hora-fim')?.value;
+        if (!hi || !hf) { showToast('Informe horário início e fim', 'warning'); return; }
+        if (hf <= hi) { showToast('Hora fim deve ser após a hora início', 'warning'); return; }
+        payload.hora_inicio = hi;
+        payload.hora_fim = hf;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const url = bloqueioEditandoId
+            ? `/api/horarios/bloqueios/${bloqueioEditandoId}`
+            : '/api/horarios/bloqueios';
+        const method = bloqueioEditandoId ? 'PUT' : 'POST';
+
+        const res = await fetch(url, {
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast(data.message || 'Bloqueio salvo!', 'success');
+            fecharModalBloqueio();
+            carregarBloqueios();
+        } else {
+            showToast(data.message || 'Erro ao salvar bloqueio', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao salvar bloqueio:', error);
+        showToast('Erro ao salvar bloqueio', 'error');
+    }
+}
+
+async function excluirBloqueio(id) {
+    if (!confirm('Remover este bloqueio?\n\nA agenda voltará a ficar disponível nesse período.')) {
+        return;
+    }
+
+    showLoading();
+    const token = localStorage.getItem('token');
+
+    try {
+        const res = await fetch(`/api/horarios/bloqueios/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+
+        const data = await res.json();
+        hideLoading();
+
+        if (data.success) {
+            showToast('Bloqueio removido!', 'success');
+            carregarBloqueios();
+        } else {
+            showToast(data.message || 'Erro ao remover', 'error');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao excluir bloqueio:', error);
+        showToast('Erro ao remover bloqueio', 'error');
     }
 }
 
@@ -966,9 +1671,6 @@ function renderHorarios(horarios) {
     }
 
     if (isMobile) {
-        // ============================================
-        // VERSÃO MOBILE - CARDS
-        // ============================================
         let cards = '';
         for (let dia = 0; dia <= 6; dia++) {
             const h = horariosMap[dia] || {};
@@ -1074,9 +1776,6 @@ function renderHorarios(horarios) {
             </div>
         `;
     } else {
-        // ============================================
-        // VERSÃO DESKTOP - TABELA
-        // ============================================
         let rows = '';
         for (let dia = 0; dia <= 6; dia++) {
             const h = horariosMap[dia] || {};
@@ -1365,21 +2064,17 @@ function toggleTheme() {
 function inicializarHorariosEvents() {
     const isMobile = window.innerWidth < 768;
 
-    // 🔥 Para MOBILE: usar cards
     if (isMobile) {
-        // Toggle status
         document.querySelectorAll('.status-toggle').forEach(toggle => {
             toggle.removeEventListener('change', handleStatusChangeMobile);
             toggle.addEventListener('change', handleStatusChangeMobile);
         });
 
-        // Inputs de horário
         document.querySelectorAll('.hora-inicio, .hora-fim, .almoco-inicio, .almoco-fim, .intervalo-select').forEach(input => {
             input.removeEventListener('change', handleHorarioChangeMobile);
             input.addEventListener('change', handleHorarioChangeMobile);
         });
     } else {
-        // 🔥 Para DESKTOP: usar tabela
         const tbody = document.getElementById('horariosTableBody');
         if (!tbody) return;
 
@@ -1442,12 +2137,10 @@ async function salvarHorario(dia, dados) {
 
         showToast('✅ Horário atualizado com sucesso!', 'success');
 
-        // 🔥 RECARREGAR OS HORÁRIOS
         if (typeof carregarConfiguracoes === 'function') {
             await carregarConfiguracoes();
         }
 
-        // 🔥 RECARREGAR A AGENDA
         if (typeof carregarAgendaInteligente === 'function') {
             carregarAgendaInteligente();
         }
@@ -1461,15 +2154,10 @@ async function salvarHorario(dia, dados) {
     }
 }
 
-// ============================================
-// HANDLERS PARA MOBILE (CARDS)
-// ============================================
-
 function handleStatusChangeMobile(e) {
     const dia = e.target.getAttribute('data-dia');
     const aberto = e.target.checked ? 1 : 0;
 
-    // Encontrar o card pai
     const card = e.target.closest('div[style*="background: var(--bg-card)"]');
     if (card) {
         card.querySelectorAll('input, select').forEach(input => {
@@ -1505,7 +2193,6 @@ async function carregarLinkChatbot() {
 
         let empresaId = null;
 
-        // 🔥 TENTAR PEGAR DO TOKEN
         try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             empresaId = payload.empresa_id || payload.empresaId || payload.id;
@@ -1514,7 +2201,6 @@ async function carregarLinkChatbot() {
             console.warn('⚠️ Não foi possível decodificar o token:', e.message);
         }
 
-        // 🔥 SE NÃO TIVER NO TOKEN, BUSCAR DO USUÁRIO
         if (!empresaId) {
             try {
                 const usuarioStr = localStorage.getItem('usuario');
@@ -1528,7 +2214,6 @@ async function carregarLinkChatbot() {
             }
         }
 
-        // 🔥 SE AINDA NÃO TIVER, BUSCAR DA API
         if (!empresaId) {
             console.log('🔄 Buscando empresa ID da API...');
             try {
@@ -1547,7 +2232,6 @@ async function carregarLinkChatbot() {
 
         if (!empresaId) {
             console.error('❌ Não foi possível identificar a empresa');
-            // Fallback: usar link padrão
             const linkInput = document.getElementById('chatbotLink');
             if (linkInput) {
                 const baseUrl = window.location.origin || 'https://seeagende.tech';
@@ -1565,11 +2249,9 @@ async function carregarLinkChatbot() {
             }
         });
 
-        // 🔥 VERIFICAR SE A RESPOSTA É JSON
         const contentType = response.headers.get('content-type');
         if (!contentType || !contentType.includes('application/json')) {
             console.error('❌ Resposta não é JSON:', contentType);
-            // Fallback: usar link padrão
             const linkInput = document.getElementById('chatbotLink');
             if (linkInput) {
                 const baseUrl = window.location.origin || 'https://seeagende.tech';
@@ -1582,7 +2264,6 @@ async function carregarLinkChatbot() {
         console.log('📦 Resposta link:', data);
 
         if (data.success) {
-            // 🔥 MOSTRAR O LINK PERSONALIZADO
             const linkInput = document.getElementById('chatbotLink');
             if (linkInput) {
                 linkInput.value = data.linkPersonalizado || data.link;
@@ -1590,7 +2271,6 @@ async function carregarLinkChatbot() {
                 linkInput.style.fontWeight = '600';
             }
             
-            // Mostrar também o link padrão como fallback
             const linkPadrao = document.getElementById('chatbotLinkPadrao');
             if (linkPadrao) {
                 linkPadrao.value = data.link;
@@ -1598,7 +2278,6 @@ async function carregarLinkChatbot() {
                 linkPadrao.style.color = '#999';
             }
             
-            // Mostrar slug info
             const slugInfo = document.getElementById('chatbotSlugInfo');
             if (slugInfo && data.slug) {
                 slugInfo.textContent = `🔗 Slug: ${data.slug} | Empresa: ${data.empresa || empresaId}`;
@@ -1607,7 +2286,6 @@ async function carregarLinkChatbot() {
             console.log('✅ Link personalizado carregado:', data.linkPersonalizado);
         } else {
             console.error('❌ Erro ao carregar link:', data.message);
-            // Fallback: usar link padrão
             const linkInput = document.getElementById('chatbotLink');
             if (linkInput) {
                 const baseUrl = window.location.origin || 'https://seeagende.tech';
@@ -1616,7 +2294,6 @@ async function carregarLinkChatbot() {
         }
     } catch (error) {
         console.error('❌ Erro ao carregar link do chatbot:', error);
-        // Fallback: mostrar link padrão
         try {
             const usuarioStr = localStorage.getItem('usuario');
             if (usuarioStr) {
@@ -1643,7 +2320,7 @@ function copiarLinkChatbot() {
 }
 
 // ============================================
-// ABRIR MODAL PROFISSIONAL (SEM BOTÕES DUPLICADOS)
+// ABRIR MODAL PROFISSIONAL
 // ============================================
 function abrirModalProfissional(profissional = null) {
     if (!profissional && !planoInfo.podeAdicionar) {
@@ -1653,7 +2330,6 @@ function abrirModalProfissional(profissional = null) {
 
     const isEdit = !!profissional;
 
-    // 🔥 CRIAR O MODAL MANUALMENTE (SEM BOTÕES AUTOMÁTICOS)
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.style.cssText = `
@@ -1842,16 +2518,12 @@ async function resetarSenhaProfissional(id, nome) {
     }
 }
 
-// public/js/pages/configuracoes.js
-
 // ============================================
 // ALTERNAR STATUS PROFISSIONAL - CORRIGIDO
 // ============================================
-
 async function alternarStatusProfissional(id, ativar) {
     const acao = ativar ? 'ativar' : 'desativar';
 
-    // 🔥 CONFIRMAÇÃO MAIS CLARA
     if (!confirm(`⚠️ Tem certeza que deseja ${acao} este profissional?\n\n${ativar ? '✅ Ele poderá receber novos agendamentos.' : '❌ Ele NÃO poderá mais receber agendamentos.'}`)) {
         return;
     }
@@ -1860,7 +2532,6 @@ async function alternarStatusProfissional(id, ativar) {
     const token = localStorage.getItem('token');
 
     try {
-        // 🔥 ENVIAR APENAS O CAMPO ATIVO
         const body = { ativo: ativar ? 1 : 0 };
         console.log(`📝 ${acao} profissional ${id}:`, body);
 
@@ -1870,7 +2541,7 @@ async function alternarStatusProfissional(id, ativar) {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + token
             },
-            body: JSON.stringify(body)  // ← 🔥 APENAS { ativo: 0/1 }
+            body: JSON.stringify(body)
         });
 
         const data = await res.json();
@@ -1878,8 +2549,6 @@ async function alternarStatusProfissional(id, ativar) {
 
         if (data.success) {
             showToast(`✅ Profissional ${acao}do com sucesso!`, 'success');
-
-            // 🔥 RECARREGAR A PÁGINA DE CONFIGURAÇÕES
             await carregarConfiguracoes();
         } else {
             showToast(`❌ Erro ao ${acao} profissional: ${data.message}`, 'error');
@@ -1913,11 +2582,6 @@ async function excluirProfissional(id, nome) {
 // ============================================
 // FUNÇÕES AUXILIARES
 // ============================================
-function fecharModalPersonalizado() {
-    const modal = document.querySelector('.modal');
-    if (modal) modal.remove();
-}
-
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -1934,14 +2598,11 @@ function formatarData(dataStr) {
 // FUNÇÃO PARA CARREGAR PLANOS
 // ============================================
 function carregarPlanos() {
-    // Simplesmente navega para a página de planos
     const planosBtn = document.querySelector('#btnplanos');
     if (planosBtn) {
         planosBtn.click();
     } else {
-        // Fallback: mudar a hash da URL
         window.location.hash = 'planos';
-        // Recarregar para garantir
         setTimeout(() => {
             if (typeof window.carregarPlanos === 'function') {
                 window.carregarPlanos();
@@ -1957,7 +2618,6 @@ function fecharModalPersonalizado() {
     const overlays = document.querySelectorAll('.modal-overlay');
     overlays.forEach(overlay => overlay.remove());
 
-    // Fechar qualquer modal do ui.js
     const modal = document.querySelector('.modal');
     if (modal) modal.remove();
 }
@@ -1984,4 +2644,15 @@ window.toggleTheme = toggleTheme;
 window.carregarDadosEmpresa = carregarDadosEmpresa;
 window.salvarDadosEmpresa = salvarDadosEmpresa;
 
-console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL e DADOS DA EMPRESA!');
+// 🔥 BLOQUEIOS DE AGENDA
+window.carregarBloqueios = carregarBloqueios;
+window.abrirModalBloqueio = abrirModalBloqueio;
+window.fecharModalBloqueio = fecharModalBloqueio;
+window.atualizarTipoBloqueio = atualizarTipoBloqueio;
+window.atualizarHorarioBloqueio = atualizarHorarioBloqueio;
+window.adicionarDataEspecifica = adicionarDataEspecifica;
+window.removerDataEspecifica = removerDataEspecifica;
+window.salvarBloqueio = salvarBloqueio;
+window.excluirBloqueio = excluirBloqueio;
+
+console.log('✅ configuracoes.js carregado com BLOQUEIO GERAL, DADOS DA EMPRESA e BLOQUEIOS DE AGENDA!');

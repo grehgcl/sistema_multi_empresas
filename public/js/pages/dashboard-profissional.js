@@ -87,13 +87,13 @@ async function carregarDashboardProfissional() {
 
     try {
         // Buscar dados financeiros do profissional
-        const resFinanceiro = await fetch('/api/profissional/financeiro', {
+        const resFinanceiro = await fetch('/api/profissionais/profissional/financeiro',  {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         const financeiro = await resFinanceiro.json();
 
         // Buscar agendamentos do profissional
-        const resAgendamentos = await fetch('/api/profissional/agendamentos', {
+        const resAgendamentos = await fetch('/api/profissionais/profissional/agendamentos', {
             headers: { 'Authorization': 'Bearer ' + token }
         });
         const agendamentos = await resAgendamentos.json();

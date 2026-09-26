@@ -1,342 +1,335 @@
 /* ============================================
-   DASHBOARD - CORES MAIS FORTES E VISUAIS
-   VERSÃO 5.0 - CARDS MENORES
+   DASHBOARD - VERSÃO COMPACTA E LIMPA
+   VERSÃO 8.0
    ============================================ */
 
 /* ===== VARIÁVEIS ===== */
 :root {
-    --dash-card-bg: var(--bg-card, #ffffff);
-    --dash-border: var(--border-color, #e5e7eb);
-    --dash-text: var(--text-primary, #1f2937);
-    --dash-text-muted: var(--text-muted, #6b7280);
-    --dash-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
-    --dash-radius: 0.75rem;
+    --dash-radius: 10px;
+    --dash-radius-sm: 8px;
 }
 
 /* ============================================
-   HEADER - MAIS COMPACTO
+   WRAPPER
    ============================================ */
 
-.dash-welcome {
-    background: linear-gradient(135deg, #4a3f7a 0%, #2d1b4e 100%) !important;
-    border-radius: 12px;
-    padding: 14px 20px !important;
-    color: white;
-    box-shadow: 0 4px 20px rgba(74, 63, 122, 0.35) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 14px !important;
-}
-
-.dash-welcome .greeting-text {
-    font-size: 20px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-}
-
-.dash-welcome .greeting-emoji {
-    font-size: 18px;
-}
-
-.dash-welcome .date-text {
-    font-size: 13px;
-    opacity: 0.8;
-    margin-top: 2px;
-    font-weight: 500;
-}
-
-.dash-welcome .revenue-box {
-    background: rgba(255, 255, 255, 0.10);
-    padding: 8px 18px;
-    border-radius: 10px;
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    text-align: right;
-}
-
-.dash-welcome .revenue-value {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-}
-
-.dash-welcome .revenue-label {
-    font-size: 11px;
-    opacity: 0.7;
-    font-weight: 500;
+.dash-wrapper {
+    padding: 4px 0 80px 0;
 }
 
 /* ============================================
-   CARDS - MENORES E MAIS COMPACTOS
-   ============================================ */
-
-.dash-card-green {
-    background: linear-gradient(135deg, #0d9488, #065f46) !important;
-    border-radius: 12px !important;
-    padding: 12px 14px !important;
-    color: white;
-    text-align: center;
-    box-shadow: 0 3px 15px rgba(13, 148, 136, 0.3) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.3s ease;
-    min-height: 80px;
-}
-
-.dash-card-green:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 25px rgba(13, 148, 136, 0.4) !important;
-}
-
-.dash-card-green .card-number {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-}
-
-.dash-card-green .card-label {
-    font-size: 12px;
-    opacity: 0.85;
-    font-weight: 600;
-    margin-top: 2px;
-}
-
-.dash-card-green .card-sub {
-    font-size: 10px;
-    opacity: 0.7;
-    margin-top: 2px;
-}
-
-.dash-card-purple {
-    background: linear-gradient(135deg, #7c3aed, #4c1d95) !important;
-    border-radius: 12px !important;
-    padding: 12px 14px !important;
-    color: white;
-    text-align: center;
-    box-shadow: 0 3px 15px rgba(124, 58, 237, 0.3) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.3s ease;
-    min-height: 80px;
-}
-
-.dash-card-purple:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 25px rgba(124, 58, 237, 0.4) !important;
-}
-
-.dash-card-purple .card-number {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-}
-
-.dash-card-purple .card-label {
-    font-size: 12px;
-    opacity: 0.85;
-    font-weight: 600;
-    margin-top: 2px;
-}
-
-.dash-card-yellow {
-    background: linear-gradient(135deg, #d97706, #92400e) !important;
-    border-radius: 12px !important;
-    padding: 12px 14px !important;
-    color: white;
-    text-align: center;
-    box-shadow: 0 3px 15px rgba(217, 119, 6, 0.3) !important;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    transition: all 0.3s ease;
-    min-height: 80px;
-}
-
-.dash-card-yellow:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 25px rgba(217, 119, 6, 0.4) !important;
-}
-
-.dash-card-yellow .card-number {
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.3px;
-}
-
-.dash-card-yellow .card-label {
-    font-size: 12px;
-    opacity: 0.85;
-    font-weight: 600;
-    margin-top: 2px;
-}
-
-/* ============================================
-   CARDS - RESPONSIVO
-   ============================================ */
-
-@media (max-width: 48rem) {
-    .dash-welcome {
-        padding: 12px 14px !important;
-        border-radius: 10px;
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .dash-welcome .greeting-text {
-        font-size: 17px;
-    }
-
-    .dash-welcome .revenue-box {
-        padding: 6px 14px;
-        width: 100%;
-        text-align: center;
-    }
-
-    .dash-welcome .revenue-value {
-        font-size: 22px;
-    }
-
-    .dash-welcome .date-text {
-        font-size: 12px;
-    }
-
-    .dash-card-green,
-    .dash-card-purple,
-    .dash-card-yellow {
-        padding: 10px 8px !important;
-        min-height: 70px;
-        border-radius: 10px !important;
-    }
-
-    .dash-card-green .card-number,
-    .dash-card-purple .card-number,
-    .dash-card-yellow .card-number {
-        font-size: 22px;
-    }
-
-    .dash-card-green .card-label,
-    .dash-card-purple .card-label,
-    .dash-card-yellow .card-label {
-        font-size: 10px;
-    }
-
-    .dash-card-green .card-sub,
-    .dash-card-purple .card-sub,
-    .dash-card-yellow .card-sub {
-        font-size: 9px;
-    }
-}
-
-@media (max-width: 30rem) {
-    .dash-welcome {
-        padding: 10px 12px !important;
-        border-radius: 8px;
-    }
-
-    .dash-welcome .greeting-text {
-        font-size: 15px;
-    }
-
-    .dash-welcome .revenue-value {
-        font-size: 18px;
-    }
-
-    .dash-welcome .revenue-box {
-        padding: 4px 10px;
-    }
-
-    .dash-card-green,
-    .dash-card-purple,
-    .dash-card-yellow {
-        padding: 8px 6px !important;
-        min-height: 60px;
-        border-radius: 8px !important;
-    }
-
-    .dash-card-green .card-number,
-    .dash-card-purple .card-number,
-    .dash-card-yellow .card-number {
-        font-size: 18px;
-    }
-
-    .dash-card-green .card-label,
-    .dash-card-purple .card-label,
-    .dash-card-yellow .card-label {
-        font-size: 9px;
-    }
-}
-
-/* ============================================
-   ALERTAS - MENORES
+   ALERTAS - COMPACTOS
    ============================================ */
 
 .dash-alert {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
-    padding: 10px 14px !important;
-    border-radius: 10px !important;
-    margin-bottom: 10px !important;
-    border: 1px solid transparent;
-    transition: all 0.3s ease;
+    padding: 8px 12px;
+    border-radius: var(--dash-radius-sm);
+    margin-bottom: 8px;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dash-alert-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    flex: 1;
 }
 
 .dash-alert-warning {
-    background: linear-gradient(135deg, #d97706, #92400e) !important;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 3px 15px rgba(217, 119, 6, 0.25);
-    color: white;
+    background: linear-gradient(135deg, #d97706, #92400e);
+    box-shadow: 0 3px 15px rgba(217, 119, 6, 0.3);
 }
 
 .dash-alert-danger {
-    background: linear-gradient(135deg, #dc2626, #991b1b) !important;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 3px 15px rgba(220, 38, 38, 0.25);
-    color: white;
+    background: linear-gradient(135deg, #dc2626, #991b1b);
+    box-shadow: 0 3px 15px rgba(220, 38, 38, 0.3);
 }
 
 .dash-alert-success {
-    background: linear-gradient(135deg, #0d9488, #065f46) !important;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 3px 15px rgba(13, 148, 136, 0.25);
-    color: white;
+    background: linear-gradient(135deg, #0d9488, #065f46);
+    box-shadow: 0 3px 15px rgba(13, 148, 136, 0.3);
 }
 
 .dash-alert-info {
-    background: linear-gradient(135deg, #4a3f7a, #2d1b4e) !important;
-    border-color: rgba(255, 255, 255, 0.08);
-    box-shadow: 0 3px 15px rgba(74, 63, 122, 0.25);
-    color: white;
+    background: linear-gradient(135deg, #4a3f7a, #2d1b4e);
+    box-shadow: 0 3px 15px rgba(74, 63, 122, 0.3);
 }
 
 .dash-alert-icon {
-    font-size: 18px;
+    font-size: 14px;
+    flex-shrink: 0;
 }
 
 .dash-alert-title {
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.dash-alert-sub {
+.dash-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    padding: 4px 12px;
+    border-radius: 6px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
     font-size: 11px;
-    opacity: 0.75;
-    display: block;
-    margin-top: 1px;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.dash-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* ============================================
-   AGENDA CONTAINER
+   HEADER BEM-VINDO - COMPACTO
    ============================================ */
+
+.dash-welcome {
+    background: linear-gradient(135deg, #4a3f7a 0%, #2d1b4e 100%);
+    border-radius: var(--dash-radius);
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(74, 63, 122, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dash-welcome-left {
+    min-width: 0;
+    flex: 1;
+}
+
+.dash-welcome .greeting-text {
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.2;
+}
+
+.dash-welcome .greeting-emoji {
+    font-size: 14px;
+}
+
+.dash-welcome .date-text {
+    font-size: 11px;
+    opacity: 0.8;
+    margin-top: 2px;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+.dash-welcome .revenue-box {
+    background: rgba(255, 255, 255, 0.10);
+    padding: 6px 12px;
+    border-radius: var(--dash-radius-sm);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    text-align: right;
+    flex-shrink: 0;
+    line-height: 1.1;
+}
+
+.dash-welcome .revenue-value {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.dash-welcome .revenue-label {
+    font-size: 9px;
+    opacity: 0.75;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* ============================================
+   GRID DOS 3 CARDS
+   ============================================ */
+
+.dash-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.dash-card-green,
+.dash-card-purple,
+.dash-card-yellow {
+    border-radius: var(--dash-radius);
+    padding: 10px 8px;
+    color: white;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+    min-height: auto;
+}
+
+.dash-card-green {
+    background: linear-gradient(135deg, #0d9488, #065f46);
+    box-shadow: 0 3px 15px rgba(13, 148, 136, 0.3);
+}
+.dash-card-purple {
+    background: linear-gradient(135deg, #7c3aed, #4c1d95);
+    box-shadow: 0 3px 15px rgba(124, 58, 237, 0.3);
+}
+.dash-card-yellow {
+    background: linear-gradient(135deg, #d97706, #92400e);
+    box-shadow: 0 3px 15px rgba(217, 119, 6, 0.3);
+}
+
+.dash-card-green:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(13, 148, 136, 0.45);
+}
+.dash-card-purple:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(124, 58, 237, 0.45);
+}
+.dash-card-yellow:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 25px rgba(217, 119, 6, 0.45);
+}
+
+.dash-card-green .card-number,
+.dash-card-purple .card-number,
+.dash-card-yellow .card-number {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.dash-card-green .card-label,
+.dash-card-purple .card-label,
+.dash-card-yellow .card-label {
+    font-size: 11px;
+    opacity: 0.9;
+    font-weight: 600;
+    line-height: 1.2;
+}
+
+.dash-card-green .card-sub,
+.dash-card-purple .card-sub,
+.dash-card-yellow .card-sub {
+    font-size: 9px;
+    opacity: 0.7;
+    line-height: 1.2;
+}
+
+/* ============================================
+   AGENDA DO DIA
+   ============================================ */
+
+.agenda-section {
+    margin-bottom: 10px;
+}
+
+.agenda-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.agenda-title {
+    font-size: 15px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.agenda-title i {
+    color: #8b5cf6;
+}
+
+.agenda-title .count {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-weight: 400;
+    background: var(--bg-hover);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.btn-ver-todos {
+    background: var(--bg-hover);
+    border: 1px solid var(--border-color);
+    padding: 4px 12px;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.btn-ver-todos:hover {
+    background: var(--border-color);
+}
 
 .agenda-container {
     background: var(--bg-card, #ffffff);
-    border-radius: 12px;
-    padding: 12px 14px;
+    border-radius: var(--dash-radius);
+    padding: 10px 12px;
     border: 1px solid var(--border-color, #e5e7eb);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.agenda-loading {
+    text-align: center;
+    padding: 12px;
+}
+
+.agenda-loading .loading-spinner {
+    display: block;
+    position: relative;
+    top: 0;
+    left: 0;
+    transform: none;
+    margin: 0 auto;
+    width: 24px;
+    height: 24px;
+    border-width: 3px;
+}
+
+.agenda-loading p {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
 }
 
 /* ============================================
@@ -345,18 +338,18 @@
 
 .proximos-container {
     background: var(--bg-card, #ffffff);
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: var(--dash-radius);
+    padding: 10px 12px;
     border: 1px solid var(--border-color, #e5e7eb);
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .proximos-header {
     font-size: 12px;
     font-weight: 700;
-    color: var(--text-secondary, #4b5563);
-    margin-bottom: 8px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -368,8 +361,14 @@
 
 .proximos-header .count {
     font-size: 10px;
-    color: var(--text-muted, #6b7280);
+    color: var(--text-muted);
     font-weight: 400;
+}
+
+.proximos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
 }
 
 .proximo-item {
@@ -377,56 +376,63 @@
     justify-content: space-between;
     align-items: center;
     padding: 6px 10px;
-    background: var(--bg-hover, #f3f4f6);
+    background: var(--bg-hover);
     border-radius: 6px;
     border-left: 3px solid #8b5cf6;
     transition: all 0.2s ease;
-    margin-bottom: 4px;
-}
-
-.proximo-item:last-child {
-    margin-bottom: 0;
 }
 
 .proximo-item:hover {
     background: rgba(139, 92, 246, 0.08);
 }
 
+.proximo-cliente-info {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
 .proximo-cliente {
     font-weight: 600;
-    font-size: 13px;
-    color: var(--text-primary, #1f2937);
+    font-size: 12px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .proximo-servico {
-    font-size: 10px;
-    color: var(--text-muted, #6b7280);
-    background: var(--bg-card, #ffffff);
+    font-size: 9px;
+    color: var(--text-muted);
+    background: var(--bg-card);
     padding: 1px 6px;
     border-radius: 8px;
-    margin-left: 6px;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .proximo-info {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
     flex-shrink: 0;
 }
 
 .proximo-data {
-    font-size: 11px;
-    color: var(--text-muted, #6b7280);
+    font-size: 10px;
+    color: var(--text-muted);
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .proximo-status {
-    font-size: 9px;
+    font-size: 10px;
     color: #f59e0b;
     font-weight: 600;
     background: rgba(245, 158, 11, 0.1);
-    padding: 1px 6px;
+    padding: 1px 5px;
     border-radius: 8px;
 }
 
@@ -435,10 +441,10 @@
    ============================================ */
 
 .onboarding-container {
-    margin-top: 12px;
+    margin-top: 10px;
     background: linear-gradient(135deg, #4a3f7a, #2d1b4e);
-    border-radius: 12px;
-    padding: 14px 20px;
+    border-radius: var(--dash-radius);
+    padding: 12px 16px;
     color: white;
     display: flex;
     justify-content: space-between;
@@ -449,125 +455,188 @@
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.onboarding-icon {
-    font-size: 28px;
-}
-
 .onboarding-content {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+.onboarding-icon {
+    font-size: 26px;
+}
+
 .onboarding-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 700;
 }
 
 .onboarding-desc {
     margin: 1px 0 0;
-    opacity: 0.8;
-    font-size: 13px;
+    opacity: 0.85;
+    font-size: 12px;
 }
 
 .onboarding-btn {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     padding: 6px 16px;
-    border-radius: 8px;
+    border-radius: var(--dash-radius-sm);
     color: white;
     font-weight: 700;
-    font-size: 13px;
+    font-size: 12px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
 }
 
 .onboarding-btn:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.25);
 }
 
 /* ============================================
-   RESPONSIVO GERAL
+   RESPONSIVO
    ============================================ */
 
 @media (max-width: 48rem) {
-    .onboarding-container {
-        padding: 12px 14px;
-        flex-direction: column;
-        text-align: center;
+    .dash-alert {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+    .dash-alert-title {
+        font-size: 11px;
+    }
+    .dash-alert-icon {
+        font-size: 12px;
+    }
+    .dash-btn {
+        padding: 3px 10px;
+        font-size: 10px;
     }
 
-    .onboarding-content {
-        flex-direction: column;
-        text-align: center;
+    .dash-welcome {
+        padding: 8px 12px;
+        gap: 8px;
+        margin-bottom: 8px;
     }
-
-    .onboarding-title {
+    .dash-welcome .greeting-text {
         font-size: 14px;
     }
+    .dash-welcome .date-text {
+        font-size: 10px;
+    }
+    .dash-welcome .revenue-box {
+        padding: 5px 10px;
+    }
+    .dash-welcome .revenue-value {
+        font-size: 15px;
+    }
+    .dash-welcome .revenue-label {
+        font-size: 8px;
+    }
 
+    .dash-cards-grid {
+        gap: 6px;
+    }
+    .dash-card-green,
+    .dash-card-purple,
+    .dash-card-yellow {
+        padding: 8px 6px;
+    }
+    .dash-card-green .card-number,
+    .dash-card-purple .card-number,
+    .dash-card-yellow .card-number {
+        font-size: 17px;
+    }
+    .dash-card-green .card-label,
+    .dash-card-purple .card-label,
+    .dash-card-yellow .card-label {
+        font-size: 10px;
+    }
+    .dash-card-green .card-sub,
+    .dash-card-purple .card-sub,
+    .dash-card-yellow .card-sub {
+        font-size: 8px;
+    }
+
+    .agenda-title {
+        font-size: 13px;
+    }
+    .agenda-title .count {
+        font-size: 9px;
+    }
+    .btn-ver-todos {
+        font-size: 10px;
+        padding: 3px 10px;
+    }
+    .agenda-container {
+        padding: 8px 10px;
+    }
+
+    .proximos-container {
+        padding: 8px 10px;
+    }
+    .proximo-item {
+        padding: 5px 8px;
+    }
+    .proximo-cliente {
+        font-size: 11px;
+    }
+    .proximo-servico {
+        font-size: 8px;
+    }
+    .proximo-data {
+        font-size: 9px;
+    }
+
+    .onboarding-container {
+        padding: 10px 14px;
+        gap: 8px;
+    }
+    .onboarding-icon {
+        font-size: 22px;
+    }
+    .onboarding-title {
+        font-size: 13px;
+    }
     .onboarding-desc {
         font-size: 11px;
     }
-
-    .proximo-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-
-    .proximo-info {
-        width: 100%;
-        justify-content: space-between;
-    }
-
-    .agenda-container {
-        padding: 10px;
+    .onboarding-btn {
+        font-size: 11px;
+        padding: 5px 12px;
     }
 }
 
 @media (max-width: 30rem) {
-    .onboarding-container {
-        padding: 10px 12px;
+    .dash-welcome {
+        padding: 7px 10px;
     }
-
-    .onboarding-icon {
-        font-size: 22px;
-    }
-
-    .onboarding-title {
+    .dash-welcome .greeting-text {
         font-size: 13px;
     }
-
-    .onboarding-desc {
-        font-size: 10px;
+    .dash-welcome .revenue-value {
+        font-size: 13px;
+    }
+    .dash-welcome .revenue-box {
+        padding: 4px 8px;
     }
 
-    .onboarding-btn {
-        font-size: 11px;
-        padding: 4px 12px;
-        width: 100%;
-        justify-content: center;
+    .dash-card-green .card-number,
+    .dash-card-purple .card-number,
+    .dash-card-yellow .card-number {
+        font-size: 15px;
+    }
+    .dash-card-green .card-label,
+    .dash-card-purple .card-label,
+    .dash-card-yellow .card-label {
+        font-size: 9px;
     }
 
+    .agenda-title {
+        font-size: 12px;
+    }
     .proximo-cliente {
-        font-size: 11px;
-    }
-
-    .proximo-data {
         font-size: 10px;
-    }
-
-    .dash-alert {
-        padding: 8px 10px !important;
-        border-radius: 8px !important;
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .dash-alert-title {
-        font-size: 11px;
     }
 }
 
@@ -581,12 +650,12 @@
     .dash-card-yellow:hover {
         transform: none;
     }
-
     .proximo-item:hover {
-        background: var(--bg-hover, #f3f4f6);
+        background: var(--bg-hover);
     }
-
-    .onboarding-btn:hover {
-        background: rgba(255, 255, 255, 0.12);
+    .dash-btn:hover,
+    .onboarding-btn:hover,
+    .btn-ver-todos:hover {
+        background: rgba(255, 255, 255, 0.15);
     }
 }

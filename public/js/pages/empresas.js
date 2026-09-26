@@ -1,34 +1,33 @@
 ﻿// ============================================
 // SUPER ADMIN - GESTÃO COMPLETA DE EMPRESAS
-// VERSÃO COM CSS INTEGRADO E RESPONSIVO
+// VERSÃO COMPLETA E CORRIGIDA
 // ============================================
+
 // ============================================
-// VARIÁVEIS GLOBAIS - EMPRESAS.JS
+// VARIÁVEIS GLOBAIS
 // ============================================
 
 let empresasData = [];
 let usuariosData = [];
 let empresasTimeout = null;
 
-
 // ============================================
-// FORÇAR CARREGAMENTO DO CSS DO SUPER ADMIN
+// FORÇAR CARREGAMENTO DO CSS
 // ============================================
 (function carregarCSSSuperAdmin() {
-    // Verifica se já foi carregado
     if (document.querySelector('link[href*="empresas.css"]')) {
         console.log('✅ CSS Super Admin já carregado');
         return;
     }
-    
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = '/css/pages/empresas.css?v=' + Date.now();
     document.head.appendChild(link);
     console.log('✅ CSS Super Admin carregado via JS!');
 })();
+
 // ============================================
-// 🏢 SUPER ADMIN - DASHBOARD
+// DASHBOARD SUPER ADMIN
 // ============================================
 async function carregarDashboardSuperAdmin() {
     if (typeof ativarBotao === 'function') ativarBotao('dashboard');
@@ -81,13 +80,8 @@ async function carregarDashboardSuperAdmin() {
         const isReal = paymentData.mode === 'real';
         const isMobile = window.innerWidth < 768;
 
-        // ============================================
-        // HTML PRINCIPAL COM CLASSES CSS
-        // ============================================
         const html = `
             <div class="sa-container">
-
-                <!-- CABEÇALHO -->
                 <div class="sa-header">
                     <div class="sa-header-content">
                         <div>
@@ -106,7 +100,6 @@ async function carregarDashboardSuperAdmin() {
                     </div>
                 </div>
 
-                <!-- MODO DE PAGAMENTO -->
                 <div class="sa-payment ${isReal ? 'real' : 'simulation'}">
                     <div class="sa-payment-left">
                         <span class="sa-payment-icon">${isReal ? '🔴' : '🟡'}</span>
@@ -125,7 +118,6 @@ async function carregarDashboardSuperAdmin() {
                     </button>
                 </div>
 
-                <!-- CARDS DE MÉTRICAS -->
                 <div class="sa-metrics">
                     ${[
                         { icon: '🏢', label: 'Empresas', value: totalEmpresas, color: '#667eea' },
@@ -143,7 +135,6 @@ async function carregarDashboardSuperAdmin() {
                     `).join('')}
                 </div>
 
-                <!-- FILTRO E BUSCA -->
                 <div class="sa-filters">
                     <div class="sa-search">
                         <i class="fas fa-search sa-search-icon"></i>
@@ -166,7 +157,6 @@ async function carregarDashboardSuperAdmin() {
                     </select>
                 </div>
 
-                <!-- LISTA DE EMPRESAS -->
                 <div class="sa-empresas-list">
                     <div class="sa-empresas-header">
                         <div class="sa-empresas-title">
@@ -312,56 +302,64 @@ async function carregarDashboardSuperAdmin() {
                     </div>
                 </div>
 
-                <!-- ÚLTIMOS USUÁRIOS -->
-                <div class="sa-usuarios">
-                    <div class="sa-usuarios-header">
-                        <div class="sa-usuarios-title">
-                            <span class="sa-usuarios-icon">👥</span>
-                            <h3 class="sa-usuarios-h3">Últimos Usuários</h3>
-                        </div>
-                        <span class="sa-usuarios-total">Total: ${usuarios.length}</span>
-                    </div>
-                    <div class="sa-usuarios-table-wrapper">
-                        <table class="sa-usuarios-table">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th class="sa-text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${usuarios.slice(0, 8).map(u => {
-                                    let roleClass = 'dono';
-                                    let roleLabel = '🟠 Dono';
-                                    if (u.role === 'superadmin') { roleClass = 'super'; roleLabel = '🔴 Super'; }
-                                    else if (u.role === 'profissional') { roleClass = 'prof'; roleLabel = '🔵 Prof'; }
+<!-- ÚLTIMOS USUÁRIOS (CORRIGIDO - PULANDO ID NULO) -->
+<div class="sa-usuarios">
+    <div class="sa-usuarios-header">
+        <div class="sa-usuarios-title">
+            <span class="sa-usuarios-icon">👥</span>
+            <h3 class="sa-usuarios-h3">Últimos Usuários</h3>
+        </div>
+        <span class="sa-usuarios-total">Total: ${usuarios.length}</span>
+    </div>
+    <div class="sa-usuarios-table-wrapper">
+        <table class="sa-usuarios-table">
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th class="sa-text-center">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${usuarios
+                    .filter(u => u.id && u.id !== null && u.id !== 'null') // 🔥 FILTRA USUÁRIOS COM ID VÁLIDO
+                    .slice(0, 8)
+                    .map(u => {
+                        const userId = String(u.id); // 🔥 CONVERTE PARA STRING
+                        
+                        let roleClass = 'dono';
+                        let roleLabel = '🟠 Dono';
+                        if (u.role === 'super_admin' || u.role === 'superadmin') { 
+                            roleClass = 'super'; 
+                            roleLabel = '🔴 Super'; 
+                        } else if (u.role === 'profissional') { 
+                            roleClass = 'prof'; 
+                            roleLabel = '🔵 Prof'; 
+                        }
 
-                                    return `
-                                        <tr>
-                                            <td class="sa-usuario-nome">${escapeHtml(u.nome)}</td>
-                                            <td class="sa-usuario-email">${escapeHtml(u.email)}</td>
-                                            <td><span class="sa-role-badge ${roleClass}">${roleLabel}</span></td>
-                                            <td class="sa-text-center">
-                                                <button onclick="editarUsuario(${u.id})" class="sa-btn-edit-user">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                        return `
+                            <tr>
+                                <td class="sa-usuario-nome">${escapeHtml(u.nome || u.name || '')}</td>
+                                <td class="sa-usuario-email">${escapeHtml(u.email || '')}</td>
+                                <td><span class="sa-role-badge ${roleClass}">${roleLabel}</span></td>
+                                <td class="sa-text-center">
+                                    <button onclick="editarUsuario('${userId}')" class="sa-btn-edit-user" title="Editar usuário (ID: ${userId})">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+            </tbody>
+        </table>
+    </div>
+</div>
         `;
 
         document.getElementById('content').innerHTML = html;
         if (typeof hideLoading === 'function') hideLoading();
 
-        // Animar cards
         setTimeout(() => {
             document.querySelectorAll('.sa-empresa-card').forEach((card, index) => {
                 card.style.opacity = '0';
@@ -509,7 +507,7 @@ function filtrarEmpresas() {
 }
 
 // ============================================
-// 👁️ VER EMPRESA - VERSÃO SEM REGISTRO DE ACESSO
+// 👁️ VER EMPRESA - COMPLETA
 // ============================================
 async function verEmpresa(id) {
     console.log('👁️ Ver empresa ID:', id);
@@ -550,7 +548,6 @@ async function verEmpresa(id) {
         const donos = usuarios.filter(u => u.tipo === 'dono' || u.role === 'dono');
         const profissionais = usuarios.filter(u => u.tipo === 'profissional' || u.role === 'profissional');
 
-        // ===== STATUS =====
         const isTrial = empresa.plano === 'trial' || empresa.plano === 'Trial';
         const isAtivo = empresa.assinatura_ativa === 1 || empresa.assinatura_ativa === true;
 
@@ -590,17 +587,14 @@ async function verEmpresa(id) {
             statusBg = 'rgba(239,68,68,0.15)';
         }
 
-        // ===== MÉTRICAS =====
         const totalAcessos = acessos.length;
 
-        // ACESSOS DE HOJE
         const acessosHoje = acessos.filter(a => {
             const hoje = new Date().toISOString().split('T')[0];
             const dataAcesso = a.data_acesso || a.data || a.created_at || a.data_hora || '';
             return dataAcesso && dataAcesso.startsWith(hoje);
         }).length;
 
-        // ÚLTIMO ACESSO
         let ultimoAcesso = null;
         const acessosValidos = acessos.filter(a => 
             a.data_acesso && 
@@ -635,7 +629,6 @@ async function verEmpresa(id) {
                            empresa.plano?.toLowerCase() === 'pro' ? '💎' :
                            empresa.plano?.toLowerCase() === 'business' ? '🏢' : '📦';
 
-        // ===== TAMANHOS DAS FONTES =====
         const fontSize = {
             titulo: isVeryMobile ? '22px' : isMobile ? '26px' : '32px',
             subtitulo: isVeryMobile ? '17px' : isMobile ? '19px' : '22px',
@@ -648,131 +641,40 @@ async function verEmpresa(id) {
             tabelaCabecalho: isVeryMobile ? '12px' : isMobile ? '13px' : '15px',
         };
 
-        // ===== HTML =====
         const html = `
             <div style="padding: ${isVeryMobile ? '16px' : isMobile ? '20px' : '28px'}; max-width: 1200px; margin: 0 auto; font-family: 'Inter', -apple-system, sans-serif;">
 
-                <!-- BOTÃO VOLTAR -->
-                <button onclick="carregarDashboardSuperAdmin()" style="
-                    background:transparent;
-                    border:none;
-                    padding: ${isVeryMobile ? '12px 20px' : isMobile ? '14px 24px' : '16px 28px'};
-                    cursor:pointer;
-                    color:#94a3b8;
-                    font-size: ${fontSize.corpo};
-                    display:flex;
-                    align-items:center;
-                    gap:10px;
-                    transition:all 0.3s ease;
-                    border-radius:10px;
-                    margin-bottom: ${isVeryMobile ? '16px' : '20px'};
-                    width: fit-content;
-                " onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+                <button onclick="carregarDashboardSuperAdmin()" style="background:transparent;border:none;padding: ${isVeryMobile ? '12px 20px' : isMobile ? '14px 24px' : '16px 28px'};cursor:pointer;color:#94a3b8;font-size: ${fontSize.corpo};display:flex;align-items:center;gap:10px;transition:all 0.3s ease;border-radius:10px;margin-bottom: ${isVeryMobile ? '16px' : '20px'};width: fit-content;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
                     <i class="fas fa-arrow-left" style="font-size:${fontSize.corpo};"></i> Voltar
                 </button>
 
-                <!-- CABEÇALHO -->
-                <div style="
-                    display:flex;
-                    flex-direction: ${isMobile ? 'column' : 'row'};
-                    justify-content:space-between;
-                    align-items: ${isMobile ? 'flex-start' : 'center'};
-                    gap: ${isMobile ? '16px' : '24px'};
-                    padding: ${isVeryMobile ? '20px 24px' : isMobile ? '24px 28px' : '32px 36px'};
-                    background:linear-gradient(135deg,#0f0f1a,#1a1a3e);
-                    border-radius: ${isMobile ? '16px' : '20px'};
-                    border:1px solid rgba(102,126,234,0.08);
-                    margin-bottom: ${isMobile ? '20px' : '28px'};
-                ">
+                <div style="display:flex;flex-direction: ${isMobile ? 'column' : 'row'};justify-content:space-between;align-items: ${isMobile ? 'flex-start' : 'center'};gap: ${isMobile ? '16px' : '24px'};padding: ${isVeryMobile ? '20px 24px' : isMobile ? '24px 28px' : '32px 36px'};background:linear-gradient(135deg,#0f0f1a,#1a1a3e);border-radius: ${isMobile ? '16px' : '20px'};border:1px solid rgba(102,126,234,0.08);margin-bottom: ${isMobile ? '20px' : '28px'};">
                     <div style="width:100%;">
                         <div style="display:flex;flex-wrap:wrap;align-items:center;gap:${isVeryMobile ? '10px' : '14px'};">
-                            <h2 style="
-                                margin:0;
-                                font-size: ${fontSize.titulo};
-                                color:#fff;
-                                font-weight:700;
-                                word-break:break-word;
-                            ">
+                            <h2 style="margin:0;font-size: ${fontSize.titulo};color:#fff;font-weight:700;word-break:break-word;">
                                 🏢 ${escapeHtml(empresa.nome)}
                             </h2>
-                            <span style="
-                                background:${statusBg};
-                                padding: ${isVeryMobile ? '6px 16px' : '8px 20px'};
-                                border-radius:10px;
-                                color:${statusColor};
-                                font-size: ${fontSize.pequeno};
-                                font-weight:600;
-                                border:1px solid ${statusColor}44;
-                                white-space:nowrap;
-                            ">${statusText}</span>
+                            <span style="background:${statusBg};padding: ${isVeryMobile ? '6px 16px' : '8px 20px'};border-radius:10px;color:${statusColor};font-size: ${fontSize.pequeno};font-weight:600;border:1px solid ${statusColor}44;white-space:nowrap;">${statusText}</span>
                         </div>
-                        <div style="
-                            display:flex;
-                            flex-wrap:wrap;
-                            gap: ${isVeryMobile ? '10px' : isMobile ? '12px' : '18px'};
-                            margin-top: ${isVeryMobile ? '8px' : '10px'};
-                            font-size: ${fontSize.pequeno};
-                            color:#94a3b8;
-                        ">
+                        <div style="display:flex;flex-wrap:wrap;gap: ${isVeryMobile ? '10px' : isMobile ? '12px' : '18px'};margin-top: ${isVeryMobile ? '8px' : '10px'};font-size: ${fontSize.pequeno};color:#94a3b8;">
                             <span><i class="fas fa-calendar"></i> ${formatarDataBr(empresa.created_at)}</span>
                             ${empresa.dono_nome ? `<span><i class="fas fa-crown" style="color:#f59e0b;"></i> ${escapeHtml(empresa.dono_nome)}</span>` : ''}
                             <span><i class="fas fa-tag"></i> ${planoEmoji} ${planoFormatado}</span>
                         </div>
                     </div>
-                    <div style="
-                        display:flex;
-                        gap: ${isVeryMobile ? '10px' : '14px'};
-                        flex-wrap:wrap;
-                        width: ${isMobile ? '100%' : 'auto'};
-                    ">
-                        <button onclick="editarEmpresa(${empresa.id})" style="
-                            background:rgba(245,158,11,0.15);
-                            border:1px solid rgba(245,158,11,0.2);
-                            padding: ${isVeryMobile ? '12px 24px' : isMobile ? '14px 28px' : '16px 32px'};
-                            border-radius:10px;
-                            color:#f59e0b;
-                            font-size: ${fontSize.pequeno};
-                            font-weight:600;
-                            cursor:pointer;
-                            transition:all 0.3s ease;
-                            flex: ${isMobile ? '1' : '0'};
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            gap:8px;
-                        " onmouseover="this.style.background='rgba(245,158,11,0.25)'" onmouseout="this.style.background='rgba(245,158,11,0.15)'">
+                    <div style="display:flex;gap: ${isVeryMobile ? '10px' : '14px'};flex-wrap:wrap;width: ${isMobile ? '100%' : 'auto'};">
+                        <button onclick="editarEmpresa(${empresa.id})" style="background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.2);padding: ${isVeryMobile ? '12px 24px' : isMobile ? '14px 28px' : '16px 32px'};border-radius:10px;color:#f59e0b;font-size: ${fontSize.pequeno};font-weight:600;cursor:pointer;transition:all 0.3s ease;flex: ${isMobile ? '1' : '0'};display:flex;align-items:center;justify-content:center;gap:8px;" onmouseover="this.style.background='rgba(245,158,11,0.25)'" onmouseout="this.style.background='rgba(245,158,11,0.15)'">
                             <i class="fas fa-edit" style="font-size:${fontSize.pequeno};"></i> ${isVeryMobile ? '' : 'Editar'}
                         </button>
                         ${isTrial ? `
-                            <button onclick="estenderTrial(${empresa.id})" style="
-                                background:rgba(34,197,94,0.15);
-                                border:1px solid rgba(34,197,94,0.2);
-                                padding: ${isVeryMobile ? '12px 24px' : isMobile ? '14px 28px' : '16px 32px'};
-                                border-radius:10px;
-                                color:#22c55e;
-                                font-size: ${fontSize.pequeno};
-                                font-weight:600;
-                                cursor:pointer;
-                                transition:all 0.3s ease;
-                                flex: ${isMobile ? '1' : '0'};
-                                display:flex;
-                                align-items:center;
-                                justify-content:center;
-                                gap:8px;
-                            " onmouseover="this.style.background='rgba(34,197,94,0.25)'" onmouseout="this.style.background='rgba(34,197,94,0.15)'">
+                            <button onclick="estenderTrial(${empresa.id})" style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.2);padding: ${isVeryMobile ? '12px 24px' : isMobile ? '14px 28px' : '16px 32px'};border-radius:10px;color:#22c55e;font-size: ${fontSize.pequeno};font-weight:600;cursor:pointer;transition:all 0.3s ease;flex: ${isMobile ? '1' : '0'};display:flex;align-items:center;justify-content:center;gap:8px;" onmouseover="this.style.background='rgba(34,197,94,0.25)'" onmouseout="this.style.background='rgba(34,197,94,0.15)'">
                                 <i class="fas fa-clock" style="font-size:${fontSize.pequeno};"></i> ${isVeryMobile ? '+30' : '+30 dias'}
                             </button>
                         ` : ''}
                     </div>
                 </div>
 
-                <!-- CARDS DE MÉTRICAS -->
-                <div style="
-                    display:grid;
-                    grid-template-columns: ${isVeryMobile ? 'repeat(2, 1fr)' : isMobile ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)'};
-                    gap: ${isVeryMobile ? '10px' : isMobile ? '12px' : '16px'};
-                    margin-bottom: ${isMobile ? '20px' : '28px'};
-                ">
+                <div style="display:grid;grid-template-columns: ${isVeryMobile ? 'repeat(2, 1fr)' : isMobile ? 'repeat(3, 1fr)' : 'repeat(6, 1fr)'};gap: ${isVeryMobile ? '10px' : isMobile ? '12px' : '16px'};margin-bottom: ${isMobile ? '20px' : '28px'};">
                     ${[
                         { icon: '📦', label: 'Plano', value: planoFormatado, color: '#667eea' },
                         { icon: '👥', label: 'Usuários', value: usuarios.length, sub: `${donos.length} donos`, color: '#8b5cf6' },
@@ -781,71 +683,24 @@ async function verEmpresa(id) {
                         { icon: '✂️', label: 'Agendamentos', value: agendamentos.length, sub: `${agendamentosPendentes} pendentes`, color: '#ec4899' },
                         { icon: '💰', label: 'Faturamento', value: `R$ ${formatarMoeda(faturamentoTotal)}`, sub: `${agendamentosConcluidos} concluídos`, color: '#22c55e' }
                     ].map(metric => `
-                        <div style="
-                            background:linear-gradient(135deg,#14142a,#1a1a3a);
-                            border-radius: ${isVeryMobile ? '12px' : isMobile ? '14px' : '16px'};
-                            padding: ${isVeryMobile ? '16px 10px' : isMobile ? '18px 12px' : '24px 18px'};
-                            border:1px solid rgba(255,255,255,0.04);
-                            text-align:center;
-                            transition:all 0.3s ease;
-                            box-shadow:0 2px 8px rgba(0,0,0,0.06);
-                        " onmouseover="this.style.borderColor='${metric.color}44';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
+                        <div style="background:linear-gradient(135deg,#14142a,#1a1a3a);border-radius: ${isVeryMobile ? '12px' : isMobile ? '14px' : '16px'};padding: ${isVeryMobile ? '16px 10px' : isMobile ? '18px 12px' : '24px 18px'};border:1px solid rgba(255,255,255,0.04);text-align:center;transition:all 0.3s ease;box-shadow:0 2px 8px rgba(0,0,0,0.06);" onmouseover="this.style.borderColor='${metric.color}44';this.style.transform='translateY(-2px)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.04)';this.style.transform='translateY(0)'">
                             <div style="font-size: ${isVeryMobile ? '32px' : isMobile ? '38px' : '44px'};">${metric.icon}</div>
-                            <div style="
-                                font-size: ${fontSize.cardLabel};
-                                color:#94a3b8;
-                                margin-top: ${isVeryMobile ? '6px' : '8px'};
-                                font-weight:500;
-                            ">${metric.label}</div>
-                            <div style="
-                                font-size: ${fontSize.cardValor};
-                                font-weight:700;
-                                color:#fff;
-                                margin: ${isVeryMobile ? '6px 0' : '8px 0'};
-                                word-break:break-word;
-                            ">${metric.value}</div>
+                            <div style="font-size: ${fontSize.cardLabel};color:#94a3b8;margin-top: ${isVeryMobile ? '6px' : '8px'};font-weight:500;">${metric.label}</div>
+                            <div style="font-size: ${fontSize.cardValor};font-weight:700;color:#fff;margin: ${isVeryMobile ? '6px 0' : '8px 0'};word-break:break-word;">${metric.value}</div>
                             ${metric.sub ? `<div style="font-size:${fontSize.muitoPequeno};color:#64748b;">${metric.sub}</div>` : ''}
                             <div style="height:3px;background:linear-gradient(90deg,${metric.color},transparent);border-radius:4px;margin-top:${isVeryMobile ? '8px' : '10px'};"></div>
                         </div>
                     `).join('')}
                 </div>
 
-                <!-- DONOS -->
-                <div style="
-                    background:linear-gradient(135deg,#14142a,#1a1a3a);
-                    border-radius: ${isMobile ? '14px' : '18px'};
-                    padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};
-                    border:1px solid rgba(255,255,255,0.04);
-                    margin-bottom: ${isMobile ? '16px' : '22px'};
-                ">
-                    <h4 style="
-                        margin:0 0 ${isVeryMobile ? '14px' : '18px'} 0;
-                        font-size: ${fontSize.subtitulo};
-                        color:#fff;
-                        display:flex;
-                        align-items:center;
-                        gap:10px;
-                    ">
+                <div style="background:linear-gradient(135deg,#14142a,#1a1a3a);border-radius: ${isMobile ? '14px' : '18px'};padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};border:1px solid rgba(255,255,255,0.04);margin-bottom: ${isMobile ? '16px' : '22px'};">
+                    <h4 style="margin:0 0 ${isVeryMobile ? '14px' : '18px'} 0;font-size: ${fontSize.subtitulo};color:#fff;display:flex;align-items:center;gap:10px;">
                         <i class="fas fa-crown" style="color:#f59e0b;font-size:${fontSize.subtitulo};"></i> Donos (${donos.length})
                     </h4>
                     ${donos.length > 0 ? `
-                        <div style="
-                            display:grid;
-                            grid-template-columns: ${isVeryMobile ? '1fr' : isMobile ? '1fr' : '1fr 1fr'};
-                            gap: ${isVeryMobile ? '10px' : '14px'};
-                        ">
+                        <div style="display:grid;grid-template-columns: ${isVeryMobile ? '1fr' : isMobile ? '1fr' : '1fr 1fr'};gap: ${isVeryMobile ? '10px' : '14px'};">
                             ${donos.map(d => `
-                                <div style="
-                                    display:flex;
-                                    flex-direction: ${isVeryMobile ? 'column' : 'row'};
-                                    justify-content:space-between;
-                                    align-items: ${isVeryMobile ? 'flex-start' : 'center'};
-                                    padding: ${isVeryMobile ? '14px 18px' : '16px 22px'};
-                                    background:rgba(255,255,255,0.02);
-                                    border-radius:10px;
-                                    border:1px solid rgba(255,255,255,0.03);
-                                    gap: ${isVeryMobile ? '6px' : '0'};
-                                ">
+                                <div style="display:flex;flex-direction: ${isVeryMobile ? 'column' : 'row'};justify-content:space-between;align-items: ${isVeryMobile ? 'flex-start' : 'center'};padding: ${isVeryMobile ? '14px 18px' : '16px 22px'};background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.03);gap: ${isVeryMobile ? '6px' : '0'};">
                                     <span style="color:#e2e8f0;font-weight:500;font-size: ${fontSize.corpo};">${escapeHtml(d.nome)}</span>
                                     <span style="color:#94a3b8;font-size: ${fontSize.pequeno};word-break:break-all;">${escapeHtml(d.email)}</span>
                                 </div>
@@ -854,83 +709,29 @@ async function verEmpresa(id) {
                     ` : '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:16px;">Nenhum dono cadastrado.</div>'}
                 </div>
 
-                <!-- PROFISSIONAIS -->
-                <div style="
-                    background:linear-gradient(135deg,#14142a,#1a1a3a);
-                    border-radius: ${isMobile ? '14px' : '18px'};
-                    padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};
-                    border:1px solid rgba(255,255,255,0.04);
-                    margin-bottom: ${isMobile ? '16px' : '22px'};
-                ">
-                    <h4 style="
-                        margin:0 0 ${isVeryMobile ? '14px' : '18px'} 0;
-                        font-size: ${fontSize.subtitulo};
-                        color:#fff;
-                        display:flex;
-                        align-items:center;
-                        gap:10px;
-                    ">
+                <div style="background:linear-gradient(135deg,#14142a,#1a1a3a);border-radius: ${isMobile ? '14px' : '18px'};padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};border:1px solid rgba(255,255,255,0.04);margin-bottom: ${isMobile ? '16px' : '22px'};">
+                    <h4 style="margin:0 0 ${isVeryMobile ? '14px' : '18px'} 0;font-size: ${fontSize.subtitulo};color:#fff;display:flex;align-items:center;gap:10px;">
                         <i class="fas fa-users" style="color:#818cf8;font-size:${fontSize.subtitulo};"></i> Profissionais (${profissionais.length})
                     </h4>
                     ${profissionais.length > 0 ? `
-                        <div style="
-                            display:grid;
-                            grid-template-columns: ${isVeryMobile ? '1fr' : isMobile ? '1fr' : '1fr 1fr'};
-                            gap: ${isVeryMobile ? '10px' : '14px'};
-                        ">
+                        <div style="display:grid;grid-template-columns: ${isVeryMobile ? '1fr' : isMobile ? '1fr' : '1fr 1fr'};gap: ${isVeryMobile ? '10px' : '14px'};">
                             ${profissionais.map(p => `
-                                <div style="
-                                    display:flex;
-                                    flex-direction: ${isVeryMobile ? 'column' : 'row'};
-                                    justify-content:space-between;
-                                    align-items: ${isVeryMobile ? 'flex-start' : 'center'};
-                                    padding: ${isVeryMobile ? '14px 18px' : '16px 22px'};
-                                    background:rgba(255,255,255,0.02);
-                                    border-radius:10px;
-                                    border:1px solid rgba(255,255,255,0.03);
-                                    gap: ${isVeryMobile ? '6px' : '0'};
-                                ">
+                                <div style="display:flex;flex-direction: ${isVeryMobile ? 'column' : 'row'};justify-content:space-between;align-items: ${isVeryMobile ? 'flex-start' : 'center'};padding: ${isVeryMobile ? '14px 18px' : '16px 22px'};background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.03);gap: ${isVeryMobile ? '6px' : '0'};">
                                     <span style="color:#e2e8f0;font-weight:500;font-size: ${fontSize.corpo};">${escapeHtml(p.nome)}</span>
-                                    <span style="
-                                        background:rgba(16,185,129,0.12);
-                                        padding: ${isVeryMobile ? '4px 14px' : '6px 18px'};
-                                        border-radius:12px;
-                                        color:#22c55e;
-                                        font-weight:600;
-                                        font-size: ${fontSize.pequeno};
-                                    ">${p.comissao_percent || 0}%</span>
+                                    <span style="background:rgba(16,185,129,0.12);padding: ${isVeryMobile ? '4px 14px' : '6px 18px'};border-radius:12px;color:#22c55e;font-weight:600;font-size: ${fontSize.pequeno};">${p.comissao_percent || 0}%</span>
                                 </div>
                             `).join('')}
                         </div>
                     ` : '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:16px;">Nenhum profissional cadastrado.</div>'}
                 </div>
 
-                <!-- CLIENTES -->
-                <div style="
-                    background:linear-gradient(135deg,#14142a,#1a1a3a);
-                    border-radius: ${isMobile ? '14px' : '18px'};
-                    padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};
-                    border:1px solid rgba(255,255,255,0.04);
-                    margin-bottom: ${isMobile ? '16px' : '22px'};
-                ">
-                    <h4 style="
-                        margin:0 0 ${isVeryMobile ? '14px' : '18px'} 0;
-                        font-size: ${fontSize.subtitulo};
-                        color:#fff;
-                        display:flex;
-                        align-items:center;
-                        gap:10px;
-                    ">
+                <div style="background:linear-gradient(135deg,#14142a,#1a1a3a);border-radius: ${isMobile ? '14px' : '18px'};padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};border:1px solid rgba(255,255,255,0.04);margin-bottom: ${isMobile ? '16px' : '22px'};">
+                    <h4 style="margin:0 0 ${isVeryMobile ? '14px' : '18px'} 0;font-size: ${fontSize.subtitulo};color:#fff;display:flex;align-items:center;gap:10px;">
                         <i class="fas fa-address-book" style="color:#8b5cf6;font-size:${fontSize.subtitulo};"></i> Clientes (${clientes.length})
                     </h4>
                     ${clientes.length > 0 ? `
                         <div style="overflow-x:auto; -webkit-overflow-scrolling: touch;">
-                            <table style="
-                                width:100%;
-                                font-size: ${fontSize.tabela};
-                                border-collapse:collapse;
-                                min-width: ${isVeryMobile ? '320px' : '400px'};
-                            ">
+                            <table style="width:100%;font-size: ${fontSize.tabela};border-collapse:collapse;min-width: ${isVeryMobile ? '320px' : '400px'};">
                                 <thead>
                                     <tr style="border-bottom:2px solid rgba(255,255,255,0.04);">
                                         <th style="padding: ${isVeryMobile ? '12px 14px' : isMobile ? '14px 18px' : '16px 22px'};text-align:left;color:#94a3b8;font-weight:600;font-size:${fontSize.tabelaCabecalho};">Nome</th>
@@ -955,22 +756,9 @@ async function verEmpresa(id) {
                     ` : '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:16px;">Nenhum cliente cadastrado.</div>'}
                 </div>
 
-                <!-- AGENDAMENTOS -->
-                <div style="
-                    background:linear-gradient(135deg,#14142a,#1a1a3a);
-                    border-radius: ${isMobile ? '14px' : '18px'};
-                    padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};
-                    border:1px solid rgba(255,255,255,0.04);
-                ">
+                <div style="background:linear-gradient(135deg,#14142a,#1a1a3a);border-radius: ${isMobile ? '14px' : '18px'};padding: ${isVeryMobile ? '18px 20px' : isMobile ? '22px 28px' : '28px 36px'};border:1px solid rgba(255,255,255,0.04);">
                     <div style="display:flex;flex-direction:${isVeryMobile ? 'column' : 'row'};justify-content:space-between;align-items:${isVeryMobile ? 'flex-start' : 'center'};gap:10px;margin-bottom:16px;">
-                        <h4 style="
-                            margin:0;
-                            font-size: ${fontSize.subtitulo};
-                            color:#fff;
-                            display:flex;
-                            align-items:center;
-                            gap:10px;
-                        ">
+                        <h4 style="margin:0;font-size: ${fontSize.subtitulo};color:#fff;display:flex;align-items:center;gap:10px;">
                             <i class="fas fa-calendar-alt" style="color:#f59e0b;font-size:${fontSize.subtitulo};"></i> Agendamentos (${agendamentos.length})
                         </h4>
                         <div style="display:flex;gap:12px;font-size: ${fontSize.pequeno};flex-wrap:wrap;">
@@ -981,12 +769,7 @@ async function verEmpresa(id) {
                     </div>
                     ${agendamentos.length > 0 ? `
                         <div style="overflow-x:auto; -webkit-overflow-scrolling: touch;">
-                            <table style="
-                                width:100%;
-                                font-size: ${fontSize.tabela};
-                                border-collapse:collapse;
-                                min-width: ${isVeryMobile ? '380px' : '480px'};
-                            ">
+                            <table style="width:100%;font-size: ${fontSize.tabela};border-collapse:collapse;min-width: ${isVeryMobile ? '380px' : '480px'};">
                                 <thead>
                                     <tr style="border-bottom:2px solid rgba(255,255,255,0.04);">
                                         <th style="padding: ${isVeryMobile ? '12px 14px' : isMobile ? '14px 18px' : '16px 22px'};text-align:left;color:#94a3b8;font-weight:600;font-size:${fontSize.tabelaCabecalho};">Cliente</th>
@@ -1009,15 +792,7 @@ async function verEmpresa(id) {
                                                 <td style="padding: ${isVeryMobile ? '12px 14px' : isMobile ? '14px 18px' : '16px 22px'};color:#94a3b8;font-size:${fontSize.tabela};">${escapeHtml(a.servico || a.servico_nome || '-')}</td>
                                                 <td style="padding: ${isVeryMobile ? '12px 14px' : isMobile ? '14px 18px' : '16px 22px'};color:#94a3b8;font-size:${fontSize.tabela};white-space:nowrap;">${formatarDataBr(a.data)}</td>
                                                 <td style="padding: ${isVeryMobile ? '12px 14px' : isMobile ? '14px 18px' : '16px 22px'};text-align:center;">
-                                                    <span style="
-                                                        padding: ${isVeryMobile ? '6px 14px' : '8px 18px'};
-                                                        border-radius:10px;
-                                                        font-size: ${fontSize.muitoPequeno};
-                                                        font-weight:600;
-                                                        background:${statusBg};
-                                                        color:${statusColor};
-                                                        white-space:nowrap;
-                                                    ">${a.status || 'pendente'}</span>
+                                                    <span style="padding: ${isVeryMobile ? '6px 14px' : '8px 18px'};border-radius:10px;font-size: ${fontSize.muitoPequeno};font-weight:600;background:${statusBg};color:${statusColor};white-space:nowrap;">${a.status || 'pendente'}</span>
                                                 </td>
                                                 <td style="padding: ${isVeryMobile ? '12px 14px' : isMobile ? '14px 18px' : '16px 22px'};text-align:right;font-weight:600;color:#fff;font-size:${fontSize.tabela};">R$ ${formatarMoeda(valor)}</td>
                                             </tr>
@@ -1031,7 +806,6 @@ async function verEmpresa(id) {
                         </div>
                     ` : '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:16px;">Nenhum agendamento encontrado.</div>'}
                 </div>
-
             </div>
         `;
 
@@ -1046,69 +820,274 @@ async function verEmpresa(id) {
         }
     }
 }
+
 // ============================================
-// EDITAR EMPRESA
+// EDITAR EMPRESA - COMPLETA COM MAIS CAMPOS
 // ============================================
 async function editarEmpresa(id) {
     const token = localStorage.getItem('token');
     try {
-        const res = await fetch(`/api/admin/empresas/${id}`, { headers: { 'Authorization': 'Bearer ' + token } });
+        const res = await fetch(`/api/admin/empresas/${id}`, { 
+            headers: { 'Authorization': 'Bearer ' + token } 
+        });
         const data = await res.json();
 
         if (data.success) {
             const empresa = data.data;
-            let modal = document.getElementById('modalEditarEmpresa');
-            if (!modal) {
-                modal = document.createElement('div');
-                modal.id = 'modalEditarEmpresa';
-                modal.className = 'modal';
-                modal.style.display = 'none';
-                modal.innerHTML = `
-                    <div class="modal-content" style="max-width: 500px;">
-                        <div class="modal-header">
-                            <h3>✏️ Editar Empresa</h3>
-                            <button onclick="fecharModal('modalEditarEmpresa')" class="modal-close">&times;</button>
-                        </div>
-                        <div class="modal-body">
-                            <form id="formEmpresa" style="display:flex;flex-direction:column;gap:12px;">
-                                <input type="hidden" id="editEmpresaId">
-                                <div class="form-group">
-                                    <label>Nome da Empresa *</label>
-                                    <input type="text" id="editEmpresaNome" class="form-control" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Plano *</label>
-                                    <select id="editEmpresaPlano" class="form-control">
-                                        <option value="trial">Trial (Grátis)</option>
-                                        <option value="starter">Starter (R$ 29,90/mês)</option>
-                                        <option value="pro">Pro (R$ 59,90/mês)</option>
-                                        <option value="business">Business (R$ 119,90/mês)</option>
-                                        <option value="enterprise">Enterprise (R$ 249,90/mês)</option>
-                                    </select>
-                                </div>
-                                <div style="display:flex;gap:8px;margin-top:8px;">
-                                    <button type="submit" class="btn-3d" style="flex:1;"><i class="fas fa-save"></i> Salvar Alterações</button>
-                                    <button type="button" onclick="fecharModal('modalEditarEmpresa')" class="btn-secondary">Cancelar</button>
-                                </div>
-                            </form>
-                        </div>
+            
+            const modalAntigo = document.getElementById('modalEditarEmpresa');
+            if (modalAntigo) modalAntigo.remove();
+            
+            const modal = document.createElement('div');
+            modal.id = 'modalEditarEmpresa';
+            modal.className = 'modal';
+            modal.style.cssText = `
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.7);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+                backdrop-filter: blur(4px);
+            `;
+            modal.innerHTML = `
+                <div class="modal-content" style="
+                    background: #1a1a3e;
+                    border-radius: 20px;
+                    padding: 30px;
+                    max-width: 500px;
+                    width: 90%;
+                    border: 1px solid rgba(102,126,234,0.2);
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+                    max-height: 90vh;
+                    overflow-y: auto;
+                ">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                        <h3 style="color:#fff;font-size:24px;margin:0;">
+                            <i class="fas fa-edit" style="color:#f59e0b;"></i> Editar Empresa
+                        </h3>
+                        <button onclick="fecharModalEditarEmpresa()" style="
+                            background:transparent;
+                            border:none;
+                            color:#94a3b8;
+                            font-size:28px;
+                            cursor:pointer;
+                            transition:color 0.3s;
+                        " onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">
+                            &times;
+                        </button>
                     </div>
-                `;
-                document.body.appendChild(modal);
+                    <form id="formEditarEmpresa" style="display:flex;flex-direction:column;gap:16px;">
+                        <input type="hidden" id="editEmpresaId" value="${empresa.id}">
+                        
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-building" style="color:#667eea;"></i> Nome da Empresa *
+                            </label>
+                            <input type="text" id="editEmpresaNome" class="form-control" value="${escapeHtml(empresa.nome || '')}" required style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-crown" style="color:#f59e0b;"></i> Plano *
+                            </label>
+                            <select id="editEmpresaPlano" class="form-control" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                                <option value="trial" ${empresa.plano === 'trial' ? 'selected' : ''}>🔄 Trial (Grátis)</option>
+                                <option value="starter" ${empresa.plano === 'starter' ? 'selected' : ''}>🚀 Starter (R$ 29,90/mês)</option>
+                                <option value="pro" ${empresa.plano === 'pro' ? 'selected' : ''}>💎 Pro (R$ 59,90/mês)</option>
+                                <option value="business" ${empresa.plano === 'business' ? 'selected' : ''}>🏢 Business (R$ 119,90/mês)</option>
+                                <option value="enterprise" ${empresa.plano === 'enterprise' ? 'selected' : ''}>🌐 Enterprise (R$ 249,90/mês)</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-phone" style="color:#22c55e;"></i> Telefone do Dono
+                            </label>
+                            <input type="text" id="editEmpresaTelefone" class="form-control" value="${escapeHtml(empresa.telefone_dono || '')}" placeholder="(11) 99999-9999" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                        </div>
+
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-map-marker-alt" style="color:#f59e0b;"></i> Endereço
+                            </label>
+                            <input type="text" id="editEmpresaEndereco" class="form-control" value="${escapeHtml(empresa.endereco || '')}" placeholder="Rua, Número, Bairro, Cidade" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                        </div>
+
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-link" style="color:#8b5cf6;"></i> Slug (URL personalizada)
+                            </label>
+                            <input type="text" id="editEmpresaSlug" class="form-control" value="${escapeHtml(empresa.slug || '')}" placeholder="ex: salaomanatworks" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                            <small style="color:#94a3b8;font-size:11px;display:block;margin-top:4px;">
+                                🔗 Usado para links do chatbot: https://seeagende.com.br/chatbot/{slug}
+                            </small>
+                        </div>
+
+                        <div class="form-group" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;margin-top:4px;">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:10px;">
+                                <i class="fab fa-whatsapp" style="color:#25d366;"></i> WhatsApp Próprio
+                            </label>
+                            <div style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,0.03);padding:12px 16px;border-radius:10px;">
+                                <input type="checkbox" id="editEmpresaWhatsapp" ${empresa.whatsapp_proprio_habilitado ? 'checked' : ''} style="
+                                    width:20px;
+                                    height:20px;
+                                    accent-color:#25d366;
+                                    cursor:pointer;
+                                ">
+                                <label for="editEmpresaWhatsapp" style="color:#e2e8f0;font-size:15px;cursor:pointer;">
+                                    ${empresa.whatsapp_proprio_habilitado ? '🟢 Habilitado' : '🔴 Desabilitado'}
+                                </label>
+                            </div>
+                            <small style="color:#94a3b8;font-size:11px;display:block;margin-top:6px;">
+                                📱 Se habilitado, a empresa poderá conectar seu próprio WhatsApp
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-check-circle" style="color:#22c55e;"></i> Status da Assinatura
+                            </label>
+                            <select id="editEmpresaStatus" class="form-control" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                                <option value="1" ${empresa.assinatura_ativa == 1 ? 'selected' : ''}>✅ Ativo</option>
+                                <option value="0" ${empresa.assinatura_ativa == 0 ? 'selected' : ''}>⛔ Inativo</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-calendar-alt" style="color:#f59e0b;"></i> Válido até
+                            </label>
+                            <input type="date" id="editEmpresaValidade" class="form-control" value="${empresa.assinatura_valida_ate || empresa.trial_expira || ''}" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                            <small style="color:#94a3b8;font-size:11px;display:block;margin-top:4px;">
+                                📅 Data em que a assinatura expira
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-users" style="color:#818cf8;"></i> Limite de Profissionais
+                            </label>
+                            <input type="number" id="editEmpresaLimiteProfissionais" class="form-control" value="${empresa.limite_profissionais || 1}" min="0" max="999" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                            ">
+                            <small style="color:#94a3b8;font-size:11px;display:block;margin-top:4px;">
+                                👤 Número máximo de profissionais que a empresa pode ter
+                            </small>
+                        </div>
+
+                        <div style="display:flex;gap:12px;margin-top:8px;">
+                            <button type="submit" style="
+                                flex:1;
+                                padding:14px;
+                                background:linear-gradient(135deg,#667eea,#764ba2);
+                                border:none;
+                                border-radius:10px;
+                                color:#fff;
+                                font-weight:600;
+                                font-size:16px;
+                                cursor:pointer;
+                                transition:transform 0.2s;
+                            " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                            <button type="button" onclick="fecharModalEditarEmpresa()" style="
+                                padding:14px 24px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#94a3b8;
+                                cursor:pointer;
+                                font-size:16px;
+                                transition:all 0.3s;
+                            " onmouseover="this.style.background='rgba(239,68,68,0.1)';this.style.borderColor='#ef4444'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='rgba(255,255,255,0.1)'">
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(modal);
+
+            const form = document.getElementById('formEditarEmpresa');
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await salvarEmpresaCompleta();
+                });
             }
 
-            document.getElementById('editEmpresaId').value = empresa.id;
-            document.getElementById('editEmpresaNome').value = empresa.nome || '';
-            document.getElementById('editEmpresaPlano').value = empresa.plano || 'trial';
-            modal.style.display = 'block';
-
-            setTimeout(conectarFormEmpresa, 100);
         } else {
             if (typeof showToast === 'function') {
                 showToast('Erro ao carregar dados da empresa', 'error');
             }
         }
     } catch (error) {
+        console.error('❌ Erro ao editar empresa:', error);
         if (typeof showToast === 'function') {
             showToast('Erro ao carregar dados da empresa', 'error');
         }
@@ -1116,14 +1095,21 @@ async function editarEmpresa(id) {
 }
 
 // ============================================
-// SALVAR EMPRESA
+// SALVAR EMPRESA COMPLETA
 // ============================================
-async function salvarEmpresa() {
-    const id = document.getElementById('editEmpresaId').value;
-    const nome = document.getElementById('editEmpresaNome').value;
-    const plano = document.getElementById('editEmpresaPlano').value;
+async function salvarEmpresaCompleta() {
+    const id = document.getElementById('editEmpresaId')?.value;
+    const nome = document.getElementById('editEmpresaNome')?.value;
+    const plano = document.getElementById('editEmpresaPlano')?.value;
+    const telefone = document.getElementById('editEmpresaTelefone')?.value;
+    const endereco = document.getElementById('editEmpresaEndereco')?.value;
+    const slug = document.getElementById('editEmpresaSlug')?.value;
+    const whatsapp = document.getElementById('editEmpresaWhatsapp')?.checked ? 1 : 0;
+    const status = document.getElementById('editEmpresaStatus')?.value;
+    const validade = document.getElementById('editEmpresaValidade')?.value;
+    const limiteProfissionais = document.getElementById('editEmpresaLimiteProfissionais')?.value;
 
-    if (!nome) {
+    if (!id || !nome) {
         if (typeof showToast === 'function') {
             showToast('Nome da empresa é obrigatório', 'warning');
         }
@@ -1133,11 +1119,31 @@ async function salvarEmpresa() {
     if (typeof showLoading === 'function') showLoading();
     const token = localStorage.getItem('token');
 
+    const dados = {
+        nome: nome.trim(),
+        plano: plano,
+        telefone_dono: telefone || '',
+        endereco: endereco || '',
+        slug: slug || '',
+        whatsapp_proprio_habilitado: whatsapp,
+        assinatura_ativa: parseInt(status),
+        limite_profissionais: parseInt(limiteProfissionais) || 1
+    };
+
+    if (validade) {
+        dados.assinatura_valida_ate = validade;
+    }
+
+    console.log('📤 Salvando empresa:', dados);
+
     try {
         const res = await fetch(`/api/admin/empresas/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-            body: JSON.stringify({ nome, plano })
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': 'Bearer ' + token 
+            },
+            body: JSON.stringify(dados)
         });
 
         const data = await res.json();
@@ -1145,10 +1151,10 @@ async function salvarEmpresa() {
 
         if (data.success) {
             if (typeof showToast === 'function') {
-                showToast('✅ Empresa e Plano atualizados com sucesso!', 'success');
+                showToast('✅ Empresa atualizada com sucesso!', 'success');
             }
-            fecharModal('modalEditarEmpresa');
-            carregarDashboardSuperAdmin();
+            fecharModalEditarEmpresa();
+            setTimeout(() => carregarDashboardSuperAdmin(), 500);
         } else {
             if (typeof showToast === 'function') {
                 showToast(data.message || 'Erro ao atualizar empresa', 'error');
@@ -1164,13 +1170,39 @@ async function salvarEmpresa() {
 }
 
 // ============================================
-// EDITAR USUÁRIO
+// FECHAR MODAL EDITAR EMPRESA
+// ============================================
+function fecharModalEditarEmpresa() {
+    const modal = document.getElementById('modalEditarEmpresa');
+    if (modal) modal.remove();
+}
+
+// ============================================
+// EDITAR USUÁRIO - VERSÃO ULTRA CORRIGIDA
 // ============================================
 async function editarUsuario(id) {
-    console.log('👤 Editando usuário ID:', id);
-    if (!id) {
+    console.log('👤 Editando usuário. ID recebido:', id, 'Tipo:', typeof id);
+    
+    // 🔥 Aceita qualquer valor que não seja nulo/undefined/0
+    if (!id || id === 'null' || id === 'undefined' || id === 0 || id === '0' || id === '') {
         if (typeof showToast === 'function') {
-            showToast('ID do usuário não informado', 'error');
+            showToast('⚠️ ID do usuário inválido. Tente novamente.', 'warning');
+        }
+        console.error('❌ ID inválido:', id);
+        // Recarregar o dashboard para tentar novamente
+        setTimeout(() => carregarDashboardSuperAdmin(), 1000);
+        return;
+    }
+
+    // 🔥 Converter para string e depois para número
+    const idStr = String(id);
+    const userId = Number(idStr);
+    
+    console.log('✅ ID convertido:', { original: id, string: idStr, numero: userId });
+    
+    if (isNaN(userId) || userId <= 0) {
+        if (typeof showToast === 'function') {
+            showToast('⚠️ ID do usuário inválido (NaN).', 'warning');
         }
         return;
     }
@@ -1184,106 +1216,249 @@ async function editarUsuario(id) {
     }
 
     if (typeof showLoading === 'function') showLoading();
+    
     try {
-        const resUser = await fetch(`/api/admin/usuarios/${id}`, {
+        const resUser = await fetch(`/api/admin/usuarios/${userId}`, {
             method: 'GET',
-            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+            headers: { 
+                'Authorization': 'Bearer ' + token, 
+                'Content-Type': 'application/json' 
+            }
         });
 
-        if (!resUser.ok) throw new Error(`HTTP ${resUser.status}: ${resUser.statusText}`);
-        const userData = await resUser.json();
-        if (!userData.success || !userData.data) {
-            if (typeof showToast === 'function') {
-                showToast('Usuário não encontrado', 'error');
+        if (!resUser.ok) {
+            if (resUser.status === 404) {
+                throw new Error('Usuário não encontrado');
             }
-            return;
+            throw new Error(`HTTP ${resUser.status}`);
+        }
+        
+        const userData = await resUser.json();
+        
+        if (!userData.success || !userData.data) {
+            throw new Error('Usuário não encontrado');
         }
 
         const usuario = userData.data;
-        let url = usuario.role === 'profissional' ? `/api/admin/profissionais/${id}` : `/api/admin/usuarios/${id}`;
+        const isProfissional = usuario.role === 'profissional';
+        
+        console.log('✅ Usuário carregado:', usuario.nome, 'ID:', usuario.id);
+        
+        const modalAntigo = document.getElementById('modalEditarUsuario');
+        if (modalAntigo) modalAntigo.remove();
 
-        const res = await fetch(url, {
-            method: 'GET',
-            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
-        });
-
-        if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-        const data = await res.json();
-        if (typeof hideLoading === 'function') hideLoading();
-
-        if (!data.success || !data.data) {
-            if (typeof showToast === 'function') {
-                showToast('Usuário não encontrado', 'error');
-            }
-            return;
-        }
-
-        const usuarioCompleto = data.data;
-        const isProfissional = usuarioCompleto.role === 'profissional';
-        const telefone = usuarioCompleto.telefone || '';
-
-        const modalContent = `
-            <div style="padding: 10px 0;">
-                <form id="formEditarUsuario" style="display:flex;flex-direction:column;gap:12px;">
-                    <input type="hidden" id="editUsuarioId" value="${usuarioCompleto.id}">
+        const modal = document.createElement('div');
+        modal.id = 'modalEditarUsuario';
+        modal.className = 'modal';
+        modal.style.cssText = `
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        `;
+        modal.innerHTML = `
+            <div class="modal-content" style="
+                background: linear-gradient(135deg, #1a1a3e, #0f0f1a);
+                border-radius: 20px;
+                padding: 30px;
+                max-width: 500px;
+                width: 90%;
+                border: 1px solid rgba(102,126,234,0.2);
+                box-shadow: 0 20px 60px rgba(0,0,0,0.9);
+                max-height: 90vh;
+                overflow-y: auto;
+            ">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                    <h3 style="color:#fff;font-size:24px;margin:0;">
+                        <i class="fas fa-user-edit" style="color:#818cf8;"></i> Editar Usuário
+                    </h3>
+                    <button onclick="fecharModalEditarUsuario()" style="
+                        background:transparent;
+                        border:none;
+                        color:#94a3b8;
+                        font-size:28px;
+                        cursor:pointer;
+                        transition:color 0.3s;
+                        padding:0 10px;
+                    " onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">
+                        &times;
+                    </button>
+                </div>
+                
+                <form id="formEditarUsuario" style="display:flex;flex-direction:column;gap:16px;">
+                    <input type="hidden" id="editUsuarioId" value="${usuario.id}">
                     <input type="hidden" id="editUsuarioTipo" value="${isProfissional ? 'profissional' : 'usuario'}">
                     
                     <div class="form-group">
-                        <label>Nome *</label>
-                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuarioCompleto.nome || '')}" required>
+                        <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                            <i class="fas fa-user" style="color:#667eea;"></i> Nome *
+                        </label>
+                        <input type="text" id="editUsuarioNome" class="form-control" value="${escapeHtml(usuario.nome || '')}" required style="
+                            width:100%;
+                            padding:12px 16px;
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1);
+                            border-radius:10px;
+                            color:#fff;
+                            font-size:16px;
+                            outline:none;
+                        " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
                     </div>
+                    
                     <div class="form-group">
-                        <label>Email *</label>
-                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuarioCompleto.email || '')}" required>
+                        <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                            <i class="fas fa-envelope" style="color:#667eea;"></i> Email *
+                        </label>
+                        <input type="email" id="editUsuarioEmail" class="form-control" value="${escapeHtml(usuario.email || '')}" required style="
+                            width:100%;
+                            padding:12px 16px;
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1);
+                            border-radius:10px;
+                            color:#fff;
+                            font-size:16px;
+                            outline:none;
+                        " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
                     </div>
+                    
                     <div class="form-group">
-                        <label>📱 Telefone</label>
-                        <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(telefone)}" placeholder="(11) 99999-9999">
-                        <small style="color:var(--text-muted);font-size:11px;">Este número aparecerá nas mensagens do WhatsApp</small>
+                        <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                            <i class="fas fa-phone" style="color:#22c55e;"></i> Telefone
+                        </label>
+                        <input type="text" id="editUsuarioTelefone" class="form-control" value="${escapeHtml(usuario.telefone || '')}" placeholder="(11) 99999-9999" style="
+                            width:100%;
+                            padding:12px 16px;
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1);
+                            border-radius:10px;
+                            color:#fff;
+                            font-size:16px;
+                            outline:none;
+                        " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
                     </div>
+                    
                     ${isProfissional ? `
                         <div class="form-group">
-                            <label>Comissão (%)</label>
-                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuarioCompleto.comissao_percent || 30}" min="0" max="100">
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-percent" style="color:#f59e0b;"></i> Comissão (%)
+                            </label>
+                            <input type="number" id="editUsuarioComissao" class="form-control" value="${usuario.comissao_percent || 30}" min="0" max="100" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                                outline:none;
+                            " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
                         </div>
                     ` : `
                         <div class="form-group">
-                            <label>Role (Função)</label>
-                            <select id="editUsuarioRole" class="form-control">
-                                <option value="dono" ${usuarioCompleto.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
-                                <option value="profissional" ${usuarioCompleto.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
-                                <option value="superadmin" ${usuarioCompleto.role === 'superadmin' ? 'selected' : ''}>🔴 Super Admin</option>
+                            <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                                <i class="fas fa-user-tag" style="color:#8b5cf6;"></i> Role (Função)
+                            </label>
+                            <select id="editUsuarioRole" class="form-control" style="
+                                width:100%;
+                                padding:12px 16px;
+                                background:rgba(255,255,255,0.05);
+                                border:1px solid rgba(255,255,255,0.1);
+                                border-radius:10px;
+                                color:#fff;
+                                font-size:16px;
+                                outline:none;
+                            " onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                                <option value="dono" ${usuario.role === 'dono' ? 'selected' : ''}>👑 Dono</option>
+                                <option value="profissional" ${usuario.role === 'profissional' ? 'selected' : ''}>👤 Profissional</option>
+                                <option value="super_admin" ${usuario.role === 'super_admin' ? 'selected' : ''}>🔴 Super Admin</option>
                             </select>
                         </div>
                     `}
-                    <div class="form-group">
-                        <label>Nova Senha (opcional)</label>
-                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Deixe em branco para manter a atual">
+                    
+                    <div class="form-group" style="border-top:1px solid rgba(255,255,255,0.08);padding-top:16px;margin-top:4px;">
+                        <label style="color:#e2e8f0;font-weight:500;display:block;margin-bottom:6px;">
+                            <i class="fas fa-lock" style="color:#ef4444;"></i> 🔑 Nova Senha
+                        </label>
+                        <input type="text" id="editUsuarioSenha" class="form-control" placeholder="Deixe em branco para manter a atual" style="
+                            width:100%;
+                            padding:12px 16px;
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1);
+                            border-radius:10px;
+                            color:#fff;
+                            font-size:16px;
+                            outline:none;
+                        " onfocus="this.style.borderColor='#ef4444'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        <small style="color:#94a3b8;font-size:12px;display:block;margin-top:6px;">
+                            ⚠️ Digite uma nova senha apenas se quiser alterar (mínimo 6 caracteres)
+                        </small>
                     </div>
-                    <div style="display:flex;gap:8px;margin-top:8px;">
-                        <button type="submit" class="btn-3d" style="flex:1;"><i class="fas fa-save"></i> Salvar</button>
-                        <button type="button" onclick="fecharModalEditarUsuario()" class="btn-secondary">Cancelar</button>
+                    
+                    <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;">
+                        <button type="button" onclick="redefinirSenhaUsuario(${usuario.id}, '${escapeHtml(usuario.nome)}')" style="
+                            padding:14px 20px;
+                            background:rgba(239,68,68,0.15);
+                            border:1px solid rgba(239,68,68,0.2);
+                            border-radius:10px;
+                            color:#ef4444;
+                            font-weight:600;
+                            font-size:14px;
+                            cursor:pointer;
+                            flex:1;
+                            min-width:120px;
+                        " onmouseover="this.style.background='rgba(239,68,68,0.25)'" onmouseout="this.style.background='rgba(239,68,68,0.15)'">
+                            <i class="fas fa-key"></i> Redefinir Senha
+                        </button>
+                        
+                        <button type="submit" style="
+                            flex:1;
+                            padding:14px;
+                            background:linear-gradient(135deg,#667eea,#764ba2);
+                            border:none;
+                            border-radius:10px;
+                            color:#fff;
+                            font-weight:600;
+                            font-size:16px;
+                            cursor:pointer;
+                            min-width:120px;
+                        " onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                            <i class="fas fa-save"></i> Salvar
+                        </button>
+                        <button type="button" onclick="fecharModalEditarUsuario()" style="
+                            padding:14px 24px;
+                            background:rgba(255,255,255,0.05);
+                            border:1px solid rgba(255,255,255,0.1);
+                            border-radius:10px;
+                            color:#94a3b8;
+                            cursor:pointer;
+                            font-size:16px;
+                            transition:all 0.3s;
+                        " onmouseover="this.style.background='rgba(239,68,68,0.1)';this.style.borderColor='#ef4444'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.borderColor='rgba(255,255,255,0.1)'">
+                            Cancelar
+                        </button>
                     </div>
                 </form>
             </div>
         `;
+        document.body.appendChild(modal);
+        
+        if (typeof hideLoading === 'function') hideLoading();
 
-        if (typeof showModal === 'function') {
-            showModal('✏️ Editar Usuário', modalContent, null);
+        const form = document.getElementById('formEditarUsuario');
+        if (form) {
+            const newForm = form.cloneNode(true);
+            form.parentNode.replaceChild(newForm, form);
+            
+            newForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                await salvarUsuario();
+            });
         }
-
-        setTimeout(() => {
-            const form = document.getElementById('formEditarUsuario');
-            if (form) {
-                const newForm = form.cloneNode(true);
-                form.parentNode.replaceChild(newForm, form);
-                newForm.addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    salvarUsuario();
-                });
-            }
-        }, 200);
 
     } catch (error) {
         if (typeof hideLoading === 'function') hideLoading();
@@ -1293,12 +1468,79 @@ async function editarUsuario(id) {
         }
     }
 }
+// ============================================
+// REDEFINIR SENHA DO USUÁRIO
+// ============================================
+async function redefinirSenhaUsuario(userId, userNome) {
+    if (!confirm(`🔑 Deseja redefinir a senha do usuário "${userNome}"?\n\nA nova senha será: 123456\n\n⚠️ O usuário deve alterar após o primeiro login!`)) {
+        return;
+    }
 
-function fecharModalEditarUsuario() {
-    const modal = document.querySelector('.modal');
-    if (modal) modal.style.display = 'none';
+    const token = localStorage.getItem('token');
+    if (typeof showLoading === 'function') showLoading();
+
+    try {
+        const resUser = await fetch(`/api/admin/usuarios/${userId}`, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const userData = await resUser.json();
+        
+        if (!userData.success || !userData.data) {
+            throw new Error('Usuário não encontrado');
+        }
+
+        const usuario = userData.data;
+        const isProfissional = usuario.role === 'profissional';
+        
+        const url = isProfissional 
+            ? `/api/admin/profissionais/${userId}/reset-senha`
+            : `/api/admin/usuarios/${userId}`;
+
+        const res = await fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({ 
+                senha: '123456'
+            })
+        });
+
+        const data = await res.json();
+        if (typeof hideLoading === 'function') hideLoading();
+
+        if (data.success) {
+            if (typeof showToast === 'function') {
+                showToast(`✅ Senha de "${userNome}" redefinida para: 123456`, 'success');
+            }
+            fecharModalEditarUsuario();
+            setTimeout(() => carregarDashboardSuperAdmin(), 500);
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('❌ ' + (data.message || 'Erro ao redefinir senha'), 'error');
+            }
+        }
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('❌ Erro ao redefinir senha:', error);
+        if (typeof showToast === 'function') {
+            showToast('❌ Erro ao redefinir senha', 'error');
+        }
+    }
 }
 
+// ============================================
+// FECHAR MODAL EDITAR USUÁRIO
+// ============================================
+function fecharModalEditarUsuario() {
+    const modal = document.getElementById('modalEditarUsuario');
+    if (modal) modal.remove();
+}
+
+// ============================================
+// SALVAR USUÁRIO
+// ============================================
 async function salvarUsuario() {
     const id = document.getElementById('editUsuarioId')?.value;
     const tipo = document.getElementById('editUsuarioTipo')?.value || 'usuario';
@@ -1316,34 +1558,69 @@ async function salvarUsuario() {
         return;
     }
 
-    const dados = { nome, email, senha: senha || undefined, telefone: telefone || '' };
+    const dados = { 
+        nome: nome.trim(), 
+        email: email.trim(),
+        telefone: telefone || ''
+    };
+    
+    if (senha && senha.trim().length > 0) {
+        if (senha.trim().length < 6) {
+            if (typeof showToast === 'function') {
+                showToast('A senha deve ter pelo menos 6 caracteres', 'warning');
+            }
+            return;
+        }
+        dados.senha = senha.trim();
+    }
+
     if (tipo === 'profissional') {
-        if (comissao !== undefined && comissao !== '') dados.comissao_percent = parseFloat(comissao);
+        if (comissao !== undefined && comissao !== '') {
+            dados.comissao_percent = parseFloat(comissao);
+        }
     } else {
         if (role) dados.role = role;
     }
 
+    if (typeof showLoading === 'function') showLoading();
+    const token = localStorage.getItem('token');
+
     try {
-        const url = tipo === 'profissional' ? `/api/admin/profissionais/${id}` : `/api/admin/usuarios/${id}`;
+        let url;
+        if (tipo === 'profissional') {
+            url = `/api/admin/profissionais/${id}`;
+        } else {
+            url = `/api/admin/usuarios/${id}`;
+        }
+
+        console.log('📤 Enviando para:', url);
+        console.log('📦 Dados:', dados);
+
         const response = await fetch(url, {
             method: 'PUT',
-            headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token'), 'Content-Type': 'application/json' },
+            headers: { 
+                'Authorization': 'Bearer ' + token, 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify(dados)
         });
 
         const data = await response.json();
+        if (typeof hideLoading === 'function') hideLoading();
+
         if (data.success) {
             if (typeof showToast === 'function') {
                 showToast('✅ Usuário atualizado com sucesso!', 'success');
             }
-            fecharModal();
-            carregarDashboardSuperAdmin();
+            fecharModalEditarUsuario();
+            setTimeout(() => carregarDashboardSuperAdmin(), 500);
         } else {
             if (typeof showToast === 'function') {
-                showToast('❌ ' + data.message, 'error');
+                showToast('❌ ' + (data.message || 'Erro ao salvar usuário'), 'error');
             }
         }
     } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
         console.error('❌ Erro ao salvar usuário:', error);
         if (typeof showToast === 'function') {
             showToast('Erro ao salvar usuário: ' + error.message, 'error');
@@ -1520,29 +1797,25 @@ function fecharModal() {
 }
 
 // ============================================
-// 📊 ADS - CHAMAR PÁGINA DEDICADA (CORRIGIDO)
+// 📊 ADS - CHAMAR PÁGINA DEDICADA
 // ============================================
-
 let adsScriptCarregado = false;
 let adsCarregando = false;
 
 function carregarPainelAds(empresaId = null) {
     console.log('📊 Carregando página dedicada de Anúncios...');
     
-    // 🔥 VERIFICAR SE JÁ ESTÁ CARREGANDO
     if (adsCarregando) {
         console.log('⏳ Já está carregando, aguarde...');
         return;
     }
     
-    // 🔥 VERIFICAR SE A FUNÇÃO JÁ ESTÁ DISPONÍVEL (NÃO A QUE ESTAMOS EXECUTANDO)
     if (typeof window._carregarPainelAdsReal === 'function') {
         console.log('✅ Função já disponível, chamando diretamente');
         window._carregarPainelAdsReal(empresaId);
         return;
     }
     
-    // 🔥 VERIFICAR SE O SCRIPT JÁ FOI CARREGADO
     const scriptExistente = document.querySelector('script[src*="ads.js"]');
     if (scriptExistente && typeof window._carregarPainelAdsReal === 'undefined') {
         console.warn('⚠️ ads.js carregado mas função não encontrada, recarregando...');
@@ -1550,7 +1823,6 @@ function carregarPainelAds(empresaId = null) {
         adsScriptCarregado = false;
     }
     
-    // 🔥 SE JÁ CARREGADO, NÃO RECARREGAR
     if (adsScriptCarregado) {
         console.log('✅ ads.js já carregado, chamando função...');
         if (typeof window._carregarPainelAdsReal === 'function') {
@@ -1558,13 +1830,11 @@ function carregarPainelAds(empresaId = null) {
         } else {
             console.error('❌ Função não encontrada mesmo após carregar');
             adsScriptCarregado = false;
-            // Tentar recarregar
             carregarScriptAds(empresaId);
         }
         return;
     }
     
-    // 🔥 CARREGAR O SCRIPT
     carregarScriptAds(empresaId);
 }
 
@@ -1574,7 +1844,6 @@ function carregarScriptAds(empresaId) {
     
     console.log('📦 Carregando ads.js...');
     
-    // Remover scripts antigos
     document.querySelectorAll('script[src*="ads.js"]').forEach(s => s.remove());
     
     const script = document.createElement('script');
@@ -1584,13 +1853,11 @@ function carregarScriptAds(empresaId) {
         adsScriptCarregado = true;
         adsCarregando = false;
         
-        // Aguardar um pouco para garantir que as funções foram registradas
         setTimeout(() => {
             if (typeof window._carregarPainelAdsReal === 'function') {
                 window._carregarPainelAdsReal(empresaId);
             } else {
                 console.error('❌ Função _carregarPainelAdsReal não encontrada após carregar');
-                // Tentar mais uma vez
                 setTimeout(() => {
                     if (typeof window._carregarPainelAdsReal === 'function') {
                         window._carregarPainelAdsReal(empresaId);
@@ -1614,24 +1881,16 @@ function carregarScriptAds(empresaId) {
     document.head.appendChild(script);
 }
 
-// ============================================
-// FALLBACK PARA ADMIN ADS (COMPATIBILIDADE)
-// ============================================
 function carregarAdminAds() {
     console.log('📊 Redirecionando para Painel de Anúncios...');
     carregarPainelAds();
 }
 
 // ============================================
-// EXPORTAR FUNÇÕES
+// EXPORTAR FUNÇÕES GLOBAIS
 // ============================================
 window.carregarPainelAds = carregarPainelAds;
 window.carregarAdminAds = carregarAdminAds;
-
-console.log('✅ ADS - Integração com página dedicada carregada! (CORRIGIDO)');
-// ============================================
-// EXPORTAR FUNÇÕES GLOBAIS
-// ============================================
 window.carregarDashboardSuperAdmin = carregarDashboardSuperAdmin;
 window.carregarEmpresas = carregarDashboardSuperAdmin;
 window.alternarModoPagamento = alternarModoPagamento;
@@ -1639,10 +1898,12 @@ window.toggleWhatsAppProprio = toggleWhatsAppProprio;
 window.filtrarEmpresas = filtrarEmpresas;
 window.verEmpresa = verEmpresa;
 window.editarEmpresa = editarEmpresa;
-window.salvarEmpresa = salvarEmpresa;
+window.salvarEmpresaCompleta = salvarEmpresaCompleta;
 window.editarUsuario = editarUsuario;
 window.salvarUsuario = salvarUsuario;
+window.redefinirSenhaUsuario = redefinirSenhaUsuario;
 window.fecharModalEditarUsuario = fecharModalEditarUsuario;
+window.fecharModalEditarEmpresa = fecharModalEditarEmpresa;
 window.estenderTrial = estenderTrial;
 window.deletarEmpresa = deletarEmpresa;
 window.fecharModal = fecharModal;

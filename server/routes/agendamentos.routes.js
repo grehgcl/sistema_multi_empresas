@@ -5,14 +5,38 @@
 const express = require('express');
 const router = express.Router();
 const { db, getEmpresaDb } = require('../config/database');
-const { auth, verificarDono } = require('../middlewares/auth');
+const { 
+    auth, 
+    verificarDono, 
+    verificarAcessoAgendamentos, 
+    verificarLimiteAgendamentos 
+} = require('../middlewares/auth');
 const axios = require('axios');
 
-const {
-    formatarDataBr,
-    incrementarContadorAgendamentos,
-    verificarDisponibilidadeHorario
-} = require('../utils/helpers');
+const { formatarDataBr, incrementarContadorAgendamentos, verificarDisponibilidadeHorario, estaBloqueado } = require('../utils/helpers');
+const { INSTAGRAM_SISTEMA } = require('../utils/constants');
+
+// ============================================
+// Helper: monta rodapé com Instagram do dono + sistema
+// ============================================
+function montarRodapeInstagram(empresa) {
+    let txt = '';
+    
+    if (empresa && empresa.instagram) {
+        const instaDono = String(empresa.instagram).replace(/^@/, '').trim();
+        const instaSistema = INSTAGRAM_SISTEMA ? String(INSTAGRAM_SISTEMA).replace(/^@/, '').trim() : null;
+        
+        if (instaDono && instaDono.toLowerCase() !== instaSistema?.toLowerCase()) {
+            txt += `\n📸 https://instagram.com/${instaDono}`;
+        }
+    }
+    
+    if (INSTAGRAM_SISTEMA) {
+        txt += `\n💜 https://instagram.com/${INSTAGRAM_SISTEMA}`;
+    }
+    
+    return txt;
+}
 
 // ============================================
 // COMPATIBILIDADE SQLite / PostgreSQL
@@ -160,14 +184,18 @@ router.get('/:id', auth, (req, res) => {
 // POST /api/agendamentos - CRIAR AGENDAMENTO
 // ============================================
 
-router.post('/', auth, async (req, res) => {
+router.post('/', 
+    auth, 
+    verificarAcessoAgendamentos, 
+    verificarLimiteAgendamentos, 
+    async (req, res) => {
     const { 
         cliente_id, 
         data, 
         hora, 
         servico_id, 
         profissional_id,
-        origem = 'painel'  // 🔥 NOVO: 'painel' ou 'chatbot' (padrão: painel)
+        origem = 'painel'
     } = req.body;
     const empresa_id = req.usuario.empresa_id;
 
@@ -183,8 +211,6 @@ router.post('/', auth, async (req, res) => {
         return res.json({ success: false, message: 'Horário é obrigatório' });
     }
 
-    // 🔥 VERIFICAÇÃO DE HORÁRIO PASSADO - APENAS PARA CHATBOT
-    // O DONO (PAINEL) PODE AGENDAR EM HORÁRIOS PASSADOS PARA ATUALIZAR O FINANCEIRO
     if (origem === 'chatbot') {
         const agora = new Date();
         const [ano, mes, dia] = data.split('-').map(Number);
@@ -198,14 +224,11 @@ router.post('/', auth, async (req, res) => {
             });
         }
     }
-    // 🔥 PAINEL: NÃO BLOQUEIA HORÁRIOS PASSADOS
-    // O dono pode agendar no passado para atualizar o financeiro
 
     console.log(`📅 Data recebida: ${data}`);
 
     const empresaDb = getEmpresaDb(empresa_id);
 
-    // VERIFICAR SE JÁ EXISTE AGENDAMENTO NO MESMO HORÁRIO
     const sqlCheckHorario = `
         SELECT id FROM agendamentos 
         WHERE empresa_id = ? 
@@ -234,8 +257,26 @@ router.post('/', auth, async (req, res) => {
         });
     }
 
-    // Verificar agendamento do cliente no mesmo dia
-    // 🔥 APENAS PARA CHATBOT - CLIENTE NÃO PODE TER 2 AGENDAMENTOS NO MESMO DIA
+    // ============================================
+    // 🚫 VERIFICAR BLOQUEIO DE AGENDA
+    // ============================================
+    const profIdParaBloqueio = profissional_id && profissional_id !== '' && profissional_id !== 'null'
+        ? parseInt(profissional_id)
+        : null;
+
+    try {
+        const checkBloqueio = await estaBloqueado(empresa_id, profIdParaBloqueio, data, hora);
+        if (checkBloqueio.bloqueado) {
+            console.log(`🚫 Horário ${hora} do dia ${data} bloqueado: ${checkBloqueio.motivo}`);
+            return res.json({
+                success: false,
+                message: `⛔ Horário indisponível: ${checkBloqueio.motivo || 'Bloqueado pelo estabelecimento'}`
+            });
+        }
+    } catch (errBloq) {
+        console.error('⚠️ Erro ao checar bloqueio:', errBloq.message);
+    }
+
     if (origem === 'chatbot') {
         const sqlAgendamentoHoje = `
             SELECT id FROM agendamentos 
@@ -283,7 +324,6 @@ router.post('/', auth, async (req, res) => {
             });
         }
     }
-    // 🔥 PAINEL: DONO PODE AGENDAR O MESMO CLIENTE VÁRIAS VEZES NO MESMO DIA
 
     let duracaoServico = 30;
     let nomeServico = '';
@@ -381,9 +421,6 @@ router.post('/', auth, async (req, res) => {
         finalizarResposta(id);
     });
 
-    // ============================================
-    // FUNÇÃO FINALIZAR RESPOSTA
-    // ============================================
     async function finalizarResposta(agendamentoId) {
         if (!agendamentoId) {
             return res.json({
@@ -392,7 +429,6 @@ router.post('/', auth, async (req, res) => {
             });
         }
 
-        // Incrementar contador
         try {
             await new Promise((resolve, reject) => {
                 incrementarContadorAgendamentos(empresa_id, (err) => {
@@ -409,14 +445,11 @@ router.post('/', auth, async (req, res) => {
             console.error('❌ Erro no contador:', error);
         }
 
-        // ============================================
-        // ENVIAR WHATSAPP
-        // ============================================
         try {
             console.log('📱 Tentando enviar WhatsApp...');
 
-            const empresaDb = getEmpresaDb(empresa_id);
-            if (!empresaDb) {
+            const empresaDb2 = getEmpresaDb(empresa_id);
+            if (!empresaDb2) {
                 console.log('⚠️ Erro ao conectar ao banco da empresa');
                 return res.json({
                     success: true,
@@ -425,9 +458,8 @@ router.post('/', auth, async (req, res) => {
                 });
             }
 
-            // Buscar cliente no banco da empresa
             const cliente = await new Promise((resolve) => {
-                empresaDb.get(
+                empresaDb2.get(
                     `SELECT nome, telefone FROM clientes WHERE id = ? AND empresa_id = ?`,
                     [cliente_id, empresa_id],
                     (err, row) => {
@@ -447,10 +479,9 @@ router.post('/', auth, async (req, res) => {
             } else if (!cliente.telefone || cliente.telefone.length < 10) {
                 console.log('⚠️ Cliente sem telefone válido:', cliente.telefone);
             } else {
-                // Buscar empresa no banco principal
                 const empresa = await new Promise((resolve) => {
                     db.get(
-                        `SELECT id, nome, endereco, telefone_dono, whatsapp_instance FROM empresas WHERE id = ?`,
+                        `SELECT id, nome, endereco, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?`,
                         [empresa_id],
                         (err, row) => {
                             if (err) {
@@ -483,9 +514,10 @@ router.post('/', auth, async (req, res) => {
                         `⏰ Hora: *${hora}*\n` +
                         `💰 Valor: *R$ ${valorFormatado}*\n\n` +
                         `📍 *Endereço:* ${endereco || 'N/A'}\n\n` +
-                        `📞 *Contato:* ${telefoneDono || 'N/A'}\n\n` +
+                        `📞 *Contato:* ${telefoneDono || 'N/A'}\n` +
+                        montarRodapeInstagram(empresa) + `\n\n` +
                         `🔗 *Agende novamente:*\n` +
-                        `https://seeagende.com.br/chatbot.html?empresa=${empresa_id}\n\n` +
+                        `${process.env.BASE_URL || 'https://seeagende.tech'}/chatbot.html?empresa=${empresa_id}\n\n` +
                         `---\n_Mensagem automática do See&Agende_`;
 
                     const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
@@ -531,10 +563,19 @@ router.post('/', auth, async (req, res) => {
 // PUT /api/agendamentos/:id - ATUALIZAR AGENDAMENTO
 // ============================================
 
-router.put('/:id', auth, verificarDono, (req, res) => {
+router.put('/:id', auth, verificarDono, verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const { cliente_id, data, hora, servico_id, servico, valor, profissional_id } = req.body;
     const empresa_id = req.usuario.empresa_id;
+
+    const empresaDb = getEmpresaDb(empresa_id);
+
+    if (!empresaDb) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
 
     const sqlSelect = `
         SELECT a.*, 
@@ -550,7 +591,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
         ORDER BY a.data DESC
     `;
 
-    db.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
+    empresaDb.get(sqlSelect, [id, empresa_id], (err, agendamento) => {
         if (err || !agendamento) {
             return res.status(404).json({
                 success: false,
@@ -565,11 +606,8 @@ router.put('/:id', auth, verificarDono, (req, res) => {
             });
         }
 
-        // 🔥 DONO PODE EDITAR PARA HORÁRIOS PASSADOS - REMOVER VALIDAÇÃO DE DATA PASSADA
-        // O dono pode editar agendamentos para qualquer data/horário
-
         if (cliente_id) {
-            db.get(
+            empresaDb.get(
                 `SELECT id FROM clientes WHERE id = ? AND empresa_id = ?`,
                 [cliente_id, empresa_id],
                 (err, cliente) => {
@@ -632,7 +670,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
             params.push(id);
             params.push(empresa_id);
 
-            db.run(query, params, function (err) {
+            empresaDb.run(query, params, function (err) {
                 if (err) {
                     return res.status(500).json({
                         success: false,
@@ -656,7 +694,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
                     WHERE a.id = ? AND a.empresa_id = ?
                 `;
 
-                db.get(sqlSelect2, [id, empresa_id], (err, agendamentoAtualizado) => {
+                empresaDb.get(sqlSelect2, [id, empresa_id], (err, agendamentoAtualizado) => {
                     if (err) {
                         return res.json({
                             success: true,
@@ -676,16 +714,24 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// PUT /api/agendamentos/:id/concluir - CONCLUIR AGENDAMENTO
+// PUT /api/agendamentos/:id/concluir - CONCLUIR AGENDAMENTO (COM INSTAGRAM)
 // ============================================
 
-router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
+router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, async (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 
-    // Buscar dados do agendamento
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
     const agendamento = await new Promise((resolve) => {
-        db.get(
+        empresaDb.get(
             `SELECT a.*, p.comissao_percent, p.nome as profissional_nome, 
                     c.nome as cliente_nome, c.telefone, 
                     s.nome as servico_nome, s.valor as servico_valor
@@ -713,7 +759,6 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
         });
     }
 
-    // Calcular comissão
     let comissao = 0;
     if (agendamento.profissional_id) {
         const valor = parseFloat(agendamento.valor) || 0;
@@ -721,8 +766,7 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
         comissao = valor * (percentual / 100);
     }
 
-    // Atualizar status
-    db.run(
+    empresaDb.run(
         `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ? AND empresa_id = ?`,
         [comissao, id, empresaId],
         async function (err) {
@@ -733,19 +777,10 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
                 });
             }
 
-            // ============================================
-            // ENVIAR WHATSAPP DE CONCLUSÃO
-            // ============================================
             try {
                 console.log(`📱 Enviando WhatsApp de conclusão para agendamento ${id}...`);
 
-                // Buscar dados do cliente
                 const cliente = await new Promise((resolve) => {
-                    const empresaDb = getEmpresaDb(empresaId);
-                    if (!empresaDb) {
-                        resolve(null);
-                        return;
-                    }
                     empresaDb.get(
                         `SELECT nome, telefone FROM clientes WHERE id = ? AND empresa_id = ?`,
                         [agendamento.cliente_id, empresaId],
@@ -761,10 +796,10 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
                 });
 
                 if (cliente && cliente.telefone && cliente.telefone.length >= 10) {
-                    // Buscar dados da empresa
+                    // 🔥 Empresa no banco central (COM instagram)
                     const empresa = await new Promise((resolve) => {
                         db.get(
-                            `SELECT id, nome, endereco, telefone_dono, whatsapp_instance FROM empresas WHERE id = ?`,
+                            `SELECT id, nome, endereco, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?`,
                             [empresaId],
                             (err, row) => {
                                 if (err) {
@@ -783,6 +818,8 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
 
                         console.log(`📱 Enviando conclusão para: ${numeroFormatado}`);
                         console.log(`📱 Instância: ${empresa.whatsapp_instance}`);
+                        console.log(`📱 Instagram dono: ${empresa.instagram}`);
+                        console.log(`📱 Instagram sistema: ${INSTAGRAM_SISTEMA}`);
 
                         let valorServico = 0;
                         if (agendamento.valor_total && parseFloat(agendamento.valor_total) > 0) {
@@ -807,10 +844,11 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
                             `💰 Valor: *R$ ${valorFormatado}*\n` +
                             `📅 Data: *${formatarDataBr(agendamento.data)}* às *${agendamento.hora}*\n\n` +
                             `📍 *Endereço:* ${endereco || 'N/A'}\n\n` +
-                            `📞 *Contato:* ${telefoneDono || 'N/A'}\n\n` +
+                            `📞 *Contato:* ${telefoneDono || 'N/A'}\n` +
+                            montarRodapeInstagram(empresa) + `\n\n` +
                             `⭐ *Gostou do atendimento?* ⭐\n\n` +
                             `🔗 *Agende seu próximo horário:*\n` +
-                            `https://seeagende.com.br/chatbot.html?empresa=${empresaId}\n\n` +
+                            `${process.env.BASE_URL || 'https://seeagende.tech'}/chatbot.html?empresa=${empresaId}\n\n` +
                             `---\n_Mensagem automática do See&Agende_`;
 
                         const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
@@ -856,7 +894,7 @@ router.put('/:id/concluir', auth, verificarDono, async (req, res) => {
 // PUT /api/agendamentos/:id/confirmar - CONFIRMAR AGENDAMENTO
 // ============================================
 
-router.put('/:id/confirmar', auth, verificarDono, (req, res) => {
+router.put('/:id/confirmar', auth, verificarDono, verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 
@@ -871,7 +909,7 @@ router.put('/:id/confirmar', auth, verificarDono, (req, res) => {
         });
     }
 
-    db.get(
+    empresaDb.get(
         `SELECT id FROM agendamentos WHERE id = ? AND empresa_id = ?`,
         [id, empresaId],
         (err, row) => {
@@ -892,7 +930,7 @@ router.put('/:id/confirmar', auth, verificarDono, (req, res) => {
 
             const sql = `UPDATE agendamentos SET status = 'confirmado' WHERE id = ? AND empresa_id = ?`;
 
-            db.run(sql, [id, empresaId], function (err) {
+            empresaDb.run(sql, [id, empresaId], function (err) {
                 if (err) {
                     console.error("❌ Erro ao confirmar agendamento:", err);
                     return res.status(500).json({
@@ -911,10 +949,10 @@ router.put('/:id/confirmar', auth, verificarDono, (req, res) => {
 });
 
 // ============================================
-// PUT /api/agendamentos/:id/cancelar - CANCELAR AGENDAMENTO
+// PUT /api/agendamentos/:id/cancelar - CANCELAR AGENDAMENTO (COM INSTAGRAM)
 // ============================================
 
-router.put('/:id/cancelar', auth, verificarDono, async (req, res) => {
+router.put('/:id/cancelar', auth, verificarDono, verificarAcessoAgendamentos, async (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
     const { motivo } = req.body;
@@ -928,7 +966,7 @@ router.put('/:id/cancelar', auth, verificarDono, async (req, res) => {
         });
     }
 
-    db.get(
+    empresaDb.get(
         `SELECT a.*, c.nome as cliente_nome, c.telefone, s.nome as servico_nome
          FROM agendamentos a
          LEFT JOIN clientes c ON a.cliente_id = c.id
@@ -947,7 +985,7 @@ router.put('/:id/cancelar', auth, verificarDono, async (req, res) => {
                 return res.json({ success: false, message: 'Agendamentos concluídos não podem ser cancelados' });
             }
 
-            db.run(
+            empresaDb.run(
                 `UPDATE agendamentos SET status = 'cancelado', motivo_cancelamento = ? WHERE id = ? AND empresa_id = ?`,
                 [motivo || 'Cancelado pelo dono', id, empresaId],
                 async function (err) {
@@ -955,15 +993,17 @@ router.put('/:id/cancelar', auth, verificarDono, async (req, res) => {
                         return res.json({ success: false, message: err.message });
                     }
 
-                    // ============================================
-                    // ENVIAR WHATSAPP DE CANCELAMENTO
-                    // ============================================
                     if (agendamento.telefone) {
                         try {
+                            // 🔥 Empresa no banco central (COM instagram)
                             const empresa = await new Promise((resolve) => {
-                                db.get('SELECT id, nome, telefone_dono, whatsapp_instance FROM empresas WHERE id = ?', [empresaId], (err, row) => {
-                                    resolve(row || {});
-                                });
+                                db.get(
+                                    'SELECT id, nome, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?',
+                                    [empresaId],
+                                    (err, row) => {
+                                        resolve(row || {});
+                                    }
+                                );
                             });
 
                             if (empresa && empresa.whatsapp_instance) {
@@ -983,7 +1023,8 @@ router.put('/:id/cancelar', auth, verificarDono, async (req, res) => {
                                     `⏰ Hora: *${agendamento.hora}*\n` +
                                     `⚠️ Motivo: ${motivoCancelamento}\n\n` +
                                     `📞 Entre em contato para remarcar:\n` +
-                                    `${empresa.telefone_dono || 'N/A'}\n\n` +
+                                    `${empresa.telefone_dono || 'N/A'}\n` +
+                                    montarRodapeInstagram(empresa) + `\n\n` +
                                     `---\n_Mensagem automática do See&Agende_`;
 
                                 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
@@ -1026,7 +1067,7 @@ router.put('/:id/cancelar', auth, verificarDono, async (req, res) => {
 // DELETE /api/agendamentos/:id - EXCLUIR AGENDAMENTO
 // ============================================
 
-router.delete('/:id', auth, (req, res) => {
+router.delete('/:id', auth, verificarAcessoAgendamentos, (req, res) => {
     try {
         const { id } = req.params;
         const empresaId = req.usuario.empresa_id;
@@ -1086,7 +1127,7 @@ router.delete('/:id', auth, (req, res) => {
 // PUT /api/agendamentos/:id/extras - ADICIONAR EXTRAS
 // ============================================
 
-router.put('/:id/extras', auth, verificarDono, (req, res) => {
+router.put('/:id/extras', auth, verificarDono, verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const { servicos_extras, valor_extras } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -1184,10 +1225,10 @@ router.get('/periodo', auth, (req, res) => {
 });
 
 // ============================================
-// GET /api/agendamentos/horarios-disponiveis - HORÁRIOS DISPONÍVEIS
+// GET /api/agendamentos/horarios-disponiveis
 // ============================================
 
-router.get('/horarios-disponiveis', auth, (req, res) => {
+router.get('/horarios-disponiveis', auth, async (req, res) => {
     const empresaId = req.usuario.empresa_id;
     const { data, profissional_id } = req.query;
 
@@ -1209,8 +1250,7 @@ router.get('/horarios-disponiveis', auth, (req, res) => {
         });
     }
 
-    // Buscar horários de funcionamento
-    const diaSemana = new Date(data).getDay();
+    const diaSemana = new Date(data + 'T00:00:00').getDay();
 
     empresaDb.get(
         `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`,
@@ -1224,7 +1264,8 @@ router.get('/horarios-disponiveis', auth, (req, res) => {
                 });
             }
 
-            if (!horario || !horario.aberto) {
+            const abertoNum = Number(horario?.aberto);
+            if (!horario || abertoNum !== 1) {
                 return res.json({
                     success: true,
                     data: [],
@@ -1232,7 +1273,6 @@ router.get('/horarios-disponiveis', auth, (req, res) => {
                 });
             }
 
-            // Buscar agendamentos do dia
             let sqlAgendamentos = `
                 SELECT hora, duracao FROM agendamentos 
                 WHERE empresa_id = ? AND data = ? AND status NOT IN ('cancelado')
@@ -1244,7 +1284,7 @@ router.get('/horarios-disponiveis', auth, (req, res) => {
                 params.push(profissional_id);
             }
 
-            empresaDb.all(sqlAgendamentos, params, (err, agendamentos) => {
+            empresaDb.all(sqlAgendamentos, params, async (err, agendamentos) => {
                 if (err) {
                     console.error("❌ Erro ao buscar agendamentos:", err);
                     return res.status(500).json({
@@ -1253,14 +1293,13 @@ router.get('/horarios-disponiveis', auth, (req, res) => {
                     });
                 }
 
-                // Gerar horários disponíveis (30 em 30 minutos)
                 const horaInicio = horario.hora_inicio || '08:00';
                 const horaFim = horario.hora_fim || '18:00';
                 const almocoInicio = horario.almoco_inicio || '12:00';
                 const almocoFim = horario.almoco_fim || '13:00';
                 const intervalo = horario.intervalo_minutos || 30;
 
-                const horariosDisponiveis = [];
+                let horariosDisponiveis = [];
                 const agendados = agendamentos.map(a => a.hora);
 
                 let horaAtual = horaInicio;
@@ -1283,6 +1322,21 @@ router.get('/horarios-disponiveis', auth, (req, res) => {
                     }
                     horaAtual = `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
                 }
+
+                // 🚫 FILTRAR HORÁRIOS BLOQUEADOS
+                const profIdParaChecar = profissional_id ? parseInt(profissional_id) : null;
+
+                if (horariosDisponiveis.length > 0) {
+                    const checks = await Promise.all(
+                        horariosDisponiveis.map(async (h) => {
+                            const r = await estaBloqueado(empresaId, profIdParaChecar, data, h);
+                            return r.bloqueado ? null : h;
+                        })
+                    );
+                    horariosDisponiveis = checks.filter(h => h !== null);
+                }
+
+                console.log(`✅ ${horariosDisponiveis.length} horários disponíveis (pós-bloqueios)`);
 
                 res.json({
                     success: true,
@@ -1351,10 +1405,10 @@ router.get('/profissionais-disponiveis', auth, (req, res) => {
 });
 
 // ============================================
-// PUT /api/agendamentos/:id/pagamento - REGISTRAR PAGAMENTO (COMPLETO)
+// PUT /api/agendamentos/:id/pagamento - REGISTRAR PAGAMENTO (COM INSTAGRAM NO FIADO)
 // ============================================
 
-router.put('/:id/pagamento', auth, (req, res) => {
+router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
     const { forma_pagamento, prazo_dias, data_vencimento, descricao_pagamento } = req.body;
@@ -1371,7 +1425,6 @@ router.put('/:id/pagamento', auth, (req, res) => {
         });
     }
 
-    // 🔥 BUSCAR DADOS DO AGENDAMENTO (COM VALOR E SERVIÇO)
     const sqlCheck = `
         SELECT id, status, cliente_id, servico, valor, valor_total, 
                servicos_extras, valor_extras, data
@@ -1393,13 +1446,9 @@ router.put('/:id/pagamento', auth, (req, res) => {
             return res.status(400).json({ success: false, message: 'Agendamento já foi concluído' });
         }
 
-        // ============================================
-        // 1. CALCULAR VALOR TOTAL
-        // ============================================
         let valorPrincipal = parseFloat(agendamento.valor) || 0;
         let valorExtras = parseFloat(agendamento.valor_extras) || 0;
         
-        // Calcular extras do JSON
         if (agendamento.servicos_extras) {
             try {
                 const extras = typeof agendamento.servicos_extras === 'string' 
@@ -1418,9 +1467,6 @@ router.put('/:id/pagamento', auth, (req, res) => {
         const valorTotal = valorPrincipal + valorExtras;
         console.log(`💰 Valor principal: R$ ${valorPrincipal}, Extras: R$ ${valorExtras}, Total: R$ ${valorTotal}`);
 
-        // ============================================
-        // 2. CALCULAR DATA DE VENCIMENTO (SE FIADO)
-        // ============================================
         let dataVencimentoFinal = data_vencimento || null;
         
         if (forma_pagamento === 'prazo' && prazo_dias && !dataVencimentoFinal) {
@@ -1430,9 +1476,6 @@ router.put('/:id/pagamento', auth, (req, res) => {
             console.log(`📅 Data de vencimento calculada: ${dataVencimentoFinal}`);
         }
 
-        // ============================================
-        // 3. ATUALIZAR AGENDAMENTO
-        // ============================================
         const sqlUpdate = `
             UPDATE agendamentos 
             SET status = 'concluido',
@@ -1462,13 +1505,9 @@ router.put('/:id/pagamento', auth, (req, res) => {
 
             console.log(`✅ Agendamento ${id} concluído com pagamento ${forma_pagamento}`);
 
-            // ============================================
-            // 4. 🔥 INSERIR RECEITA NO FINANCEIRO
-            // ============================================
             const hoje = new Date().toISOString().split('T')[0];
             const descricao = `Agendamento #${id} - ${agendamento.servico || 'Serviço'}`;
 
-            // Verificar se a tabela receitas existe
             empresaDb.get(
                 `SELECT name FROM sqlite_master WHERE type='table' AND name='receitas'`,
                 [],
@@ -1478,7 +1517,6 @@ router.put('/:id/pagamento', auth, (req, res) => {
                     }
 
                     if (!tableExists) {
-                        // Criar tabela receitas se não existir
                         console.log('📝 Criando tabela receitas...');
                         empresaDb.run(
                             `CREATE TABLE IF NOT EXISTS receitas (
@@ -1530,11 +1568,7 @@ router.put('/:id/pagamento', auth, (req, res) => {
                 );
             }
 
-            // ============================================
-            // 5. SE FOR FIADO, ENVIAR MENSAGEM
-            // ============================================
             if (forma_pagamento === 'prazo' && dataVencimentoFinal) {
-                // Buscar dados do cliente
                 empresaDb.get(
                     `SELECT c.nome as cliente_nome, c.telefone
                      FROM clientes c
@@ -1551,10 +1585,9 @@ router.put('/:id/pagamento', auth, (req, res) => {
                             return;
                         }
 
-                        // Buscar dados da empresa no banco PRINCIPAL
                         const { db: mainDb } = require('../config/database');
                         mainDb.get(
-                            `SELECT nome, telefone_dono, whatsapp_instance FROM empresas WHERE id = ?`,
+                            `SELECT nome, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?`,
                             [empresaId],
                             async (err, empresa) => {
                                 if (err) {
@@ -1572,21 +1605,6 @@ router.put('/:id/pagamento', auth, (req, res) => {
                                     const diffDays = parseInt(prazo_dias) || 0;
                                     const dataServico = agendamento.data || new Date().toISOString().split('T')[0];
 
-                                    function formatarDataBr(dataStr) {
-                                        if (!dataStr) return '-';
-                                        try {
-                                            if (typeof dataStr === 'string' && dataStr.includes('-')) {
-                                                const partes = dataStr.split('-');
-                                                if (partes.length === 3) {
-                                                    return partes[2] + '/' + partes[1] + '/' + partes[0];
-                                                }
-                                            }
-                                            return dataStr;
-                                        } catch {
-                                            return dataStr;
-                                        }
-                                    }
-
                                     let mensagem = `📝 *Pagamento a Prazo (Fiado)*\n\n`;
                                     mensagem += `Olá *${cliente.cliente_nome || 'Cliente'}*!\n\n`;
                                     mensagem += `Seu agendamento na *${empresa.nome || 'See&Agende'}* foi registrado como *FIADO*.\n\n`;
@@ -1597,7 +1615,8 @@ router.put('/:id/pagamento', auth, (req, res) => {
                                     mensagem += `📅 Vencimento: *${formatarDataBr(dataVencimentoFinal)}*\n`;
                                     mensagem += `⏳ Prazo: *${diffDays} dias*\n\n`;
                                     mensagem += `💡 *Lembre-se de pagar até a data de vencimento!*\n\n`;
-                                    mensagem += `📞 *Contato:* ${empresa.telefone_dono || 'N/A'}\n\n`;
+                                    mensagem += `📞 *Contato:* ${empresa.telefone_dono || 'N/A'}\n`;
+                                    mensagem += montarRodapeInstagram(empresa) + `\n\n`;
                                     mensagem += `---\n_Mensagem automática do See&Agende_`;
 
                                     const telefoneLimpo = cliente.telefone.replace(/\D/g, '');
@@ -1632,9 +1651,6 @@ router.put('/:id/pagamento', auth, (req, res) => {
                 );
             }
 
-            // ============================================
-            // 6. RESPOSTA
-            // ============================================
             res.json({
                 success: true,
                 message: forma_pagamento === 'prazo' 
@@ -1655,22 +1671,28 @@ router.put('/:id/pagamento', auth, (req, res) => {
 // POST /api/agendamentos/:id/enviar-cobranca - ENVIAR COBRANÇA MANUAL
 // ============================================
 
-router.post('/:id/enviar-cobranca', auth, verificarDono, async (req, res) => {
+router.post('/:id/enviar-cobranca', auth, verificarDono, verificarAcessoAgendamentos, async (req, res) => {
     try {
         const { id } = req.params;
         const empresaId = req.usuario.empresa_id;
 
         console.log(`📤 Enviando cobrança manual para agendamento ${id}`);
 
-        // Buscar dados do agendamento
+        const empresaDb = getEmpresaDb(empresaId);
+
+        if (!empresaDb) {
+            return res.status(500).json({
+                success: false,
+                message: 'Erro ao conectar ao banco da empresa'
+            });
+        }
+
         const agendamento = await new Promise((resolve, reject) => {
-            db.get(
-                `SELECT a.*, c.nome as cliente_nome, c.telefone, 
-                        e.nome as empresa_nome, e.telefone_dono, e.whatsapp_instance,
+            empresaDb.get(
+                `SELECT a.*, c.nome as cliente_nome, c.telefone,
                         s.nome as servico_nome
                  FROM agendamentos a
                  LEFT JOIN clientes c ON a.cliente_id = c.id
-                 LEFT JOIN empresas e ON a.empresa_id = e.id
                  LEFT JOIN servicos s ON a.servico_id = s.id
                  WHERE a.id = ? AND a.empresa_id = ?`,
                 [id, empresaId],
@@ -1688,6 +1710,28 @@ router.post('/:id/enviar-cobranca', auth, verificarDono, async (req, res) => {
             });
         }
 
+        const empresa = await new Promise((resolve) => {
+            db.get(
+                `SELECT id, nome, telefone_dono, whatsapp_instance FROM empresas WHERE id = ?`,
+                [empresaId],
+                (err, row) => {
+                    if (err) {
+                        console.error('❌ Erro ao buscar empresa:', err);
+                        resolve(null);
+                    } else {
+                        resolve(row);
+                    }
+                }
+            );
+        });
+
+        if (!empresa) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
         if (agendamento.forma_pagamento !== 'prazo') {
             return res.status(400).json({
                 success: false,
@@ -1702,14 +1746,13 @@ router.post('/:id/enviar-cobranca', auth, verificarDono, async (req, res) => {
             });
         }
 
-        if (!agendamento.whatsapp_instance) {
+        if (!empresa.whatsapp_instance) {
             return res.status(400).json({
                 success: false,
                 message: 'Empresa não tem WhatsApp configurado'
             });
         }
 
-        // Calcular dias em atraso
         const dataVencimento = new Date(agendamento.data_vencimento);
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -1718,32 +1761,28 @@ router.post('/:id/enviar-cobranca', auth, verificarDono, async (req, res) => {
         const diffTime = hoje - dataVencimento;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-        // Importar função de envio
         const { enviarMensagemCobranca, gerarMensagemCobrança } = require('../jobs/lembretes-pagamento');
 
-        // Gerar mensagem
         const mensagem = gerarMensagemCobrança({
             cliente_nome: agendamento.cliente_nome,
             servico_nome: agendamento.servico_nome || agendamento.servico || 'Serviço',
             valor: agendamento.valor_total || agendamento.valor || 0,
             data_servico: agendamento.data,
             data_vencimento: agendamento.data_vencimento,
-            empresa_nome: agendamento.empresa_nome,
-            telefone_dono: agendamento.telefone_dono,
+            empresa_nome: empresa.nome,
+            telefone_dono: empresa.telefone_dono,
             dias_atraso: diffDays > 0 ? diffDays : 0,
             empresa_id: agendamento.empresa_id
         });
 
-        // Enviar mensagem
         const resultado = await enviarMensagemCobranca(
-            agendamento.whatsapp_instance,
+            empresa.whatsapp_instance,
             agendamento.telefone,
             mensagem
         );
 
         if (resultado.success) {
-            // Marcar como enviado
-            db.run(
+            empresaDb.run(
                 `UPDATE agendamentos 
                  SET lembrete_cobranca_enviado = 1,
                      lembrete_cobranca_enviado_em = CURRENT_TIMESTAMP,

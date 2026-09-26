@@ -5,17 +5,17 @@
 
 const express = require('express');
 const router = express.Router();
-const { db } = require('../config/database');
+const { db, getEmpresaDb } = require('../config/database');  // ✅ CORRIGIDO: getEmpresaDb no topo
 const fs = require('fs');
 const path = require('path');
+const { estaBloqueado, datasBloqueadasMes } = require('../utils/helpers');
 
 // ============================================
-// 📊 REGISTRAR EVENTO NO ADS (CORRIGIDO)
+// 📊 REGISTRAR EVENTO NO ADS
 // ============================================
 function registrarEventoAds(empresaId, tipo, campanha, origem, clienteId = null, agendamentoId = null, valor = 0, custo = 0) {
     const db = require('../config/database').db;
     
-    // 🔥 VALIDAR EMPRESA_ID
     if (!empresaId || empresaId === 'null' || empresaId === 'undefined') {
         console.warn('⚠️ empresa_id inválido (null/undefined), pulando registro');
         return;
@@ -27,19 +27,16 @@ function registrarEventoAds(empresaId, tipo, campanha, origem, clienteId = null,
         return;
     }
     
-    // Tipos válidos
     const tiposValidos = ['visualizacao', 'clique', 'conversao', 'lead'];
     if (!tiposValidos.includes(tipo)) {
         console.warn(`⚠️ Tipo inválido para ADS: ${tipo}`);
         return;
     }
     
-    // Origens válidas
     const origensValidas = ['chatbot', 'whatsapp', 'facebook', 'instagram', 'google', 'organico', 'link_direto', 'chatbot_anuncio'];
     const origemFinal = origensValidas.includes(origem) ? origem : 'chatbot';
     const campanhaFinal = campanha || 'chatbot_acesso';
     
-    // 🔥 VERIFICAR SE A TABELA EXISTE
     db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='ads_stats'", (err, tableExists) => {
         if (err || !tableExists) {
             console.warn('⚠️ Tabela ads_stats não existe, pulando registro');
@@ -74,6 +71,7 @@ function registrarEventoAds(empresaId, tipo, campanha, origem, clienteId = null,
         });
     });
 }
+
 // ============================================
 // CONFIGURAÇÕES
 // ============================================
@@ -83,7 +81,6 @@ console.log(`[CHATBOT] 🌐 BASE_URL: ${BASE_URL}`);
 // ============================================
 // FUNÇÕES AUXILIARES
 // ============================================
-
 function horaParaMinutos(hora) {
     if (!hora) return 0;
     const partes = hora.split(':');
@@ -166,7 +163,6 @@ router.get('/empresa/:id', (req, res) => {
 
     console.log(`🔍 Buscando dados da empresa ${id}`);
 
-    // 🔥 REGISTRAR ACESSO (visualizacao)
     const origem = req.query.utm_source || req.query.origem || 'chatbot';
     const campanha = req.query.utm_campaign || req.query.campanha || 'chatbot_acesso';
     registrarEventoAds(id, 'visualizacao', campanha, origem);
@@ -242,11 +238,9 @@ router.get('/servicos/:empresaId', (req, res) => {
 
     console.log(`🔍 Buscando serviços para empresa ${empresaId}`);
 
-    // 🔥 REGISTRAR LEAD (interesse em serviços)
     const origem = req.query.origem || 'chatbot';
     registrarEventoAds(empresaId, 'lead', 'chatbot_servicos', origem);
 
-    const { getEmpresaDb } = require('../config/database');
     const empresaDb = getEmpresaDb(empresaId);
 
     if (!empresaDb) {
@@ -279,11 +273,9 @@ router.get('/profissionais/:empresaId', (req, res) => {
 
     console.log(`🔍 Buscando profissionais para empresa ${empresaId}`);
 
-    // 🔥 REGISTRAR LEAD (interesse em profissionais)
     const origem = req.query.origem || 'chatbot';
     registrarEventoAds(empresaId, 'lead', 'chatbot_profissionais', origem);
 
-    const { getEmpresaDb } = require('../config/database');
     const empresaDb = getEmpresaDb(empresaId);
 
     if (!empresaDb) {
@@ -398,7 +390,6 @@ router.post('/cliente/criar', (req, res) => {
                 return res.json({ success: false, message: err.message });
             }
             if (existente) {
-                // 🔥 REGISTRAR LEAD (cliente existente)
                 registrarEventoAds(empresaId, 'lead', 'chatbot_cliente_existente', 'chatbot', existente.id);
                 return res.json({ success: true, clienteId: existente.id });
             }
@@ -410,7 +401,6 @@ router.post('/cliente/criar', (req, res) => {
                     if (err) {
                         return res.json({ success: false, message: err.message });
                     }
-                    // 🔥 REGISTRAR LEAD (novo cliente)
                     registrarEventoAds(empresaId, 'lead', 'chatbot_novo_cliente', 'chatbot', this.lastID);
                     res.json({ success: true, clienteId: this.lastID });
                 }
@@ -422,13 +412,13 @@ router.post('/cliente/criar', (req, res) => {
 // ============================================
 // 7. POST /api/chatbot/datas-disponiveis-mes
 // ============================================
-router.post('/datas-disponiveis-mes', (req, res) => {
-    const { empresaId, mes, ano } = req.body;
+router.post('/datas-disponiveis-mes', async (req, res) => {
+    const { empresaId, mes, ano, profissionalId } = req.body;
 
     const mesSolicitado = parseInt(mes) || new Date().getMonth() + 1;
     const anoSolicitado = parseInt(ano) || new Date().getFullYear();
 
-    console.log(`📅 Buscando datas para ${mesSolicitado}/${anoSolicitado}`);
+    console.log(`📅 Buscando datas para ${mesSolicitado}/${anoSolicitado} - Profissional: ${profissionalId || 'todos'}`);
 
     db.all(
         `SELECT data, hora 
@@ -459,7 +449,7 @@ router.post('/datas-disponiveis-mes', (req, res) => {
                  FROM horarios_funcionamento 
                  WHERE empresa_id = ? AND aberto = 1`,
                 [empresaId],
-                (err, horarios) => {
+                async (err, horarios) => {
                     if (err) {
                         console.error('❌ Erro:', err.message);
                         return res.json({ success: false, message: err.message });
@@ -475,6 +465,28 @@ router.post('/datas-disponiveis-mes', (req, res) => {
                     const diasNoMes = new Date(anoSolicitado, mesSolicitado, 0).getDate();
                     const datasDisponiveis = [];
 
+                    const profIdParaChecar = profissionalId
+                        && profissionalId !== 'null'
+                        && profissionalId !== 'undefined'
+                        && !String(profissionalId).includes('dono')
+                        ? parseInt(profissionalId)
+                        : null;
+
+                    let datasBloqueadas = [];
+                    try {
+                        datasBloqueadas = await datasBloqueadasMes(
+                            empresaId,
+                            profIdParaChecar,
+                            anoSolicitado,
+                            mesSolicitado
+                        );
+                    } catch (e) {
+                        console.error('⚠️ Erro ao buscar datas bloqueadas:', e.message);
+                    }
+
+                    const setBloqueadas = new Set(datasBloqueadas);
+                    console.log(`🚫 ${datasBloqueadas.length} datas bloqueadas no mês`);
+
                     for (let dia = 1; dia <= diasNoMes; dia++) {
                         const dataAtual = new Date(anoSolicitado, mesSolicitado - 1, dia);
                         const diaSemana = dataAtual.getDay();
@@ -482,6 +494,11 @@ router.post('/datas-disponiveis-mes', (req, res) => {
 
                         if (dataAtual < hoje) continue;
                         if (!horariosMap[diaSemana]) continue;
+
+                        if (setBloqueadas.has(dataStr)) {
+                            console.log(`🚫 Data ${dataStr} bloqueada, pulando`);
+                            continue;
+                        }
 
                         const hDia = horariosMap[diaSemana];
                         const ocupados = horariosPorDia[dataStr] || [];
@@ -502,9 +519,11 @@ router.post('/datas-disponiveis-mes', (req, res) => {
                     if (datasDisponiveis.length === 0) {
                         console.log('⚠️ Nenhuma data disponível, usando fallback');
                         const datasFallback = gerarDatasFallback(anoSolicitado, mesSolicitado);
+                        const fallbackFiltrado = datasFallback.filter(d => !setBloqueadas.has(d));
+
                         return res.json({
                             success: true,
-                            diasDisponiveis: datasFallback,
+                            diasDisponiveis: fallbackFiltrado,
                             mes: mesSolicitado,
                             ano: anoSolicitado,
                             fallback: true
@@ -527,12 +546,11 @@ router.post('/datas-disponiveis-mes', (req, res) => {
 // ============================================
 // 8. POST /api/chatbot/horarios-disponiveis
 // ============================================
-router.post('/horarios-disponiveis', (req, res) => {
+router.post('/horarios-disponiveis', async (req, res) => {
     const { empresaId, profissionalId, data } = req.body;
 
     console.log(`🔍 Buscando horários para ${data} - Empresa ${empresaId} - Profissional: ${profissionalId || 'todos'}`);
 
-    const { getEmpresaDb } = require('../config/database');
     const empresaDb = getEmpresaDb(empresaId);
 
     if (!empresaDb) {
@@ -540,9 +558,6 @@ router.post('/horarios-disponiveis', (req, res) => {
         return res.json({ success: false, message: 'Banco da empresa não encontrado' });
     }
 
-    // ============================================
-    // 1. BUSCAR AGENDAMENTOS (FILTRANDO POR PROFISSIONAL)
-    // ============================================
     let sqlAgendamentos = `
         SELECT a.hora, s.duracao
         FROM agendamentos a
@@ -596,7 +611,7 @@ router.post('/horarios-disponiveis', (req, res) => {
              FROM horarios_funcionamento 
              WHERE dia_semana = ? AND aberto = 1`,
             [diaSemana],
-            (err, horario) => {
+            async (err, horario) => {
                 if (err) {
                     console.error('❌ Erro ao buscar horário:', err.message);
                     return res.json({ success: false, message: err.message });
@@ -657,7 +672,28 @@ router.post('/horarios-disponiveis', (req, res) => {
                     console.log(`🕐 ${disponiveis.length} horários disponíveis para hoje`);
                 }
 
-                console.log(`✅ ${disponiveis.length} horários disponíveis FINAL:`, disponiveis);
+                const profIdParaChecar = profissionalId
+                    && profissionalId !== 'null'
+                    && profissionalId !== 'undefined'
+                    && !String(profissionalId).includes('dono')
+                    ? parseInt(profissionalId)
+                    : null;
+
+                if (disponiveis.length > 0) {
+                    try {
+                        const checks = await Promise.all(
+                            disponiveis.map(async (h) => {
+                                const r = await estaBloqueado(empresaId, profIdParaChecar, data, h);
+                                return r.bloqueado ? null : h;
+                            })
+                        );
+                        disponiveis = checks.filter(h => h !== null);
+                    } catch (e) {
+                        console.error('⚠️ Erro ao checar bloqueios:', e.message);
+                    }
+                }
+
+                console.log(`✅ ${disponiveis.length} horários disponíveis FINAL (pós-bloqueios):`, disponiveis);
                 res.json({ success: true, horarios: disponiveis });
             }
         );
@@ -694,7 +730,6 @@ router.post('/agendar', async (req, res) => {
             });
         }
 
-        const { getEmpresaDb } = require('../config/database');
         const empresaDb = getEmpresaDb(empresaId);
 
         if (!empresaDb) {
@@ -705,7 +740,6 @@ router.post('/agendar', async (req, res) => {
             });
         }
 
-        // Buscar cliente
         const cliente = await new Promise((resolve, reject) => {
             empresaDb.get(
                 'SELECT id, nome, telefone FROM clientes WHERE id = ?',
@@ -727,7 +761,6 @@ router.post('/agendar', async (req, res) => {
 
         console.log(`👤 Cliente: ${cliente.nome} (${cliente.telefone})`);
 
-        // Buscar serviço
         const servico = await new Promise((resolve, reject) => {
             empresaDb.get(
                 'SELECT id, nome, valor, duracao FROM servicos WHERE id = ?',
@@ -745,7 +778,6 @@ router.post('/agendar', async (req, res) => {
 
         console.log(`✂️ Serviço: ${nomeFinal} - R$ ${valorFinal}`);
 
-        // Buscar profissional
         let profissionalNome = 'Não atribuído';
         let profissionalIdFinal = null;
         
@@ -769,7 +801,6 @@ router.post('/agendar', async (req, res) => {
             console.log('👨‍💼 Nenhum profissional selecionado');
         }
 
-        // Verificar conflito
         const conflito = await new Promise((resolve, reject) => {
             empresaDb.get(
                 `SELECT id FROM agendamentos 
@@ -793,7 +824,6 @@ router.post('/agendar', async (req, res) => {
             });
         }
 
-        // Salvar agendamento
         console.log('📝 Inserindo agendamento...');
 
         const result = await new Promise((resolve, reject) => {
@@ -827,7 +857,6 @@ router.post('/agendar', async (req, res) => {
 
         console.log(`✅ AGENDAMENTO CRIADO! ID: ${result.id}`);
 
-        // 🔥 REGISTRAR CONVERSÃO NO ADS
         const origemFinal = origem || 'chatbot';
         const campanhaFinal = campanha || 'chatbot_agendamento';
         
@@ -842,7 +871,6 @@ router.post('/agendar', async (req, res) => {
             0
         );
 
-        // Buscar empresa
         const empresa = await new Promise((resolve, reject) => {
             db.get(
                 'SELECT nome, telefone_dono FROM empresas WHERE id = ?',
@@ -854,9 +882,6 @@ router.post('/agendar', async (req, res) => {
             );
         });
 
-        // ============================================
-        // ENVIAR WHATSAPP
-        // ============================================
         if (cliente.telefone) {
             try {
                 console.log(`📱 Enviando WhatsApp para ${cliente.telefone}...`);
@@ -896,7 +921,6 @@ router.post('/agendar', async (req, res) => {
             console.warn('⚠️ Cliente sem telefone, WhatsApp não enviado');
         }
 
-        // Resposta
         res.json({
             success: true,
             message: 'Agendamento confirmado!',
@@ -970,7 +994,6 @@ router.get('/:slug', (req, res) => {
     console.log(`🔍 Buscando empresa pelo slug: ${slug}`);
     
     if (!isNaN(slug)) {
-        // 🔥 Registrar acesso via link personalizado
         registrarEventoAds(slug, 'visualizacao', 'chatbot_link_personalizado', 'link_direto');
         return res.redirect(`/chatbot.html?empresa=${slug}`);
     }
@@ -1051,7 +1074,6 @@ router.get('/:slug', (req, res) => {
         if (matchesFiltrados.length > 0) {
             const melhor = matchesFiltrados[0];
             console.log(`✅ Empresa encontrada: ${melhor.nome} -> ID ${melhor.id}`);
-            // 🔥 Registrar acesso via link personalizado
             registrarEventoAds(melhor.id, 'visualizacao', 'chatbot_slug', 'link_direto');
             return res.redirect(`/chatbot.html?empresa=${melhor.id}`);
         }
@@ -1079,6 +1101,7 @@ router.get('/:slug', (req, res) => {
     console.log(`❌ Empresa não encontrada para o slug: ${slug}`);
     res.redirect(`/chatbot.html?empresa=1`);
 });
+
 // POST /api/chatbot/registrar-anuncio
 router.post('/registrar-anuncio', (req, res) => {
     const { empresa_id, campanha, origem, tipo, cliente_id, valor, custo } = req.body;
@@ -1086,7 +1109,6 @@ router.post('/registrar-anuncio', (req, res) => {
     console.log('📢 [BACKEND] Registro de anúncio recebido:');
     console.log('📦 Dados:', JSON.stringify(req.body, null, 2));
 
-    // 🔥 VALIDAÇÃO FORTE
     const empresaIdInt = parseInt(empresa_id);
     if (!empresa_id || isNaN(empresaIdInt) || empresaIdInt <= 0) {
         console.error('❌ [BACKEND] empresa_id INVÁLIDO:', empresa_id);
@@ -1096,7 +1118,6 @@ router.post('/registrar-anuncio', (req, res) => {
         });
     }
 
-    // 🔥 VERIFICAR SE A EMPRESA EXISTE
     db.get('SELECT id, nome FROM empresas WHERE id = ?', [empresaIdInt], (err, empresa) => {
         if (err) {
             console.error('❌ [BACKEND] Erro ao verificar empresa:', err);
@@ -1110,7 +1131,6 @@ router.post('/registrar-anuncio', (req, res) => {
 
         console.log(`✅ [BACKEND] Empresa encontrada: ${empresa.nome} (ID: ${empresaIdInt})`);
 
-        // 🔥 VERIFICAR SE A TABELA ADS_STATS EXISTE
         db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='ads_stats'", (err, tableExists) => {
             if (err || !tableExists) {
                 console.error('❌ [BACKEND] Tabela ads_stats não existe!');
@@ -1151,4 +1171,140 @@ router.post('/registrar-anuncio', (req, res) => {
         });
     });
 });
+
+// ============================================
+// 🧠 HISTÓRICO DO CLIENTE — MEMÓRIA DO CHATBOT
+// ============================================
+router.get('/cliente/:clienteId/historico', (req, res) => {
+    const { clienteId } = req.params;
+    const { empresaId } = req.query;
+
+    if (!clienteId || !empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'clienteId e empresaId são obrigatórios'
+        });
+    }
+
+    try {
+        const empresaDb = getEmpresaDb(parseInt(empresaId));
+
+        if (!empresaDb) {
+            return res.status(404).json({
+                success: false,
+                message: 'Empresa não encontrada'
+            });
+        }
+
+        const sql = `
+            SELECT 
+                a.id,
+                a.data,
+                a.hora,
+                a.servico,
+                a.servico_id,
+                a.profissional_id,
+                a.valor,
+                a.status,
+                p.nome AS profissional_nome
+            FROM agendamentos a
+            LEFT JOIN profissionais p ON p.id = a.profissional_id
+            WHERE a.cliente_id = ?
+              AND a.status IN ('concluido', 'confirmado', 'concluído')
+              AND a.data IS NOT NULL
+            ORDER BY a.data DESC, a.hora DESC
+            LIMIT 5
+        `;
+
+        empresaDb.all(sql, [clienteId], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro SQL histórico:', err);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Erro ao buscar histórico'
+                });
+            }
+
+            const historico = rows || [];
+
+            if (historico.length === 0) {
+                return res.json({
+                    success: true,
+                    total: 0,
+                    historico: [],
+                    sugestoes: null
+                });
+            }
+
+            const contServicos = {};
+            const contProfissionais = {};
+            const contDiaSemana = {};
+            const contHora = {};
+
+            historico.forEach(h => {
+                if (h.servico) {
+                    contServicos[h.servico] = (contServicos[h.servico] || 0) + 1;
+                }
+                if (h.profissional_nome) {
+                    contProfissionais[h.profissional_nome] =
+                        (contProfissionais[h.profissional_nome] || 0) + 1;
+                }
+                if (h.data) {
+                    const [ano, mes, dia] = h.data.split('-').map(Number);
+                    const d = new Date(ano, mes - 1, dia);
+                    const diaSemana = d.getDay();
+                    contDiaSemana[diaSemana] = (contDiaSemana[diaSemana] || 0) + 1;
+                }
+                if (h.hora) {
+                    contHora[h.hora] = (contHora[h.hora] || 0) + 1;
+                }
+            });
+
+            const topServico = Object.entries(contServicos).sort((a, b) => b[1] - a[1])[0];
+            const topProfissional = Object.entries(contProfissionais).sort((a, b) => b[1] - a[1])[0];
+            const topDiaSemana = Object.entries(contDiaSemana).sort((a, b) => b[1] - a[1])[0];
+            const topHora = Object.entries(contHora).sort((a, b) => b[1] - a[1])[0];
+
+            const ultimo = historico[0];
+
+            const sugestoes = {
+                ultimoAtendimento: {
+                    data: ultimo.data,
+                    hora: ultimo.hora,
+                    servico: ultimo.servico,
+                    servico_id: ultimo.servico_id,
+                    profissional: ultimo.profissional_nome,
+                    profissional_id: ultimo.profissional_id,
+                    valor: ultimo.valor
+                },
+                servicoFavorito: topServico
+                    ? { nome: topServico[0], vezes: topServico[1] }
+                    : null,
+                profissionalFavorito: topProfissional
+                    ? { nome: topProfissional[0], vezes: topProfissional[1] }
+                    : null,
+                diaSemanaFavorito: topDiaSemana
+                    ? { dia: parseInt(topDiaSemana[0]), vezes: topDiaSemana[1] }
+                    : null,
+                horaFavorita: topHora
+                    ? { hora: topHora[0], vezes: topHora[1] }
+                    : null
+            };
+
+            res.json({
+                success: true,
+                total: historico.length,
+                historico,
+                sugestoes
+            });
+        });
+    } catch (error) {
+        console.error('❌ Erro geral no histórico:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erro interno do servidor'
+        });
+    }
+});
+
 module.exports = router;

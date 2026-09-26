@@ -111,7 +111,7 @@ async function carregarListaAgendamentosProfComFiltro() {
     const statusFilter = document.getElementById("filtroStatusProf")?.value;
 
     try {
-        const res = await fetch("/api/profissional/agendamentos", {
+        const res = await fetch("/api/profissionais/profissional/agendamentos", {
             headers: { "Authorization": "Bearer " + token }
         });
         const result = await res.json();
@@ -374,7 +374,7 @@ async function concluirAgendamentoProfissional(id) {
     const token = localStorage.getItem("token");
 
     try {
-        const res = await fetch(`/api/profissional/agendamentos/${id}/concluir`, {
+        const res = await fetch(`/api/profissionais/profissional/agendamentos/${id}/concluir`, {
             method: "PUT",
             headers: { "Authorization": "Bearer " + token }
         });

@@ -34,6 +34,249 @@ function coalesceSum(field) {
 }
 
 // ============================================
+// 🚫 BLOQUEIOS DE AGENDA
+// ============================================
+
+// --------------------------------------------
+// GET /api/horarios/bloqueios
+// Lista bloqueios. Query params opcionais:
+//   ?profissional_id=X  (filtra por profissional, inclui globais)
+//   ?de=YYYY-MM-DD&ate=YYYY-MM-DD  (filtra por período)
+// --------------------------------------------
+router.get('/bloqueios', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({ success: false, message: 'Banco da empresa não encontrado' });
+    }
+
+    const { profissional_id, de, ate } = req.query;
+
+    let sql = `
+        SELECT b.*, p.nome AS profissional_nome
+        FROM bloqueios_agenda b
+        LEFT JOIN profissionais p ON p.id = b.profissional_id
+        WHERE b.empresa_id = ? AND b.ativo = 1
+    `;
+    const params = [empresaId];
+
+    if (profissional_id) {
+        sql += ` AND (b.profissional_id = ? OR b.profissional_id IS NULL)`;
+        params.push(parseInt(profissional_id));
+    }
+
+    if (de) {
+        sql += ` AND (b.data_fim IS NULL OR b.data_fim >= ?)`;
+        params.push(de);
+    }
+
+    if (ate) {
+        sql += ` AND b.data_inicio <= ?`;
+        params.push(ate);
+    }
+
+    sql += ` ORDER BY b.data_inicio ASC, b.created_at DESC`;
+
+    empresaDb.all(sql, params, (err, rows) => {
+        if (err) {
+            console.error('❌ Erro ao listar bloqueios:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        const bloqueios = (rows || []).map(b => ({
+            ...b,
+            dia_inteiro: b.dia_inteiro === 1 || b.dia_inteiro === true,
+            datas_especificas: (() => {
+                try { return JSON.parse(b.datas_especificas || '[]'); }
+                catch { return []; }
+            })()
+        }));
+
+        res.json({ success: true, data: bloqueios });
+    });
+});
+
+// --------------------------------------------
+// POST /api/horarios/bloqueios
+// Cria um novo bloqueio
+// --------------------------------------------
+router.post('/bloqueios', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const usuarioId = req.usuario.id;
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({ success: false, message: 'Banco da empresa não encontrado' });
+    }
+
+    const {
+        tipo = 'periodo',
+        data_inicio,
+        data_fim,
+        datas_especificas = [],
+        dia_inteiro = true,
+        hora_inicio,
+        hora_fim,
+        profissional_id = null,
+        motivo = ''
+    } = req.body;
+
+    // Validações
+    if (tipo === 'periodo' && !data_inicio) {
+        return res.status(400).json({ success: false, message: 'Informe data início' });
+    }
+    if (tipo === 'periodo' && !data_fim) {
+        return res.status(400).json({ success: false, message: 'Informe data fim do período' });
+    }
+    if (tipo === 'periodo' && data_fim < data_inicio) {
+        return res.status(400).json({ success: false, message: 'Data fim não pode ser antes da data início' });
+    }
+    if (tipo === 'datas' && (!datas_especificas || datas_especificas.length === 0)) {
+        return res.status(400).json({ success: false, message: 'Adicione pelo menos uma data' });
+    }
+    if (!dia_inteiro && (!hora_inicio || !hora_fim)) {
+        return res.status(400).json({ success: false, message: 'Informe horário início e fim' });
+    }
+    if (!dia_inteiro && hora_fim <= hora_inicio) {
+        return res.status(400).json({ success: false, message: 'Hora fim deve ser após a hora início' });
+    }
+
+    const dataInicioFinal = tipo === 'periodo'
+        ? data_inicio
+        : (datas_especificas[0] || data_inicio);
+
+    const sql = `
+        INSERT INTO bloqueios_agenda 
+        (empresa_id, profissional_id, tipo, data_inicio, data_fim, datas_especificas,
+         dia_inteiro, hora_inicio, hora_fim, motivo, criado_por)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const params = [
+        empresaId,
+        profissional_id || null,
+        tipo,
+        dataInicioFinal,
+        tipo === 'periodo' ? data_fim : null,
+        JSON.stringify(datas_especificas || []),
+        dia_inteiro ? 1 : 0,
+        dia_inteiro ? null : hora_inicio,
+        dia_inteiro ? null : hora_fim,
+        motivo || '',
+        usuarioId
+    ];
+
+    empresaDb.run(sql, params, function (err) {
+        if (err) {
+            console.error('❌ Erro ao criar bloqueio:', err);
+            return res.status(500).json({ success: false, message: err.message });
+        }
+
+        res.json({
+            success: true,
+            message: 'Bloqueio criado com sucesso!',
+            id: this.lastID
+        });
+    });
+});
+
+// --------------------------------------------
+// PUT /api/horarios/bloqueios/:id
+// Edita um bloqueio existente
+// --------------------------------------------
+router.put('/bloqueios/:id', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const bloqueioId = parseInt(req.params.id);
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({ success: false, message: 'Banco da empresa não encontrado' });
+    }
+
+    empresaDb.get(
+        'SELECT id FROM bloqueios_agenda WHERE id = ? AND empresa_id = ?',
+        [bloqueioId, empresaId],
+        (err, row) => {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            if (!row) return res.status(404).json({ success: false, message: 'Bloqueio não encontrado' });
+
+            const {
+                tipo, data_inicio, data_fim, datas_especificas,
+                dia_inteiro, hora_inicio, hora_fim,
+                profissional_id, motivo
+            } = req.body;
+
+            const updates = [];
+            const params = [];
+
+            if (tipo !== undefined) { updates.push('tipo = ?'); params.push(tipo); }
+            if (data_inicio !== undefined) { updates.push('data_inicio = ?'); params.push(data_inicio); }
+            if (data_fim !== undefined) { updates.push('data_fim = ?'); params.push(data_fim); }
+            if (datas_especificas !== undefined) {
+                updates.push('datas_especificas = ?');
+                params.push(JSON.stringify(datas_especificas));
+            }
+            if (dia_inteiro !== undefined) {
+                updates.push('dia_inteiro = ?');
+                params.push(dia_inteiro ? 1 : 0);
+            }
+            if (hora_inicio !== undefined) { updates.push('hora_inicio = ?'); params.push(hora_inicio); }
+            if (hora_fim !== undefined) { updates.push('hora_fim = ?'); params.push(hora_fim); }
+            if (profissional_id !== undefined) {
+                updates.push('profissional_id = ?');
+                params.push(profissional_id || null);
+            }
+            if (motivo !== undefined) { updates.push('motivo = ?'); params.push(motivo); }
+
+            if (updates.length === 0) {
+                return res.status(400).json({ success: false, message: 'Nada para atualizar' });
+            }
+
+            params.push(bloqueioId, empresaId);
+            const sql = `UPDATE bloqueios_agenda SET ${updates.join(', ')} WHERE id = ? AND empresa_id = ?`;
+
+            empresaDb.run(sql, params, function (err) {
+                if (err) {
+                    console.error('❌ Erro ao atualizar bloqueio:', err);
+                    return res.status(500).json({ success: false, message: err.message });
+                }
+                res.json({ success: true, message: 'Bloqueio atualizado!' });
+            });
+        }
+    );
+});
+
+// --------------------------------------------
+// DELETE /api/horarios/bloqueios/:id
+// Remove um bloqueio
+// --------------------------------------------
+router.delete('/bloqueios/:id', auth, verificarDono, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const bloqueioId = parseInt(req.params.id);
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({ success: false, message: 'Banco da empresa não encontrado' });
+    }
+
+    empresaDb.run(
+        'DELETE FROM bloqueios_agenda WHERE id = ? AND empresa_id = ?',
+        [bloqueioId, empresaId],
+        function (err) {
+            if (err) {
+                console.error('❌ Erro ao excluir bloqueio:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+            if (this.changes === 0) {
+                return res.status(404).json({ success: false, message: 'Bloqueio não encontrado' });
+            }
+            res.json({ success: true, message: 'Bloqueio removido!' });
+        }
+    );
+});
+
+// ============================================
 // GET /api/horarios
 // ============================================
 
@@ -154,7 +397,6 @@ router.put('/:dia', auth, verificarDono, (req, res) => {
                 params.push(parseInt(intervalo_minutos));
             }
 
-            // Se não veio nada, retorna erro
             if (updates.length === 0) {
                 return res.status(400).json({
                     success: false,
@@ -162,13 +404,10 @@ router.put('/:dia', auth, verificarDono, (req, res) => {
                 });
             }
 
-            // 🔥 MONTAR SQL DINÂMICO
             params.push(empresaId, diaNum);
             const sql = `UPDATE horarios_funcionamento SET ${updates.join(', ')} WHERE empresa_id = ? AND dia_semana = ?`;
 
             console.log(`📝 Atualizando dia ${diaNum}:`, updates);
-            console.log(`📝 SQL: ${sql}`);
-            console.log(`📝 Params:`, params);
 
             empresaDb.run(sql, params, function (err) {
                 if (err) {
@@ -210,7 +449,6 @@ router.post('/', auth, verificarDono, (req, res) => {
     for (const horario of horarios) {
         const { dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos } = horario;
 
-        // Verificar se já existe
         empresaDb.get(
             `SELECT id FROM horarios_funcionamento WHERE dia_semana = ? AND empresa_id = ?`,
             [dia_semana, empresaId],
@@ -221,7 +459,6 @@ router.post('/', auth, verificarDono, (req, res) => {
                 }
 
                 if (row) {
-                    // Atualizar
                     empresaDb.run(
                         `UPDATE horarios_funcionamento 
                          SET aberto = ?, hora_inicio = ?, hora_fim = ?, almoco_inicio = ?, almoco_fim = ?, intervalo_minutos = ?
@@ -250,7 +487,6 @@ router.post('/', auth, verificarDono, (req, res) => {
                         }
                     );
                 } else {
-                    // Inserir
                     empresaDb.run(
                         `INSERT INTO horarios_funcionamento 
                          (dia_semana, aberto, hora_inicio, hora_fim, almoco_inicio, almoco_fim, intervalo_minutos, empresa_id)
@@ -283,7 +519,6 @@ router.post('/', auth, verificarDono, (req, res) => {
         );
     }
 
-    // Se não houver horários
     if (horarios.length === 0) {
         res.json({
             success: true,
@@ -310,7 +545,6 @@ router.post('/inicializar', auth, verificarDono, (req, res) => {
         { dia_semana: 0, aberto: 0, hora_inicio: null, hora_fim: null, almoco_inicio: null, almoco_fim: null, intervalo_minutos: 30 }
     ];
 
-    // Limpar horários existentes
     empresaDb.run(
         `DELETE FROM horarios_funcionamento WHERE empresa_id = ?`,
         [empresaId],

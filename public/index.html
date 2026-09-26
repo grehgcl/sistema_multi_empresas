@@ -23,6 +23,7 @@
     <!-- ============================================ -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/pages/agenda-google.css?v=1.0">
     <link id="landing-css" rel="stylesheet" href="/css/pages/landing.css?v=1">
 
     <!-- CSS DA PÁGINA (CARREGADO VIA JS) -->
@@ -136,7 +137,7 @@
                 <div class="landing-verse">
                     <i class="fas fa-bible"></i>
                     <span>"Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos."</span>
-                    <small>— Provérbios 16:3</small>
+                    <small>📖 Provérbios 16:3</small>
                 </div>
                 <h1>Gerencie seu negócio com <span>inteligência</span></h1>
                 <p>Agendamento automático, chatbot 24h, controle financeiro e comissões em um só lugar.</p>
@@ -237,7 +238,7 @@
                     </div>
                     <small
                         style="color:var(--text-muted);font-size:10px;display:block;margin-top:-8px;margin-bottom:8px;padding-left:40px;">
-                        ⚠️ Obrigatório para receber notificações do WhatsApp
+                        ?? Obrigatório para receber notificações do WhatsApp
                     </small>
                     <div class="auth-terms">
                         <label>
@@ -273,12 +274,13 @@
                 <span id="userBadge"></span>
                 <span id="userName"></span>
                 <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+                <!-- ?? HAMBÚRGUER AQUI DENTRO -->
+                <button class="menu-mobile-btn" id="menuBtn" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
         </div>
 
-        <button class="menu-mobile-btn" onclick="toggleMobileMenu()">
-            <i class="fas fa-bars"></i>
-        </button>
         <div class="sidebar-overlay" onclick="toggleMobileMenu()"></div>
 
         <div class="sidebar sidebar-glass" id="sidebar"></div>
@@ -322,7 +324,7 @@
     <div id="modalEditarEmpresa" class="modal">
         <div class="modal-content glass">
             <span class="close" onclick="fecharModal('modalEditarEmpresa')">&times;</span>
-            <h3>✏️ Editar Empresa</h3>
+            <h3>?? Editar Empresa</h3>
             <form id="formEmpresa">
                 <input type="hidden" id="editEmpresaId">
                 <div class="form-group">
@@ -355,7 +357,7 @@
     <div id="modalUpgrade" class="modal">
         <div class="modal-content glass">
             <span class="close" onclick="fecharModal('modalUpgrade')">&times;</span>
-            <h3>💎 Fazer Upgrade</h3>
+            <h3>?? Fazer Upgrade</h3>
             <div id="upgradeContent"></div>
             <div class="modal-buttons">
                 <button onclick="fecharModal('modalUpgrade')" class="btn-secondary">Cancelar</button>
@@ -371,10 +373,10 @@
     <!-- ============================================ -->
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
-    <script src="/js/ui.js"></script>
+
     <script src="/js/ui.js?v=20260804"></script>
-    <script src="/js/pages/dashboard.js?v=20260822c"></script>
-    <script src="/js/pages/clientes.js?v=20260804"></script>
+    <script src="/js/pages/dashboard.js?v=20260925"></script>
+    <script src="/js/pages/clientes.js?v=20260925"></script>
     <script src="/js/pages/agendamentos.js?v=20260804"></script>
     <script src="/js/pages/financeiro.js?v=20260804"></script>
     <script src="/js/pages/empresas.js?v=20260804"></script>
@@ -382,6 +384,8 @@
     <script src="/js/pages/servicos.js?v=20260804"></script>
     <script src="/js/pages/planos.js?v=20260804"></script>
     <script src="/js/pages/whatsapp-config.js?v=20260804"></script>
+    <script src="/js/pages/dashboard-profissional.js?v=20260919"></script>
+    <script src="/js/pages/agendamentos-profissional.js?v=20260919"></script>
     
 
     <script>
@@ -403,15 +407,15 @@
             try {
                 navigator.clipboard?.writeText(input.value)
                     .then(() => {
-                        showToast('✅ Link copiado para a área de transferência!', 'success');
+                        showToast('? Link copiado para a área de transferência!', 'success');
                     })
                     .catch(() => {
                         document.execCommand('copy');
-                        showToast('✅ Link copiado para a área de transferência!', 'success');
+                        showToast('? Link copiado para a área de transferência!', 'success');
                     });
             } catch (e) {
                 document.execCommand('copy');
-                showToast('✅ Link copiado!', 'success');
+                showToast('? Link copiado!', 'success');
             }
         }
 
@@ -456,7 +460,7 @@
         }
 
         function abrirModalAgendamentoRapido() {
-            console.log('⚡ Ação rápida: Novo Agendamento');
+            console.log('? Ação rápida: Novo Agendamento');
             if (typeof window.abrirModalAgendamentoDono === 'function') {
                 if (typeof window.carregarDadosAgendamento === 'function') {
                     window.carregarDadosAgendamento().then(() => {
@@ -480,7 +484,7 @@
         }
 
         function abrirModalClienteRapido() {
-            console.log('⚡ Ação rápida: Novo Cliente');
+            console.log('? Ação rápida: Novo Cliente');
             if (typeof window.abrirModalCliente === 'function' && window.abrirModalCliente !== abrirModalClienteRapido) {
                 window.abrirModalCliente();
                 return;
@@ -502,23 +506,23 @@
                 const data = await res.json();
                 hideLoading();
 
-                console.log('📥 Resposta do login:', data);
+                console.log('?? Resposta do login:', data);
 
                 if (data.success) {
                     const token = data.token || data.data?.token;
                     const usuarioData = data.data?.usuario || data.data;
 
-                    console.log('🔑 Token encontrado:', token);
-                    console.log('👤 Usuario encontrado:', usuarioData);
+                    console.log('?? Token encontrado:', token);
+                    console.log('?? Usuario encontrado:', usuarioData);
 
                     if (!token || token === 'undefined') {
-                        console.error('❌ Token inválido:', token);
+                        console.error('? Token inválido:', token);
                         showToast('Erro: token não recebido', 'error');
                         return;
                     }
 
                     if (!usuarioData || !usuarioData.nome) {
-                        console.error('❌ Usuário inválido:', usuarioData);
+                        console.error('? Usuário inválido:', usuarioData);
                         showToast('Erro: dados do usuário incompletos', 'error');
                         return;
                     }
@@ -535,9 +539,9 @@
                         localStorage.removeItem('rememberEmail');
                     }
 
-                    console.log('✅ Token salvo:', localStorage.getItem('token'));
-                    console.log('✅ Usuario salvo:', localStorage.getItem('usuario'));
-                    console.log('✅ Usuario global:', window.usuario);
+                    console.log('? Token salvo:', localStorage.getItem('token'));
+                    console.log('? Usuario salvo:', localStorage.getItem('usuario'));
+                    console.log('? Usuario global:', window.usuario);
 
                     showToast('Login realizado com sucesso!', 'success');
 
@@ -553,7 +557,7 @@
                 }
             } catch (error) {
                 hideLoading();
-                console.error('❌ Erro no login:', error);
+                console.error('? Erro no login:', error);
                 showToast('Erro ao fazer login', 'error');
             }
         }
@@ -569,22 +573,22 @@
             const empresa_nome = document.getElementById('cadastroEmpresa')?.value?.trim();
             const telefone = document.getElementById('cadastroTelefone')?.value?.trim();
 
-            console.log('📝 Tentando cadastro...');
+            console.log('?? Tentando cadastro...');
 
             // Validação
             if (!nome || !email || !senha || !empresa_nome || !telefone) {
-                showToast('⚠️ Preencha todos os campos', 'warning');
+                showToast('?? Preencha todos os campos', 'warning');
                 return;
             }
 
             if (senha.length < 6) {
-                showToast('⚠️ A senha deve ter pelo menos 6 caracteres', 'warning');
+                showToast('?? A senha deve ter pelo menos 6 caracteres', 'warning');
                 return;
             }
 
             const telefoneLimpo = telefone.replace(/\D/g, '');
             if (telefoneLimpo.length < 10) {
-                showToast('⚠️ Telefone inválido (mínimo 10 dígitos)', 'warning');
+                showToast('?? Telefone inválido (mínimo 10 dígitos)', 'warning');
                 return;
             }
 
@@ -593,7 +597,7 @@
             const originalText = btn?.textContent || 'Cadastrar';
             if (btn) {
                 btn.disabled = true;
-                btn.textContent = '⏳ Cadastrando...';
+                btn.textContent = '? Cadastrando...';
             }
 
             fetch('/api/auth/cadastro', {
@@ -611,7 +615,7 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('📥 Resposta do cadastro:', data);
+                    console.log('?? Resposta do cadastro:', data);
 
                     if (btn) {
                         btn.disabled = false;
@@ -619,13 +623,13 @@
                     }
 
                     if (!data.success) {
-                        showToast(data.message || '❌ Erro ao cadastrar', 'error');
+                        showToast(data.message || '? Erro ao cadastrar', 'error');
                         return;
                     }
 
-                    showToast('✅ Cadastro realizado com sucesso! Faça login.', 'success');
+                    showToast('? Cadastro realizado com sucesso! Faça login.', 'success');
 
-                    // 🔥 CORREÇÃO: Redirecionar para login (NÃO tentar login automático)
+                    // ?? CORREÇÃO: Redirecionar para login (NÃO tentar login automático)
                     setTimeout(() => {
                         // Ir para tela de login
                         document.getElementById('loginContainer').style.display = 'block';
@@ -637,17 +641,17 @@
                             loginEmail.value = email;
                         }
 
-                        showToast('✅ Cadastro realizado! Faça login.', 'success');
+                        showToast('? Cadastro realizado! Faça login.', 'success');
                     }, 1500);
 
                 })
                 .catch(error => {
-                    console.error('❌ Erro no cadastro:', error);
+                    console.error('? Erro no cadastro:', error);
                     if (btn) {
                         btn.disabled = false;
                         btn.textContent = originalText;
                     }
-                    showToast('❌ Erro ao conectar com o servidor', 'error');
+                    showToast('? Erro ao conectar com o servidor', 'error');
                 });
         }
 
@@ -672,13 +676,13 @@
             const usuarioStr = localStorage.getItem('usuario');
             const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
-            console.log('📋 Carregando menu para:', usuario?.nome);
-            console.log('🔍 Role:', usuario?.role);
+            console.log('?? Carregando menu para:', usuario?.nome);
+            console.log('?? Role:', usuario?.role);
 
             const sidebar = document.getElementById('sidebar');
 
             if (!usuario) {
-                console.warn('⚠️ Nenhum usuário encontrado');
+                console.warn('?? Nenhum usuário encontrado');
                 sidebar.innerHTML = '';
                 return;
             }
@@ -687,8 +691,8 @@
             const isProfissional = usuario.role === 'profissional';
             const isDono = usuario.role === 'dono';
 
-            console.log('🔍 isSuperAdmin:', isSuperAdmin);
-            console.log('🔍 isDono:', isDono);
+            console.log('?? isSuperAdmin:', isSuperAdmin);
+            console.log('?? isDono:', isDono);
 
             let botoes = [];
 
@@ -717,9 +721,9 @@
                 ];
             }
 
-            // 🔥 GERAR O HTML DO MENU COM O INDICADOR
+            // ?? GERAR O HTML DO MENU COM O INDICADOR
             sidebar.innerHTML = botoes.map(b => {
-                // 🔥 ADICIONAR O INDICADOR APENAS PARA WHATSAPP
+                // ?? ADICIONAR O INDICADOR APENAS PARA WHATSAPP
                 let indicador = '';
                 if (b.id === 'whatsapp') {
                     indicador = `<span id="whatsappStatusIndicator" class="status-dot offline"></span>`;
@@ -732,8 +736,8 @@
             const page = urlParams.get('page') || 'dashboard';
             ativarBotao(page);
 
-            console.log('✅ Menu carregado com sucesso!');
-            console.log('🔍 Elemento WhatsApp:', document.getElementById('whatsappStatusIndicator'));
+            console.log('? Menu carregado com sucesso!');
+            console.log('?? Elemento WhatsApp:', document.getElementById('whatsappStatusIndicator'));
         }
 
         function ativarBotao(id) {
@@ -746,10 +750,10 @@
             const usuarioStr = localStorage.getItem('usuario');
             const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
-            console.log('📱 Mostrando app...', usuario);
+            console.log('?? Mostrando app...', usuario);
 
             if (!usuario || !usuario.nome) {
-                console.warn('⚠️ Usuário inválido, redirecionando para login');
+                console.warn('?? Usuário inválido, redirecionando para login');
                 localStorage.removeItem('token');
                 localStorage.removeItem('usuario');
                 mostrarLanding();
@@ -764,17 +768,17 @@
             const userBadgeEl = document.getElementById('userBadge');
 
             if (userNameEl) {
-                userNameEl.textContent = '👤 ' + (usuario?.nome || 'Usuário');
+                userNameEl.textContent = '?? ' + (usuario?.nome || 'Usuário');
             }
 
             if (userBadgeEl) {
                 const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
                 if (isSuperAdmin) {
-                    userBadgeEl.innerHTML = '<span class="badge-super">🔴 SUPER ADMIN</span>';
+                    userBadgeEl.innerHTML = '<span class="badge-super">?? SUPER ADMIN</span>';
                 } else if (usuario?.role === 'profissional') {
-                    userBadgeEl.innerHTML = '<span class="badge-profissional">🔵 PROFISSIONAL</span>';
+                    userBadgeEl.innerHTML = '<span class="badge-profissional">?? PROFISSIONAL</span>';
                 } else {
-                    userBadgeEl.innerHTML = '<span class="badge-dono">🟠 Proprietário</span>';
+                    userBadgeEl.innerHTML = '<span class="badge-dono">?? Proprietário</span>';
                 }
             }
 
@@ -815,26 +819,26 @@
         });
 
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🔧 Configurando formulário de cliente...');
+            console.log('?? Configurando formulário de cliente...');
             const form = document.getElementById('formCliente');
             if (form) {
-                console.log('✅ Formulário de cliente encontrado!');
+                console.log('? Formulário de cliente encontrado!');
                 const newForm = form.cloneNode(true);
                 form.parentNode.replaceChild(newForm, form);
                 newForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('📝 Formulário de cliente submetido!');
+                    console.log('?? Formulário de cliente submetido!');
                     if (typeof window.salvarCliente === 'function') {
                         window.salvarCliente();
                     } else {
-                        console.error('❌ salvarCliente não está disponível!');
+                        console.error('? salvarCliente não está disponível!');
                         showToast('Erro: função salvarCliente não encontrada', 'error');
                     }
                 });
-                console.log('✅ Evento de submit conectado com sucesso!');
+                console.log('? Evento de submit conectado com sucesso!');
             } else {
-                console.error('❌ Formulário com id="formCliente" não encontrado!');
+                console.error('? Formulário com id="formCliente" não encontrado!');
             }
         });
 
@@ -866,7 +870,7 @@
                 mostrarLogin();
             }
         }
-        console.log('✅ index.html versão: 2026-08-13-v3');
+        console.log('? index.html versão: 2026-08-13-v3');
     </script>
 
     <!-- ============================================ -->
@@ -877,11 +881,11 @@
             window.addEventListener('load', function() {
                 navigator.serviceWorker.register('/sw.js')
                     .then(function(registration) {
-                        console.log('✅ Service Worker registrado com sucesso!');
-                        console.log('📱 PWA instalado no navegador!');
+                        console.log('? Service Worker registrado com sucesso!');
+                        console.log('?? PWA instalado no navegador!');
                     })
                     .catch(function(error) {
-                        console.log('❌ Erro ao registrar Service Worker:', error);
+                        console.log('? Erro ao registrar Service Worker:', error);
                     });
             });
         }

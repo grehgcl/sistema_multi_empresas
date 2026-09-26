@@ -126,11 +126,10 @@ async function carregarGruposCliente(clienteId) {
 }
 
 // ============================================
-// CARREGAR CLIENTES (PRINCIPAL) - COM CSS
+// CARREGAR CLIENTES (PRINCIPAL)
 // ============================================
 
 async function carregarClientes() {
-    // 🔥 CARREGAR CSS - FORÇADO
     const cssLink = document.querySelector('link[href*="clientes.css"]');
     if (!cssLink) {
         const link = document.createElement('link');
@@ -320,7 +319,6 @@ async function carregarClientesBackground() {
 
         const dataClientes = await resClientes.json();
         const dataAgendamentos = resAgendamentos.ok ? await resAgendamentos.json() : { data: [] };
-        const dataGrupos = resGrupos.ok ? await resGrupos.json() : { data: { clientes: [], grupos: [] } };
 
         const clientes = dataClientes.data || [];
         const agendamentos = dataAgendamentos.data || [];
@@ -425,7 +423,7 @@ async function carregarClientesBackground() {
 }
 
 // ============================================
-// RENDERIZAR CLIENTES OTIMIZADO (BATCHES) - CORRIGIDO
+// RENDERIZAR CLIENTES OTIMIZADO
 // ============================================
 
 function renderizarClientesOtimizado(clientes) {
@@ -434,7 +432,6 @@ function renderizarClientesOtimizado(clientes) {
 
     let clientesFiltrados = [...clientes];
 
-    // Filtro por letra
     const letraSalva = localStorage.getItem('letraSelecionada') || '';
     if (letraSalva && letraSalva !== 'todos') {
         clientesFiltrados = clientesFiltrados.filter(c => 
@@ -443,7 +440,6 @@ function renderizarClientesOtimizado(clientes) {
         letraSelecionada = letraSalva;
     }
 
-    // Filtro por busca
     if (termoBuscaClientes && !isMobile) {
         const busca = termoBuscaClientes.toLowerCase().trim();
         clientesFiltrados = clientesFiltrados.filter(c => {
@@ -454,7 +450,6 @@ function renderizarClientesOtimizado(clientes) {
         });
     }
 
-    // Filtro por classificação
     if (filtroClientes === 'vip') {
         clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'vip');
     } else if (filtroClientes === 'sumidos') {
@@ -465,7 +460,6 @@ function renderizarClientesOtimizado(clientes) {
         clientesFiltrados = clientesFiltrados.filter(c => c.classificacao === 'novo');
     }
 
-    // Filtro por grupo
     if (filtroGrupo !== 'todos') {
         clientesFiltrados = clientesFiltrados.filter(c =>
             c.grupos && Array.isArray(c.grupos) && c.grupos.includes(filtroGrupo)
@@ -474,7 +468,6 @@ function renderizarClientesOtimizado(clientes) {
 
     clientesFiltradosCache = clientesFiltrados;
 
-    // Estatísticas
     const totalClientes = clientes.length;
     const vipCount = clientes.filter(c => c.classificacao === 'vip').length;
     const sumidosCount = clientes.filter(c => c.classificacao === 'sumido').length;
@@ -482,12 +475,8 @@ function renderizarClientesOtimizado(clientes) {
     const novosCount = clientes.filter(c => c.classificacao === 'novo').length;
     const comWhatsApp = clientes.filter(c => c.telefone && c.telefone.trim() !== '').length;
 
-    // ==========================================
-    // HTML
-    // ==========================================
     let html = `<div class="fade-in" style="padding-bottom: 80px;">`;
 
-    // 🔥 HEADER - COM BOTÕES MOBILE MAIORES
     html += `
         <div class="dashboard-header" style="${isMobile ? 'flex-direction:column;align-items:stretch;gap:8px;' : ''}">
             <div>
@@ -513,7 +502,6 @@ function renderizarClientesOtimizado(clientes) {
                 </div>
                 ` : ''}
                 
-                <!-- 🔥 BOTÃO PROMOÇÃO - MAIOR NO MOBILE -->
                 <button class="btn btn-whatsapp" onclick="abrirModalPromocao()" style="
                     background: linear-gradient(135deg, #25D366, #128C7E); 
                     color: white; 
@@ -546,7 +534,6 @@ function renderizarClientesOtimizado(clientes) {
                 </button>
                 ` : ''}
                 
-                <!-- 🔥 BOTÃO NOVO CLIENTE - MAIOR NO MOBILE -->
                 <button class="btn btn-primary" onclick="abrirModalCliente()" style="
                     padding: ${isMobile ? '12px 18px' : '6px 14px'}; 
                     border-radius: ${isMobile ? '12px' : '8px'}; 
@@ -575,7 +562,6 @@ function renderizarClientesOtimizado(clientes) {
             </div>
         </div>
 
-        <!-- FILTROS DE CLASSIFICAÇÃO -->
         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; ${isMobile ? 'justify-content:center;' : ''}">
             <button onclick="setFiltroClientes('todos')" class="btn ${filtroClientes === 'todos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">📊 Todos (${totalClientes})</button>
             <button onclick="setFiltroClientes('vip')" class="btn ${filtroClientes === 'vip' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">⭐ VIP (${vipCount})</button>
@@ -584,7 +570,6 @@ function renderizarClientesOtimizado(clientes) {
             <button onclick="setFiltroClientes('novos')" class="btn ${filtroClientes === 'novos' ? 'btn-primary' : 'btn-outline'}" style="font-size: ${isMobile ? '11px' : '12px'}; padding: ${isMobile ? '6px 12px' : '3px 10px'};">🌱 Novos (${novosCount})</button>
         </div>`;
 
-    // 🔥 FILTRO POR GRUPOS - MAIS BONITO E MAIOR
     if (gruposClientes.length > 0) {
         html += `
             <div style="
@@ -662,7 +647,6 @@ function renderizarClientesOtimizado(clientes) {
         `;
     }
 
-    // Índice A-Z
     const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
     const letraAtiva = localStorage.getItem('letraSelecionada') || '';
 
@@ -685,7 +669,6 @@ function renderizarClientesOtimizado(clientes) {
         </div>
     `;
 
-    // Stats
     if (!isMobile) {
         html += `
             <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 16px;">
@@ -759,9 +742,6 @@ function renderizarClientesOtimizado(clientes) {
             </div>
         `;
     } else if (isMobile) {
-        // ============================================
-        // 🔥 VERSÃO MOBILE - CARDS COM CLASSES CSS
-        // ============================================
         html += `<div class="clientes-mobile-container" style="display:flex;flex-direction:column;gap:10px;padding:4px;width:100%;box-sizing:border-box;">`;
         for (const c of clientesFiltrados) {
             const isBloqueado = c.bloqueado_chatbot === 1;
@@ -823,9 +803,6 @@ function renderizarClientesOtimizado(clientes) {
         }
         html += `</div>`;
     } else {
-        // ============================================
-        // 🔥 VERSÃO DESKTOP - TABELA
-        // ============================================
         html += `
             <div id="clientesTableContainer" style="position:relative;max-height:70vh;overflow-y:auto;overflow-x:auto;">
                 <table class="data-table" style="width: 100%; min-width: 800px; font-size: 13px;border-collapse:collapse;">
@@ -842,9 +819,7 @@ function renderizarClientesOtimizado(clientes) {
                             <th style="padding: 6px 8px;background:var(--bg-card);border-bottom:2px solid var(--border-color);text-align:center;">Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="listaClientesBody">
-                        <!-- Renderizado via batches -->
-                    </tbody>
+                    <tbody id="listaClientesBody"></tbody>
                 </table>
             </div>
             <div id="loadingIndicator" style="display:none;text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">
@@ -857,7 +832,6 @@ function renderizarClientesOtimizado(clientes) {
 
     content.innerHTML = html;
 
-    // 🔥 Renderizar em batches (Desktop apenas)
     if (!isMobile && clientesFiltrados.length > 0) {
         renderizarClientesBatches(clientesFiltrados);
     }
@@ -865,8 +839,9 @@ function renderizarClientesOtimizado(clientes) {
     window.scrollTo(0, 0);
     console.log(`✅ Clientes renderizados: ${clientesFiltrados.length} de ${clientes.length}`);
 }
+
 // ============================================
-// RENDERIZAR CLIENTES EM BATCHES - DESKTOP CORRIGIDO
+// RENDERIZAR CLIENTES EM BATCHES - DESKTOP
 // ============================================
 
 function renderizarClientesBatches(clientes) {
@@ -972,7 +947,6 @@ function renderizarClientesBatches(clientes) {
     const indicator = document.getElementById('loadingIndicator');
     if (indicator) indicator.style.display = 'block';
 
-    // Limpar tbody antes de renderizar
     tbody.innerHTML = '';
     setTimeout(renderizarBatch, 100);
 }
@@ -1141,9 +1115,6 @@ function atualizarBotoesFiltro() {
 // ============================================
 // FUNÇÕES CRUD
 // ============================================
-// ============================================
-// ABRIR MODAL CLIENTE - CORRIGIDO
-// ============================================
 
 function abrirModalCliente() {
     const existingModal = document.getElementById('modalCliente');
@@ -1246,7 +1217,7 @@ async function salvarCliente() {
 }
 
 // ============================================
-// EDITAR CLIENTE - CORRIGIDO
+// EDITAR CLIENTE
 // ============================================
 
 async function editarCliente(id) {
@@ -1598,7 +1569,6 @@ async function apagarTodosClientes() {
         showToast('Erro ao conectar com o servidor', 'error');
     }
 }
-
 // ============================================
 // FUNÇÕES DE GRUPOS
 // ============================================
@@ -2383,6 +2353,31 @@ Venha aproveitar nossa promoção imperdível!
                         </div>
                     </div>
 
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group" style="margin:0;">
+                            <label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:4px;">🏷️ Classificação</label>
+                            <select id="filtroClassificacaoPromocao" class="form-control" onchange="filtrarClientesPromocao()" style="width:100%; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color); background:var(--bg-input); color:var(--text-primary); font-size:14px;">
+                                <option value="todos">📊 Todas</option>
+                                <option value="vip">⭐ VIP</option>
+                                <option value="frequente">🔥 Frequentes</option>
+                                <option value="sumido">😴 Sumidos (60+ dias)</option>
+                                <option value="novo">🌱 Novos</option>
+                                <option value="regular">👤 Regulares</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0; display:flex; align-items:flex-end;">
+                            <button type="button" onclick="filtroRapidoSumidos()" 
+                                    style="width: 100%; padding: 10px 16px; border-radius: 8px; border: none; 
+                                           background: linear-gradient(135deg, #ef4444, #dc2626); color: white; 
+                                           font-weight: 700; cursor: pointer; font-size: 13px; 
+                                           display: flex; align-items: center; justify-content: center; gap: 8px;
+                                           box-shadow: 0 4px 12px rgba(239,68,68,0.3);">
+                                <i class="fas fa-heart-broken"></i> 
+                                😴 Só Sumidos
+                            </button>
+                        </div>
+                    </div>
+
                     <div style="display: flex; align-items: center; gap: 8px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 4px 8px;">
                         <i class="fas fa-search" style="color: var(--text-muted); font-size: 14px;"></i>
                         <input type="text" id="buscaClientePromocao" 
@@ -2407,8 +2402,14 @@ Venha aproveitar nossa promoção imperdível!
                             ${listaClientesHTML}
                         </div>
                     </div>
-                    <div style="font-size:11px;color:var(--text-muted);margin-top:-4px;">
-                        <span id="contadorSelecionados">${totalClientes}</span> clientes selecionados
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:-4px;display:flex;justify-content:space-between;">
+                        <span>
+                            <strong id="contadorSelecionados">${totalClientes}</strong> selecionado(s) 
+                            de <strong id="totalVisiveisPromocao">${totalClientes}</strong> visível(is)
+                        </span>
+                        <span style="color:#22c55e;">
+                            <i class="fas fa-check-circle"></i> ${totalClientes} total
+                        </span>
                     </div>
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 16px;">
@@ -2456,6 +2457,7 @@ function fecharModalPromocao() {
 function filtrarClientesPromocao() {
     try {
         const filtroGrupo = document.getElementById('filtroGrupoPromocao')?.value || 'todos';
+        const filtroClassificacao = document.getElementById('filtroClassificacaoPromocao')?.value || 'todos';
         const termoBusca = document.getElementById('buscaClientePromocao')?.value?.toLowerCase().trim() || '';
 
         const container = document.getElementById('listaClientesPromocao');
@@ -2480,11 +2482,18 @@ function filtrarClientesPromocao() {
             const telefone = item.dataset.telefone || '';
             const gruposData = item.dataset.grupos || '';
             const gruposArray = gruposData ? gruposData.split(',').filter(g => g.trim() !== '') : [];
+            const classificacao = item.dataset.classificacao || '';
 
             let mostrar = true;
 
             if (filtroGrupo !== 'todos') {
                 if (!gruposArray.includes(filtroGrupo)) {
+                    mostrar = false;
+                }
+            }
+
+            if (mostrar && filtroClassificacao !== 'todos') {
+                if (classificacao !== filtroClassificacao) {
                     mostrar = false;
                 }
             }
@@ -2502,6 +2511,12 @@ function filtrarClientesPromocao() {
         }
 
         atualizarContadorSelecionados();
+
+        const contadorTotal = document.getElementById('totalVisiveisPromocao');
+        if (contadorTotal) {
+            contadorTotal.textContent = visiveis;
+        }
+
     } catch (error) {
         console.error('❌ Erro ao filtrar clientes:', error);
     }
@@ -2510,10 +2525,7 @@ function filtrarClientesPromocao() {
 function selecionarTodosClientes(selecionar) {
     try {
         const container = document.getElementById('listaClientesPromocao');
-        if (!container) {
-            console.log('⚠️ Container listaClientesPromocao não encontrado');
-            return;
-        }
+        if (!container) return;
 
         const items = container.querySelectorAll('.cliente-item');
         if (!items || items.length === 0) return;
@@ -2549,9 +2561,12 @@ function atualizarContadorSelecionados() {
         }
 
         let selecionados = 0;
+        let visiveis = 0;
+
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             if (item.style.display !== 'none') {
+                visiveis++;
                 const checkbox = item.querySelector('input[type="checkbox"]');
                 if (checkbox && checkbox.checked) {
                     selecionados++;
@@ -2563,6 +2578,12 @@ function atualizarContadorSelecionados() {
         if (contador) {
             contador.textContent = selecionados;
         }
+
+        const contadorVisiveis = document.getElementById('totalVisiveisPromocao');
+        if (contadorVisiveis) {
+            contadorVisiveis.textContent = visiveis;
+        }
+
     } catch (error) {
         console.error('❌ Erro ao atualizar contador:', error);
     }
@@ -2590,7 +2611,62 @@ function normalizarNumero(telefone) {
 
     return numero;
 }
+// ============================================
+// HUMANIZAÇÃO — Funções globais
+// ============================================
 
+function getDelay(index, total) {
+    const rand = Math.random();
+
+    // 5% de chance: pausa longa (banheiro, café, atender alguém)
+    if (rand < 0.05) {
+        const pausa = 60 + Math.random() * 120;  // 60-180s
+        console.log(`☕ Pausa longa de ${Math.round(pausa)}s`);
+        return pausa * 1000;
+    }
+
+    // 15% de chance: pausa média (responder outra mensagem)
+    if (rand < 0.20) {
+        return (30 + Math.random() * 30) * 1000;  // 30-60s
+    }
+
+    // 80% de chance: delay curto (comportamento normal)
+    const base = 8 + Math.random() * 12;  // 8-20s
+    return base * 1000;
+}
+
+const SAUDACOES = ['Oi', 'Olá', 'Oie', 'E aí', 'Fala', 'Ei', 'Opa', 'Oiê'];
+const EMOJIS_SAUDACAO = ['💜', '😊', '✨', '🎉', '💫', '😄', '🌟', '💖'];
+const CONECTORES = [
+    '',
+    ' tudo bem?',
+    ', tudo joia?',
+    ', como você está?',
+    '! Como vai?'
+];
+
+function getMensagemComNome(cliente, mensagemBase) {
+    if (!cliente || !cliente.nome) return mensagemBase;
+
+    const primeiroNome = String(cliente.nome).trim().split(' ')[0];
+    if (!primeiroNome || primeiroNome.length < 2) return mensagemBase;
+
+    // 80% das vezes, personaliza
+    if (Math.random() > 0.8) return mensagemBase;
+
+    const saudacao = SAUDACOES[Math.floor(Math.random() * SAUDACOES.length)];
+    const conector = CONECTORES[Math.floor(Math.random() * CONECTORES.length)];
+    const emoji = Math.random() < 0.4 ? ' ' + EMOJIS_SAUDACAO[Math.floor(Math.random() * EMOJIS_SAUDACAO.length)] : '';
+
+    // Se a mensagem base já começa com saudação, evita duplicar
+    const baseLimpa = mensagemBase.replace(/^(oi|olá|oie|e aí|fala|ei|opa|oiê)[\s,!.]*/i, '').trim();
+
+    return `${saudacao} ${primeiroNome}${conector}${emoji} ${baseLimpa}`;
+}
+
+// ============================================
+// ENVIAR PROMOÇÃO
+// ============================================
 async function enviarPromocao() {
     if (promocaoEmAndamento || envioLock) {
         showToast('⏳ Já está enviando, aguarde...', 'warning');
@@ -2669,26 +2745,9 @@ async function enviarPromocao() {
 
     const enviadosCache = new Set();
 
-    function getDelay(index, total) {
-        const baseDelay = 5000 + Math.random() * 5000;
-        if (index % 10 === 0 && index > 0) {
-            return 20000 + Math.random() * 10000;
-        }
-        if (index % 50 === 0 && index > 0) {
-            return 60000 + Math.random() * 60000;
-        }
-        return baseDelay;
-    }
-
-    function getMensagemComNome(cliente, mensagemBase) {
-        if (Math.random() < 0.3 && cliente.nome) {
-            const saudacoes = ['Olá', 'Oi', 'Oie', 'E aí', 'Fala'];
-            const saudacao = saudacoes[Math.floor(Math.random() * saudacoes.length)];
-            return `${saudacao} ${cliente.nome}! ${mensagemBase}`;
-        }
-        return mensagemBase;
-    }
-
+    // ============================================
+    // LOOP DE ENVIO
+    // ============================================
     for (let i = 0; i < clientesAlvo.length; i++) {
         const cliente = clientesAlvo[i];
         const telefoneRaw = cliente.telefone || '';
@@ -2790,6 +2849,57 @@ async function enviarPromocao() {
 }
 
 // ============================================
+// FILTRO RÁPIDO: SÓ SUMIDOS
+// ============================================
+function filtroRapidoSumidos() {
+    try {
+        console.log('😴 Aplicando filtro rápido de sumidos...');
+
+        // 1. Aplica o filtro de classificação no select
+        const selectClassificacao = document.getElementById('filtroClassificacaoPromocao');
+        if (selectClassificacao) {
+            selectClassificacao.value = 'sumido';
+        }
+
+        // 2. Limpa o filtro de grupo (pra não conflitar)
+        const selectGrupo = document.getElementById('filtroGrupoPromocao');
+        if (selectGrupo) {
+            selectGrupo.value = 'todos';
+        }
+
+        // 3. Limpa a busca
+        const inputBusca = document.getElementById('buscaClientePromocao');
+        if (inputBusca) {
+            inputBusca.value = '';
+        }
+
+        // 4. Aplica o filtro
+        filtrarClientesPromocao();
+
+        // 5. Marca todos os visíveis (depois que o filtro rodar)
+        setTimeout(() => {
+            selecionarTodosClientes(true);
+
+            const items = document.querySelectorAll('#listaClientesPromocao .cliente-item');
+            let visiveis = 0;
+            items.forEach(item => {
+                if (item.style.display !== 'none') visiveis++;
+            });
+
+            if (visiveis === 0) {
+                showToast('😴 Nenhum cliente sumido encontrado!', 'info');
+            } else {
+                showToast(`😴 ${visiveis} cliente(s) sumido(s) selecionado(s)!`, 'success');
+            }
+        }, 100);
+
+    } catch (error) {
+        console.error('❌ Erro no filtro rápido:', error);
+        showToast('Erro ao aplicar filtro', 'error');
+    }
+}
+
+// ============================================
 // FORÇAR ATUALIZAÇÃO DOS GRUPOS
 // ============================================
 
@@ -2884,5 +2994,10 @@ window.carregarClientesBackground = carregarClientesBackground;
 window.renderizarListaClientes = renderizarListaClientes;
 window.forcarAtualizacaoGrupos = forcarAtualizacaoGrupos;
 window.atualizarBotoesFiltro = atualizarBotoesFiltro;
+window.filtroRapidoSumidos = filtroRapidoSumidos;
+
+// ✅ HUMANIZAÇÃO — exportar para uso global
+window.getMensagemComNome = getMensagemComNome;
+window.getDelay = getDelay;
 
 console.log('✅ clientes.js carregado (OTIMIZADO COM RENDERIZAÇÃO EM BATCHES)');

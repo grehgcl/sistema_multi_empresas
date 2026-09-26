@@ -1,6 +1,5 @@
 /* ============================================
-   CLIENTES.CSS - ESTILOS COMPLETOS
-   Versão 5.0 - NOMES SUPER DESTACADOS
+   CLIENTES.CSS - COMPACTO v6.0
    ============================================ */
 
 /* ===== HEADER ===== */
@@ -9,15 +8,33 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
+}
+
+.clientes-header .page-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.clientes-header .page-subtitle {
+    font-size: 0.75rem;
+}
+
+.clientes-header .btn-primary,
+.clientes-header button {
+    padding: 0.5rem 1rem !important;
+    font-size: 0.8125rem !important;
+    border-radius: 0.5rem !important;
+    min-height: auto !important;
 }
 
 /* ===== ESTATÍSTICAS ===== */
 .clientes-stats {
     display: grid;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    gap: 0.375rem;
+    margin-bottom: 0.625rem;
 }
 
 .clientes-stats.grid-6 {
@@ -30,8 +47,8 @@
 
 .stat-card-cliente {
     background: var(--bg-card, #ffffff);
-    border-radius: 0.75rem;
-    padding: 0.875rem 0.75rem;
+    border-radius: 0.625rem;
+    padding: 0.5rem 0.375rem;
     text-align: center;
     border: 2px solid var(--border-color, #e5e7eb);
     transition: all 0.3s ease;
@@ -39,20 +56,21 @@
 
 .stat-card-cliente:hover {
     transform: translateY(-0.125rem);
-    box-shadow: var(--shadow, 0 4px 6px -1px rgba(0, 0, 0, 0.1));
 }
 
 .stat-card-cliente .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.125rem;
     font-weight: 700;
     color: var(--text-primary, #1f2937);
+    line-height: 1.1;
 }
 
 .stat-card-cliente .stat-label {
-    font-size: 0.8125rem;
+    font-size: 0.625rem;
     font-weight: 600;
     color: var(--text-secondary, #4b5563);
-    margin-top: 0.125rem;
+    margin-top: 0.0625rem;
+    line-height: 1.2;
 }
 
 /* Cores específicas */
@@ -60,9 +78,7 @@
     border-color: #f59e0b;
     box-shadow: 0 0.125rem 0.5rem rgba(245, 158, 11, 0.15);
 }
-.stat-card-cliente.vip .stat-value {
-    color: #f59e0b;
-}
+.stat-card-cliente.vip .stat-value,
 .stat-card-cliente.vip .stat-label {
     color: #f59e0b;
 }
@@ -71,9 +87,7 @@
     border-color: #22c55e;
     box-shadow: 0 0.125rem 0.5rem rgba(34, 197, 94, 0.15);
 }
-.stat-card-cliente.frequente .stat-value {
-    color: #22c55e;
-}
+.stat-card-cliente.frequente .stat-value,
 .stat-card-cliente.frequente .stat-label {
     color: #22c55e;
 }
@@ -82,9 +96,7 @@
     border-color: #ef4444;
     box-shadow: 0 0.125rem 0.5rem rgba(239, 68, 68, 0.15);
 }
-.stat-card-cliente.sumido .stat-value {
-    color: #ef4444;
-}
+.stat-card-cliente.sumido .stat-value,
 .stat-card-cliente.sumido .stat-label {
     color: #ef4444;
 }
@@ -93,9 +105,7 @@
     border-color: #667eea;
     box-shadow: 0 0.125rem 0.5rem rgba(102, 126, 234, 0.15);
 }
-.stat-card-cliente.novo .stat-value {
-    color: #667eea;
-}
+.stat-card-cliente.novo .stat-value,
 .stat-card-cliente.novo .stat-label {
     color: #667eea;
 }
@@ -104,9 +114,7 @@
     border-color: #25D366;
     box-shadow: 0 0.125rem 0.5rem rgba(37, 211, 102, 0.15);
 }
-.stat-card-cliente.whatsapp .stat-value {
-    color: #25D366;
-}
+.stat-card-cliente.whatsapp .stat-value,
 .stat-card-cliente.whatsapp .stat-label {
     color: #25D366;
 }
@@ -114,9 +122,9 @@
 /* ===== FILTROS ===== */
 .clientes-filtros {
     display: flex;
-    gap: 0.375rem;
+    gap: 0.25rem;
     flex-wrap: wrap;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .clientes-filtros .btn-filtro {
@@ -147,10 +155,10 @@
 /* ===== FILTRO POR LETRA ===== */
 .clientes-letras {
     display: flex;
-    gap: 0.25rem;
+    gap: 0.1875rem;
     flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-    padding: 0.5rem 0.25rem;
+    margin-bottom: 0.5rem;
+    padding: 0.375rem 0.25rem;
     border-top: 1px solid var(--border-color, #e5e7eb);
     justify-content: center;
     position: sticky;
@@ -160,12 +168,12 @@
 }
 
 .letra-btn {
-    padding: 0.25rem 0.625rem;
+    padding: 0.1875rem 0.5rem;
     border-radius: 1.25rem;
     border: 2px solid var(--border-color, #e5e7eb);
     background: var(--bg-card, #ffffff);
     color: var(--text-secondary, #4b5563);
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
@@ -187,15 +195,15 @@
 /* ===== GRUPOS ===== */
 .clientes-grupos {
     display: flex;
-    gap: 0.375rem;
+    gap: 0.25rem;
     flex-wrap: wrap;
-    margin-bottom: 0.75rem;
-    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+    padding: 0.375rem 0;
     border-top: 1px solid var(--border-color, #e5e7eb);
 }
 
 .grupo-label {
-    font-size: 0.6875rem;
+    font-size: 0.625rem;
     color: var(--text-muted, #6b7280);
     display: flex;
     align-items: center;
@@ -213,8 +221,6 @@
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    touch-action: manipulation;
-    user-select: none;
 }
 
 .grupo-btn:hover {
@@ -237,20 +243,18 @@
 }
 
 /* ============================================
-   CARDS MOBILE - NOMES SUPER DESTACADOS
+   CARDS MOBILE DE CLIENTE - COMPACTOS
    ============================================ */
 
 .cliente-card {
     background: var(--bg-card, #ffffff);
-    border-radius: 1rem;
-    padding: 1rem;
+    border-radius: 0.75rem;
+    padding: 0.625rem 0.75rem;
     border: 2px solid var(--border-color, #e5e7eb);
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .cliente-card:hover {
-    box-shadow: var(--shadow, 0 4px 12px -1px rgba(0, 0, 0, 0.12));
     border-color: var(--primary, #667eea);
     transform: translateY(-2px);
 }
@@ -259,21 +263,22 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 0.625rem;
+    margin-bottom: 0.375rem;
+    gap: 0.5rem;
 }
 
 .cliente-card .card-cliente {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex: 1;
     min-width: 0;
 }
 
-/* 🔥🔥🔥 AVATAR - MAIOR E COM SOMBRA */
+/* Avatar compacto */
 .cliente-card .card-avatar {
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
     border-radius: 50%;
     background: var(--gradient, linear-gradient(135deg, #667eea, #764ba2));
     display: flex;
@@ -281,67 +286,65 @@
     justify-content: center;
     color: #ffffff;
     font-weight: 800;
-    font-size: 1.25rem;
+    font-size: 1rem;
     flex-shrink: 0;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
-    border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
-/* 🔥🔥🔥 NOME DO CLIENTE - SUPER GRANDE E DESTACADO */
+/* Nome do cliente */
 .cliente-card .card-nome {
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 800;
     color: var(--text-primary, #1f2937);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     letter-spacing: -0.02em;
-    line-height: 1.3;
+    line-height: 1.2;
 }
 
 .cliente-card .card-nome .icone {
-    font-size: 1.125rem;
-    margin-left: 4px;
+    font-size: 0.9375rem;
+    margin-left: 2px;
 }
 
-/* 🔥 TELEFONE - MAIS VISÍVEL */
+/* Telefone */
 .cliente-card .card-telefone {
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-secondary, #4b5563);
     display: flex;
     align-items: center;
-    gap: 4px;
-    margin-top: 2px;
+    gap: 0.25rem;
+    margin-top: 0.0625rem;
 }
 
 .cliente-card .card-telefone i {
     color: var(--text-muted, #6b7280);
-    font-size: 0.8125rem;
+    font-size: 0.6875rem;
 }
 
 .cliente-card .card-grupos {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 4px;
+    gap: 0.1875rem;
+    margin-top: 0.25rem;
 }
 
 .cliente-card .card-grupos .grupo-tag {
     background: rgba(139, 92, 246, 0.12);
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 0.625rem;
+    padding: 0.0625rem 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.5625rem;
     font-weight: 600;
     color: #8b5cf6;
     border: 1px solid rgba(139, 92, 246, 0.15);
 }
 
-/* 🔥 CLASSIFICAÇÃO - MAIOR E MAIS VISÍVEL */
+/* Classificação */
 .cliente-card .card-classificacao {
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.75rem;
+    padding: 0.1875rem 0.625rem;
+    border-radius: 1rem;
+    font-size: 0.625rem;
     font-weight: 700;
     border: 2px solid;
     white-space: nowrap;
@@ -354,13 +357,11 @@
     background: rgba(245, 158, 11, 0.25);
     color: #f59e0b;
     border-color: #f59e0b;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 .cliente-card .card-classificacao.frequente {
     background: rgba(34, 197, 94, 0.25);
     color: #22c55e;
     border-color: #22c55e;
-    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.2);
 }
 .cliente-card .card-classificacao.sumido {
     background: rgba(239, 68, 68, 0.25);
@@ -378,15 +379,15 @@
     border-color: #6b7280;
 }
 
-/* 🔥 STATS MAIS VISÍVEIS */
+/* Stats compactos */
 .cliente-card .card-stats {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 0.375rem;
+    gap: 0.25rem;
     background: var(--bg-hover, #f3f4f6);
-    border-radius: 0.625rem;
-    padding: 0.5rem 0.375rem;
-    margin: 0.5rem 0;
+    border-radius: 0.5rem;
+    padding: 0.375rem 0.25rem;
+    margin: 0.375rem 0;
 }
 
 .cliente-card .card-stats .stat-item {
@@ -394,47 +395,43 @@
 }
 
 .cliente-card .card-stats .stat-item .stat-number {
-    font-size: 1.125rem;
+    font-size: 0.9375rem;
     font-weight: 800;
     color: var(--text-primary, #1f2937);
+    line-height: 1.1;
 }
 
-.cliente-card .card-stats .stat-item .stat-number.verde {
-    color: #22c55e;
-}
-.cliente-card .card-stats .stat-item .stat-number.vermelho {
-    color: #ef4444;
-}
+.cliente-card .card-stats .stat-item .stat-number.verde { color: #22c55e; }
+.cliente-card .card-stats .stat-item .stat-number.vermelho { color: #ef4444; }
 
 .cliente-card .card-stats .stat-item .stat-label {
-    font-size: 0.5625rem;
+    font-size: 0.5rem;
     font-weight: 600;
     color: var(--text-muted, #6b7280);
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
 
-/* 🔥 BOTÕES DE AÇÃO MAIORES */
+/* Botões de ação - compactos */
 .cliente-card .card-actions {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 0.375rem;
-    padding-top: 0.625rem;
-    border-top: 2px solid var(--border-color, #e5e7eb);
+    gap: 0.25rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color, #e5e7eb);
 }
 
 .cliente-card .card-actions .btn-action-card {
     text-align: center;
-    padding: 0.5rem 0.25rem;
-    border-radius: 0.5rem;
+    padding: 0.375rem 0.1875rem;
+    border-radius: 0.375rem;
     border: none;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     cursor: pointer;
     transition: all 0.2s ease;
     background: rgba(0, 0, 0, 0.04);
     color: var(--text-muted, #6b7280);
-    touch-action: manipulation;
-    min-height: 2.5rem;
+    min-height: 2rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -463,19 +460,12 @@
     color: #ffffff;
 }
 
-.cliente-card .card-actions .btn-history {
-    background: rgba(139, 92, 246, 0.15);
-    color: #8b5cf6;
-}
-.cliente-card .card-actions .btn-history:hover {
-    background: #8b5cf6;
-    color: #ffffff;
-}
-
+.cliente-card .card-actions .btn-history,
 .cliente-card .card-actions .btn-grupos {
     background: rgba(139, 92, 246, 0.15);
     color: #8b5cf6;
 }
+.cliente-card .card-actions .btn-history:hover,
 .cliente-card .card-actions .btn-grupos:hover {
     background: #8b5cf6;
     color: #ffffff;
@@ -516,110 +506,69 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.375rem;
-    padding: 0.5rem 0.875rem;
+    gap: 0.25rem;
+    padding: 0.375rem 0.625rem;
     border: 1.5px solid transparent;
-    border-radius: 0.5rem;
-    font-size: 0.8125rem;
+    border-radius: 0.4375rem;
+    font-size: 0.75rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.25s ease;
     text-decoration: none;
-    min-width: 5rem;
-    min-height: 2.5rem;
+    min-width: 4rem;
+    min-height: 2rem;
     background: var(--bg-hover, #f3f4f6);
     color: var(--text-secondary, #4b5563);
 }
 
-.btn-action i {
-    font-size: 0.875rem;
-}
+.btn-action i { font-size: 0.8125rem; }
 
 .btn-action:hover {
     transform: translateY(-0.125rem);
     box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
 }
 
-.btn-action:active {
-    transform: scale(0.95);
-}
+.btn-action:active { transform: scale(0.95); }
 
-/* ===== BOTÃO EDITAR ===== */
 .btn-edit {
     background: rgba(102, 126, 234, 0.15);
     color: #4f46e5;
     border-color: rgba(102, 126, 234, 0.2);
 }
-.btn-edit:hover {
-    background: #4f46e5;
-    color: #ffffff;
-    border-color: #4f46e5;
-    box-shadow: 0 0.25rem 0.75rem rgba(79, 70, 229, 0.3);
-}
+.btn-edit:hover { background: #4f46e5; color: #ffffff; border-color: #4f46e5; }
 
-/* ===== BOTÃO EXCLUIR ===== */
-.btn-delete {
-    background: rgba(239, 68, 68, 0.15);
-    color: #dc2626;
-    border-color: rgba(239, 68, 68, 0.2);
-}
-.btn-delete:hover {
-    background: #dc2626;
-    color: #ffffff;
-    border-color: #dc2626;
-    box-shadow: 0 0.25rem 0.75rem rgba(220, 38, 38, 0.3);
-}
-
-/* ===== BOTÃO BLOQUEAR ===== */
+.btn-delete,
 .btn-block {
     background: rgba(239, 68, 68, 0.15);
     color: #dc2626;
     border-color: rgba(239, 68, 68, 0.2);
 }
-.btn-block:hover {
-    background: #dc2626;
-    color: #ffffff;
-    border-color: #dc2626;
-    box-shadow: 0 0.25rem 0.75rem rgba(220, 38, 38, 0.3);
-}
+.btn-delete:hover,
+.btn-block:hover { background: #dc2626; color: #ffffff; border-color: #dc2626; }
 
-/* ===== BOTÃO DESBLOQUEAR ===== */
 .btn-unblock {
     background: rgba(34, 197, 94, 0.15);
     color: #16a34a;
     border-color: rgba(34, 197, 94, 0.2);
 }
-.btn-unblock:hover {
-    background: #16a34a;
-    color: #ffffff;
-    border-color: #16a34a;
-    box-shadow: 0 0.25rem 0.75rem rgba(22, 163, 74, 0.3);
-}
+.btn-unblock:hover { background: #16a34a; color: #ffffff; border-color: #16a34a; }
 
-/* ===== BOTÃO PRIMÁRIO ===== */
 .btn-primary {
     background: var(--gradient, linear-gradient(135deg, #667eea, #764ba2));
     color: #ffffff;
     border-color: transparent;
 }
-.btn-primary:hover {
-    transform: translateY(-0.125rem);
-    box-shadow: 0 0.25rem 0.75rem rgba(102, 126, 234, 0.3);
-}
+.btn-primary:hover { transform: translateY(-0.125rem); box-shadow: 0 0.25rem 0.75rem rgba(102, 126, 234, 0.3); }
 
-/* ===== BOTÃO OUTLINE ===== */
 .btn-outline {
     background: transparent;
     color: var(--text-secondary, #4b5563);
     border-color: var(--border-color, #e5e7eb);
 }
-.btn-outline:hover {
-    background: var(--bg-hover, #f3f4f6);
-    transform: translateY(-0.125rem);
-}
+.btn-outline:hover { background: var(--bg-hover, #f3f4f6); transform: translateY(-0.125rem); }
 
 /* ============================================
-   TABELA DESKTOP - NOMES SUPER DESTACADOS
+   TABELA DESKTOP
    ============================================ */
 
 .table-responsive {
@@ -631,9 +580,9 @@
     width: 100%;
     border-collapse: collapse;
     background: var(--bg-card, #ffffff);
-    border-radius: 0.75rem;
+    border-radius: 0.625rem;
     overflow: hidden;
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     min-width: 50rem;
 }
 
@@ -642,50 +591,35 @@
 }
 
 .data-table th {
-    padding: 0.75rem 1rem;
+    padding: 0.625rem 0.875rem;
     text-align: left;
     color: #ffffff;
     font-weight: 700;
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     white-space: nowrap;
-    position: sticky;
-    top: 0;
-    z-index: 5;
 }
 
 .data-table td {
-    padding: 0.5rem 1rem;
+    padding: 0.4375rem 0.875rem;
     border-bottom: 1px solid var(--border-color, #e5e7eb);
     color: var(--text-primary, #1f2937);
     vertical-align: middle;
-}
-
-.data-table tbody tr {
-    transition: background 0.2s ease;
 }
 
 .data-table tbody tr:hover {
     background: var(--bg-hover, rgba(0, 0, 0, 0.04));
 }
 
-.data-table tbody tr:last-child td {
-    border-bottom: none;
-}
-
-/* 🔥🔥🔥 NOME DO CLIENTE NA TABELA - SUPER GRANDE E DESTACADO */
 .data-table .cliente-nome {
     font-weight: 800;
-    font-size: 1.125rem;
+    font-size: 1rem;
     color: var(--text-primary, #1f2937);
     letter-spacing: -0.02em;
 }
 
-.data-table .cliente-icone {
-    font-size: 1.25rem;
-    margin-left: 4px;
-}
+.data-table .cliente-icone { font-size: 1.125rem; margin-left: 2px; }
 
 .data-table .cliente-detalhes {
     display: flex;
@@ -693,9 +627,8 @@
     gap: 2px;
 }
 
-/* 🔥 TELEFONE NA TABELA */
 .data-table .cliente-telefone {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: var(--text-secondary, #4b5563);
 }
@@ -704,17 +637,14 @@
     color: #25D366;
     text-decoration: none;
     margin-left: 4px;
-    font-size: 1.125rem;
+    font-size: 1rem;
 }
-.whatsapp-link:hover {
-    color: #128C7E;
-}
+.whatsapp-link:hover { color: #128C7E; }
 
-/* 🔥 CLASSIFICAÇÃO NA TABELA - MAIOR */
 .data-table .classificacao-tag {
-    padding: 4px 14px;
-    border-radius: 20px;
-    font-size: 0.75rem;
+    padding: 0.1875rem 0.625rem;
+    border-radius: 1rem;
+    font-size: 0.625rem;
     font-weight: 700;
     border: 2px solid;
     text-transform: uppercase;
@@ -725,13 +655,11 @@
     background: rgba(245, 158, 11, 0.2);
     color: #f59e0b;
     border-color: #f59e0b;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
 }
 .data-table .classificacao-tag.frequente {
     background: rgba(34, 197, 94, 0.2);
     color: #22c55e;
     border-color: #22c55e;
-    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
 }
 .data-table .classificacao-tag.sumido {
     background: rgba(239, 68, 68, 0.2);
@@ -752,113 +680,83 @@
 .data-table .grupos-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 4px;
+    gap: 0.1875rem;
 }
 
 .data-table .grupos-container .grupo-tag {
     background: rgba(139, 92, 246, 0.1);
-    padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 0.625rem;
+    padding: 0.0625rem 0.5rem;
+    border-radius: 0.75rem;
+    font-size: 0.5625rem;
     font-weight: 600;
     color: #8b5cf6;
     border: 1px solid rgba(139, 92, 246, 0.15);
     display: inline-block;
 }
 
-/* 🔥 AÇÕES DA TABELA - BOTÕES MAIORES */
 .data-table .actions-cell {
     display: flex;
-    gap: 0.25rem;
+    gap: 0.1875rem;
     flex-wrap: wrap;
     justify-content: center;
 }
 
 .data-table .actions-cell .btn-icon {
-    padding: 0.375rem 0.5rem;
+    padding: 0.25rem 0.375rem;
     border: none;
-    border-radius: 0.375rem;
+    border-radius: 0.3125rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     background: rgba(0, 0, 0, 0.04);
     color: var(--text-muted, #6b7280);
-    min-width: 2.25rem;
-    min-height: 2.25rem;
+    min-width: 1.875rem;
+    min-height: 1.875rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
 }
 
-.data-table .actions-cell .btn-icon:hover {
-    transform: scale(1.1);
-}
+.data-table .actions-cell .btn-icon:hover { transform: scale(1.1); }
 
 .data-table .actions-cell .btn-edit {
     background: rgba(102, 126, 234, 0.15);
     color: #667eea;
 }
-.data-table .actions-cell .btn-edit:hover {
-    background: #667eea;
-    color: #ffffff;
-}
+.data-table .actions-cell .btn-edit:hover { background: #667eea; color: #ffffff; }
 
-.data-table .actions-cell .btn-history {
-    background: rgba(139, 92, 246, 0.15);
-    color: #8b5cf6;
-}
-.data-table .actions-cell .btn-history:hover {
-    background: #8b5cf6;
-    color: #ffffff;
-}
-
+.data-table .actions-cell .btn-history,
 .data-table .actions-cell .btn-grupos {
     background: rgba(139, 92, 246, 0.15);
     color: #8b5cf6;
 }
-.data-table .actions-cell .btn-grupos:hover {
-    background: #8b5cf6;
-    color: #ffffff;
-}
+.data-table .actions-cell .btn-history:hover,
+.data-table .actions-cell .btn-grupos:hover { background: #8b5cf6; color: #ffffff; }
 
-.data-table .actions-cell .btn-block {
+.data-table .actions-cell .btn-block,
+.data-table .actions-cell .btn-delete {
     background: rgba(239, 68, 68, 0.15);
     color: #ef4444;
 }
-.data-table .actions-cell .btn-block:hover {
-    background: #ef4444;
-    color: #ffffff;
-}
+.data-table .actions-cell .btn-block:hover,
+.data-table .actions-cell .btn-delete:hover { background: #ef4444; color: #ffffff; }
 
 .data-table .actions-cell .btn-unblock {
     background: rgba(34, 197, 94, 0.15);
     color: #22c55e;
 }
-.data-table .actions-cell .btn-unblock:hover {
-    background: #22c55e;
-    color: #ffffff;
-}
-
-.data-table .actions-cell .btn-delete {
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-}
-.data-table .actions-cell .btn-delete:hover {
-    background: #ef4444;
-    color: #ffffff;
-}
+.data-table .actions-cell .btn-unblock:hover { background: #22c55e; color: #ffffff; }
 
 /* ============================================
-   MODAL CLIENTE
+   MODAIS
    ============================================ */
 
 .modal-cliente .modal-content {
     max-width: 28.125rem;
     width: 100%;
-    padding: 1.5rem;
+    padding: 1rem;
     background: var(--bg-card, #ffffff);
-    border-radius: 0.75rem;
-    box-shadow: 0 0.625rem 2.5rem rgba(0, 0, 0, 0.2);
+    border-radius: 0.625rem;
     max-height: 90vh;
     overflow-y: auto;
 }
@@ -867,64 +765,60 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0.75rem;
 }
 
 .modal-cliente .modal-header h3 {
     margin: 0;
     color: var(--text-primary, #1f2937);
-    font-size: 1.25rem;
+    font-size: 1.125rem;
 }
 
 .modal-cliente .modal-close {
     background: none;
     border: none;
-    font-size: 1.75rem;
+    font-size: 1.5rem;
     cursor: pointer;
     color: var(--text-muted, #6b7280);
     line-height: 1;
-    padding: 0 0.5rem;
+    padding: 0 0.375rem;
 }
 
 .modal-cliente .form-group {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .modal-cliente .form-group label {
     display: block;
-    margin-bottom: 0.3125rem;
+    margin-bottom: 0.25rem;
     font-weight: 600;
     color: var(--text-secondary, #4b5563);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
 }
 
 .modal-cliente .form-group .form-control {
     width: 100%;
-    padding: 0.625rem;
+    padding: 0.5rem;
     border: 1px solid var(--border-color, #e5e7eb);
-    border-radius: 0.375rem;
-    font-size: 0.875rem;
+    border-radius: 0.3125rem;
+    font-size: 0.8125rem;
     background: var(--bg-input, #ffffff);
     color: var(--text-primary, #1f2937);
 }
 
 .modal-cliente .modal-actions {
     display: flex;
-    gap: 0.625rem;
+    gap: 0.5rem;
     justify-content: flex-end;
-    margin-top: 1.25rem;
+    margin-top: 0.75rem;
 }
-
-/* ============================================
-   MODAL GRUPOS
-   ============================================ */
 
 .modal-grupos .grupo-tag {
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
     background: rgba(139, 92, 246, 0.1);
-    padding: 0.25rem 0.625rem;
+    padding: 0.1875rem 0.5rem;
     border-radius: 1rem;
     border: 1px solid rgba(139, 92, 246, 0.2);
 }
@@ -934,21 +828,20 @@
     border: none;
     color: #ef4444;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.75rem;
     padding: 0 0.125rem;
 }
 
 .modal-grupos .grupo-btn-select {
-    padding: 0.375rem 0.875rem;
+    padding: 0.25rem 0.625rem;
     border-radius: 1.25rem;
     border: 2px solid var(--border-color, #e5e7eb);
     background: var(--bg-hover, #f3f4f6);
     color: var(--text-secondary, #4b5563);
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s ease;
-    touch-action: manipulation;
 }
 
 .modal-grupos .grupo-btn-select.selected {
@@ -962,57 +855,50 @@
    ============================================ */
 
 @media (max-width: 48rem) {
-    /* Stats mobile */
+    .clientes-header .page-title { font-size: 1.125rem; }
+    .clientes-header .page-subtitle { font-size: 0.6875rem; }
+
+    .clientes-stats {
+        gap: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+
     .clientes-stats.grid-6 {
         grid-template-columns: repeat(3, 1fr);
     }
 
-    .stat-card-cliente .stat-value {
-        font-size: 1.125rem;
-    }
-    .stat-card-cliente .stat-label {
-        font-size: 0.6875rem;
-    }
+    .stat-card-cliente { padding: 0.375rem 0.25rem; }
+    .stat-card-cliente .stat-value { font-size: 1rem; }
+    .stat-card-cliente .stat-label { font-size: 0.5625rem; }
 
     /* Tabela vira cards */
-    .data-table thead {
-        display: none;
-    }
+    .data-table thead { display: none; }
 
     .data-table tbody tr {
         display: block;
-        margin-bottom: 0.75rem;
+        margin-bottom: 0.5rem;
         background: var(--bg-card, #ffffff);
-        border-radius: 1rem;
+        border-radius: 0.625rem;
         border: 2px solid var(--border-color, #e5e7eb);
-        padding: 1rem;
-        box-shadow: var(--shadow-sm, 0 1px 2px 0 rgba(0, 0, 0, 0.05));
-        transition: all 0.3s ease;
-    }
-
-    .data-table tbody tr:hover {
-        background: var(--bg-card, #ffffff);
-        box-shadow: var(--shadow, 0 4px 12px -1px rgba(0, 0, 0, 0.1));
-        border-color: var(--primary, #667eea);
-        transform: translateY(-2px);
+        padding: 0.625rem 0.75rem;
     }
 
     .data-table tbody td {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 0.375rem 0 !important;
+        padding: 0.25rem 0 !important;
         border-bottom: 1px solid var(--border-color, #e5e7eb);
         background: transparent !important;
-        font-size: 0.8125rem;
+        font-size: 0.75rem;
     }
 
     .data-table tbody td:last-child {
         border-bottom: none;
         flex-direction: column;
         align-items: stretch;
-        gap: 0.5rem;
-        padding-top: 0.5rem !important;
+        gap: 0.375rem;
+        padding-top: 0.375rem !important;
         margin-top: 0.25rem;
         border-top: 2px solid var(--border-color, #e5e7eb);
     }
@@ -1020,106 +906,79 @@
     .data-table tbody td:last-child .actions-cell {
         justify-content: center;
         flex-wrap: wrap;
-        gap: 0.375rem;
+        gap: 0.25rem;
     }
 
     .data-table tbody td:last-child .actions-cell .btn-icon {
-        padding: 0.5rem 0.625rem;
-        font-size: 0.9375rem;
-        min-height: 2.5rem;
-        min-width: 2.5rem;
-        border-radius: 0.5rem;
+        padding: 0.375rem 0.5rem;
+        font-size: 0.8125rem;
+        min-height: 2rem;
+        min-width: 2rem;
+        border-radius: 0.375rem;
     }
 
     .data-table tbody td::before {
         content: attr(data-label);
         font-weight: 700;
         color: var(--text-muted, #6b7280);
-        font-size: 0.625rem;
+        font-size: 0.5625rem;
         text-transform: uppercase;
         letter-spacing: 0.01875rem;
         flex-shrink: 0;
     }
 
-    /* 🔥 NOME NA TABELA EM MOBILE */
-    .data-table tbody td .cliente-nome {
-        font-size: 1rem;
-        font-weight: 800;
-    }
-
-    .data-table tbody td .cliente-telefone {
-        font-size: 0.75rem;
-    }
+    .data-table tbody td .cliente-nome { font-size: 0.9375rem; }
+    .data-table tbody td .cliente-telefone { font-size: 0.6875rem; }
 
     .data-table .classificacao-tag {
-        font-size: 0.625rem;
-        padding: 2px 10px;
+        font-size: 0.5625rem;
+        padding: 0.125rem 0.5rem;
+    }
+
+    .cliente-card .card-actions {
+        grid-template-columns: repeat(6, 1fr);
+        gap: 0.1875rem;
+    }
+
+    .cliente-card .card-actions .btn-action-card {
+        min-height: 1.75rem;
+        font-size: 0.6875rem;
     }
 }
 
 @media (max-width: 30rem) {
-    /* Stats mobile pequeno */
-    .clientes-stats.grid-6 {
+    .clientes-stats.grid-6,
+    .clientes-stats.grid-3 {
         grid-template-columns: repeat(3, 1fr);
     }
-    .clientes-stats.grid-3 {
-        grid-template-columns: 1fr 1fr;
-    }
 
-    .stat-card-cliente {
-        padding: 0.5rem 0.375rem;
-    }
-    .stat-card-cliente .stat-value {
-        font-size: 1rem;
-    }
-
-    /* Cards mobile - botões em coluna */
     .cliente-card .card-actions {
         grid-template-columns: repeat(3, 1fr);
     }
 
-    .cliente-card .card-stats {
-        grid-template-columns: 1fr 1fr 1fr;
-    }
-
-    /* 🔥 NOME EM CARDS - TELAS MUITO PEQUENAS */
-    .cliente-card .card-nome {
-        font-size: 1.0625rem;
-    }
-
+    .cliente-card .card-nome { font-size: 0.9375rem; }
     .cliente-card .card-avatar {
-        width: 2.75rem;
-        height: 2.75rem;
-        font-size: 1rem;
+        width: 2.25rem;
+        height: 2.25rem;
+        font-size: 0.875rem;
     }
-
-    .cliente-card .card-telefone {
-        font-size: 0.75rem;
-    }
-
+    .cliente-card .card-telefone { font-size: 0.6875rem; }
     .cliente-card .card-classificacao {
-        font-size: 0.625rem;
-        padding: 2px 10px;
-    }
-
-    .data-table tbody td:last-child .actions-cell {
-        flex-direction: column;
-        gap: 0.375rem;
+        font-size: 0.5625rem;
+        padding: 0.125rem 0.5rem;
     }
 
     .data-table tbody td:last-child .actions-cell .btn-icon {
         width: 100%;
         justify-content: center;
-        padding: 0.625rem;
-        min-height: 2.75rem;
+        padding: 0.5rem;
+        min-height: 2.25rem;
     }
 }
 
-/* Touch devices - desabilitar hovers */
+/* Touch devices */
 @media (hover: none) {
-    .stat-card-cliente:hover {
-        transform: none;
-    }
+    .stat-card-cliente:hover { transform: none; }
     .cliente-card:hover {
         transform: none;
         border-color: var(--border-color, #e5e7eb);
@@ -1132,13 +991,6 @@
         background: transparent;
         border-color: var(--border-color, #e5e7eb);
     }
-    .cliente-card .card-actions .btn-action-card:hover {
-        transform: none;
-    }
-    .data-table .actions-cell .btn-icon:hover {
-        transform: none;
-    }
-    .data-table tbody td:last-child .actions-cell .btn-icon:hover {
-        transform: none;
-    }
+    .cliente-card .card-actions .btn-action-card:hover { transform: none; }
+    .data-table .actions-cell .btn-icon:hover { transform: none; }
 }

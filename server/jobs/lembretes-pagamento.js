@@ -117,7 +117,7 @@ function gerarMensagemCobrança(dados) {
     }
 
     mensagem += `🔗 *Veja seus agendamentos:*\n`;
-    mensagem += `https://seeagende.com.br/chatbot.html?empresa=${empresa_id}\n\n`;
+    mensagem += `${process.env.BASE_URL || 'https://seeagende.tech'}/chatbot.html?empresa=${empresa_id}\n\n`;
     mensagem += `---\n_Mensagem automática do See&Agende_`;
 
     return mensagem;

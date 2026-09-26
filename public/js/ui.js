@@ -1,4 +1,36 @@
 ﻿// ============================================
+// INTERCEPTOR NGROK
+// Adiciona o header 'ngrok-skip-browser-warning' em TODAS as chamadas fetch
+// para evitar que o ngrok gratuito devolva a página de aviso
+// ============================================
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+        init = init || {};
+        
+        let headers = init.headers || {};
+        
+        // Normaliza headers (pode ser objeto, Headers, ou array)
+        if (headers instanceof Headers) {
+            if (!headers.has('ngrok-skip-browser-warning')) {
+                headers.set('ngrok-skip-browser-warning', 'true');
+            }
+        } else if (Array.isArray(headers)) {
+            const temHeader = headers.some(h => h[0] && h[0].toLowerCase() === 'ngrok-skip-browser-warning');
+            if (!temHeader) headers.push(['ngrok-skip-browser-warning', 'true']);
+        } else {
+            const jaTem = Object.keys(headers).some(k => k.toLowerCase() === 'ngrok-skip-browser-warning');
+            if (!jaTem) headers = { ...headers, 'ngrok-skip-browser-warning': 'true' };
+        }
+        
+        init.headers = headers;
+        return originalFetch.call(this, input, init);
+    };
+    
+    console.log('✅ Interceptor ngrok ativo');
+})();
+
+// ============================================
 // UI FUNCTIONS - SEE&AGENDE v7.2
 // ============================================
 
@@ -460,18 +492,18 @@ function iniciarMonitoramentoWhatsApp() {
     // Só monitora se for Dono
     if (usuario.role === 'dono') {
         console.log('📱 Iniciando monitoramento WhatsApp para Dono');
-        
-        // Verificar e rodar imediatamente
-        verificarERodar();
+
+        // 🔥 CORREÇÃO: a função correta é atualizarStatusWhatsApp()
+        // (verificarERodar foi removida/renomeada em refatoração anterior)
+        atualizarStatusWhatsApp();
 
         // Configurar intervalo (a cada 30 segundos)
         if (window.whatsappInterval) {
             clearInterval(window.whatsappInterval);
         }
-        window.whatsappInterval = setInterval(verificarERodar, 30000);
+        window.whatsappInterval = setInterval(atualizarStatusWhatsApp, 30000);
     }
 }
-
 // ============================================
 // GERAR MENU DINÂMICO - COM INDICADOR WHATSAPP
 // ============================================

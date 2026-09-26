@@ -273,7 +273,13 @@ async function carregarAgendaInteligente() {
 }
 
 // ============================================
-// RENDERIZAR AGENDA INTELIGENTE - CORRIGIDA
+// VARIÁVEL DE VISÃO
+// ============================================
+
+let agendaModoVisao = localStorage.getItem('agendaModoVisao') || (isMobileScreen() ? 'dia' : 'semana');
+
+// ============================================
+// RENDERIZAR AGENDA INTELIGENTE - 3 VISÕES
 // ============================================
 
 function renderizarAgendaInteligente() {
@@ -283,87 +289,141 @@ function renderizarAgendaInteligente() {
     if (!agendaInteligenteDate) agendaInteligenteDate = new Date();
 
     const hoje = new Date();
-    const hojeLocalObj = hojeLocal();
     const hojeStr = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
 
     if (!agendaInteligenteProfissionais || agendaInteligenteProfissionais.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:30px;"><p style="color:var(--text-muted);">👨‍💼 Nenhum profissional cadastrado</p></div>`;
+        container.innerHTML = `<div class="agenda-mobile-fechado"><span class="agenda-mobile-fechado-icon">👨‍💼</span><div class="agenda-mobile-fechado-titulo">Nenhum profissional cadastrado</div></div>`;
         return;
     }
     if (!agendaInteligenteHorarios || agendaInteligenteHorarios.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:30px;"><p style="color:var(--text-muted);">⏰ Horários não configurados</p></div>`;
+        container.innerHTML = `<div class="agenda-mobile-fechado"><span class="agenda-mobile-fechado-icon">⏰</span><div class="agenda-mobile-fechado-titulo">Horários não configurados</div></div>`;
         return;
     }
 
-    // Gerar dias da semana
-    const dias = [];
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(agendaInteligenteDate);
-        d.setDate(agendaInteligenteDate.getDate() + i);
-        dias.push(d);
+    // ============================================
+    // FUNÇÕES AUXILIARES
+    // ============================================
+
+    window._agendaGetCorIndex = function(profissional) {
+        const idx = agendaInteligenteProfissionais.findIndex(p => String(p.id) === String(profissional.id));
+        return idx >= 0 ? idx % 15 : 0;
+    };
+
+    window._agendaGetAgendamentosDoSlot = function(dataStr, horaStr, profId) {
+        const hm = horaParaMinutos(horaStr);
+        const result = [];
+        for (let ag of agendaInteligenteData) {
+            if (ag.data !== dataStr || ag.status === 'cancelado' || !ag.hora) continue;
+            const agH = horaParaMinutos(ag.hora);
+            let dur = 30;
+            if (ag.servico_id) {
+                const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
+                if (s && s.duracao) dur = parseInt(s.duracao);
+            }
+            if (hm >= agH && hm < agH + dur) {
+                if (profId === 'dono') {
+                    if (ag.profissional_id === null || ag.profissional_id === '' || ag.profissional_id === undefined) {
+                        result.push(ag);
+                    }
+                } else {
+                    if (String(ag.profissional_id) === String(profId)) {
+                        result.push(ag);
+                    }
+                }
+            }
+        }
+        return result;
+    };
+
+    window._agendaRenderBloco = function(ag, prof) {
+        const corIdx = window._agendaGetCorIndex(prof);
+        const cliente = escapeHtml(ag.cliente_nome || 'Cliente');
+        const servico = escapeHtml(ag.servico_nome || ag.servico || '');
+        const hora = ag.hora || '';
+        const statusIcon = ag.status === 'concluido' ? '✓' :
+                          ag.status === 'pendente' ? '⏳' : '';
+        return `
+            <div class="agenda-bloco agenda-cor-${corIdx}"
+                 onclick="event.stopPropagation(); abrirDetalhesSlot('${ag.data}','${hora}')"
+                 title="${cliente} · ${servico} · ${hora}">
+                <span class="agenda-bloco-cliente">
+                    ${cliente}
+                    ${statusIcon ? `<span class="agenda-bloco-status">${statusIcon}</span>` : ''}
+                </span>
+                <span class="agenda-bloco-info">${servico || prof.nome} · ${hora}</span>
+            </div>
+        `;
+    };
+
+    // ============================================
+    // HEADER DE NAVEGAÇÃO
+    // ============================================
+
+    function renderHeaderNav() {
+        const diaRef = agendaInteligenteDate;
+        let tituloRange = '';
+
+        if (agendaModoVisao === 'dia') {
+            tituloRange = diaRef.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+        } else if (agendaModoVisao === 'semana') {
+            const fimSemana = new Date(diaRef);
+            fimSemana.setDate(diaRef.getDate() + 6);
+            tituloRange = `${diaRef.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} — ${fimSemana.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}`;
+        } else {
+            tituloRange = diaRef.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        }
+
+        return `
+            <div class="agenda-header-bar">
+                <div class="agenda-header-titulo">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span>${tituloRange}</span>
+                </div>
+                <div class="agenda-header-actions">
+                    <div class="agenda-view-switcher">
+                        <button class="agenda-view-btn ${agendaModoVisao === 'dia' ? 'active' : ''}"
+                                onclick="mudarVisaoAgenda('dia')" title="Dia">
+                            <i class="fas fa-calendar-day"></i><span>Dia</span>
+                        </button>
+                        <button class="agenda-view-btn ${agendaModoVisao === 'semana' ? 'active' : ''}"
+                                onclick="mudarVisaoAgenda('semana')" title="Semana">
+                            <i class="fas fa-calendar-week"></i><span>Semana</span>
+                        </button>
+                        <button class="agenda-view-btn ${agendaModoVisao === 'mes' ? 'active' : ''}"
+                                onclick="mudarVisaoAgenda('mes')" title="Mês">
+                            <i class="fas fa-calendar-alt"></i><span>Mês</span>
+                        </button>
+                    </div>
+                    <button class="agenda-btn-nav" onclick="navegarAgenda(-1)">◀</button>
+                    <button class="agenda-btn-hoje" onclick="irAgendaHoje()">📌 Hoje</button>
+                    <button class="agenda-btn-nav" onclick="navegarAgenda(1)">▶</button>
+                </div>
+            </div>
+        `;
     }
 
     // ============================================
-    // VERSÃO MOBILE - TODOS OS HORÁRIOS
+    // VISÃO DIA
     // ============================================
-    if (isMobile && !agendaModoCompleto) {
-        const dia = dias.find(d => {
-            const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            return ds === hojeStr;
-        }) || dias[0];
+
+    function renderVisaoDia() {
+        const dia = new Date(agendaInteligenteDate);
         const dataStr = `${dia.getFullYear()}-${String(dia.getMonth() + 1).padStart(2, '0')}-${String(dia.getDate()).padStart(2, '0')}`;
         const diaSem = dia.getDay();
         const horDia = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
         const aberto = horDia && (horDia.aberto == 1 || horDia.aberto == true);
-        const isFechado = !aberto;
 
-        if (isFechado) {
-            let proxDia = new Date(dia);
-            let encontrou = false;
-            
-            for (let i = 1; i <= 7; i++) {
-                const testDate = new Date(dia);
-                testDate.setDate(dia.getDate() + i);
-                const testDiaSem = testDate.getDay();
-                const testHorDia = agendaInteligenteHorarios.find(h => h.dia_semana === testDiaSem);
-                const testAberto = testHorDia && (testHorDia.aberto == 1 || testHorDia.aberto == true);
-                if (testAberto) {
-                    proxDia = testDate;
-                    encontrou = true;
-                    break;
-                }
-            }
-
-            container.innerHTML = `
-                <div style="text-align:center;padding:30px;">
-                    <div style="font-size:48px;">🚫</div>
-                    <p style="margin-top:8px;font-weight:700;font-size:16px;color:var(--text-primary);">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })} Fechado</p>
-                    <p style="font-size:13px;color:var(--text-muted);">Este dia não está disponível para agendamentos</p>
-                    ${encontrou ? `
-                        <button onclick="irParaDiaDisponivel('${proxDia.getFullYear()}-${String(proxDia.getMonth() + 1).padStart(2, '0')}-${String(proxDia.getDate()).padStart(2, '0')}')" style="
-                            margin-top:12px;
-                            padding:8px 20px;
-                            border:none;
-                            border-radius:10px;
-                            background:linear-gradient(135deg,#667eea,#764ba2);
-                            color:white;
-                            font-weight:600;
-                            font-size:14px;
-                            cursor:pointer;
-                        ">
-                            ▶️ Ir para ${proxDia.toLocaleDateString('pt-BR', { weekday: 'long' })}
-                        </button>
-                    ` : `
-                        <p style="font-size:12px;color:var(--text-muted);margin-top:8px;">Nenhum dia disponível nos próximos 7 dias</p>
-                    `}
-                    <div style="display:flex;gap:6px;margin-top:16px;justify-content:center;">
-                        <button onclick="mudarAgendaSemana(-1)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;cursor:pointer;">◀️ Ontem</button>
-                        <button onclick="irAgendaHoje()" style="padding:8px 16px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:600;cursor:pointer;">📌 Hoje</button>
-                        <button onclick="mudarAgendaSemana(1)" style="padding:8px 16px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;cursor:pointer;">Amanhã ▶️</button>
+        if (!aberto) {
+            return `
+                <div class="agenda-google">
+                    ${renderHeaderNav()}
+                    <div class="agenda-mobile-fechado" style="padding:2rem 1rem;">
+                        <span class="agenda-mobile-fechado-icon">🚫</span>
+                        <div class="agenda-mobile-fechado-titulo">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })} — Fechado</div>
+                        <p style="font-size:0.75rem;">Este dia não está disponível para agendamentos</p>
                     </div>
                 </div>
             `;
-            return;
         }
 
         let base = gerarHorariosDoDiaConfig(
@@ -379,333 +439,366 @@ function renderizarAgendaInteligente() {
             }
         }
 
-        const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                      document.body.classList.contains('dark-theme') ||
-                      window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-        let html = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <div>
-                    <div style="font-size:17px;font-weight:800;color:${isDark ? '#ffffff' : '#1a1a2e'};">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })}</div>
-                    <div style="font-size:12px;color:var(--text-muted);">${dia.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long' })}</div>
-                </div>
-                <button onclick="alternarModoAgenda()" style="background:var(--bg-card);border:1px solid var(--border-color);padding:6px 14px;border-radius:16px;font-size:11px;font-weight:700;color:var(--text-primary);cursor:pointer;">📅 Semana</button>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:4px;max-height:450px;overflow-y:auto;padding-right:4px;">
-        `;
+        const totalProf = agendaInteligenteProfissionais.length;
+        let slotsHtml = '';
 
         for (let hora of base) {
-            const alm = horDia && hora >= (horDia.almoco_inicio || '12:00') && hora < (horDia.almoco_fim || '13:00');
-            if (alm) {
-                html += `<div style="background:rgba(245,158,11,0.12);border-radius:8px;padding:8px 12px;border-left:3px solid #f59e0b;font-size:13px;color:#f59e0b;font-weight:600;">🍽 ${hora} — Almoço</div>`;
+            const almoco = hora >= (horDia.almoco_inicio || '12:00') && hora < (horDia.almoco_fim || '13:00');
+            const isAgora = hojeStr === dataStr &&
+                hoje.getHours() === parseInt(hora.split(':')[0]) &&
+                hoje.getMinutes() >= parseInt(hora.split(':')[1]) &&
+                hoje.getMinutes() < parseInt(hora.split(':')[1]) + 30;
+
+            if (almoco) {
+                slotsHtml += `
+                    <div class="agenda-dia-slot agenda-slot-almoco">
+                        <div class="agenda-dia-hora">
+                            <span>${hora}</span>
+                        </div>
+                        <div class="agenda-dia-blocos">
+                            <span class="agenda-dia-vazio">🍽 Almoço</span>
+                        </div>
+                    </div>
+                `;
                 continue;
             }
-            
+
             let ocupados = 0;
-            let profissionaisStatus = [];
-            const hm = horaParaMinutos(hora);
-            
+            const blocosSlot = [];
             for (let p of agendaInteligenteProfissionais) {
-                let ocupado = false;
-                let nomeProfissional = p.nome || p.name || 'Profissional';
-                let clienteNome = '';
-                
-                if (p.is_dono) {
-                    for (let ag of agendaInteligenteData) {
-                        if (ag.data !== dataStr || ag.status === 'cancelado' || (ag.profissional_id !== null && ag.profissional_id !== '' && ag.profissional_id !== undefined) || !ag.hora) continue;
-                        const agH = horaParaMinutos(ag.hora);
-                        let dur = 30;
-                        if (ag.servico_id) {
-                            const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                            if (s && s.duracao) dur = parseInt(s.duracao);
-                        }
-                        if (hm >= agH && hm < agH + dur) { 
-                            ocupado = true; 
-                            clienteNome = ag.cliente_nome || 'Cliente';
-                            break; 
-                        }
-                    }
-                } else {
-                    for (let ag of agendaInteligenteData) {
-                        if (ag.data !== dataStr || ag.status === 'cancelado' || String(ag.profissional_id) !== String(p.id) || !ag.hora) continue;
-                        const agH = horaParaMinutos(ag.hora);
-                        let dur = 30;
-                        if (ag.servico_id) {
-                            const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                            if (s && s.duracao) dur = parseInt(s.duracao);
-                        }
-                        if (hm >= agH && hm < agH + dur) { 
-                            ocupado = true; 
-                            clienteNome = ag.cliente_nome || 'Cliente';
-                            break; 
-                        }
+                const ags = window._agendaGetAgendamentosDoSlot(dataStr, hora, p.is_dono ? 'dono' : p.id);
+                if (ags.length > 0) {
+                    ocupados++;
+                    for (let ag of ags) {
+                        blocosSlot.push(window._agendaRenderBloco(ag, p));
                     }
                 }
-                
-                if (ocupado) ocupados++;
-                profissionaisStatus.push({
-                    nome: nomeProfissional,
-                    ocupado: ocupado,
-                    cliente: clienteNome
-                });
             }
-            
-            const totalProfissionais = agendaInteligenteProfissionais.length;
-            const livres = totalProfissionais - ocupados;
-            
+
+            const livres = totalProf - ocupados;
+            let slotClass = '';
             let statusText = '';
             let statusColor = '';
-            let statusBg = '';
-            let detalhesProfissionais = '';
-            
+
             if (livres === 0) {
-                statusText = `🔴 ${ocupados}/${totalProfissionais} OCUPADOS`;
+                slotClass = 'agenda-slot-lotado';
+                statusText = `🔴 ${ocupados}/${totalProf}`;
                 statusColor = '#ef4444';
-                statusBg = 'rgba(239,68,68,0.08)';
-                detalhesProfissionais = profissionaisStatus.filter(p => p.ocupado).map(p => `${p.nome} (${p.cliente})`).join(', ');
             } else if (ocupados > 0) {
-                statusText = `🟡 ${livres} livre${livres > 1 ? 's' : ''} · ${ocupados} ocupado${ocupados > 1 ? 's' : ''}`;
+                slotClass = 'agenda-slot-parcial';
+                statusText = `🟡 ${livres} livre${livres > 1 ? 's' : ''}`;
                 statusColor = '#f59e0b';
-                statusBg = 'rgba(245,158,11,0.08)';
-                const livresList = profissionaisStatus.filter(p => !p.ocupado).map(p => p.nome);
-                detalhesProfissionais = `Livre: ${livresList.join(', ')}`;
             } else {
-                statusText = `🟢 ${totalProfissionais} LIVRE${totalProfissionais > 1 ? 'S' : ''}`;
+                slotClass = 'agenda-slot-livre';
+                statusText = `🟢 ${totalProf} livre${totalProf > 1 ? 's' : ''}`;
                 statusColor = '#22c55e';
-                statusBg = 'rgba(34,197,94,0.08)';
-                detalhesProfissionais = `Todos disponíveis`;
             }
-            
-            html += `
-                <div onclick="abrirDetalhesSlot('${dataStr}','${hora}')" style="
-                    background:${statusBg};
-                    border-radius:10px;
-                    padding:10px 14px;
-                    cursor:pointer;
-                    border-left:4px solid ${statusColor};
-                    margin-bottom:4px;
-                ">
-                    <div style="display:flex;justify-content:space-between;align-items:center;">
-                        <span style="font-weight:700;font-size:15px;color:${isDark ? '#ffffff' : '#1a1a2e'};">${hora}</span>
-                        <span style="font-weight:700;font-size:13px;color:${statusColor};">${statusText}</span>
+
+            slotsHtml += `
+                <div class="agenda-dia-slot ${slotClass} agenda-slot-clicavel"
+                     onclick="abrirDetalhesSlot('${dataStr}','${hora}')">
+                    <div class="agenda-dia-hora">
+                        ${isAgora ? '<span class="agora-badge">AGORA</span>' : ''}
+                        <span>${hora}</span>
+                        <span class="status-resumo" style="color:${statusColor};">${statusText}</span>
                     </div>
-                    ${detalhesProfissionais ? `
-                        <div style="font-size:10px;color:var(--text-muted);margin-top:2px;padding-top:2px;border-top:1px solid rgba(255,255,255,0.05);">
-                            ${detalhesProfissionais}
-                        </div>
-                    ` : ''}
+                    <div class="agenda-dia-blocos">
+                        ${blocosSlot.length > 0
+                            ? blocosSlot.join('')
+                            : '<span class="agenda-dia-vazio">Disponível</span>'
+                        }
+                    </div>
                 </div>
             `;
         }
 
-        html += `
-            </div>
-            <div style="display:flex;gap:6px;margin-top:10px;">
-                <button onclick="mudarAgendaSemana(-1)" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">◀️ Ontem</button>
-                <button onclick="irAgendaHoje()" style="flex:1;padding:10px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:700;cursor:pointer;">📌 Hoje</button>
-                <button onclick="mudarAgendaSemana(1)" style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">Amanhã ▶️</button>
+        return `
+            <div class="agenda-google">
+                ${renderHeaderNav()}
+                <div class="agenda-dia-wrap">
+                    <div class="agenda-dia-titulo">
+                        <div class="agenda-dia-titulo-texto">
+                            ${dia.toLocaleDateString('pt-BR', { weekday: 'long' })}
+                            <small>${dia.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</small>
+                        </div>
+                    </div>
+                    <div class="agenda-dia-lista">${slotsHtml}</div>
+                </div>
             </div>
         `;
-        container.innerHTML = html;
-        return;
     }
 
     // ============================================
-    // VERSÃO DESKTOP - AGENDA COMPLETA (MAIOR)
+    // VISÃO SEMANA
     // ============================================
 
-    const horaAtual = hoje.getHours();
-    const minAtual = hoje.getMinutes();
-    const cfgHoje = agendaInteligenteHorarios.find(h => h.dia_semana === hoje.getDay());
-    let base = [];
-    if (cfgHoje && (cfgHoje.aberto == 1 || cfgHoje.aberto == true)) {
-        base = gerarHorariosDoDiaConfig(
-            cfgHoje.hora_inicio || '08:00',
-            cfgHoje.hora_fim || '18:00',
-            cfgHoje.almoco_inicio || '12:00',
-            cfgHoje.almoco_fim || '13:00'
-        );
-    }
-    if (base.length === 0) {
-        for (let h = 8; h <= 18; h++) {
-            base.push(String(h).padStart(2, '0') + ':00');
-            if (h < 18) base.push(String(h).padStart(2, '0') + ':30');
+    function renderVisaoSemana() {
+        const dias = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(agendaInteligenteDate);
+            d.setDate(agendaInteligenteDate.getDate() + i);
+            dias.push(d);
         }
-    }
-    let idxAtual = 0;
-    const totMin = horaAtual * 60 + minAtual;
-    for (let i = 0; i < base.length; i++) {
-        const [h, m] = base[i].split(':').map(Number);
-        if ((h * 60 + m) >= totMin) { idxAtual = i; break; }
-    }
 
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark' || 
-                  document.body.classList.contains('dark-theme') ||
-                  window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const cfgHoje = agendaInteligenteHorarios.find(h => h.dia_semana === hoje.getDay());
+        let base = [];
+        if (cfgHoje && (cfgHoje.aberto == 1 || cfgHoje.aberto == true)) {
+            base = gerarHorariosDoDiaConfig(
+                cfgHoje.hora_inicio || '08:00',
+                cfgHoje.hora_fim || '18:00',
+                cfgHoje.almoco_inicio || '12:00',
+                cfgHoje.almoco_fim || '13:00'
+            );
+        }
+        if (base.length === 0) {
+            for (let h = 8; h <= 18; h++) {
+                base.push(String(h).padStart(2, '0') + ':00');
+                if (h < 18) base.push(String(h).padStart(2, '0') + ':30');
+            }
+        }
 
-    // 🔥 TAMANHOS MAIORES PARA DESKTOP
-    const cellPad = '12px 16px';
-    const fSize = '15px';
-    const minW = '900px';
+        const totMinAgora = hoje.getHours() * 60 + hoje.getMinutes();
+        let idxAgora = -1;
+        for (let i = 0; i < base.length; i++) {
+            const [h, m] = base[i].split(':').map(Number);
+            if ((h * 60 + m) >= totMinAgora) { idxAgora = i; break; }
+        }
 
-    let html = `
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-            <span style="font-size:17px;font-weight:700;color:${isDark ? '#ffffff' : '#1a1a2e'};">
-                📅 ${dias[0].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })} - ${dias[6].toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
-            </span>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-                <button onclick="mudarAgendaSemana(-7)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">◀◀</button>
-                <button onclick="mudarAgendaSemana(-1)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">◀</button>
-                <button onclick="irAgendaHoje()" style="padding:6px 16px;border-radius:6px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:12px;font-weight:700;cursor:pointer;">📌 Hoje</button>
-                <button onclick="mudarAgendaSemana(1)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">▶</button>
-                <button onclick="mudarAgendaSemana(7)" style="padding:6px 14px;border-radius:6px;border:1px solid var(--border-color);background:transparent;font-size:12px;font-weight:600;color:var(--text-primary);cursor:pointer;">▶▶</button>
-            </div>
-        </div>
-        <div id="agendaScrollWrapper" style="overflow-x:auto;max-height:600px;overflow-y:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:${fSize};min-width:${minW};">
-                <thead>
-                    <tr>
-                        <th style="padding:14px 12px;background:var(--bg-hover);text-align:center;position:sticky;top:0;z-index:10;min-width:80px;font-weight:700;font-size:15px;color:var(--text-primary);">⏰</th>
-    `;
+        let html = `<div class="agenda-google">${renderHeaderNav()}`;
+        html += `<div class="agenda-grade-wrap"><table class="agenda-grade">`;
 
-    for (let d of dias) {
-        const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const isH = ds === hojeStr;
-        const nd = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
-        const dn = d.getDate();
-        const diaSem = d.getDay();
-        const horD = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
-        const ab = horD && (horD.aberto == 1 || horD.aberto == true);
-        const bg = isH ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : ab ? 'var(--bg-hover)' : 'rgba(239,68,68,0.08)';
-        const col = isH ? '#fff' : ab ? (isDark ? '#ffffff' : '#1a1a2e') : '#ef4444';
-        html += `
-            <th style="padding:14px 10px;background:${bg};color:${col};text-align:center;position:sticky;top:0;z-index:5;min-width:100px;">
-                <span style="display:block;font-size:12px;opacity:0.7;font-weight:600;">${nd}</span>
-                <span style="font-size:${isH ? '24px' : '20px'};font-weight:800;display:block;">${dn}</span>
-                ${!ab ? '<span style="font-size:11px;color:#ef4444;display:block;font-weight:700;">🚫 FECHADO</span>' : ''}
-            </th>
-        `;
-    }
-    html += `</tr></thead><tbody>`;
-
-    for (let idx = 0; idx < base.length; idx++) {
-        const hora = base[idx];
-        const isAgora = (idx === idxAtual);
-        html += `
-            <tr style="${isAgora ? 'background:rgba(102,126,234,0.08);' : ''}">
-                <td style="padding:${cellPad};text-align:center;border-bottom:1px solid var(--border-color);font-weight:700;background:${isAgora ? 'linear-gradient(135deg,#667eea 0%,#764ba2 100%)' : 'var(--bg-hover)'};color:${isAgora ? '#fff' : 'var(--text-primary)'};position:sticky;left:0;z-index:3;min-width:80px;font-size:15px;">
-                    ${isAgora ? '<span style="font-size:8px;display:block;background:rgba(255,255,255,0.25);padding:2px 8px;border-radius:8px;margin-bottom:3px;">● AGORA</span>' : ''}
-                    <span style="font-size:16px;font-weight:800;">${hora}</span>
-                </td>
-        `;
-
+        html += `<thead><tr><th class="agenda-th-hora">⏰</th>`;
         for (let d of dias) {
             const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            const diaS = d.getDay();
-            const horD = agendaInteligenteHorarios.find(h => h.dia_semana === diaS);
+            const isHoje = ds === hojeStr;
+            const horD = agendaInteligenteHorarios.find(h => h.dia_semana === d.getDay());
             const ab = horD && (horD.aberto == 1 || horD.aberto == true);
-            let dentro = true;
-            if (ab && horD) {
-                const [hI, mI] = (horD.hora_inicio || '08:00').split(':').map(Number);
-                const [hF, mF] = (horD.hora_fim || '18:00').split(':').map(Number);
-                const [hA, mA] = hora.split(':').map(Number);
-                dentro = (hA * 60 + mA) >= (hI * 60 + mI) && (hA * 60 + mA) <= (hF * 60 + mF);
-            }
-            let cont = '', bg = 'transparent', click = '', tooltip = '';
+            const classes = ['agenda-th-dia'];
+            if (isHoje) classes.push('agenda-th-hoje');
+            if (!ab) classes.push('agenda-th-fechado');
 
-            const dataLocal = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-// 🔥 REMOVIDO O BLOQUEIO - FORÇA COMO NÃO PASSADO
-const passou = false; // 🔥 FORÇA COMO NÃO PASSADO
-const alm = ab && hora >= (horD?.almoco_inicio || '12:00') && hora < (horD?.almoco_fim || '13:00');
+            html += `<th class="${classes.join(' ')}">
+                <span class="agenda-dia-semana">${d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')}</span>
+                <span class="agenda-dia-numero">${d.getDate()}</span>
+                ${!ab ? '<span class="agenda-dia-fechado">🚫</span>' : ''}
+            </th>`;
+        }
+        html += `</tr></thead><tbody>`;
 
-            if (!ab || !dentro) {
-                bg = 'rgba(107,114,128,0.03)';
-                cont = `<span style="color:#9ca3af;font-size:16px;">—</span>`;
-            } else if (passou) {
-                // 🔥 CORRIGIDO: DATA PASSADA NÃO BLOQUEIA MAIS - MOSTRA COMO DISPONÍVEL
-                // O DONO PODE AGENDAR EM DATAS PASSADAS
-                bg = 'rgba(34,197,94,0.06)';
-                cont = `<span style="color:#22c55e;font-weight:800;font-size:15px;">🟢 ✨</span>`;
-                click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                tooltip = 'Disponível (data passada)';
-            } else if (alm) {
-                bg = 'rgba(245,158,11,0.08)';
-                cont = `<span style="font-size:18px;">🍽</span>`;
-                click = '';
-                tooltip = 'Almoço';
-            } else {
-                // CALCULAR OCUPAÇÃO POR PROFISSIONAL
-                let ocupados = 0;
-                const hm = horaParaMinutos(hora);
-                const profissionais = agendaInteligenteProfissionais;
+        for (let idx = 0; idx < base.length; idx++) {
+            const hora = base[idx];
+            const isAgora = idx === idxAgora;
+            html += `<tr class="${isAgora ? 'agenda-tr-agora' : ''}">`;
+            html += `<td class="agenda-td-hora ${isAgora ? 'agenda-hora-agora' : ''}">
+                ${isAgora ? '<span class="agenda-hora-agora-badge">AGORA</span>' : ''}
+                ${hora}
+            </td>`;
 
-                for (let p of profissionais) {
-                    let ocupado = false;
-                    if (p.is_dono) {
-                        for (let ag of agendaInteligenteData) {
-                            if (ag.data !== ds || ag.status === 'cancelado' || (ag.profissional_id !== null && ag.profissional_id !== '' && ag.profissional_id !== undefined) || !ag.hora) continue;
-                            const agH = horaParaMinutos(ag.hora);
-                            let dur = 30;
-                            if (ag.servico_id) {
-                                const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                                if (s && s.duracao) dur = parseInt(s.duracao);
-                            }
-                            if (hm >= agH && hm < agH + dur) { ocupado = true; break; }
-                        }
-                    } else {
-                        for (let ag of agendaInteligenteData) {
-                            if (ag.data !== ds || ag.status === 'cancelado' || String(ag.profissional_id) !== String(p.id) || !ag.hora) continue;
-                            const agH = horaParaMinutos(ag.hora);
-                            let dur = 30;
-                            if (ag.servico_id) {
-                                const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                                if (s && s.duracao) dur = parseInt(s.duracao);
-                            }
-                            if (hm >= agH && hm < agH + dur) { ocupado = true; break; }
+            for (let d of dias) {
+                const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                const horD = agendaInteligenteHorarios.find(h => h.dia_semana === d.getDay());
+                const ab = horD && (horD.aberto == 1 || horD.aberto == true);
+
+                let dentro = true;
+                if (ab && horD) {
+                    const [hI, mI] = (horD.hora_inicio || '08:00').split(':').map(Number);
+                    const [hF, mF] = (horD.hora_fim || '18:00').split(':').map(Number);
+                    const [hA, mA] = hora.split(':').map(Number);
+                    dentro = (hA * 60 + mA) >= (hI * 60 + mI) && (hA * 60 + mA) <= (hF * 60 + mF);
+                }
+
+                const almoco = ab && horD &&
+                    hora >= (horD.almoco_inicio || '12:00') &&
+                    hora < (horD.almoco_fim || '13:00');
+
+                const classes = ['agenda-td-slot'];
+                if (!ab || !dentro) classes.push('agenda-slot-fechado');
+                else if (almoco) classes.push('agenda-slot-almoco');
+                else classes.push('agenda-slot-clicavel');
+
+                let blocosHtml = '';
+                if (ab && dentro && !almoco) {
+                    for (let p of agendaInteligenteProfissionais) {
+                        const ags = window._agendaGetAgendamentosDoSlot(ds, hora, p.is_dono ? 'dono' : p.id);
+                        for (let ag of ags) {
+                            blocosHtml += window._agendaRenderBloco(ag, p);
                         }
                     }
-                    if (ocupado) ocupados++;
                 }
 
-                const totalProf = profissionais.length;
-                const livres = totalProf - ocupados;
+                const clickAttr = (ab && dentro && !almoco)
+                    ? `onclick="abrirDetalhesSlot('${ds}','${hora}')"`
+                    : '';
 
-                if (livres === 0) {
-                    bg = 'rgba(239,68,68,0.10)';
-                    cont = `<span style="color:#dc2626;font-weight:800;font-size:15px;">🔴 ${ocupados}/${totalProf}</span>`;
-                    click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                    tooltip = `${ocupados} ocupado${ocupados > 1 ? 's' : ''}`;
-                } else if (ocupados > 0) {
-                    bg = 'rgba(245,158,11,0.08)';
-                    cont = `<span style="color:#d97706;font-weight:800;font-size:15px;">🟡 ${livres}/${totalProf}</span>`;
-                    click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                    tooltip = `${livres} livre${livres > 1 ? 's' : ''}`;
-                } else {
-                    bg = 'rgba(34,197,94,0.08)';
-                    cont = `<span style="color:#22c55e;font-weight:800;font-size:15px;">🟢 ${totalProf}/${totalProf}</span>`;
-                    click = `abrirDetalhesSlot('${ds}','${hora}')`;
-                    tooltip = `Todos disponíveis`;
-                }
+                html += `<td class="${classes.join(' ')}" ${clickAttr}>${blocosHtml}</td>`;
             }
-            html += `
-                <td style="padding:${cellPad};border-bottom:1px solid var(--border-color);background:${bg};text-align:center;${click ? 'cursor:pointer;' : ''}font-weight:700;font-size:15px;" 
-                    onclick="${click}" title="${tooltip}">
-                    ${cont}
-                </td>
-            `;
+            html += `</tr>`;
         }
-        html += `</tr>`;
+
+        html += `</tbody></table></div>`;
+
+        html += `
+            <div class="agenda-legenda">
+                ${agendaInteligenteProfissionais.slice(0, 6).map(p => `
+                    <span class="agenda-legenda-item">
+                        <span class="agenda-legenda-cor agenda-cor-${window._agendaGetCorIndex(p)}"></span>
+                        ${escapeHtml(p.nome)}
+                    </span>
+                `).join('')}
+            </div>
+        `;
+
+        html += `</div>`;
+        return html;
     }
-    html += `</tbody></table></div>`;
-    html += `
-        <div style="display:flex;justify-content:center;gap:24px;margin-top:10px;font-size:12px;color:var(--text-muted);padding:6px 0;">
-            <span>🟢 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Livre</strong></span>
-            <span>🟡 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Parcial</strong></span>
-            <span>🔴 <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Lotado</strong></span>
-            <span>✨ <strong style="color:${isDark ? '#ffffff' : '#1a1a2e'};">Passado (liberado)</strong></span>
-        </div>
-    `;
+
+    // ============================================
+    // VISÃO MÊS
+    // ============================================
+
+    function renderVisaoMes() {
+        const ref = new Date(agendaInteligenteDate);
+        const ano = ref.getFullYear();
+        const mes = ref.getMonth();
+
+        const primeiroDiaMes = new Date(ano, mes, 1);
+        const ultimoDiaMes = new Date(ano, mes + 1, 0);
+
+        const inicioGrid = new Date(primeiroDiaMes);
+        inicioGrid.setDate(inicioGrid.getDate() - inicioGrid.getDay());
+
+        const fimGrid = new Date(ultimoDiaMes);
+        fimGrid.setDate(fimGrid.getDate() + (6 - fimGrid.getDay()));
+
+        const countPorDia = {};
+        const coresPorDia = {};
+        for (let ag of agendaInteligenteData) {
+            if (ag.status === 'cancelado') continue;
+            if (!ag.data) continue;
+            countPorDia[ag.data] = (countPorDia[ag.data] || 0) + 1;
+            if (!coresPorDia[ag.data]) coresPorDia[ag.data] = new Set();
+            const prof = agendaInteligenteProfissionais.find(p =>
+                p.is_dono ? (!ag.profissional_id) : String(p.id) === String(ag.profissional_id)
+            );
+            if (prof) coresPorDia[ag.data].add(window._agendaGetCorIndex(prof));
+        }
+
+        let html = `<div class="agenda-google">${renderHeaderNav()}`;
+        html += `<div class="agenda-mes-wrap">`;
+        html += `<div class="agenda-mes-titulo">${ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>`;
+        html += `<div class="agenda-mes-grade">`;
+
+        ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].forEach(d => {
+            html += `<div class="agenda-mes-dia-semana">${d}</div>`;
+        });
+
+        const cursor = new Date(inicioGrid);
+        while (cursor <= fimGrid) {
+            const ds = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}-${String(cursor.getDate()).padStart(2, '0')}`;
+            const foraDoMes = cursor.getMonth() !== mes;
+            const isHoje = ds === hojeStr;
+            const horD = agendaInteligenteHorarios.find(h => h.dia_semana === cursor.getDay());
+            const ab = horD && (horD.aberto == 1 || horD.aberto == true);
+
+            const count = countPorDia[ds] || 0;
+            const cores = coresPorDia[ds] ? Array.from(coresPorDia[ds]).slice(0, 4) : [];
+
+            const classes = ['agenda-mes-cell'];
+            if (foraDoMes) classes.push('fora-do-mes');
+            if (isHoje) classes.push('hoje');
+            if (!ab) classes.push('fechado');
+
+            let pontosHtml = '';
+            if (count > 0 && cores.length > 0) {
+                pontosHtml = cores.map(c => `<span class="agenda-mes-ponto agenda-cor-${c}"></span>`).join('');
+            }
+
+            const clickAttr = (!foraDoMes && ab)
+                ? `onclick="irParaDiaEspecifico('${ds}')"`
+                : '';
+
+            html += `
+                <div class="${classes.join(' ')}" ${clickAttr}>
+                    <div class="agenda-mes-cell-numero">${cursor.getDate()}</div>
+                    ${pontosHtml ? `<div class="agenda-mes-cell-pontos">${pontosHtml}</div>` : ''}
+                    ${count > 0 ? `<div class="agenda-mes-cell-count">${count} agend.</div>` : ''}
+                </div>
+            `;
+
+            cursor.setDate(cursor.getDate() + 1);
+        }
+
+        html += `</div></div></div>`;
+        return html;
+    }
+
+    // ============================================
+    // RENDER FINAL
+    // ============================================
+
+    let html = '';
+    if (agendaModoVisao === 'dia') {
+        html = renderVisaoDia();
+    } else if (agendaModoVisao === 'mes') {
+        html = renderVisaoMes();
+    } else {
+        html = renderVisaoSemana();
+    }
+
     container.innerHTML = html;
+}
+// ============================================
+// FUNÇÕES DE NAVEGAÇÃO DE VISÃO
+// ============================================
+
+function mudarVisaoAgenda(visao) {
+    agendaModoVisao = visao;
+    localStorage.setItem('agendaModoVisao', visao);
+    if (visao === 'semana') agendaModoCompleto = true;
+    if (visao === 'dia') agendaModoCompleto = false;
+    renderizarAgendaInteligente();
+}
+
+function navegarAgenda(dir) {
+    if (agendaModoVisao === 'dia') {
+        const d = new Date(agendaInteligenteDate);
+        d.setDate(d.getDate() + dir);
+        agendaInteligenteDate = d;
+    } else if (agendaModoVisao === 'semana') {
+        const d = new Date(agendaInteligenteDate);
+        d.setDate(d.getDate() + (dir * 7));
+        agendaInteligenteDate = d;
+    } else {
+        const d = new Date(agendaInteligenteDate);
+        d.setMonth(d.getMonth() + dir);
+        agendaInteligenteDate = d;
+    }
+    renderizarAgendaInteligente();
+}
+
+function irParaDiaEspecifico(dataStr) {
+    const partes = dataStr.split('-').map(Number);
+    if (partes.length === 3) {
+        agendaInteligenteDate = new Date(partes[0], partes[1] - 1, partes[2]);
+        agendaModoVisao = 'dia';
+        localStorage.setItem('agendaModoVisao', 'dia');
+        agendaModoCompleto = false;
+        renderizarAgendaInteligente();
+    }
+}
+
+// ============================================
+// IR PARA HOJE - RESPEITA A VISÃO ATUAL
+// ============================================
+
+function irAgendaHoje() {
+    agendaInteligenteDate = new Date();
+    if (agendaModoVisao === 'semana') {
+        agendaModoCompleto = true;
+    } else if (agendaModoVisao === 'dia') {
+        agendaModoCompleto = false;
+    }
+    renderizarAgendaInteligente();
 }
 // ============================================
 // ABRIR DETALHES DO SLOT
@@ -807,11 +900,8 @@ async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null)
         return;
     }
 
-    // 🔥 REMOVIDA A VALIDAÇÃO DE HORÁRIO PASSADO
-    // O DONO PODE AGENDAR EM QUALQUER DATA/HORÁRIO
-    // A validação agora é feita apenas no backend para o chatbot
-
-    const diaSem = new Date(dataStr).getDay();
+    // 🔥 FIX: adicionar T00:00:00 para evitar bug de fuso horário (UTC vs local)
+    const diaSem = new Date(dataStr + 'T00:00:00').getDay();
     const cfg = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
     if (!cfg || !(cfg.aberto == 1 || cfg.aberto == true)) {
         showToast('🚫 Esse dia está fechado!', 'error');
@@ -830,12 +920,6 @@ async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null)
 
 function alternarModoAgenda() {
     agendaModoCompleto = !agendaModoCompleto;
-    renderizarAgendaInteligente();
-}
-
-function irAgendaHoje() {
-    agendaInteligenteDate = new Date();
-    if (agendaModoCompleto && isMobileScreen()) agendaModoCompleto = false;
     renderizarAgendaInteligente();
 }
 
@@ -880,27 +964,30 @@ async function carregarDashboard() {
 }
 
 // ============================================
-// CARREGAR DASHBOARD DONO - VERSÃO COMPLETA MELHORADA
+// CARREGAR DASHBOARD DONO - VERSÃO LIMPA (SEM INLINE)
 // ============================================
 
 async function carregarDashboardDono() {
-    // 🔥 FORÇAR CARREGAMENTO DO CSS
-    const cssLink = document.querySelector('link[href*="dashboard.css"]');
-    if (!cssLink) {
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = '/css/pages/dashboard.css';
-        document.head.appendChild(link);
-        console.log('✅ CSS dashboard.css carregado!');
+    // 🔥 FORÇAR CARREGAMENTO DO CSS (com cache-busting)
+    let cssLink = document.querySelector('link[href*="dashboard.css"]');
+    const novaUrl = '/css/pages/dashboard.css?v=' + Date.now();
+
+    if (cssLink) {
+        cssLink.href = novaUrl;
+    } else {
+        cssLink = document.createElement('link');
+        cssLink.rel = 'stylesheet';
+        cssLink.href = novaUrl;
+        document.head.appendChild(cssLink);
     }
 
     if (typeof window.carregarCSS === 'function') {
         window.carregarCSS('dashboard');
     }
-    
+
     const token = localStorage.getItem('token');
     let empresa = { plano: 'trial', assinatura_ativa: 0 };
-    
+
     try {
         const er = await fetch('/api/empresa/dados', { headers: { 'Authorization': 'Bearer ' + token } });
         const ed = await er.json();
@@ -950,7 +1037,10 @@ async function carregarDashboardDono() {
     const primeiroDia = new Date(dataAtual.getFullYear(), dataAtual.getMonth(), 1);
     const primeiroDiaStr = `${primeiroDia.getFullYear()}-${String(primeiroDia.getMonth() + 1).padStart(2, '0')}-${String(primeiroDia.getDate()).padStart(2, '0')}`;
 
-    const faturamentoMes = agendamentos.filter(a => a.status === 'concluido' && a.data >= primeiroDiaStr).reduce((s, a) => s + (parseFloat(a.valor_total) || parseFloat(a.valor) || 0), 0);
+    const faturamentoMes = agendamentos
+        .filter(a => a.status === 'concluido' && a.data >= primeiroDiaStr)
+        .reduce((s, a) => s + (parseFloat(a.valor_total) || parseFloat(a.valor) || 0), 0);
+
     const isNewUser = agendamentos.length === 0 && clientes.length === 0;
     const usuarioAtual = JSON.parse(localStorage.getItem('usuario') || '{}');
     const nomeUsuario = usuarioAtual?.nome || 'Usuário';
@@ -963,7 +1053,9 @@ async function carregarDashboardDono() {
         return dataAg < hojeObj;
     });
 
-    const faturamentoHoje = agendamentos.filter(a => a.data === hojeStr && a.status === 'concluido').reduce((s, a) => s + (parseFloat(a.valor_total) || parseFloat(a.valor) || 0), 0);
+    const faturamentoHoje = agendamentos
+        .filter(a => a.data === hojeStr && a.status === 'concluido')
+        .reduce((s, a) => s + (parseFloat(a.valor_total) || parseFloat(a.valor) || 0), 0);
     const lucroHoje = faturamentoHoje - despesasHoje;
     const agHojeCount = agendamentos.filter(a => a.data === hojeStr).length;
     const agPendHoje = agendamentos.filter(a => a.data === hojeStr && a.status === 'pendente').length;
@@ -975,116 +1067,98 @@ async function carregarDashboardDono() {
     }
 
     // ==========================================
-    // HTML - CORES MAIS ESCURAS E TEXTOS MAIORES
+    // HTML - SEM ESTILOS INLINE (CSS EXTERNO MANDA)
     // ==========================================
-    
-    let html = `<div class="fade-in" style="padding: 4px 0 80px 0;">`;
+
+    let html = `<div class="fade-in dash-wrapper">`;
 
     // ALERTAS
     if (mostrarAviso) {
         html += `
-            <div class="dash-alert dash-alert-warning" style="background:linear-gradient(135deg,#d97706,#92400e);border-radius:10px;padding:12px 16px;margin-bottom:12px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;box-shadow:0 4px 15px rgba(217,119,6,0.3);border:1px solid rgba(255,255,255,0.08);">
-                <span style="font-weight:600;font-size:${isMobile ? '13px' : '15px'};">${msgTrial}</span>
-                <button onclick="carregarPlanos()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.15);padding:6px 18px;border-radius:8px;color:white;font-weight:600;cursor:pointer;font-size:${isMobile ? '12px' : '14px'};transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                    Upgrade →
-                </button>
+            <div class="dash-alert dash-alert-warning">
+                <div class="dash-alert-content">
+                    <span class="dash-alert-icon">⚠️</span>
+                    <span class="dash-alert-title">${msgTrial}</span>
+                </div>
+                <button class="dash-btn" onclick="carregarPlanos()">Upgrade →</button>
             </div>
         `;
     }
 
     if (vencidos.length > 0) {
         html += `
-            <div class="dash-alert dash-alert-danger" style="background:linear-gradient(135deg,#dc2626,#991b1b);border-radius:10px;padding:12px 16px;margin-bottom:12px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;box-shadow:0 4px 15px rgba(220,38,38,0.3);border:1px solid rgba(255,255,255,0.08);">
-                <span style="font-weight:600;font-size:${isMobile ? '13px' : '15px'};">⏰ ${vencidos.length} vencido${vencidos.length > 1 ? 's' : ''}</span>
-                <button onclick="concluirAgendamentosVencidos()" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.15);padding:6px 18px;border-radius:8px;color:white;font-weight:600;cursor:pointer;font-size:${isMobile ? '12px' : '14px'};transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
-                    Concluir
-                </button>
+            <div class="dash-alert dash-alert-danger">
+                <div class="dash-alert-content">
+                    <span class="dash-alert-icon">⏰</span>
+                    <span class="dash-alert-title">${vencidos.length} vencido${vencidos.length > 1 ? 's' : ''}</span>
+                </div>
+                <button class="dash-btn" onclick="concluirAgendamentosVencidos()">Concluir</button>
             </div>
         `;
     }
 
-    // 🔥 HEADER - CORES MAIS ESCURAS E TEXTOS MAIORES
+    // HEADER BEM-VINDO
     html += `
-        <div class="dash-welcome" style="
-            background: linear-gradient(135deg, #4a3f7a 0%, #2d1b4e 100%);
-            border-radius: 16px;
-            padding: ${isMobile ? '16px 18px' : '20px 28px'};
-            margin-bottom: 18px;
-            color: white;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-            flex-wrap:wrap;
-            gap:12px;
-            box-shadow: 0 8px 32px rgba(74,63,122,0.4);
-            border: 1px solid rgba(255,255,255,0.08);
-        ">
-            <div>
-                <div style="font-size:${isMobile ? '20px' : '24px'};font-weight:800;display:flex;align-items:center;gap:10px;letter-spacing:-0.5px;">
-                    👋 Olá, <span style="font-weight:900;">${escapeHtml(nomeUsuario)}</span>
-                    <span style="font-size:${isMobile ? '16px' : '22px'};">🎉</span>
+        <div class="dash-welcome">
+            <div class="dash-welcome-left">
+                <div class="greeting-text">
+                    👋 Olá, <strong>${escapeHtml(nomeUsuario)}</strong>
+                    <span class="greeting-emoji">🎉</span>
                 </div>
-                <div style="font-size:${isMobile ? '13px' : '15px'};opacity:0.85;margin-top:4px;font-weight:500;">
+                <div class="date-text">
                     📅 ${dataAtual.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </div>
             </div>
-            <div style="text-align:right;background:rgba(255,255,255,0.10);padding:${isMobile ? '8px 16px' : '12px 24px'};border-radius:14px;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.08);">
-                <div style="font-size:${isMobile ? '22px' : '32px'};font-weight:800;letter-spacing:-0.5px;">
-                    R$ ${formatarMoeda(faturamentoHoje)}
-                </div>
-                <div style="font-size:${isMobile ? '11px' : '13px'};opacity:0.7;font-weight:500;">
+            <div class="revenue-box">
+                <div class="revenue-value">R$ ${formatarMoeda(faturamentoHoje)}</div>
+                <div class="revenue-label">
                     <i class="fas fa-calendar-day"></i> Faturamento de hoje
                 </div>
             </div>
         </div>
     `;
 
-    // 🔥 CARDS DE RESUMO - CORES MAIS ESCURAS E TEXTOS MAIORES
+    // CARDS DE RESUMO
     html += `
-        <div style="
-            display: grid;
-            grid-template-columns: ${isMobile ? '1fr 1fr 1fr' : 'repeat(3, 1fr)'};
-            gap: ${isMobile ? '8px' : '14px'};
-            margin-bottom: 18px;
-        ">
-            <div class="dash-card-green" style="background:linear-gradient(135deg,#0d9488,#065f46);border-radius:14px;padding:${isMobile ? '14px 12px' : '16px 20px'};color:white;text-align:center;box-shadow:0 4px 20px rgba(13,148,136,0.35);border:1px solid rgba(255,255,255,0.06);transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(13,148,136,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(13,148,136,0.35)'">
-                <div style="font-size:${isMobile ? '26px' : '32px'};font-weight:800;letter-spacing:-0.5px;">${agHojeCount}</div>
-                <div style="font-size:${isMobile ? '11px' : '14px'};opacity:0.85;font-weight:600;margin-top:4px;">📋 Agendamentos</div>
-                ${agPendHoje > 0 ? `<div style="font-size:${isMobile ? '10px' : '12px'};opacity:0.7;margin-top:4px;">${agPendHoje} pendente${agPendHoje > 1 ? 's' : ''}</div>` : ''}
+        <div class="dash-cards-grid">
+            <div class="dash-card-green">
+                <div class="card-number">${agHojeCount}</div>
+                <div class="card-label">📋 Agendamentos</div>
+                ${agPendHoje > 0 ? `<div class="card-sub">${agPendHoje} pendente${agPendHoje > 1 ? 's' : ''}</div>` : ''}
             </div>
-            <div class="dash-card-purple" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-radius:14px;padding:${isMobile ? '14px 12px' : '16px 20px'};color:white;text-align:center;box-shadow:0 4px 20px rgba(124,58,237,0.35);border:1px solid rgba(255,255,255,0.06);transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(124,58,237,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(124,58,237,0.35)'">
-                <div style="font-size:${isMobile ? '26px' : '32px'};font-weight:800;letter-spacing:-0.5px;">R$ ${formatarMoeda(ticketMedio)}</div>
-                <div style="font-size:${isMobile ? '11px' : '14px'};opacity:0.85;font-weight:600;margin-top:4px;">🎯 Ticket Médio</div>
+            <div class="dash-card-purple">
+                <div class="card-number">R$ ${formatarMoeda(ticketMedio)}</div>
+                <div class="card-label">🎯 Ticket Médio</div>
             </div>
-            <div class="dash-card-yellow" style="background:linear-gradient(135deg,#d97706,#92400e);border-radius:14px;padding:${isMobile ? '14px 12px' : '16px 20px'};color:white;text-align:center;box-shadow:0 4px 20px rgba(217,119,6,0.35);border:1px solid rgba(255,255,255,0.06);transition:all 0.3s ease;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 8px 30px rgba(217,119,6,0.45)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 20px rgba(217,119,6,0.35)'">
-                <div style="font-size:${isMobile ? '26px' : '32px'};font-weight:800;letter-spacing:-0.5px;">${clientes.length}</div>
-                <div style="font-size:${isMobile ? '11px' : '14px'};opacity:0.85;font-weight:600;margin-top:4px;">👤 Clientes</div>
+            <div class="dash-card-yellow">
+                <div class="card-number">${clientes.length}</div>
+                <div class="card-label">👤 Clientes</div>
             </div>
         </div>
     `;
 
-    // 🔥 AGENDA INTELIGENTE - EM DESTAQUE
+    // AGENDA DO DIA
     html += `
-        <div style="margin-bottom:16px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                <h3 style="font-size:${isMobile ? '16px' : '18px'};margin:0;display:flex;align-items:center;gap:8px;color:var(--text-primary);font-weight:700;">
-                    <i class="fas fa-calendar-alt" style="color:#8b5cf6;"></i> Agenda do Dia
-                    <span style="font-size:11px;color:var(--text-muted);font-weight:400;background:var(--bg-hover);padding:2px 10px;border-radius:12px;">${agHojeCount} hoje</span>
+        <div class="agenda-section">
+            <div class="agenda-header">
+                <h3 class="agenda-title">
+                    <i class="fas fa-calendar-alt"></i> Agenda do Dia
+                    <span class="count">${agHojeCount} hoje</span>
                 </h3>
-                <button onclick="carregarAgendamentos()" style="background:var(--bg-hover);border:1px solid var(--border-color);padding:4px 14px;border-radius:8px;color:var(--text-secondary);font-size:${isMobile ? '11px' : '12px'};cursor:pointer;transition:all 0.2s;font-weight:600;" onmouseover="this.style.background='var(--border-color)'" onmouseout="this.style.background='var(--bg-hover)'">
+                <button class="btn-ver-todos" onclick="carregarAgendamentos()">
                     Ver todos →
                 </button>
             </div>
-            <div id="agendaInteligenteContainer" class="agenda-container" style="background:var(--bg-card);border-radius:14px;padding:${isMobile ? '12px' : '16px'};border:1px solid var(--border-color);box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                <div style="text-align:center;padding:20px;">
-                    <div class="loading-spinner" style="display:block;position:relative;top:0;left:0;transform:none;margin:0 auto;width:28px;height:28px;"></div>
-                    <p style="margin-top:8px;font-size:12px;color:var(--text-muted);">Carregando agenda...</p>
+            <div id="agendaInteligenteContainer" class="agenda-container">
+                <div class="agenda-loading">
+                    <div class="loading-spinner"></div>
+                    <p>Carregando agenda...</p>
                 </div>
             </div>
         </div>
     `;
 
-    // 🔥 PRÓXIMOS ATENDIMENTOS
+    // PRÓXIMOS ATENDIMENTOS
     const proximos = agendamentos
         .filter(a => a.status === 'pendente' && a.data >= hojeStr)
         .sort((a, b) => (a.data + a.hora).localeCompare(b.data + b.hora))
@@ -1092,27 +1166,21 @@ async function carregarDashboardDono() {
 
     if (proximos.length > 0) {
         html += `
-            <div style="background:var(--bg-card);border-radius:12px;padding:${isMobile ? '12px 14px' : '14px 18px'};border:1px solid var(--border-color);margin-bottom:14px;box-shadow:0 2px 8px rgba(0,0,0,0.04);">
-                <div style="font-size:${isMobile ? '12px' : '13px'};font-weight:700;color:var(--text-secondary);margin-bottom:10px;display:flex;align-items:center;gap:6px;">
-                    <i class="fas fa-clock" style="color:#f59e0b;"></i> Próximos Atendimentos
-                    <span style="font-size:10px;color:var(--text-muted);font-weight:400;">(${proximos.length})</span>
+            <div class="proximos-container">
+                <div class="proximos-header">
+                    <i class="fas fa-clock"></i> Próximos Atendimentos
+                    <span class="count">(${proximos.length})</span>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:6px;">
+                <div class="proximos-list">
                     ${proximos.map(ag => `
-                        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-hover);border-radius:8px;border-left:4px solid #8b5cf6;transition:all 0.2s;" onmouseover="this.style.background='rgba(139,92,246,0.08)'" onmouseout="this.style.background='var(--bg-hover)'">
-                            <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;">
-                                <span style="font-weight:700;font-size:${isMobile ? '13px' : '14px'};color:var(--text-primary);">
-                                    ${escapeHtml(ag.cliente_nome || 'Cliente')}
-                                </span>
-                                <span style="font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);background:var(--bg-card);padding:1px 8px;border-radius:10px;white-space:nowrap;">
-                                    ${escapeHtml(ag.servico_nome || ag.servico || 'Serviço')}
-                                </span>
+                        <div class="proximo-item">
+                            <div class="proximo-cliente-info">
+                                <span class="proximo-cliente">${escapeHtml(ag.cliente_nome || 'Cliente')}</span>
+                                <span class="proximo-servico">${escapeHtml(ag.servico_nome || ag.servico || 'Serviço')}</span>
                             </div>
-                            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                                <span style="font-size:${isMobile ? '11px' : '12px'};color:var(--text-muted);font-weight:500;">
-                                    ${formatarDataLocal(ag.data)} ${ag.hora || ''}
-                                </span>
-                                <span style="font-size:10px;color:#f59e0b;font-weight:600;background:rgba(245,158,11,0.1);padding:1px 8px;border-radius:10px;">⏳</span>
+                            <div class="proximo-info">
+                                <span class="proximo-data">${formatarDataLocal(ag.data)} ${ag.hora || ''}</span>
+                                <span class="proximo-status">⏳</span>
                             </div>
                         </div>
                     `).join('')}
@@ -1121,31 +1189,18 @@ async function carregarDashboardDono() {
         `;
     }
 
-    // 🔥 ONBOARDING - PARA NOVOS USUÁRIOS
+    // ONBOARDING
     if (isNewUser) {
         html += `
-            <div style="
-                margin-top:14px;
-                background:linear-gradient(135deg,#4a3f7a,#2d1b4e);
-                border-radius:14px;
-                padding:${isMobile ? '16px' : '20px 24px'};
-                color:white;
-                display:flex;
-                justify-content:space-between;
-                align-items:center;
-                flex-wrap:wrap;
-                gap:12px;
-                box-shadow:0 4px 20px rgba(74,63,122,0.3);
-                border:1px solid rgba(255,255,255,0.08);
-            ">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <span style="font-size:32px;">🚀</span>
+            <div class="onboarding-container">
+                <div class="onboarding-content">
+                    <span class="onboarding-icon">🚀</span>
                     <div>
-                        <h4 style="margin:0;font-size:${isMobile ? '15px' : '18px'};font-weight:700;">Comece aqui!</h4>
-                        <p style="margin:2px 0 0 0;opacity:0.85;font-size:${isMobile ? '12px' : '14px'};">Cadastre serviços e crie seu primeiro agendamento</p>
+                        <h4 class="onboarding-title">Comece aqui!</h4>
+                        <p class="onboarding-desc">Cadastre serviços e crie seu primeiro agendamento</p>
                     </div>
                 </div>
-                <button onclick="carregarServicos()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.15);padding:8px 20px;border-radius:10px;color:white;font-weight:700;font-size:${isMobile ? '13px' : '15px'};cursor:pointer;transition:all 0.2s;backdrop-filter:blur(4px);" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                <button class="onboarding-btn" onclick="carregarServicos()">
                     Começar →
                 </button>
             </div>
@@ -1155,10 +1210,10 @@ async function carregarDashboardDono() {
     html += `</div>`;
 
     document.getElementById('content').innerHTML = html;
-    
+
     setTimeout(() => carregarAgendaInteligente(), 200);
 
-    console.log('✅ Dashboard minimalista renderizado com sucesso!');
+    console.log('✅ Dashboard renderizado com sucesso!');
 }
 // ============================================
 // CARREGAR DASHBOARD SUPER ADMIN
@@ -1381,5 +1436,6 @@ window.carregarServicos = carregarServicos;
 window.carregarAgendamentos = carregarAgendamentos;
 window.carregarClientes = carregarClientes;
 window.carregarPlanos = carregarPlanos;
+
 
 console.log('✅ dashboard.js COMPLETO - Agenda em destaque com navegação inteligente');

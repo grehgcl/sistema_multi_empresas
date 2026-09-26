@@ -5,7 +5,7 @@
 const express = require('express');
 const router = express.Router();
 const { getEmpresaDb } = require('../config/database');
-const { auth, verificarDono } = require('../middlewares/auth');
+const { auth, verificarDono, verificarLimiteProfissionais,verificarAcessoAgendamentos } = require('../middlewares/auth');
 const bcrypt = require('bcryptjs');
 
 // ============================================
@@ -132,7 +132,7 @@ router.get('/:id', auth, (req, res) => {
 // POST /api/profissionais - CRIAR PROFISSIONAL
 // ============================================
 
-router.post('/', auth, verificarDono, (req, res) => {
+router.post('/', auth, verificarDono, verificarLimiteProfissionais,verificarAcessoAgendamentos, (req, res) => {
     const { nome, email, senha, comissao_percent, telefone } = req.body;
     const empresaId = req.usuario.empresa_id;
 
@@ -201,7 +201,7 @@ router.post('/', auth, verificarDono, (req, res) => {
 // PUT /api/profissionais/:id - ATUALIZAR PROFISSIONAL
 // ============================================
 
-router.put('/:id', auth, verificarDono, (req, res) => {
+router.put('/:id', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
     const { nome, email, telefone, comissao_percent, ativo, senha } = req.body;
@@ -319,7 +319,7 @@ router.put('/:id', auth, verificarDono, (req, res) => {
 // POST /api/profissionais/:id/reset-senha - RESETAR SENHA
 // ============================================
 
-router.post('/:id/reset-senha', auth, verificarDono, (req, res) => {
+router.post('/:id/reset-senha', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const { senha } = req.body;
     const empresaId = req.usuario.empresa_id;
@@ -374,7 +374,7 @@ router.post('/:id/reset-senha', auth, verificarDono, (req, res) => {
 // DELETE /api/profissionais/:id - DELETAR PROFISSIONAL
 // ============================================
 
-router.delete('/:id', auth, verificarDono, (req, res) => {
+router.delete('/:id', auth, verificarDono,verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
 

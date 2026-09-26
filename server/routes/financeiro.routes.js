@@ -187,7 +187,7 @@ router.get('/', auth, (req, res) => {
                     const comissao = parseFloat(item.comissao) || 0;
                     totalComissoes += comissao;
                     const profId = item.profissional_id;
-                    const profNome = item.profissional_nome || 'Profissional';
+                    const profNome = item.profissional_nome || `Profissional #${item.profissional_id}`;
                     if (!comissoesPorProfissional[profId]) {
                         comissoesPorProfissional[profId] = {
                             id: profId,

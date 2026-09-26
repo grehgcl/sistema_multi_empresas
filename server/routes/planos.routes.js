@@ -11,11 +11,9 @@ const { auth, verificarDono, verificarSuperAdmin } = require('../middlewares/aut
 
 const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER === 'true';
 
-// server/routes/planos.routes.js
 // ============================================
 // MODO DE PAGAMENTO - Usando o banco
 // ============================================
-
 function getPaymentModeFromDB(callback) {
     const createTableSQL = isProduction
         ? `CREATE TABLE IF NOT EXISTS configuracoes (
@@ -51,10 +49,9 @@ function getPaymentModeFromDB(callback) {
                 return callback(row.valor);
             }
 
-            // Definir padrão baseado no .env
             const defaultMode = process.env.PAYMENT_MODE === 'real' ? 'real' : 'simulation';
             console.log(`📊 Modo padrão (env): ${defaultMode}`);
-            
+
             const sqlInsert = isProduction
                 ? `INSERT INTO configuracoes (chave, valor) 
                    VALUES ('payment_mode', ?) 
@@ -74,7 +71,7 @@ function getPaymentModeFromDB(callback) {
 // ============================================
 const PLANOS = Object.freeze({
     trial: {
-        id: 'trial', nome: 'Trial (Starter)', limite: 1, valor: 0,
+        id: 'trial', nome: 'Trial', limite: 1, valor: 0,
         dias_acesso: 45, agendamentos_mes: 100,
         whatsapp: false, promocoes: false, fiados: false
     },
@@ -88,11 +85,15 @@ const PLANOS = Object.freeze({
         dias_acesso: 30, agendamentos_mes: -1,
         whatsapp: true, promocoes: true, fiados: true
     },
-    // 🔥 NOVO PLANO DE TESTE R$ 1,00
-    teste: {
-        id: 'teste', nome: 'Teste R$ 1,00', limite: 1, valor: 1.00,
-        dias_acesso: 1, agendamentos_mes: 10,
-        whatsapp: false, promocoes: false, fiados: false
+    business: {
+        id: 'business', nome: 'Business', limite: 15, valor: 119.90,
+        dias_acesso: 30, agendamentos_mes: -1,
+        whatsapp: true, promocoes: true, fiados: true
+    },
+    enterprise: {
+        id: 'enterprise', nome: 'Enterprise', limite: 9999, valor: 249.90,
+        dias_acesso: 30, agendamentos_mes: -1,
+        whatsapp: true, promocoes: true, fiados: true
     }
 });
 
@@ -126,7 +127,7 @@ function adicionarDias(dias) {
 
 function assinaturaAtiva(empresa, plano) {
     if (!booleano(empresa.assinatura_ativa)) return false;
-    if (!['starter', 'pro'].includes(plano)) return false;
+    if (!['starter', 'pro', 'business', 'enterprise'].includes(plano)) return false;
     return dataValida(empresa.assinatura_valida_ate) && diasAte(empresa.assinatura_valida_ate) > 0;
 }
 
@@ -137,7 +138,9 @@ function montarResposta(empresa) {
     const ativa = assinaturaAtiva(empresa, plano);
     const validade = isTrial ? empresa.trial_expira : empresa.assinatura_valida_ate;
     const diasRestantes = diasAte(validade);
-    const whatsappPermitido = plano === 'pro' && ativa && booleano(empresa.whatsapp_proprio_habilitado);
+    const whatsappPermitido = (plano === 'pro' || plano === 'business' || plano === 'enterprise') 
+                              && ativa 
+                              && booleano(empresa.whatsapp_proprio_habilitado);
 
     return {
         plano,
@@ -180,7 +183,7 @@ function atualizarWhatsApp(empresaId, habilitado, callback = () => {}) {
 }
 
 // ============================================
-// MODO DE PAGAMENTO - AGORA VEM DO BANCO
+// MODO DE PAGAMENTO
 // ============================================
 router.get('/payment-mode', auth, (req, res) => {
     getPaymentModeFromDB((mode) => {
@@ -220,7 +223,7 @@ router.get('/empresa', auth, (req, res) => {
 });
 
 // ============================================
-// ATUALIZAÇÃO MANUAL — AGORA USA O MODO DO BANCO
+// ATUALIZAÇÃO MANUAL
 // ============================================
 router.put('/empresa', auth, verificarDono, (req, res) => {
     getPaymentModeFromDB((paymentMode) => {
@@ -254,7 +257,9 @@ router.put('/empresa', auth, verificarDono, (req, res) => {
                     return res.status(500).json({ success: false, message: 'Erro ao atualizar plano' });
                 }
 
-                atualizarWhatsApp(empresaId, plano === 'pro' && ativa, () => {
+                // WhatsApp automático: ativa para pro, business, enterprise
+                const deveAtivarWhatsApp = (plano === 'pro' || plano === 'business' || plano === 'enterprise') && ativa;
+                atualizarWhatsApp(empresaId, deveAtivarWhatsApp, () => {
                     buscarEmpresa(empresaId, (readErr, atualizada) => {
                         if (readErr || !atualizada) {
                             return res.status(500).json({ success: false, message: 'Plano atualizado, mas não foi possível recarregar os dados' });
@@ -317,11 +322,7 @@ router.post('/admin/ativar-whatsapp/:id', auth, verificarSuperAdmin, async (req,
         if (err) return res.status(500).json({ success: false, message: 'Erro ao buscar empresa' });
         if (!empresa) return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
 
-        // 🔥 REMOVEU A VERIFICAÇÃO DE PLANO PRO!
-        // Agora Super Admin pode ativar em qualquer plano
-        
-        // Verifica se a empresa existe (já fez)
-        // E atualiza o WhatsApp
+        // 🔥 Super Admin pode ativar WhatsApp em QUALQUER plano (inclusive trial/starter)
         atualizarWhatsApp(empresaId, habilitar, (updateErr) => {
             if (updateErr) return res.status(500).json({ success: false, message: 'Erro ao atualizar WhatsApp' });
             
@@ -335,4 +336,5 @@ router.post('/admin/ativar-whatsapp/:id', auth, verificarSuperAdmin, async (req,
         });
     });
 });
+
 module.exports = router;

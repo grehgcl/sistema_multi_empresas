@@ -71,20 +71,22 @@ class LembreteJob {
                     // Envia lembrete para o cliente
                     if (agendamento.cliente_telefone) {
                         const dados = {
-                            cliente: {
-                                nome: agendamento.cliente_nome || 'Cliente',
-                                telefone: agendamento.cliente_telefone
-                            },
-                            servico: { nome: agendamento.servico_nome || 'Serviço' },
-                            profissional: agendamento.profissional_nome ? {
-                                nome: agendamento.profissional_nome
-                            } : null,
-                            data: agendamento.data,
-                            hora: agendamento.hora,
-                            empresa: {
-                                nome: agendamento.empresa_nome || 'Barbearia'
-                            }
-                        };
+    cliente: {
+        nome: agendamento.cliente_nome || 'Cliente',
+        telefone: agendamento.cliente_telefone
+    },
+    servico: { nome: agendamento.servico_nome || 'Serviço' },
+    profissional: agendamento.profissional_nome ? {
+        nome: agendamento.profissional_nome
+    } : null,
+    data: agendamento.data,
+    hora: agendamento.hora,
+    empresa: {
+        nome: agendamento.empresa_nome || 'Barbearia',
+        id: agendamento.empresa_id,              // ← NOVO
+        telefone_dono: agendamento.telefone_dono // ← NOVO
+    }
+};
 
                         console.log(`[LEMBRETE] Enviando para ${agendamento.cliente_nome} (${agendamento.cliente_telefone})`);
 

@@ -824,7 +824,6 @@ router.get('/webhook', (req, res) => {
 // ============================================
 // POST /api/whatsapp/enviar
 // ============================================
-
 router.post('/enviar', auth, async (req, res) => {
     console.log('📱 ROTA WHATSAPP ENVIAR CHAMADA!');
     console.log('Body:', req.body);
@@ -870,10 +869,60 @@ router.post('/enviar', auth, async (req, res) => {
             console.log(`📱 Usando instância padrão: ${instanceName}`);
         }
 
+        // ============================================
+        // ✅ NORMALIZA NÚMERO PARA O PADRÃO EVOLUTION
+        // (55 + DDD + NÚMERO) — sem isso pode falhar
+        // ============================================
+        let numeroFinal = numeroLimpo;
+        if (numeroFinal.length === 10 || numeroFinal.length === 11) {
+            numeroFinal = '55' + numeroFinal;
+        }
+        console.log(`📱 Número normalizado: ${numeroFinal}`);
+
+        // ============================================
+        // ✅ HUMANIZAÇÃO #1 — Envia "digitando..." antes
+        // (o cliente vê "digitando..." por 2-5s)
+        // ============================================
+        try {
+            const delayDigitando = 2000 + Math.floor(Math.random() * 3000); // 2-5s
+            console.log(`💬 Enviando "digitando..." (${delayDigitando}ms)`);
+
+            await axios.post(
+                `${EVOLUTION_API_URL}/chat/sendPresence/${instanceName}`,
+                {
+                    number: numeroFinal,
+                    presence: 'composing',
+                    delay: delayDigitando
+                },
+                {
+                    headers: {
+                        'apikey': EVOLUTION_API_KEY,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 5000
+                }
+            );
+
+            // Aguarda o "digitando" antes de enviar a mensagem
+            await new Promise(resolve => setTimeout(resolve, delayDigitando));
+            console.log(`✅ "Digitando..." enviado, aguardou ${delayDigitando}ms`);
+
+        } catch (presenceError) {
+            // Se a Evolution for v1 (sem sendPresence), só loga e continua
+            console.log(`⚠️ sendPresence não disponível: ${presenceError.message}. Continuando sem...`);
+            
+            // Fallback: aguarda um tempo aleatório mesmo assim (simula humanização)
+            const delayFallback = 3000 + Math.floor(Math.random() * 5000); // 3-8s
+            await new Promise(resolve => setTimeout(resolve, delayFallback));
+        }
+
+        // ============================================
+        // ✅ ENVIA A MENSAGEM DE VERDADE
+        // ============================================
         const response = await axios.post(
             `${EVOLUTION_API_URL}/message/sendText/${instanceName}`,
             {
-                number: numeroLimpo,
+                number: numeroFinal,
                 text: mensagem,
                 delay: 1200
             },
@@ -908,5 +957,4 @@ router.post('/enviar', auth, async (req, res) => {
         });
     }
 });
-
 module.exports = router;

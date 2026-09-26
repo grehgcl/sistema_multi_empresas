@@ -120,19 +120,14 @@ function verificarLimiteProfissionais(req, res, next) {
 
     console.log(`🔍 Verificando limite de profissionais para empresa ${empresaId}`);
 
-    // 🔥 CORRIGIDO: Usar $1 e $2 (dois placeholders diferentes)
-    const sql = isProduction
-        ? `SELECT plano, limite_profissionais, 
-            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = $1 AND ativo = true) as total_profs 
-            FROM empresas WHERE id = $2`
-        : `SELECT plano, limite_profissionais, 
-            (SELECT COUNT(*) FROM profissionais WHERE empresa_id = ? AND ativo = 1) as total_profs 
-            FROM empresas WHERE id = ?`;
+    // 🔥 ETAPA 1: Buscar plano/limite no banco CENTRAL
+    const sqlEmpresa = isProduction
+        ? `SELECT plano, limite_profissionais FROM empresas WHERE id = $1`
+        : `SELECT plano, limite_profissionais FROM empresas WHERE id = ?`;
 
-    // 🔥 CORRIGIDO: Passar o mesmo valor para os dois placeholders
-    db.get(sql, [empresaId, empresaId], (err, empresa) => {
+    db.get(sqlEmpresa, [empresaId], (err, empresa) => {
         if (err) {
-            console.error('❌ Erro ao verificar limite:', err);
+            console.error('❌ Erro ao verificar empresa:', err);
             return res.status(500).json({ success: false, message: 'Erro interno' });
         }
 
@@ -140,16 +135,40 @@ function verificarLimiteProfissionais(req, res, next) {
             return res.status(404).json({ success: false, message: 'Empresa não encontrada' });
         }
 
-        console.log(`📊 Profissionais: ${empresa.total_profs}/${empresa.limite_profissionais}`);
+        // 🔥 ETAPA 2: Buscar contagem no banco DA EMPRESA
+        const { getEmpresaDb } = require('../config/database');
+        const empresaDb = getEmpresaDb(empresaId);
 
-        if (empresa.total_profs >= empresa.limite_profissionais) {
-            return res.status(403).json({
-                success: false,
-                message: `Seu plano (${empresa.plano}) permite apenas ${empresa.limite_profissionais} profissional(is). Faça upgrade para adicionar mais.`,
-                needs_upgrade: true
-            });
+        if (!empresaDb) {
+            console.error(`❌ Banco da empresa ${empresaId} não encontrado`);
+            return res.status(500).json({ success: false, message: 'Banco da empresa não encontrado' });
         }
-        next();
+
+        empresaDb.get(
+            `SELECT COUNT(*) as total FROM profissionais WHERE ativo = 1`,
+            [],
+            (err, row) => {
+                if (err) {
+                    console.error('❌ Erro ao contar profissionais:', err);
+                    return res.status(500).json({ success: false, message: 'Erro ao verificar profissionais' });
+                }
+
+                const totalProfs = row?.total || 0;
+                const limite = empresa.limite_profissionais || 1;
+
+                console.log(`📊 Profissionais: ${totalProfs}/${limite} (plano: ${empresa.plano})`);
+
+                if (totalProfs >= limite) {
+                    return res.status(403).json({
+                        success: false,
+                        message: `Seu plano (${empresa.plano}) permite apenas ${limite} profissional(is). Faça upgrade para adicionar mais.`,
+                        needs_upgrade: true
+                    });
+                }
+
+                next();
+            }
+        );
     });
 }
 // ============================================

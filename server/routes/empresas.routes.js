@@ -3,10 +3,8 @@
 // ============================================
 const express = require('express');
 const router = express.Router();
-// const { db } = require('../config/database');
 const { auth, verificarDono } = require('../middlewares/auth');
 const { db, getEmpresaDb, centralDb } = require('../config/database');
-
 
 // ============================================
 // COMPATIBILIDADE SQLite / PostgreSQL
@@ -27,7 +25,7 @@ function extractDay(field) {
 }
 
 function formatDate(field) {
-    return isProduction ? `${formatDate('${field}')}` : `date(${field})`;
+    return isProduction ? `to_char(${field}, 'YYYY-MM-DD')` : `date(${field})`;
 }
 
 function coalesceSum(field) {
@@ -35,17 +33,19 @@ function coalesceSum(field) {
 }
 
 // ============================================
-
-
-// ============================================
 // GET /api/empresa/plano
 // ============================================
 router.get('/plano', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
+    const empresaId = req.user?.empresa_id;
 
-    const sql = isProduction
-        ? "SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate FROM empresas WHERE id = ?"
-        : "SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate FROM empresas WHERE id = ?";
+    if (!empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Empresa não identificada'
+        });
+    }
+
+    const sql = "SELECT plano, limite_profissionais, trial_expira, assinatura_ativa, assinatura_valida_ate FROM empresas WHERE id = ?";
 
     db.get(sql, [empresaId], (err, empresa) => {
         if (err || !empresa) {
@@ -91,8 +91,10 @@ router.get('/plano', auth, (req, res) => {
     });
 });
 
+// ============================================
+// GET /api/empresa/dados
+// ============================================
 router.get('/dados', auth, (req, res) => {
-    // 🔥 CORREÇÃO: usar req.user (NÃO req.usuario)
     const empresaId = req.user?.empresa_id;
     
     console.log(`🔍 Buscando dados da empresa: ${empresaId}`);
@@ -105,10 +107,7 @@ router.get('/dados', auth, (req, res) => {
         });
     }
 
-    // Buscar dados da empresa
-    const sql = isProduction
-        ? 'SELECT * FROM empresas WHERE id = ?'
-        : 'SELECT * FROM empresas WHERE id = ?';
+    const sql = 'SELECT * FROM empresas WHERE id = ?';
 
     db.get(sql, [empresaId], (err, empresa) => {
         if (err) {
@@ -134,6 +133,7 @@ router.get('/dados', auth, (req, res) => {
         });
     });
 });
+
 // ============================================
 // GET /api/empresa/dados-completos - Buscar tudo
 // ============================================
@@ -150,9 +150,7 @@ router.get('/dados-completos', auth, async (req, res) => {
 
         // Buscar dados da empresa
         const empresa = await new Promise((resolve, reject) => {
-            const sql = isProduction
-                ? 'SELECT * FROM empresas WHERE id = ?'
-                : 'SELECT * FROM empresas WHERE id = ?';
+            const sql = 'SELECT * FROM empresas WHERE id = ?';
             db.get(sql, [empresaId], (err, row) => {
                 if (err) reject(err);
                 else resolve(row);
@@ -168,9 +166,7 @@ router.get('/dados-completos', auth, async (req, res) => {
 
         // Buscar horários
         const horarios = await new Promise((resolve, reject) => {
-            const sql = isProduction
-                ? 'SELECT * FROM horarios_funcionamento WHERE empresa_id = ?'
-                : 'SELECT * FROM horarios_funcionamento WHERE empresa_id = ?';
+            const sql = 'SELECT * FROM horarios_funcionamento WHERE empresa_id = ?';
             db.all(sql, [empresaId], (err, rows) => {
                 if (err) reject(err);
                 else resolve(rows || []);
@@ -212,14 +208,22 @@ router.get('/dados-completos', auth, async (req, res) => {
         });
     }
 });
+
 // ============================================
 // PUT /api/empresa/dados
 // ============================================
 router.put('/dados', auth, verificarDono, (req, res) => {
-    const { nome, telefone_dono, endereco } = req.body;
-    const empresaId = req.usuario.empresa_id;
+    const { nome, telefone_dono, endereco, instagram } = req.body;
+    const empresaId = req.user?.empresa_id;
 
-    console.log("Atualizando dados da empresa:", { empresaId, nome, telefone_dono, endereco });
+    console.log("Atualizando dados da empresa:", { empresaId, nome, telefone_dono, endereco, instagram });
+
+    if (!empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Empresa não identificada'
+        });
+    }
 
     if (!nome || !telefone_dono) {
         return res.status(400).json({
@@ -228,11 +232,12 @@ router.put('/dados', auth, verificarDono, (req, res) => {
         });
     }
 
-    const sql = isProduction
-        ? "UPDATE empresas SET nome = ?, telefone_dono = ?, endereco = ? WHERE id = ?"
-        : "UPDATE empresas SET nome = ?, telefone_dono = ?, endereco = ? WHERE id = ?";
+    // Limpa o @ do instagram se o usuário digitar
+    const instagramLimpo = instagram ? instagram.trim().replace(/^@/, '') : null;
 
-    db.run(sql, [nome.trim(), telefone_dono.trim(), endereco ? endereco.trim() : '', empresaId], function (err) {
+    const sql = "UPDATE empresas SET nome = ?, telefone_dono = ?, endereco = ?, instagram = ? WHERE id = ?";
+
+    db.run(sql, [nome.trim(), telefone_dono.trim(), endereco ? endereco.trim() : '', instagramLimpo, empresaId], function (err) {
         if (err) {
             console.error("Erro ao atualizar empresa:", err.message);
             return res.status(500).json({
@@ -248,19 +253,23 @@ router.put('/dados', auth, verificarDono, (req, res) => {
         });
     });
 });
-
 // ============================================
 // PUT /api/empresa/endereco
 // ============================================
 router.put('/endereco', auth, verificarDono, (req, res) => {
     const { endereco } = req.body;
-    const empresaId = req.usuario.empresa_id;
+    const empresaId = req.user?.empresa_id;
 
     console.log("Atualizando endereco:", { empresaId, endereco });
 
-    const sql = isProduction
-        ? "UPDATE empresas SET endereco = ? WHERE id = ?"
-        : "UPDATE empresas SET endereco = ? WHERE id = ?";
+    if (!empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Empresa não identificada'
+        });
+    }
+
+    const sql = "UPDATE empresas SET endereco = ? WHERE id = ?";
 
     db.run(sql, [endereco || '', empresaId], function (err) {
         if (err) {
@@ -282,9 +291,16 @@ router.put('/endereco', auth, verificarDono, (req, res) => {
 // ============================================
 router.put('/telefone-dono', auth, verificarDono, (req, res) => {
     const { telefone } = req.body;
-    const empresaId = req.usuario.empresa_id;
+    const empresaId = req.user?.empresa_id;
 
     console.log("Atualizando telefone do dono:", { empresaId, telefone });
+
+    if (!empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Empresa não identificada'
+        });
+    }
 
     if (!telefone) {
         return res.status(400).json({
@@ -293,9 +309,7 @@ router.put('/telefone-dono', auth, verificarDono, (req, res) => {
         });
     }
 
-    const sql = isProduction
-        ? "UPDATE empresas SET telefone_dono = ? WHERE id = ?"
-        : "UPDATE empresas SET telefone_dono = ? WHERE id = ?";
+    const sql = "UPDATE empresas SET telefone_dono = ? WHERE id = ?";
 
     db.run(sql, [telefone.trim(), empresaId], function (err) {
         if (err) {
@@ -316,9 +330,16 @@ router.put('/telefone-dono', auth, verificarDono, (req, res) => {
 // ============================================
 router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
     const { dias_bloqueio } = req.body;
-    const empresaId = req.usuario.empresa_id;
+    const empresaId = req.user?.empresa_id;
 
-    console.log("Atualizando bloqueio geral:", { empresaId, dias_bloqueio });
+    console.log('🔄 Atualizando bloqueio geral:', { empresaId, dias_bloqueio });
+
+    if (!empresaId) {
+        return res.status(400).json({
+            success: false,
+            message: 'Empresa não identificada'
+        });
+    }
 
     if (dias_bloqueio === undefined || dias_bloqueio === null) {
         return res.status(400).json({
@@ -327,37 +348,9 @@ router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
         });
     }
 
-    const sql = isProduction
-        ? "UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?"
-        : "UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?";
-
-    db.run(sql, [dias_bloqueio, empresaId], function (err) {
-        if (err) {
-            console.error("Erro ao atualizar bloqueio geral:", err.message);
-            return res.json({ success: false, message: err.message });
-        }
-
-        console.log("Bloqueio geral atualizado para " + dias_bloqueio + " dias");
-        res.json({
-            success: true,
-            message: "Bloqueio geral atualizado para " + dias_bloqueio + " dias!"
-        });
-    });
-});
-// ============================================
-// PUT /api/empresa/bloqueio-geral
-// ============================================
-router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
-    const { dias_bloqueio } = req.body;
-    const empresaId = req.usuario.empresa_id;
-
-    console.log('🔄 Atualizando bloqueio geral:', { empresaId, dias_bloqueio });
-
     const diasBloqueioFinal = parseInt(dias_bloqueio) || 0;
 
-    const sql = isProduction
-        ? `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`
-        : `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`;
+    const sql = `UPDATE empresas SET dias_bloqueio_geral = ? WHERE id = ?`;
 
     db.run(sql, [diasBloqueioFinal, empresaId], function (err) {
         if (err) {
@@ -369,4 +362,5 @@ router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
         res.json({ success: true, message: `Bloqueio geral atualizado para ${diasBloqueioFinal} dias!` });
     });
 });
+
 module.exports = router;
