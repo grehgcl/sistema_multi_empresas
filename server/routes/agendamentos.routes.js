@@ -65,6 +65,248 @@ function coalesceSum(field) {
 }
 
 // ============================================
+// ⚡ ROTAS ESPECÍFICAS (DEVEM VIR ANTES DE /:id)
+// ============================================
+
+// ============================================
+// GET /api/agendamentos/periodo - BUSCAR POR PERÍODO
+// ============================================
+
+router.get('/periodo', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const { inicio, fim, status } = req.query;
+
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    let sql = `
+        SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome 
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN profissionais p ON a.profissional_id = p.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.empresa_id = ?
+    `;
+    let params = [empresaId];
+
+    if (inicio && fim) {
+        sql += ` AND a.data BETWEEN ? AND ?`;
+        params.push(inicio, fim);
+    }
+
+    if (status) {
+        sql += ` AND a.status = ?`;
+        params.push(status);
+    }
+
+    sql += ` ORDER BY a.data ASC, a.hora ASC`;
+
+    empresaDb.all(sql, params, (err, agendamentos) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        res.json({
+            success: true,
+            data: agendamentos || []
+        });
+    });
+});
+
+// ============================================
+// GET /api/agendamentos/horarios-disponiveis
+// ============================================
+
+router.get('/horarios-disponiveis', auth, async (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const { data, profissional_id } = req.query;
+
+    console.log(`📊 Buscando horários disponíveis para ${data}`);
+
+    if (!data) {
+        return res.status(400).json({
+            success: false,
+            message: 'Data é obrigatória'
+        });
+    }
+
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const diaSemana = new Date(data + 'T00:00:00').getDay();
+
+    empresaDb.get(
+        `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`,
+        [empresaId, diaSemana],
+        (err, horario) => {
+            if (err) {
+                console.error("❌ Erro ao buscar horário de funcionamento:", err);
+                return res.status(500).json({
+                    success: false,
+                    message: err.message
+                });
+            }
+
+            const abertoNum = Number(horario?.aberto);
+            if (!horario || abertoNum !== 1) {
+                return res.json({
+                    success: true,
+                    data: [],
+                    message: 'Estabelecimento fechado neste dia'
+                });
+            }
+
+            let sqlAgendamentos = `
+                SELECT hora, duracao FROM agendamentos 
+                WHERE empresa_id = ? AND data = ? AND status NOT IN ('cancelado')
+            `;
+            let params = [empresaId, data];
+
+            if (profissional_id) {
+                sqlAgendamentos += ` AND profissional_id = ?`;
+                params.push(profissional_id);
+            }
+
+            empresaDb.all(sqlAgendamentos, params, async (err, agendamentos) => {
+                if (err) {
+                    console.error("❌ Erro ao buscar agendamentos:", err);
+                    return res.status(500).json({
+                        success: false,
+                        message: err.message
+                    });
+                }
+
+                const horaInicio = horario.hora_inicio || '08:00';
+                const horaFim = horario.hora_fim || '18:00';
+                const almocoInicio = horario.almoco_inicio || '12:00';
+                const almocoFim = horario.almoco_fim || '13:00';
+                const intervalo = horario.intervalo_minutos || 30;
+
+                let horariosDisponiveis = [];
+                const agendados = agendamentos.map(a => a.hora);
+
+                let horaAtual = horaInicio;
+                while (horaAtual < horaFim) {
+                    if (horaAtual >= almocoInicio && horaAtual < almocoFim) {
+                        horaAtual = almocoFim;
+                        continue;
+                    }
+
+                    if (!agendados.includes(horaAtual)) {
+                        horariosDisponiveis.push(horaAtual);
+                    }
+
+                    const [h, m] = horaAtual.split(':').map(Number);
+                    let novaHora = h;
+                    let novoMinuto = m + intervalo;
+                    if (novoMinuto >= 60) {
+                        novaHora++;
+                        novoMinuto -= 60;
+                    }
+                    horaAtual = `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
+                }
+
+                // 🚫 FILTRAR HORÁRIOS BLOQUEADOS
+                const profIdParaChecar = profissional_id ? parseInt(profissional_id) : null;
+
+                if (horariosDisponiveis.length > 0) {
+                    const checks = await Promise.all(
+                        horariosDisponiveis.map(async (h) => {
+                            const r = await estaBloqueado(empresaId, profIdParaChecar, data, h);
+                            return r.bloqueado ? null : h;
+                        })
+                    );
+                    horariosDisponiveis = checks.filter(h => h !== null);
+                }
+
+                console.log(`✅ ${horariosDisponiveis.length} horários disponíveis (pós-bloqueios)`);
+
+                res.json({
+                    success: true,
+                    data: horariosDisponiveis
+                });
+            });
+        }
+    );
+});
+
+// ============================================
+// GET /api/agendamentos/profissionais-disponiveis
+// ============================================
+
+router.get('/profissionais-disponiveis', auth, (req, res) => {
+    const empresaId = req.usuario.empresa_id;
+    const { data, hora, duracao } = req.query;
+
+    if (!data || !hora) {
+        return res.status(400).json({
+            success: false,
+            message: 'Data e hora são obrigatórios'
+        });
+    }
+
+    const empresaDb = getEmpresaDb(empresaId);
+
+    if (!empresaDb) {
+        return res.status(500).json({
+            success: false,
+            message: 'Erro ao conectar ao banco da empresa'
+        });
+    }
+
+    const duracaoMin = parseInt(duracao) || 30;
+    const horaFim = new Date(`2000-01-01T${hora}`);
+    horaFim.setMinutes(horaFim.getMinutes() + duracaoMin);
+    const horaFimStr = horaFim.toTimeString().slice(0, 5);
+
+    const sql = `
+        SELECT p.* FROM profissionais p
+        WHERE p.empresa_id = ? AND p.ativo = 1
+        AND NOT EXISTS (
+            SELECT 1 FROM agendamentos a
+            WHERE a.profissional_id = p.id
+            AND a.data = ?
+            AND a.status != 'cancelado'
+            AND (a.hora < ? AND datetime(a.hora || '+' || a.duracao || ' minutes') > ?)
+        )
+        ORDER BY p.nome
+    `;
+
+    empresaDb.all(sql, [empresaId, data, hora, horaFimStr], (err, profissionais) => {
+        if (err) {
+            return res.status(500).json({
+                success: false,
+                message: err.message
+            });
+        }
+
+        res.json({
+            success: true,
+            data: profissionais || []
+        });
+    });
+});
+
+// ============================================
+// ⚡ ROTAS GENÉRICAS
+// ============================================
+
+// ============================================
 // GET /api/agendamentos - LISTAR AGENDAMENTOS
 // ============================================
 
@@ -198,6 +440,19 @@ router.post('/',
         origem = 'painel'
     } = req.body;
     const empresa_id = req.usuario.empresa_id;
+        // 🔒 SEGURANÇA: Profissional só pode agendar pra si mesmo
+    if (req.usuario.role === 'profissional') {
+        const meuId = req.usuario.id;
+        if (profissional_id && parseInt(profissional_id) !== parseInt(meuId)) {
+            console.warn(`🚫 Profissional ${meuId} tentou agendar pra ${profissional_id}`);
+            return res.status(403).json({
+                success: false,
+                message: 'Você só pode criar agendamentos para si mesmo'
+            });
+        }
+        // Força que o profissional_id seja o dele
+        req.body.profissional_id = meuId;
+    }
 
     console.log('📝 Criando agendamento:', JSON.stringify({ 
         cliente_id, data, hora, servico_id, profissional_id, empresa_id, origem 
@@ -229,17 +484,38 @@ router.post('/',
 
     const empresaDb = getEmpresaDb(empresa_id);
 
-    const sqlCheckHorario = `
+    // 🔥 CHECAGEM DE HORÁRIO OCUPADO — POR PROFISSIONAL
+    // - profissional_id válido (número)  → checa só agendamentos dele
+    // - null/''/'null'/'undefined'       → checa só agendamentos do DONO
+    const profIdChecagem = profissional_id
+        && profissional_id !== ''
+        && profissional_id !== 'null'
+        && profissional_id !== 'undefined'
+        && !String(profissional_id).includes('dono')
+        ? parseInt(profissional_id)
+        : null;
+
+    let sqlCheckHorario = `
         SELECT id FROM agendamentos 
         WHERE empresa_id = ? 
         AND data = ? 
         AND hora = ? 
         AND status != 'cancelado'
-        LIMIT 1
     `;
+    let paramsCheck = [empresa_id, data, hora];
+
+    if (profIdChecagem && !isNaN(profIdChecagem)) {
+        sqlCheckHorario += ` AND profissional_id = ?`;
+        paramsCheck.push(profIdChecagem);
+    } else {
+        // Dono → só agendamentos SEM profissional atribuído
+        sqlCheckHorario += ` AND (profissional_id IS NULL OR profissional_id = '' OR profissional_id = 0)`;
+    }
+
+    sqlCheckHorario += ` LIMIT 1`;
 
     const horarioOcupado = await new Promise((resolve) => {
-        empresaDb.get(sqlCheckHorario, [empresa_id, data, hora], (err, row) => {
+        empresaDb.get(sqlCheckHorario, paramsCheck, (err, row) => {
             if (err) {
                 console.error('❌ Erro ao verificar horário:', err);
                 resolve(null);
@@ -250,19 +526,22 @@ router.post('/',
     });
 
     if (horarioOcupado) {
-        console.log(`⚠️ Horário ${hora} do dia ${data} já está ocupado`);
+        console.log(`⚠️ Horário ${hora} do dia ${data} já está ocupado para o profissional ${profIdChecagem || 'dono'}`);
         return res.json({
             success: false,
             message: `⛔ O horário ${hora} já está ocupado. Escolha outro horário.`
         });
     }
-
     // ============================================
     // 🚫 VERIFICAR BLOQUEIO DE AGENDA
     // ============================================
-    const profIdParaBloqueio = profissional_id && profissional_id !== '' && profissional_id !== 'null'
-        ? parseInt(profissional_id)
-        : null;
+    const profIdParaBloqueio = profissional_id
+    && profissional_id !== ''
+    && profissional_id !== 'null'
+    && profissional_id !== 'undefined'
+    && !String(profissional_id).includes('dono')
+    ? parseInt(profissional_id)
+    : null;
 
     try {
         const checkBloqueio = await estaBloqueado(empresa_id, profIdParaBloqueio, data, hora);
@@ -502,6 +781,7 @@ router.post('/',
                     console.log(`📱 Instância: ${empresa.whatsapp_instance}`);
 
                     const valorFormatado = (parseFloat(valorServico) || 0).toFixed(2).replace('.', ',');
+                    const valorExibicao = `a partir de R$ ${valorFormatado}`;
                     const nomeEmpresa = empresa.nome || 'See&Agende';
                     const endereco = empresa.endereco || '';
                     const telefoneDono = empresa.telefone_dono || '';
@@ -512,7 +792,7 @@ router.post('/',
                         `✂️ Serviço: *${nomeServico || 'Serviço'}*\n` +
                         `📅 Data: *${formatarDataBr(data)}*\n` +
                         `⏰ Hora: *${hora}*\n` +
-                        `💰 Valor: *R$ ${valorFormatado}*\n\n` +
+                        `💰 Valor: *${valorExibicao}*\n\n` +
                         `📍 *Endereço:* ${endereco || 'N/A'}\n\n` +
                         `📞 *Contato:* ${telefoneDono || 'N/A'}\n` +
                         montarRodapeInstagram(empresa) + `\n\n` +
@@ -606,6 +886,33 @@ router.put('/:id', auth, verificarDono, verificarAcessoAgendamentos, (req, res) 
             });
         }
 
+        // ============================================
+        // 🔒 SEGURANÇA: Profissional só edita os dele
+        // ============================================
+        if (req.usuario.role === 'profissional') {
+            const meuId = req.usuario.id;
+
+            // 1) O agendamento precisa ser dele
+            if (String(agendamento.profissional_id) !== String(meuId)) {
+                console.warn(`🚫 Profissional ${meuId} tentou editar agendamento ${id} do profissional ${agendamento.profissional_id}`);
+                return res.status(403).json({
+                    success: false,
+                    message: 'Você só pode editar seus próprios agendamentos'
+                });
+            }
+
+            // 2) Não pode transferir pra outro profissional
+            if (profissional_id !== undefined && profissional_id !== null && profissional_id !== '') {
+                if (parseInt(profissional_id) !== parseInt(meuId)) {
+                    console.warn(`🚫 Profissional ${meuId} tentou transferir para ${profissional_id}`);
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Você não pode transferir agendamentos para outro profissional'
+                    });
+                }
+            }
+        }
+
         if (cliente_id) {
             empresaDb.get(
                 `SELECT id FROM clientes WHERE id = ? AND empresa_id = ?`,
@@ -653,7 +960,13 @@ router.put('/:id', auth, verificarDono, verificarAcessoAgendamentos, (req, res) 
                 updates.push(`valor = ?`);
                 params.push(valor);
             }
-            if (profissional_id !== undefined) {
+
+            // 🔥 Profissional_id — trata diferente por role
+            if (req.usuario.role === 'profissional') {
+                // Profissional NUNCA altera profissional_id (sempre mantém o dele)
+                // Não adiciona ao UPDATE — mantém o que está no banco
+            } else if (profissional_id !== undefined) {
+                // Dono pode alterar
                 updates.push(`profissional_id = ?`);
                 params.push(profissional_id || null);
             }
@@ -712,9 +1025,8 @@ router.put('/:id', auth, verificarDono, verificarAcessoAgendamentos, (req, res) 
         }
     });
 });
-
 // ============================================
-// PUT /api/agendamentos/:id/concluir - CONCLUIR AGENDAMENTO (COM INSTAGRAM)
+// PUT /api/agendamentos/:id/concluir - CONCLUIR AGENDAMENTO
 // ============================================
 
 router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, async (req, res) => {
@@ -730,10 +1042,12 @@ router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, as
         });
     }
 
+    // 🔍 Busca agendamento + joins
     const agendamento = await new Promise((resolve) => {
         empresaDb.get(
-            `SELECT a.*, p.comissao_percent, p.nome as profissional_nome, 
-                    c.nome as cliente_nome, c.telefone, 
+            `SELECT a.*, 
+                    p.comissao_percent, p.nome as profissional_nome,
+                    c.nome as cliente_nome, c.telefone,
                     s.nome as servico_nome, s.valor as servico_valor
              FROM agendamentos a
              LEFT JOIN profissionais p ON a.profissional_id = p.id
@@ -759,13 +1073,34 @@ router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, as
         });
     }
 
-    let comissao = 0;
-    if (agendamento.profissional_id) {
-        const valor = parseFloat(agendamento.valor) || 0;
-        const percentual = parseFloat(agendamento.comissao_percent) || 30;
-        comissao = valor * (percentual / 100);
+    // ============================================
+    // 💰 CALCULAR COMISSÃO (valor base + extras)
+    // ============================================
+    let valorBaseComissao = parseFloat(agendamento.valor) || 0;
+    if (agendamento.servicos_extras) {
+        try {
+            const extras = typeof agendamento.servicos_extras === 'string'
+                ? JSON.parse(agendamento.servicos_extras)
+                : agendamento.servicos_extras;
+            if (Array.isArray(extras)) {
+                for (let e of extras) {
+                    valorBaseComissao += parseFloat(e.valor) || 0;
+                }
+            }
+        } catch (e) {
+            console.error('⚠️ Erro ao somar extras pra comissão:', e.message);
+        }
     }
 
+    let comissao = 0;
+    if (agendamento.profissional_id) {
+        const percentual = parseFloat(agendamento.comissao_percent) || 30;
+        comissao = valorBaseComissao * (percentual / 100);
+    }
+
+    // ============================================
+    // 💾 ATUALIZAR STATUS
+    // ============================================
     empresaDb.run(
         `UPDATE agendamentos SET status = 'concluido', comissao = ? WHERE id = ? AND empresa_id = ?`,
         [comissao, id, empresaId],
@@ -777,6 +1112,9 @@ router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, as
                 });
             }
 
+            // ============================================
+            // 📱 ENVIAR WHATSAPP DE CONCLUSÃO
+            // ============================================
             try {
                 console.log(`📱 Enviando WhatsApp de conclusão para agendamento ${id}...`);
 
@@ -795,11 +1133,13 @@ router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, as
                     );
                 });
 
-                if (cliente && cliente.telefone && cliente.telefone.length >= 10) {
-                    // 🔥 Empresa no banco central (COM instagram)
+                if (!cliente || !cliente.telefone || cliente.telefone.length < 10) {
+                    console.log('⚠️ Cliente sem telefone válido — pulando WhatsApp');
+                } else {
                     const empresa = await new Promise((resolve) => {
                         db.get(
-                            `SELECT id, nome, endereco, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?`,
+                            `SELECT id, nome, endereco, telefone_dono, whatsapp_instance, instagram 
+                             FROM empresas WHERE id = ?`,
                             [empresaId],
                             (err, row) => {
                                 if (err) {
@@ -812,70 +1152,85 @@ router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, as
                         );
                     });
 
-                    if (empresa && empresa.whatsapp_instance) {
-                        const telefoneLimpo = cliente.telefone.replace(/\D/g, '');
-                        const numeroFormatado = telefoneLimpo.startsWith('55') ? telefoneLimpo : '55' + telefoneLimpo;
+                    if (!empresa || !empresa.whatsapp_instance) {
+                        console.log('⚠️ Empresa sem instância WhatsApp — pulando envio');
+                    } else {
+                        // ============================================
+                        // 🎯 MONTA ARRAY DE SERVIÇOS (principal + extras)
+                        // ============================================
+                        const servicosArray = [];
 
-                        console.log(`📱 Enviando conclusão para: ${numeroFormatado}`);
-                        console.log(`📱 Instância: ${empresa.whatsapp_instance}`);
-                        console.log(`📱 Instagram dono: ${empresa.instagram}`);
-                        console.log(`📱 Instagram sistema: ${INSTAGRAM_SISTEMA}`);
+                        // Principal
+                        const nomePrincipal = agendamento.servico_nome || agendamento.servico || 'Serviço';
+                        const valorPrincipal = parseFloat(agendamento.valor) || 0;
+                        servicosArray.push({ nome: nomePrincipal, valor: valorPrincipal });
 
-                        let valorServico = 0;
-                        if (agendamento.valor_total && parseFloat(agendamento.valor_total) > 0) {
-                            valorServico = parseFloat(agendamento.valor_total);
-                        } else if (agendamento.valor && parseFloat(agendamento.valor) > 0) {
-                            valorServico = parseFloat(agendamento.valor);
-                        } else if (agendamento.servico_valor && parseFloat(agendamento.servico_valor) > 0) {
-                            valorServico = parseFloat(agendamento.servico_valor);
+                        // Extras
+                        if (agendamento.servicos_extras) {
+                            try {
+                                const extras = typeof agendamento.servicos_extras === 'string'
+                                    ? JSON.parse(agendamento.servicos_extras)
+                                    : agendamento.servicos_extras;
+
+                                if (Array.isArray(extras)) {
+                                    for (const e of extras) {
+                                        if (e && (e.nome || e.valor)) {
+                                            servicosArray.push({
+                                                nome: e.nome || `Extra - R$ ${(parseFloat(e.valor) || 0).toFixed(2).replace('.', ',')}`,
+                                                valor: parseFloat(e.valor) || 0
+                                            });
+                                        }
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('⚠️ Erro ao parsear extras:', e.message);
+                            }
                         }
 
-                        const valorFormatado = valorServico.toFixed(2).replace('.', ',');
-                        const nomeServico = agendamento.servico_nome || agendamento.servico || 'Serviço';
-                        const nomeEmpresa = empresa.nome || 'See&Agende';
-                        const endereco = empresa.endereco || '';
-                        const telefoneDono = empresa.telefone_dono || '';
+                        // ============================================
+                        // 🎯 CALCULA VALORES
+                        // ============================================
+                        const subtotal = servicosArray.reduce((s, x) => s + (parseFloat(x.valor) || 0), 0);
 
-                        const mensagem = `✅ *Atendimento Concluído!* 🎉\n\n` +
-                            `Olá *${cliente.nome}*!\n` +
-                            `Obrigado por escolher a *${nomeEmpresa}*!\n\n` +
-                            `📋 *RESUMO DO SERVIÇO:*\n` +
-                            `✂️ Serviço: *${nomeServico}*\n` +
-                            `💰 Valor: *R$ ${valorFormatado}*\n` +
-                            `📅 Data: *${formatarDataBr(agendamento.data)}* às *${agendamento.hora}*\n\n` +
-                            `📍 *Endereço:* ${endereco || 'N/A'}\n\n` +
-                            `📞 *Contato:* ${telefoneDono || 'N/A'}\n` +
-                            montarRodapeInstagram(empresa) + `\n\n` +
-                            `⭐ *Gostou do atendimento?* ⭐\n\n` +
-                            `🔗 *Agende seu próximo horário:*\n` +
-                            `${process.env.BASE_URL || 'https://seeagende.tech'}/chatbot.html?empresa=${empresaId}\n\n` +
-                            `---\n_Mensagem automática do See&Agende_`;
+                        // ⚠️ Sem desconto na rota /concluir (não tem esse dado)
+                        const desconto = 0;
+                        const valorFinal = subtotal;
 
-                        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
-                        const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+                        // ============================================
+                        // 🚀 CHAMA A FUNÇÃO UNIFICADA
+                        // ============================================
+                        const { enviarConclusao } = require('../services/whatsapp');
 
-                        await axios.post(
-                            `${EVOLUTION_API_URL}/message/sendText/${empresa.whatsapp_instance}`,
-                            {
-                                number: numeroFormatado,
-                                text: mensagem,
-                                delay: 1200
+                        const resultado = await enviarConclusao({
+                            cliente: {
+                                nome: cliente.nome,
+                                telefone: cliente.telefone
                             },
-                            {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'apikey': EVOLUTION_API_KEY
-                                },
-                                timeout: 30000
+                            servicos: servicosArray,
+                            subtotal,
+                            desconto,
+                            valorFinal,
+                            data: agendamento.data,
+                            hora: agendamento.hora,
+                            profissional: agendamento.profissional_nome
+                                ? { nome: agendamento.profissional_nome }
+                                : null,
+                            empresa: {
+                                id: empresa.id,
+                                nome: empresa.nome,
+                                endereco: empresa.endereco,
+                                telefone_dono: empresa.telefone_dono,
+                                instagram: empresa.instagram,
+                                whatsapp_instance: empresa.whatsapp_instance
                             }
-                        );
+                        });
 
-                        console.log(`✅ WhatsApp de conclusão enviado para ${numeroFormatado}`);
-                    } else {
-                        console.log('⚠️ Empresa sem instância WhatsApp');
+                        if (resultado?.success) {
+                            console.log(`✅ WhatsApp de conclusão enviado com sucesso`);
+                        } else {
+                            console.log(`⚠️ Falha ao enviar WhatsApp: ${resultado?.error || 'erro desconhecido'}`);
+                        }
                     }
-                } else {
-                    console.log('⚠️ Cliente sem telefone válido para conclusão');
                 }
             } catch (whatsError) {
                 console.error('❌ Erro ao enviar WhatsApp de conclusão:', whatsError.message);
@@ -889,7 +1244,6 @@ router.put('/:id/concluir', auth, verificarDono, verificarAcessoAgendamentos, as
         }
     );
 });
-
 // ============================================
 // PUT /api/agendamentos/:id/confirmar - CONFIRMAR AGENDAMENTO
 // ============================================
@@ -914,7 +1268,6 @@ router.put('/:id/confirmar', auth, verificarDono, verificarAcessoAgendamentos, (
         [id, empresaId],
         (err, row) => {
             if (err) {
-                console.error("❌ Erro ao verificar agendamento:", err);
                 return res.status(500).json({
                     success: false,
                     message: err.message
@@ -932,7 +1285,6 @@ router.put('/:id/confirmar', auth, verificarDono, verificarAcessoAgendamentos, (
 
             empresaDb.run(sql, [id, empresaId], function (err) {
                 if (err) {
-                    console.error("❌ Erro ao confirmar agendamento:", err);
                     return res.status(500).json({
                         success: false,
                         message: err.message
@@ -949,7 +1301,7 @@ router.put('/:id/confirmar', auth, verificarDono, verificarAcessoAgendamentos, (
 });
 
 // ============================================
-// PUT /api/agendamentos/:id/cancelar - CANCELAR AGENDAMENTO (COM INSTAGRAM)
+// PUT /api/agendamentos/:id/cancelar - CANCELAR AGENDAMENTO
 // ============================================
 
 router.put('/:id/cancelar', auth, verificarDono, verificarAcessoAgendamentos, async (req, res) => {
@@ -995,7 +1347,6 @@ router.put('/:id/cancelar', auth, verificarDono, verificarAcessoAgendamentos, as
 
                     if (agendamento.telefone) {
                         try {
-                            // 🔥 Empresa no banco central (COM instagram)
                             const empresa = await new Promise((resolve) => {
                                 db.get(
                                     'SELECT id, nome, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?',
@@ -1045,8 +1396,6 @@ router.put('/:id/cancelar', auth, verificarDono, verificarAcessoAgendamentos, as
                                         timeout: 30000
                                     }
                                 );
-
-                                console.log(`✅ WhatsApp de cancelamento enviado para ${numeroFormatado}`);
                             }
                         } catch (whatsappError) {
                             console.error('❌ Erro ao enviar WhatsApp de cancelamento:', whatsappError.message);
@@ -1124,12 +1473,13 @@ router.delete('/:id', auth, verificarAcessoAgendamentos, (req, res) => {
 });
 
 // ============================================
-// PUT /api/agendamentos/:id/extras - ADICIONAR EXTRAS
+// PUT /api/agendamentos/:id/extras - ADICIONAR/ATUALIZAR EXTRAS
 // ============================================
+// 💡 Melhorado: recalcula valor_extras no servidor (não confia só no front)
 
 router.put('/:id/extras', auth, verificarDono, verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
-    const { servicos_extras, valor_extras } = req.body;
+    const { servicos_extras } = req.body;
     const empresaId = req.usuario.empresa_id;
 
     const empresaDb = getEmpresaDb(empresaId);
@@ -1141,11 +1491,29 @@ router.put('/:id/extras', auth, verificarDono, verificarAcessoAgendamentos, (req
         });
     }
 
+    // ✅ Garante que é array
+    let extrasArray = [];
+    if (Array.isArray(servicos_extras)) {
+        extrasArray = servicos_extras;
+    } else if (typeof servicos_extras === 'string') {
+        try {
+            extrasArray = JSON.parse(servicos_extras);
+            if (!Array.isArray(extrasArray)) extrasArray = [];
+        } catch {
+            extrasArray = [];
+        }
+    }
+
+    // ✅ Recalcula valor_extras no servidor (fonte da verdade)
+    const valorExtrasCalculado = extrasArray.reduce(
+        (soma, e) => soma + (parseFloat(e?.valor) || 0), 0
+    );
+
     const sql = "UPDATE agendamentos SET servicos_extras = ?, valor_extras = ? WHERE id = ? AND empresa_id = ?";
 
     empresaDb.run(sql, [
-        JSON.stringify(servicos_extras || []),
-        parseFloat(valor_extras) || 0,
+        JSON.stringify(extrasArray),
+        valorExtrasCalculado,
         id,
         empresaId
     ], function (err) {
@@ -1165,256 +1533,33 @@ router.put('/:id/extras', auth, verificarDono, verificarAcessoAgendamentos, (req
 
         res.json({
             success: true,
-            message: 'Extras atualizados com sucesso!'
+            message: 'Extras atualizados com sucesso!',
+            data: {
+                servicos_extras: extrasArray,
+                valor_extras: valorExtrasCalculado
+            }
         });
     });
 });
 
 // ============================================
-// GET /api/agendamentos/periodo - BUSCAR POR PERÍODO
-// ============================================
-
-router.get('/periodo', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const { inicio, fim, status } = req.query;
-
-    const empresaDb = getEmpresaDb(empresaId);
-
-    if (!empresaDb) {
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao conectar ao banco da empresa'
-        });
-    }
-
-    let sql = `
-        SELECT a.*, c.nome as cliente_nome, p.nome as profissional_nome, s.nome as servico_nome 
-        FROM agendamentos a
-        LEFT JOIN clientes c ON a.cliente_id = c.id
-        LEFT JOIN profissionais p ON a.profissional_id = p.id
-        LEFT JOIN servicos s ON a.servico_id = s.id
-        WHERE a.empresa_id = ?
-    `;
-    let params = [empresaId];
-
-    if (inicio && fim) {
-        sql += ` AND a.data BETWEEN ? AND ?`;
-        params.push(inicio, fim);
-    }
-
-    if (status) {
-        sql += ` AND a.status = ?`;
-        params.push(status);
-    }
-
-    sql += ` ORDER BY a.data ASC, a.hora ASC`;
-
-    empresaDb.all(sql, params, (err, agendamentos) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: agendamentos || []
-        });
-    });
-});
-
-// ============================================
-// GET /api/agendamentos/horarios-disponiveis
-// ============================================
-
-router.get('/horarios-disponiveis', auth, async (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const { data, profissional_id } = req.query;
-
-    console.log(`📊 Buscando horários disponíveis para ${data}`);
-
-    if (!data) {
-        return res.status(400).json({
-            success: false,
-            message: 'Data é obrigatória'
-        });
-    }
-
-    const empresaDb = getEmpresaDb(empresaId);
-
-    if (!empresaDb) {
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao conectar ao banco da empresa'
-        });
-    }
-
-    const diaSemana = new Date(data + 'T00:00:00').getDay();
-
-    empresaDb.get(
-        `SELECT * FROM horarios_funcionamento WHERE empresa_id = ? AND dia_semana = ?`,
-        [empresaId, diaSemana],
-        (err, horario) => {
-            if (err) {
-                console.error("❌ Erro ao buscar horário de funcionamento:", err);
-                return res.status(500).json({
-                    success: false,
-                    message: err.message
-                });
-            }
-
-            const abertoNum = Number(horario?.aberto);
-            if (!horario || abertoNum !== 1) {
-                return res.json({
-                    success: true,
-                    data: [],
-                    message: 'Estabelecimento fechado neste dia'
-                });
-            }
-
-            let sqlAgendamentos = `
-                SELECT hora, duracao FROM agendamentos 
-                WHERE empresa_id = ? AND data = ? AND status NOT IN ('cancelado')
-            `;
-            let params = [empresaId, data];
-
-            if (profissional_id) {
-                sqlAgendamentos += ` AND profissional_id = ?`;
-                params.push(profissional_id);
-            }
-
-            empresaDb.all(sqlAgendamentos, params, async (err, agendamentos) => {
-                if (err) {
-                    console.error("❌ Erro ao buscar agendamentos:", err);
-                    return res.status(500).json({
-                        success: false,
-                        message: err.message
-                    });
-                }
-
-                const horaInicio = horario.hora_inicio || '08:00';
-                const horaFim = horario.hora_fim || '18:00';
-                const almocoInicio = horario.almoco_inicio || '12:00';
-                const almocoFim = horario.almoco_fim || '13:00';
-                const intervalo = horario.intervalo_minutos || 30;
-
-                let horariosDisponiveis = [];
-                const agendados = agendamentos.map(a => a.hora);
-
-                let horaAtual = horaInicio;
-                while (horaAtual < horaFim) {
-                    if (horaAtual >= almocoInicio && horaAtual < almocoFim) {
-                        horaAtual = almocoFim;
-                        continue;
-                    }
-
-                    if (!agendados.includes(horaAtual)) {
-                        horariosDisponiveis.push(horaAtual);
-                    }
-
-                    const [h, m] = horaAtual.split(':').map(Number);
-                    let novaHora = h;
-                    let novoMinuto = m + intervalo;
-                    if (novoMinuto >= 60) {
-                        novaHora++;
-                        novoMinuto -= 60;
-                    }
-                    horaAtual = `${String(novaHora).padStart(2, '0')}:${String(novoMinuto).padStart(2, '0')}`;
-                }
-
-                // 🚫 FILTRAR HORÁRIOS BLOQUEADOS
-                const profIdParaChecar = profissional_id ? parseInt(profissional_id) : null;
-
-                if (horariosDisponiveis.length > 0) {
-                    const checks = await Promise.all(
-                        horariosDisponiveis.map(async (h) => {
-                            const r = await estaBloqueado(empresaId, profIdParaChecar, data, h);
-                            return r.bloqueado ? null : h;
-                        })
-                    );
-                    horariosDisponiveis = checks.filter(h => h !== null);
-                }
-
-                console.log(`✅ ${horariosDisponiveis.length} horários disponíveis (pós-bloqueios)`);
-
-                res.json({
-                    success: true,
-                    data: horariosDisponiveis
-                });
-            });
-        }
-    );
-});
-
-// ============================================
-// GET /api/agenda/profissionais-disponiveis
-// ============================================
-
-router.get('/profissionais-disponiveis', auth, (req, res) => {
-    const empresaId = req.usuario.empresa_id;
-    const { data, hora, duracao } = req.query;
-
-    if (!data || !hora) {
-        return res.status(400).json({
-            success: false,
-            message: 'Data e hora são obrigatórios'
-        });
-    }
-
-    const empresaDb = getEmpresaDb(empresaId);
-
-    if (!empresaDb) {
-        return res.status(500).json({
-            success: false,
-            message: 'Erro ao conectar ao banco da empresa'
-        });
-    }
-
-    const duracaoMin = parseInt(duracao) || 30;
-    const horaFim = new Date(`2000-01-01T${hora}`);
-    horaFim.setMinutes(horaFim.getMinutes() + duracaoMin);
-    const horaFimStr = horaFim.toTimeString().slice(0, 5);
-
-    const sql = `
-        SELECT p.* FROM profissionais p
-        WHERE p.empresa_id = ? AND p.ativo = 1
-        AND NOT EXISTS (
-            SELECT 1 FROM agendamentos a
-            WHERE a.profissional_id = p.id
-            AND a.data = ?
-            AND a.status != 'cancelado'
-            AND (a.hora < ? AND datetime(a.hora || '+' || a.duracao || ' minutes') > ?)
-        )
-        ORDER BY p.nome
-    `;
-
-    empresaDb.all(sql, [empresaId, data, hora, horaFimStr], (err, profissionais) => {
-        if (err) {
-            return res.status(500).json({
-                success: false,
-                message: err.message
-            });
-        }
-
-        res.json({
-            success: true,
-            data: profissionais || []
-        });
-    });
-});
-
-// ============================================
-// PUT /api/agendamentos/:id/pagamento - REGISTRAR PAGAMENTO (COM INSTAGRAM NO FIADO)
+// PUT /api/agendamentos/:id/pagamento - REGISTRAR PAGAMENTO
 // ============================================
 
 router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
     const { id } = req.params;
     const empresaId = req.usuario.empresa_id;
-    const { forma_pagamento, prazo_dias, data_vencimento, descricao_pagamento } = req.body;
+    const { 
+        forma_pagamento, 
+        prazo_dias, 
+        data_vencimento, 
+        descricao_pagamento,
+        desconto,
+        valor_final
+    } = req.body;
 
     console.log(`📝 Registrando pagamento para agendamento ${id}`);
-    console.log(`📝 Forma: ${forma_pagamento}, Prazo: ${prazo_dias} dias`);
+    console.log(`📝 Forma: ${forma_pagamento}, Prazo: ${prazo_dias}, Desconto: R$ ${desconto || 0}`);
 
     const empresaDb = getEmpresaDb(empresaId);
 
@@ -1426,8 +1571,8 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
     }
 
     const sqlCheck = `
-        SELECT id, status, cliente_id, servico, valor, valor_total, 
-               servicos_extras, valor_extras, data
+        SELECT id, status, cliente_id, servico, servico_id, valor, valor_total, 
+               servicos_extras, valor_extras, data, hora, profissional_id
         FROM agendamentos 
         WHERE id = ? AND empresa_id = ?
     `;
@@ -1446,26 +1591,35 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
             return res.status(400).json({ success: false, message: 'Agendamento já foi concluído' });
         }
 
+        // ============================================
+        // 💰 CALCULA VALORES
+        // ============================================
         let valorPrincipal = parseFloat(agendamento.valor) || 0;
-        let valorExtras = parseFloat(agendamento.valor_extras) || 0;
-        
+        let valorExtras = 0;
+
         if (agendamento.servicos_extras) {
             try {
                 const extras = typeof agendamento.servicos_extras === 'string' 
                     ? JSON.parse(agendamento.servicos_extras) 
                     : agendamento.servicos_extras;
-                let somaExtras = 0;
-                for (let extra of extras) {
-                    somaExtras += parseFloat(extra.valor) || 0;
+                if (Array.isArray(extras)) {
+                    for (let extra of extras) {
+                        valorExtras += parseFloat(extra.valor) || 0;
+                    }
                 }
-                valorExtras = somaExtras;
             } catch (e) {
                 console.error('❌ Erro ao calcular extras:', e);
             }
         }
 
-        const valorTotal = valorPrincipal + valorExtras;
-        console.log(`💰 Valor principal: R$ ${valorPrincipal}, Extras: R$ ${valorExtras}, Total: R$ ${valorTotal}`);
+        const valorBruto = valorPrincipal + valorExtras;
+
+        const descontoAplicado = Math.max(parseFloat(desconto) || 0, 0);
+        const valorFinal = valor_final !== undefined && valor_final !== null
+            ? Math.max(parseFloat(valor_final) || 0, 0)
+            : Math.max(valorBruto - descontoAplicado, 0);
+
+        console.log(`💰 Bruto: R$ ${valorBruto}, Desconto: R$ ${descontoAplicado}, Final: R$ ${valorFinal}`);
 
         let dataVencimentoFinal = data_vencimento || null;
         
@@ -1473,9 +1627,11 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
             const hoje = new Date();
             hoje.setDate(hoje.getDate() + parseInt(prazo_dias));
             dataVencimentoFinal = hoje.toISOString().split('T')[0];
-            console.log(`📅 Data de vencimento calculada: ${dataVencimentoFinal}`);
         }
 
+        // ============================================
+        // 💾 GRAVA NO BANCO
+        // ============================================
         const sqlUpdate = `
             UPDATE agendamentos 
             SET status = 'concluido',
@@ -1483,6 +1639,8 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
                 prazo_dias = ?,
                 data_vencimento = ?,
                 descricao_pagamento = ?,
+                valor_bruto = ?,
+                desconto_valor = ?,
                 valor_total = ?,
                 valor_extras = ?
             WHERE id = ? AND empresa_id = ?
@@ -1493,7 +1651,9 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
             prazo_dias || 0,
             dataVencimentoFinal,
             descricao_pagamento || '',
-            valorTotal,
+            valorBruto,
+            descontoAplicado,
+            valorFinal,
             valorExtras,
             id,
             empresaId
@@ -1503,8 +1663,11 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
                 return res.status(500).json({ success: false, message: err.message });
             }
 
-            console.log(`✅ Agendamento ${id} concluído com pagamento ${forma_pagamento}`);
+            console.log(`✅ Agendamento ${id} concluído. Pago: R$ ${valorFinal}`);
 
+            // ============================================
+            // 📊 INSERIR RECEITA
+            // ============================================
             const hoje = new Date().toISOString().split('T')[0];
             const descricao = `Agendamento #${id} - ${agendamento.servico || 'Serviço'}`;
 
@@ -1512,12 +1675,7 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
                 `SELECT name FROM sqlite_master WHERE type='table' AND name='receitas'`,
                 [],
                 (err, tableExists) => {
-                    if (err) {
-                        console.error('❌ Erro ao verificar tabela receitas:', err);
-                    }
-
                     if (!tableExists) {
-                        console.log('📝 Criando tabela receitas...');
                         empresaDb.run(
                             `CREATE TABLE IF NOT EXISTS receitas (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1531,12 +1689,7 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
                                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
                             )`,
                             (err) => {
-                                if (err) {
-                                    console.error('❌ Erro ao criar tabela receitas:', err);
-                                } else {
-                                    console.log('✅ Tabela receitas criada com sucesso!');
-                                    inserirReceita();
-                                }
+                                if (!err) inserirReceita();
                             }
                         );
                     } else {
@@ -1553,7 +1706,7 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
                     [
                         empresaId,
                         descricao,
-                        valorTotal,
+                        valorFinal,
                         hoje,
                         forma_pagamento || 'dinheiro',
                         id
@@ -1562,111 +1715,201 @@ router.put('/:id/pagamento', auth, verificarAcessoAgendamentos, (req, res) => {
                         if (err) {
                             console.error('❌ Erro ao inserir receita:', err.message);
                         } else {
-                            console.log(`✅ Receita inserida com ID: ${this.lastID} - R$ ${valorTotal}`);
+                            console.log(`✅ Receita inserida: R$ ${valorFinal}`);
                         }
                     }
                 );
             }
 
-            if (forma_pagamento === 'prazo' && dataVencimentoFinal) {
-                empresaDb.get(
-                    `SELECT c.nome as cliente_nome, c.telefone
-                     FROM clientes c
-                     WHERE c.id = ?`,
-                    [agendamento.cliente_id],
-                    async (err, cliente) => {
-                        if (err) {
-                            console.error('❌ Erro ao buscar cliente:', err);
-                            return;
-                        }
-
-                        if (!cliente || !cliente.telefone) {
-                            console.log('⚠️ Cliente sem telefone, mensagem não enviada');
-                            return;
-                        }
-
-                        const { db: mainDb } = require('../config/database');
-                        mainDb.get(
-                            `SELECT nome, telefone_dono, whatsapp_instance, instagram FROM empresas WHERE id = ?`,
-                            [empresaId],
-                            async (err, empresa) => {
+            // ============================================
+            // 📱 WHATSAPP
+            // ============================================
+            // Regra:
+            //   - Fiado (prazo) → mensagem de FIADO
+            //   - Outros        → mensagem de CONCLUSÃO
+            // ============================================
+            const enviarWhats = async () => {
+                try {
+                    // Buscar cliente
+                    const cliente = await new Promise((resolve) => {
+                        empresaDb.get(
+                            `SELECT nome, telefone FROM clientes WHERE id = ? AND empresa_id = ?`,
+                            [agendamento.cliente_id, empresaId],
+                            (err, row) => {
                                 if (err) {
-                                    console.error('❌ Erro ao buscar empresa:', err);
-                                    return;
-                                }
-
-                                if (!empresa || !empresa.whatsapp_instance) {
-                                    console.log('⚠️ Empresa sem WhatsApp configurado');
-                                    return;
-                                }
-
-                                try {
-                                    const valorFormatado = valorTotal.toFixed(2).replace('.', ',');
-                                    const diffDays = parseInt(prazo_dias) || 0;
-                                    const dataServico = agendamento.data || new Date().toISOString().split('T')[0];
-
-                                    let mensagem = `📝 *Pagamento a Prazo (Fiado)*\n\n`;
-                                    mensagem += `Olá *${cliente.cliente_nome || 'Cliente'}*!\n\n`;
-                                    mensagem += `Seu agendamento na *${empresa.nome || 'See&Agende'}* foi registrado como *FIADO*.\n\n`;
-                                    mensagem += `📋 *DETALHES:*\n`;
-                                    mensagem += `✂️ Serviço: *${agendamento.servico || 'Serviço'}*\n`;
-                                    mensagem += `📅 Data: *${formatarDataBr(dataServico)}*\n`;
-                                    mensagem += `💰 Valor: *R$ ${valorFormatado}*\n`;
-                                    mensagem += `📅 Vencimento: *${formatarDataBr(dataVencimentoFinal)}*\n`;
-                                    mensagem += `⏳ Prazo: *${diffDays} dias*\n\n`;
-                                    mensagem += `💡 *Lembre-se de pagar até a data de vencimento!*\n\n`;
-                                    mensagem += `📞 *Contato:* ${empresa.telefone_dono || 'N/A'}\n`;
-                                    mensagem += montarRodapeInstagram(empresa) + `\n\n`;
-                                    mensagem += `---\n_Mensagem automática do See&Agende_`;
-
-                                    const telefoneLimpo = cliente.telefone.replace(/\D/g, '');
-                                    const numeroFormatado = telefoneLimpo.startsWith('55') ? telefoneLimpo : '55' + telefoneLimpo;
-
-                                    const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-                                    const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
-
-                                    await axios.post(
-                                        `${EVOLUTION_API_URL}/message/sendText/${empresa.whatsapp_instance}`,
-                                        {
-                                            number: numeroFormatado,
-                                            text: mensagem,
-                                            delay: 1200
-                                        },
-                                        {
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'apikey': EVOLUTION_API_KEY
-                                            },
-                                            timeout: 30000
-                                        }
-                                    );
-
-                                    console.log(`✅ Mensagem de fiado enviada para ${cliente.cliente_nome}`);
-                                } catch (error) {
-                                    console.error('❌ Erro ao enviar mensagem de fiado:', error.message);
+                                    console.error('❌ Erro ao buscar cliente:', err);
+                                    resolve(null);
+                                } else {
+                                    resolve(row);
                                 }
                             }
                         );
-                    }
-                );
-            }
+                    });
 
+                    if (!cliente || !cliente.telefone || cliente.telefone.length < 10) {
+                        console.log('⚠️ Cliente sem telefone válido — pulando WhatsApp');
+                        return;
+                    }
+
+                    // Buscar empresa
+                    const empresa = await new Promise((resolve) => {
+                        db.get(
+                            `SELECT id, nome, endereco, telefone_dono, whatsapp_instance, instagram 
+                             FROM empresas WHERE id = ?`,
+                            [empresaId],
+                            (err, row) => {
+                                if (err) {
+                                    console.error('❌ Erro ao buscar empresa:', err);
+                                    resolve(null);
+                                } else {
+                                    resolve(row);
+                                }
+                            }
+                        );
+                    });
+
+                    if (!empresa || !empresa.whatsapp_instance) {
+                        console.log('⚠️ Empresa sem instância WhatsApp — pulando envio');
+                        return;
+                    }
+
+                    // ============================================
+                    // FIADO → mensagem de fiado (comportamento atual)
+                    // ============================================
+                    if (forma_pagamento === 'prazo' && dataVencimentoFinal) {
+                        const valorFormatado = valorFinal.toFixed(2).replace('.', ',');
+                        const diffDays = parseInt(prazo_dias) || 0;
+                        const dataServico = agendamento.data || new Date().toISOString().split('T')[0];
+
+                        let mensagem = `📝 *Pagamento a Prazo (Fiado)*\n\n`;
+                        mensagem += `Olá *${cliente.nome || 'Cliente'}*!\n\n`;
+                        mensagem += `Seu agendamento na *${empresa.nome || 'See&Agende'}* foi registrado como *FIADO*.\n\n`;
+                        mensagem += `📋 *DETALHES:*\n`;
+                        mensagem += `✂️ Serviço: *${agendamento.servico || 'Serviço'}*\n`;
+                        mensagem += `📅 Data: *${formatarDataBr(dataServico)}*\n`;
+                        mensagem += `💰 Valor: *R$ ${valorFormatado}*\n`;
+                        mensagem += `📅 Vencimento: *${formatarDataBr(dataVencimentoFinal)}*\n`;
+                        mensagem += `⏳ Prazo: *${diffDays} dias*\n\n`;
+                        mensagem += `📞 *Contato:* ${empresa.telefone_dono || 'N/A'}\n`;
+                        mensagem += montarRodapeInstagram(empresa) + `\n\n`;
+                        mensagem += `---\n_Mensagem automática do See&Agende_`;
+
+                        const telefoneLimpo = cliente.telefone.replace(/\D/g, '');
+                        const numeroFormatado = telefoneLimpo.startsWith('55') ? telefoneLimpo : '55' + telefoneLimpo;
+
+                        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
+                        const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
+
+                        await axios.post(
+                            `${EVOLUTION_API_URL}/message/sendText/${empresa.whatsapp_instance}`,
+                            { number: numeroFormatado, text: mensagem, delay: 1200 },
+                            { headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_API_KEY }, timeout: 30000 }
+                        );
+
+                        console.log(`✅ WhatsApp de FIADO enviado`);
+                        return;
+                    }
+
+                    // ============================================
+                    // OUTROS → mensagem de conclusão
+                    // ============================================
+                    const servicosArray = [];
+
+                    // Principal
+                    const nomePrincipal = agendamento.servico || 'Serviço';
+                    servicosArray.push({ nome: nomePrincipal, valor: valorPrincipal });
+
+                    // Extras
+                    if (agendamento.servicos_extras) {
+                        try {
+                            const extras = typeof agendamento.servicos_extras === 'string'
+                                ? JSON.parse(agendamento.servicos_extras)
+                                : agendamento.servicos_extras;
+                            if (Array.isArray(extras)) {
+                                for (const e of extras) {
+                                    if (e && (e.nome || e.valor)) {
+                                        servicosArray.push({
+                                            nome: e.nome || `Extra - R$ ${(parseFloat(e.valor) || 0).toFixed(2).replace('.', ',')}`,
+                                            valor: parseFloat(e.valor) || 0
+                                        });
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error('⚠️ Erro ao parsear extras:', e.message);
+                        }
+                    }
+
+                    // Busca nome do profissional
+                    let profissionalNome = null;
+                    if (agendamento.profissional_id) {
+                        const prof = await new Promise((resolve) => {
+                            empresaDb.get(
+                                `SELECT nome FROM profissionais WHERE id = ?`,
+                                [agendamento.profissional_id],
+                                (err, row) => resolve(row || null)
+                            );
+                        });
+                        if (prof) profissionalNome = prof.nome;
+                    }
+
+                    const { enviarConclusao } = require('../services/whatsapp');
+
+                    const resultado = await enviarConclusao({
+                        cliente: {
+                            nome: cliente.nome,
+                            telefone: cliente.telefone
+                        },
+                        servicos: servicosArray,
+                        subtotal: valorBruto,
+                        desconto: descontoAplicado,
+                        valorFinal: valorFinal,
+                        data: agendamento.data,
+                        hora: agendamento.hora,
+                        profissional: profissionalNome ? { nome: profissionalNome } : null,
+                        empresa: {
+                            id: empresa.id,
+                            nome: empresa.nome,
+                            endereco: empresa.endereco,
+                            telefone_dono: empresa.telefone_dono,
+                            instagram: empresa.instagram,
+                            whatsapp_instance: empresa.whatsapp_instance
+                        }
+                    });
+
+                    if (resultado?.success) {
+                        console.log(`✅ WhatsApp de conclusão enviado com sucesso`);
+                    } else {
+                        console.log(`⚠️ Falha ao enviar WhatsApp: ${resultado?.error || 'erro desconhecido'}`);
+                    }
+                } catch (whatsError) {
+                    console.error('❌ Erro ao enviar WhatsApp:', whatsError.message);
+                }
+            };
+
+            // Dispara o envio (não bloqueia a resposta)
+            enviarWhats();
+
+            // ============================================
+            // ✅ RESPONDER
+            // ============================================
             res.json({
                 success: true,
                 message: forma_pagamento === 'prazo' 
-                    ? 'Pagamento registrado como FIADO! O cliente receberá a mensagem de confirmação.' 
+                    ? 'Pagamento registrado como FIADO!' 
                     : 'Pagamento registrado com sucesso!',
                 data: {
                     forma_pagamento: forma_pagamento,
                     data_vencimento: dataVencimentoFinal,
                     prazo_dias: prazo_dias || 0,
-                    valor_total: valorTotal
+                    valor_bruto: valorBruto,
+                    desconto: descontoAplicado,
+                    valor_total: valorFinal
                 }
             });
         });
     });
 });
-
 // ============================================
 // POST /api/agendamentos/:id/enviar-cobranca - ENVIAR COBRANÇA MANUAL
 // ============================================
@@ -1689,8 +1932,7 @@ router.post('/:id/enviar-cobranca', auth, verificarDono, verificarAcessoAgendame
 
         const agendamento = await new Promise((resolve, reject) => {
             empresaDb.get(
-                `SELECT a.*, c.nome as cliente_nome, c.telefone,
-                        s.nome as servico_nome
+                `SELECT a.*, c.nome as cliente_nome, c.telefone, s.nome as servico_nome
                  FROM agendamentos a
                  LEFT JOIN clientes c ON a.cliente_id = c.id
                  LEFT JOIN servicos s ON a.servico_id = s.id

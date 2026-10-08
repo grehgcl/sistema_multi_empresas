@@ -4,15 +4,14 @@
 
 const cron = require('node-cron');
 const axios = require('axios');
-const { db } = require('../config/database');
+const { db, getEmpresaDb } = require('../config/database');
 
 // ============================================
-// FUNÇÃO PARA ENVIAR MENSAGEM DE COBRANÇA
+// ENVIA MENSAGEM DE COBRANÇA
 // ============================================
-
 async function enviarMensagemCobranca(whatsappInstance, numero, mensagem) {
     try {
-        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080/';
+        const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://179.199.134.127:8080';
         const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'seeagende2024';
 
         const numeroLimpo = numero.replace(/\D/g, '');
@@ -47,9 +46,8 @@ async function enviarMensagemCobranca(whatsappInstance, numero, mensagem) {
 }
 
 // ============================================
-// FUNÇÃO PARA FORMATAR DATA
+// FORMATA DATA
 // ============================================
-
 function formatarDataBr(dataStr) {
     if (!dataStr) return '-';
     try {
@@ -66,9 +64,8 @@ function formatarDataBr(dataStr) {
 }
 
 // ============================================
-// FUNÇÃO PARA GERAR MENSAGEM DE COBRANÇA
+// GERA MENSAGEM DE COBRANÇA
 // ============================================
-
 function gerarMensagemCobrança(dados) {
     const {
         cliente_nome,
@@ -84,7 +81,6 @@ function gerarMensagemCobrança(dados) {
 
     const valorFormatado = (parseFloat(valor) || 0).toFixed(2).replace('.', ',');
 
-    // Mensagem base
     let mensagem = `💳 *Lembrete de Pagamento - Fiado* 💳\n\n`;
     mensagem += `Olá *${cliente_nome || 'Cliente'}*!\n\n`;
     mensagem += `⚠️ Seu pagamento referente ao serviço realizado na *${empresa_nome || 'See&Agende'}* está pendente.\n\n`;
@@ -124,218 +120,240 @@ function gerarMensagemCobrança(dados) {
 }
 
 // ============================================
-// FUNÇÃO PARA PROCESSAR COBRANÇAS
+// LISTA TODAS AS EMPRESAS
 // ============================================
+async function listarEmpresas() {
+    return new Promise((resolve) => {
+        db.all(`SELECT id, nome, telefone_dono, whatsapp_instance FROM empresas`, [], (err, rows) => {
+            if (err) {
+                console.error('❌ Erro ao listar empresas:', err.message);
+                resolve([]);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+}
 
+// ============================================
+// BUSCA COBRANÇAS DE UMA EMPRESA (banco próprio)
+// ============================================
+async function buscarCobrancasEmpresa(empresaId) {
+    const empresaDb = getEmpresaDb(empresaId);
+    if (!empresaDb) return [];
+
+    const sql = `
+        SELECT 
+            a.id,
+            a.cliente_id,
+            a.data as data_servico,
+            a.servico,
+            a.valor,
+            a.valor_total,
+            a.forma_pagamento,
+            a.prazo_dias,
+            a.data_vencimento,
+            a.descricao_pagamento,
+            a.empresa_id,
+            a.lembrete_cobranca_enviado,
+            c.nome as cliente_nome,
+            c.telefone,
+            c.email,
+            s.nome as servico_nome
+        FROM agendamentos a
+        LEFT JOIN clientes c ON a.cliente_id = c.id
+        LEFT JOIN servicos s ON a.servico_id = s.id
+        WHERE a.forma_pagamento = 'prazo'
+          AND a.status = 'concluido'
+          AND a.data_vencimento IS NOT NULL
+          AND (a.lembrete_cobranca_enviado IS NULL OR a.lembrete_cobranca_enviado = 0)
+          AND c.telefone IS NOT NULL
+          AND c.telefone != ''
+    `;
+
+    return new Promise((resolve) => {
+        empresaDb.all(sql, [], (err, rows) => {
+            if (err) {
+                console.error(`❌ Erro ao buscar cobranças da empresa ${empresaId}:`, err.message);
+                resolve([]);
+            } else {
+                resolve(rows || []);
+            }
+        });
+    });
+}
+
+// ============================================
+// MARCA COMO ENVIADO
+// ============================================
+async function marcarComoEnviado(empresaDb, cobrancaId, tipoLembrete) {
+    return new Promise((resolve) => {
+        empresaDb.run(
+            `UPDATE agendamentos 
+             SET lembrete_cobranca_enviado = 1,
+                 lembrete_cobranca_enviado_em = CURRENT_TIMESTAMP,
+                 ultimo_lembrete_cobranca_tipo = ?
+             WHERE id = ?`,
+            [tipoLembrete, cobrancaId],
+            (err) => {
+                if (err) console.error(`❌ Erro ao marcar cobrança ${cobrancaId}:`, err.message);
+                resolve();
+            }
+        );
+    });
+}
+
+// ============================================
+// PROCESSA COBRANÇAS DE TODAS AS EMPRESAS
+// ============================================
 async function processarCobrancas() {
+    console.log('🔔 ================================');
     console.log('🔔 Iniciando processamento de cobranças...');
+    console.log(`🔔 Agora: ${new Date().toLocaleString('pt-BR')}`);
 
     try {
-        const hoje = new Date();
-        const amanha = new Date(hoje);
-        amanha.setDate(amanha.getDate() + 1);
-        const daqui3Dias = new Date(hoje);
-        daqui3Dias.setDate(daqui3Dias.getDate() + 3);
-        const daqui7Dias = new Date(hoje);
-        daqui7Dias.setDate(daqui7Dias.getDate() + 7);
+        const empresas = await listarEmpresas();
+        console.log(`🔔 Empresas encontradas: ${empresas.length}`);
 
-        const hojeStr = hoje.toISOString().split('T')[0];
-        const amanhaStr = amanha.toISOString().split('T')[0];
-        const daqui3DiasStr = daqui3Dias.toISOString().split('T')[0];
-        const daqui7DiasStr = daqui7Dias.toISOString().split('T')[0];
+        let totalEnviadas = 0;
+        let totalErros = 0;
 
-        console.log(`📅 Hoje: ${hojeStr}`);
-        console.log(`📅 Amanhã: ${amanhaStr}`);
-        console.log(`📅 +3 dias: ${daqui3DiasStr}`);
-        console.log(`📅 +7 dias: ${daqui7DiasStr}`);
+        // Cache pra evitar processar empresa duplicada
+        const empresasProcessadas = new Set();
 
-        // 🔥 BUSCAR COBRANÇAS PENDENTES
-        const sql = `
-            SELECT 
-                a.id,
-                a.cliente_id,
-                a.data as data_servico,
-                a.servico,
-                a.valor,
-                a.valor_total,
-                a.forma_pagamento,
-                a.prazo_dias,
-                a.data_vencimento,
-                a.descricao_pagamento,
-                a.empresa_id,
-                a.lembrete_cobranca_enviado,
-                c.nome as cliente_nome,
-                c.telefone,
-                c.email,
-                e.nome as empresa_nome,
-                e.telefone_dono,
-                e.whatsapp_instance,
-                s.nome as servico_nome
-            FROM agendamentos a
-            LEFT JOIN clientes c ON a.cliente_id = c.id
-            LEFT JOIN empresas e ON a.empresa_id = e.id
-            LEFT JOIN servicos s ON a.servico_id = s.id
-            WHERE a.forma_pagamento = 'prazo'
-            AND a.status = 'concluido'
-            AND a.data_vencimento IS NOT NULL
-            AND (a.lembrete_cobranca_enviado IS NULL OR a.lembrete_cobranca_enviado = 0)
-            AND c.telefone IS NOT NULL
-            AND c.telefone != ''
-            AND e.whatsapp_instance IS NOT NULL
-            AND e.whatsapp_instance != ''
-        `;
+        for (const empresa of empresas) {
+            const empresaId = empresa.id;
 
-        const cobrancas = await new Promise((resolve, reject) => {
-            db.all(sql, [], (err, rows) => {
-                if (err) {
-                    console.error('❌ Erro ao buscar cobranças:', err);
-                    reject(err);
-                } else {
-                    resolve(rows || []);
-                }
-            });
-        });
+            if (empresasProcessadas.has(empresaId)) continue;
+            empresasProcessadas.add(empresaId);
 
-        console.log(`📊 ${cobrancas.length} cobranças pendentes encontradas`);
+            // Pula empresa sem WhatsApp
+            if (!empresa.whatsapp_instance) {
+                continue;
+            }
 
-        let enviadas = 0;
-        let erros = 0;
+            const empresaDb = getEmpresaDb(empresaId);
+            if (!empresaDb) {
+                console.log(`⚠️ Empresa ${empresaId}: banco não encontrado`);
+                continue;
+            }
 
-        for (const cobranca of cobrancas) {
-            try {
-                // Calcular dias em atraso ou até vencer
-                const dataVencimento = new Date(cobranca.data_vencimento);
-                const hoje = new Date();
-                hoje.setHours(0, 0, 0, 0);
-                dataVencimento.setHours(0, 0, 0, 0);
+            const cobrancas = await buscarCobrancasEmpresa(empresaId);
 
-                const diffTime = hoje - dataVencimento;
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            if (cobrancas.length === 0) {
+                continue;
+            }
 
-                console.log(`📊 Cobrança ${cobranca.id}: ${cobranca.cliente_nome} - ${diffDays} dias`);
+            console.log(`📊 Empresa ${empresaId} (${empresa.nome}): ${cobrancas.length} cobranças pendentes`);
 
-                // 🔥 DECIDIR SE DEVE ENVIAR
-                let deveEnviar = false;
-                let tipoLembrete = '';
+            for (const cobranca of cobrancas) {
+                try {
+                    // Calcula dias até vencer / em atraso
+                    const dataVencimento = new Date(cobranca.data_vencimento + 'T00:00:00');
+                    const hoje = new Date();
+                    hoje.setHours(0, 0, 0, 0);
+                    dataVencimento.setHours(0, 0, 0, 0);
 
-                // Vence hoje ou amanhã
-                if (diffDays === 0) {
-                    deveEnviar = true;
-                    tipoLembrete = 'VENCE HOJE';
-                } else if (diffDays === 1) {
-                    deveEnviar = true;
-                    tipoLembrete = 'VENCE AMANHÃ';
-                } 
-                // Vence em 3 dias (lembrete antecipado)
-                else if (diffDays === -3) {
-                    deveEnviar = true;
-                    tipoLembrete = 'VENCE EM 3 DIAS';
-                }
-                // Vence em 7 dias (lembrete antecipado)
-                else if (diffDays === -7) {
-                    deveEnviar = true;
-                    tipoLembrete = 'VENCE EM 7 DIAS';
-                }
-                // Já venceu (atraso)
-                else if (diffDays > 0 && diffDays <= 30) {
-                    // Envia a cada 5 dias em atraso
-                    const diasAtraso = diffDays;
-                    if (diasAtraso === 5 || diasAtraso === 10 || diasAtraso === 15 || diasAtraso === 20 || diasAtraso === 25 || diasAtraso === 30) {
+                    const diffTime = hoje - dataVencimento;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    // Decide se deve enviar
+                    let deveEnviar = false;
+                    let tipoLembrete = '';
+
+                    if (diffDays === 0) {
                         deveEnviar = true;
-                        tipoLembrete = `${diasAtraso} DIAS EM ATRASO`;
+                        tipoLembrete = 'VENCE HOJE';
+                    } else if (diffDays === 1) {
+                        deveEnviar = true;
+                        tipoLembrete = 'VENCE AMANHÃ';
+                    } else if (diffDays === -3) {
+                        deveEnviar = true;
+                        tipoLembrete = 'VENCE EM 3 DIAS';
+                    } else if (diffDays === -7) {
+                        deveEnviar = true;
+                        tipoLembrete = 'VENCE EM 7 DIAS';
+                    } else if (diffDays > 0 && diffDays <= 30) {
+                        const diasAtraso = diffDays;
+                        if ([5, 10, 15, 20, 25, 30].includes(diasAtraso)) {
+                            deveEnviar = true;
+                            tipoLembrete = `${diasAtraso} DIAS EM ATRASO`;
+                        }
                     }
-                }
 
-                if (!deveEnviar) {
-                    console.log(`⏭️ Pulando cobrança ${cobranca.id} - não é momento de enviar`);
-                    continue;
-                }
+                    if (!deveEnviar) continue;
 
-                console.log(`📤 Enviando cobrança ${cobranca.id}: ${tipoLembrete}`);
+                    console.log(`📤 [${tipoLembrete}] ${cobranca.cliente_nome} · R$ ${cobranca.valor_total || cobranca.valor}`);
 
-                // Gerar mensagem
-                const mensagem = gerarMensagemCobrança({
-                    cliente_nome: cobranca.cliente_nome,
-                    servico_nome: cobranca.servico_nome || cobranca.servico || 'Serviço',
-                    valor: cobranca.valor_total || cobranca.valor || 0,
-                    data_servico: cobranca.data_servico,
-                    data_vencimento: cobranca.data_vencimento,
-                    empresa_nome: cobranca.empresa_nome,
-                    telefone_dono: cobranca.telefone_dono,
-                    dias_atraso: diffDays > 0 ? diffDays : 0,
-                    empresa_id: cobranca.empresa_id
-                });
-
-                // Enviar WhatsApp
-                const resultado = await enviarMensagemCobranca(
-                    cobranca.whatsapp_instance,
-                    cobranca.telefone,
-                    mensagem
-                );
-
-                if (resultado.success) {
-                    // Marcar como enviado
-                    await new Promise((resolve, reject) => {
-                        db.run(
-                            `UPDATE agendamentos 
-                             SET lembrete_cobranca_enviado = 1,
-                                 lembrete_cobranca_enviado_em = CURRENT_TIMESTAMP,
-                                 ultimo_lembrete_cobranca_tipo = ?
-                             WHERE id = ?`,
-                            [tipoLembrete, cobranca.id],
-                            (err) => {
-                                if (err) reject(err);
-                                else resolve();
-                            }
-                        );
+                    const mensagem = gerarMensagemCobrança({
+                        cliente_nome: cobranca.cliente_nome,
+                        servico_nome: cobranca.servico_nome || cobranca.servico || 'Serviço',
+                        valor: cobranca.valor_total || cobranca.valor || 0,
+                        data_servico: cobranca.data_servico,
+                        data_vencimento: cobranca.data_vencimento,
+                        empresa_nome: empresa.nome,
+                        telefone_dono: empresa.telefone_dono,
+                        dias_atraso: diffDays > 0 ? diffDays : 0,
+                        empresa_id: cobranca.empresa_id
                     });
 
-                    enviadas++;
-                    console.log(`✅ Cobrança ${cobranca.id} enviada com sucesso (${tipoLembrete})`);
-                } else {
-                    erros++;
-                    console.error(`❌ Erro ao enviar cobrança ${cobranca.id}: ${resultado.error}`);
+                    const resultado = await enviarMensagemCobranca(
+                        empresa.whatsapp_instance,
+                        cobranca.telefone,
+                        mensagem
+                    );
+
+                    if (resultado.success) {
+                        await marcarComoEnviado(empresaDb, cobranca.id, tipoLembrete);
+                        totalEnviadas++;
+                        console.log(`✅ Cobrança ${cobranca.id} enviada`);
+                    } else {
+                        totalErros++;
+                        console.error(`❌ Erro cobrança ${cobranca.id}: ${resultado.error}`);
+                    }
+
+                    // Pausa entre envios
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                } catch (error) {
+                    totalErros++;
+                    console.error(`❌ Erro cobrança ${cobranca.id}:`, error.message);
                 }
-
-                // Aguardar 2 segundos entre mensagens
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
-            } catch (error) {
-                erros++;
-                console.error(`❌ Erro ao processar cobrança ${cobranca.id}:`, error.message);
             }
         }
 
-        console.log(`✅ Processamento concluído: ${enviadas} enviadas, ${erros} erros`);
+        console.log(`🔔 ✅ Concluído: ${totalEnviadas} enviadas, ${totalErros} erros`);
+        console.log('🔔 ================================');
 
     } catch (error) {
-        console.error('❌ Erro no processamento de cobranças:', error);
+        console.error('❌ Erro geral no job de cobranças:', error);
     }
 }
 
 // ============================================
-// AGENDAR JOB
+// INICIA O JOB (chamado pelo server.js)
 // ============================================
+function start() {
+    // Roda a cada 30 minutos
+    cron.schedule('*/30 * * * *', async () => {
+        console.log('🔄 [CRON] Executando job de lembretes de pagamento...');
+        await processarCobrancas();
+    });
 
-// Executar todos os dias às 09:00
-cron.schedule('0 9 * * *', () => {
-    console.log('🔄 [CRON] Executando job de lembretes de pagamento...');
-    processarCobrancas();
-});
+    console.log('✅ Job de lembretes de pagamento iniciado (a cada 30 min)');
 
-// Executar também às 14:00 para quem vence no mesmo dia
-cron.schedule('0 14 * * *', () => {
-    console.log('🔄 [CRON] Executando job de lembretes de pagamento (segunda rodada)...');
-    processarCobrancas();
-});
-
-console.log('✅ Job de lembretes de pagamento agendado!');
+    // Primeira execução após 45s do start
+    setTimeout(() => {
+        console.log('🔄 [CRON] Primeira execução do job de cobranças...');
+        processarCobrancas();
+    }, 45000);
+}
 
 // ============================================
-// EXPORTAR FUNÇÃO PARA EXECUÇÃO MANUAL
+// EXPORTAR
 // ============================================
-
 module.exports = {
+    start,                    // 🔥 NOVO (era o que faltava)
     processarCobrancas,
     enviarMensagemCobranca,
     gerarMensagemCobrança

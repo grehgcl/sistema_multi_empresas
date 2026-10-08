@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acesso Bloqueado - SEE&AGENDE</title>
+    <link rel="stylesheet" href="/css/bloqueado.css">
+</head>
+<body>
+
+<div class="bloqueio-wrapper">
+    <div class="bloqueio-card">
+
+        <div class="bloqueio-icon" id="bloqueioIcon">!</div>
+
+        <h1 class="bloqueio-titulo" id="bloqueioTitulo">Acesso Bloqueado</h1>
+
+        <p class="bloqueio-subtitulo" id="bloqueioSubtitulo">
+            Carregando informacoes da sua conta...
+        </p>
+
+        <div class="bloqueio-info" id="bloqueioInfo" style="display:none;">
+            <div class="info-linha">
+                <span class="info-label">Plano</span>
+                <span class="info-valor" id="infoPlano">-</span>
+            </div>
+            <div class="info-linha">
+                <span class="info-label">Valor em aberto</span>
+                <span class="info-valor info-valor-destaque" id="infoValor">-</span>
+            </div>
+            <div class="info-linha">
+                <span class="info-label">Venceu em</span>
+                <span class="info-valor" id="infoVencimento">-</span>
+            </div>
+            <div class="info-linha">
+                <span class="info-label">Meses em atraso</span>
+                <span class="info-valor" id="infoMeses">-</span>
+            </div>
+        </div>
+
+        <div class="bloqueio-acoes">
+            <button class="btn-pagar" id="btnPagar">
+                Pagar agora
+            </button>
+            <button class="btn-suporte" id="btnSuporte">
+                Falar com suporte
+            </button>
+        </div>
+
+        <div class="bloqueio-rodape">
+            <a href="/" class="link-sair" id="btnSair">
+                Sair da conta
+            </a>
+        </div>
+
+        <div class="bloqueio-loading" id="bloqueioLoading">
+            <div class="spinner"></div>
+            <p>Carregando...</p>
+        </div>
+
+    </div>
+</div>
+
+<script src="/js/bloqueado.js"></script>
+
+</body>
+</html>

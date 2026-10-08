@@ -8,6 +8,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "migrate": "node scripts/migrate-whatsapp.js",
+    "migrate:assinaturas": "node server/config/migrations/run-assinaturas.js",
     "fix-bloqueio": "node scripts/fix-bloqueio-geral.js",
     "teste:on": "node scripts/toggle-plano-teste.js on",
     "teste:off": "node scripts/toggle-plano-teste.js off"

@@ -659,3 +659,84 @@
         background: rgba(255, 255, 255, 0.15);
     }
 }
+
+####apartir daqui as mudancas novas####
+
+/* ============================================ */
+/* SELETOR DE PROFISSIONAL NA AGENDA            */
+/* ============================================ */
+
+.agenda-prof-selector {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+    border-bottom: 1px solid var(--border-color, #2a2a2a);
+    background: var(--bg-card, #1a1a1a);
+    flex-wrap: nowrap;
+}
+
+.agenda-prof-selector::-webkit-scrollbar {
+    height: 4px;
+}
+
+.agenda-prof-selector::-webkit-scrollbar-thumb {
+    background: var(--border-color, #333);
+    border-radius: 2px;
+}
+
+.agenda-prof-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: 1.5px solid var(--border-color, #333);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text-muted, #999);
+}
+
+.agenda-prof-chip:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+}
+
+.agenda-prof-chip.active {
+    font-weight: 700;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.agenda-prof-chip-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.agenda-prof-chip-nome {
+    line-height: 1;
+}
+
+/* Mobile: chips menores */
+@media (max-width: 767px) {
+    .agenda-prof-selector {
+        padding: 8px 10px;
+        gap: 6px;
+    }
+
+    .agenda-prof-chip {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .agenda-prof-chip-icon {
+        font-size: 13px;
+    }
+}

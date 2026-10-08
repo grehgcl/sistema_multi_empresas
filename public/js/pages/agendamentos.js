@@ -646,120 +646,7 @@ async function carregarListaAgendamentosComFiltro() {
     }
 }
 
-// ============================================
-// RENDERIZAR LINHA DA TABELA (DESKTOP)
-// ============================================
 
-function renderizarLinhaAgendamento(item) {
-    const agendamentoId = item?.id;
-    if (!agendamentoId) {
-        return `<tr><td colspan="7" style="color:red;">⚠️ Agendamento inválido (sem ID)</td></tr>`;
-    }
-
-    const statusMap = {
-        'concluido': { class: 'concluido', label: '✅ Concluído' },
-        'pendente': { class: 'pendente', label: '⏳ Pendente' },
-        'agendado': { class: 'agendado', label: '📋 Agendado' },
-        'cancelado': { class: 'cancelado', label: '❌ Cancelado' }
-    };
-    const statusInfo = statusMap[item.status] || statusMap['pendente'];
-    
-    const dataFormatada = formatarDataBr(item.data);
-    const horaFormatada = formatarHoraBr(item.hora);
-    const podeEditar = item.status !== 'concluido' && item.status !== 'cancelado';
-
-    const nomeCliente = item.cliente_nome || (item.cliente_id ? `⚠️ Cliente #${item.cliente_id}` : '⚠️ Sem cliente');
-
-    let extrasCount = 0;
-    let extrasList = [];
-    let valorExtras = 0;
-
-    if (item.servicos_extras) {
-        try {
-            extrasList = typeof item.servicos_extras === 'string' ? JSON.parse(item.servicos_extras) : item.servicos_extras;
-            extrasCount = extrasList.length;
-            for (let extra of extrasList) {
-                valorExtras += parseFloat(extra.valor) || 0;
-            }
-        } catch (e) {
-            extrasList = [];
-            extrasCount = 0;
-        }
-    }
-
-    const valorPrincipal = parseFloat(item.valor) || 0;
-    const valorTotal = valorPrincipal + valorExtras;
-    const valorExibir = item.valor_total ? parseFloat(item.valor_total) : valorTotal;
-
-    return `
-        <tr data-agendamento-id="${agendamentoId}">
-            <td>
-                <div class="cell-data-hora">
-                    <span class="data">${dataFormatada}</span>
-                    <span class="hora">${horaFormatada}</span>
-                </div>
-            </td>
-            <td>
-                <div class="cell-cliente">
-                    <span class="cliente-nome">${escapeHtml(nomeCliente)}</span>
-                </div>
-            </td>
-            <td>
-                <span class="profissional-nome">${escapeHtml(item.profissional_nome || 'Não atribuído')}</span>
-            </td>
-            <td>
-                <div>
-                    <span class="servico-nome">${escapeHtml(item.servico_nome || item.servico || '-')}</span>
-                    ${extrasCount > 0 ? `
-                        <span style="display:block;font-size:10px;color:#f59e0b;margin-top:2px;">
-                            <i class="fas fa-plus-circle"></i> ${extrasCount} extra(s)
-                        </span>
-                    ` : ''}
-                </div>
-            </td>
-            <td>
-                <div>
-                    ${extrasCount > 0 ? `
-                        <span style="font-size:11px;color:var(--text-muted);display:block;">
-                            R$ ${valorPrincipal.toFixed(2)}
-                            <span style="color:#22c55e;">+ R$ ${valorExtras.toFixed(2)}</span>
-                        </span>
-                        <span style="font-weight:700;color:var(--primary);font-size:15px;">
-                            R$ ${valorExibir.toFixed(2)}
-                        </span>
-                    ` : `
-                        <span class="valor">R$ ${valorPrincipal.toFixed(2)}</span>
-                    `}
-                </div>
-            </td>
-            <td>
-                <span class="status-badge ${statusInfo.class}">
-                    <span class="dot"></span>
-                    ${statusInfo.label}
-                </span>
-            </td>
-            <td>
-                <div class="actions-cell">
-                    ${podeEditar ? `
-                        <button class="btn-action btn-edit" onclick="editarAgendamento(${agendamentoId})" title="Editar">
-                            <i class="fas fa-pen"></i> Editar
-                        </button>
-                        <button class="btn-action btn-concluir" onclick="concluirAgendamento(${agendamentoId})" title="Concluir">
-                            <i class="fas fa-check"></i> Concluir
-                        </button>
-                    ` : ''}
-                    <button class="btn-action btn-view" onclick="abrirModalExtra(${agendamentoId})" title="Serviços Extras">
-                        <i class="fas ${extrasCount > 0 ? 'fa-star' : 'fa-plus-circle'}"></i> 
-                        ${extrasCount > 0 ? `${extrasCount}` : 'Extras'}
-                    </button>
-                    <button class="btn-action btn-delete" onclick="excluirAgendamento(${agendamentoId})" title="Excluir">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </div>
-            </td>
-        </tr>
-    `;
-}
 // ============================================
 // RENDERIZAR LINHA DA TABELA (DESKTOP)
 // ============================================
@@ -2461,30 +2348,30 @@ function abrirModalExtra(agendamentoId) {
                     }
 
                     // 🔥 RENDERIZAR EXTRAS JÁ ADICIONADOS
-                    let extrasHtml = '';
-                    for (let extra of extrasList) {
-                        // 🔥 VERIFICAR SE É UM EXTRA PERSONALIZADO (SEM servico_id)
-                        const isPersonalizado = !extra.servico_id || extra.servico_id === 'custom';
-                        
-                        extrasHtml += `
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-hover);border-radius:8px;margin-bottom:4px;border-left:3px solid ${isPersonalizado ? '#f59e0b' : '#22c55e'};">
-                                <div style="flex:1;">
-                                    <div style="display:flex;align-items:center;gap:6px;">
-                                        <span style="font-weight:500;">${escapeHtml(extra.nome)}</span>
-                                        ${isPersonalizado ? '<span style="font-size:9px;background:#f59e0b20;color:#f59e0b;padding:1px 8px;border-radius:10px;">✏️ Personalizado</span>' : ''}
-                                        <span style="font-size:11px;color:var(--text-muted);"> +${extra.duracao || 0}min</span>
-                                    </div>
-                                    ${extra.descricao ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(extra.descricao)}</div>` : ''}
-                                </div>
-                                <div style="display:flex;align-items:center;gap:10px;">
-                                    <span style="font-weight:600;color:#22c55e;">R$ ${(parseFloat(extra.valor) || 0).toFixed(2)}</span>
-                                    <button onclick="removerExtraDoModal(${agendamentoId}, ${extra.servico_id || 'null'})" style="padding:2px 10px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#ef4444;font-size:14px;cursor:pointer;">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        `;
-                    }
+                    // 🔥 RENDERIZAR EXTRAS JÁ ADICIONADOS
+let extrasHtml = '';
+extrasList.forEach((extra, idx) => {
+    const isPersonalizado = !extra.servico_id || extra.servico_id === 'custom';
+
+    extrasHtml += `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-hover);border-radius:8px;margin-bottom:4px;border-left:3px solid ${isPersonalizado ? '#f59e0b' : '#22c55e'};">
+            <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:6px;">
+                    <span style="font-weight:500;">${escapeHtml(extra.nome)}</span>
+                    ${isPersonalizado ? '<span style="font-size:9px;background:#f59e0b20;color:#f59e0b;padding:1px 8px;border-radius:10px;">✏️ Personalizado</span>' : ''}
+                    <span style="font-size:11px;color:var(--text-muted);"> +${extra.duracao || 0}min</span>
+                </div>
+                ${extra.descricao ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${escapeHtml(extra.descricao)}</div>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-weight:600;color:#22c55e;">R$ ${(parseFloat(extra.valor) || 0).toFixed(2)}</span>
+                <button onclick="removerExtraDoModal(${agendamentoId}, ${idx})" style="padding:2px 10px;border-radius:6px;border:none;background:rgba(239,68,68,0.15);color:#ef4444;font-size:14px;cursor:pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+});
 
                     const isMobile = window.innerWidth < 768;
 
@@ -2735,6 +2622,10 @@ function adicionarExtraPersonalizado(agendamentoId) {
         return;
     }
 
+    // ✅ Loading no botão
+    const btn = document.querySelector('button[onclick*="adicionarExtraPersonalizado"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
     const token = localStorage.getItem('token');
 
     fetch('/api/agendamentos', {
@@ -2745,7 +2636,7 @@ function adicionarExtraPersonalizado(agendamentoId) {
             const agendamento = data.data.find(a => a.id === agendamentoId);
             if (!agendamento) {
                 showToast('Agendamento não encontrado', 'error');
-                return;
+                throw new Error('Agendamento não encontrado');
             }
 
             let extrasList = [];
@@ -2758,9 +2649,8 @@ function adicionarExtraPersonalizado(agendamentoId) {
                 }
             }
 
-            // 🔥 ADICIONAR EXTRA PERSONALIZADO (sem servico_id)
             extrasList.push({
-                servico_id: 'custom', // Marca como personalizado
+                servico_id: 'custom',
                 nome: nome,
                 valor: valor,
                 duracao: duracao,
@@ -2768,29 +2658,32 @@ function adicionarExtraPersonalizado(agendamentoId) {
                 adicionado_em: new Date().toISOString()
             });
 
+            // ✅ CALCULA O VALOR TOTAL DOS EXTRAS
+            const valorExtras = extrasList.reduce(
+                (soma, e) => soma + (parseFloat(e.valor) || 0), 0
+            );
+
             return fetch(`/api/agendamentos/${agendamentoId}/extras`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
-                body: JSON.stringify({ servicos_extras: extrasList })
+                body: JSON.stringify({
+                    servicos_extras: extrasList,
+                    valor_extras: valorExtras          // ✅ agora vai!
+                })
             });
         })
         .then(res => res.json())
         .then(result => {
             if (result.success) {
                 showToast('✅ Serviço personalizado adicionado!', 'success');
-                
-                // Limpar campos
-                const nomeInput = document.getElementById('extraPersonalizadoNome');
-                const valorInput = document.getElementById('extraPersonalizadoValor');
-                const duracaoInput = document.getElementById('extraPersonalizadoDuracao');
+
                 if (nomeInput) nomeInput.value = '';
                 if (valorInput) valorInput.value = '';
                 if (duracaoInput) duracaoInput.value = '';
-                
-                // Recarregar modal
+
                 fecharModalExtras();
                 abrirModalExtra(agendamentoId);
                 if (typeof carregarAgendamentos === 'function') {
@@ -2801,8 +2694,16 @@ function adicionarExtraPersonalizado(agendamentoId) {
             }
         })
         .catch(err => {
-            console.error('❌ Erro:', err);
-            showToast('Erro ao adicionar serviço personalizado', 'error');
+            if (err.message !== 'Agendamento não encontrado') {
+                console.error('❌ Erro:', err);
+                showToast('Erro ao adicionar serviço personalizado', 'error');
+            }
+        })
+        .finally(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-pen"></i> Personalizar';
+            }
         });
 }
 // ============================================
@@ -2821,6 +2722,10 @@ function adicionarExtraNoModal(agendamentoId) {
         return;
     }
 
+    // ✅ Loading no botão
+    const btn = document.querySelector('button[onclick*="adicionarExtraNoModal"]');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
     const selectedOption = select.options[select.selectedIndex];
     const servicoId = parseInt(select.value);
     const nome = selectedOption.getAttribute('data-nome');
@@ -2837,7 +2742,7 @@ function adicionarExtraNoModal(agendamentoId) {
             const agendamento = data.data.find(a => a.id === agendamentoId);
             if (!agendamento) {
                 showToast('Agendamento não encontrado', 'error');
-                return;
+                throw new Error('Agendamento não encontrado');
             }
 
             let extrasList = [];
@@ -2852,7 +2757,7 @@ function adicionarExtraNoModal(agendamentoId) {
 
             if (extrasList.some(e => e.servico_id === servicoId)) {
                 showToast('Este serviço já foi adicionado como extra', 'warning');
-                return;
+                throw new Error('Duplicado');
             }
 
             extrasList.push({
@@ -2863,19 +2768,27 @@ function adicionarExtraNoModal(agendamentoId) {
                 adicionado_em: new Date().toISOString()
             });
 
+            // ✅ CALCULA O VALOR TOTAL DOS EXTRAS
+            const valorExtras = extrasList.reduce(
+                (soma, e) => soma + (parseFloat(e.valor) || 0), 0
+            );
+
             return fetch(`/api/agendamentos/${agendamentoId}/extras`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
-                body: JSON.stringify({ servicos_extras: extrasList })
+                body: JSON.stringify({
+                    servicos_extras: extrasList,
+                    valor_extras: valorExtras          // ✅ agora vai!
+                })
             });
         })
         .then(res => res.json())
         .then(result => {
             if (result.success) {
-                showToast('Serviço extra adicionado!', 'success');
+                showToast('✅ Serviço extra adicionado!', 'success');
                 fecharModalExtras();
                 abrirModalExtra(agendamentoId);
                 carregarAgendamentos();
@@ -2884,15 +2797,24 @@ function adicionarExtraNoModal(agendamentoId) {
             }
         })
         .catch(err => {
-            console.error('❌ Erro:', err);
-            showToast('Erro ao adicionar extra', 'error');
+            if (err.message !== 'Duplicado' && err.message !== 'Agendamento não encontrado') {
+                console.error('❌ Erro:', err);
+                showToast('Erro ao adicionar extra', 'error');
+            }
+        })
+        .finally(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+            }
         });
 }
+
 // ============================================
 // REMOVER EXTRA DO MODAL - CORRIGIDO
 // ============================================
 
-function removerExtraDoModal(agendamentoId, servicoId) {
+function removerExtraDoModal(agendamentoId, indice) {
     const confirmado = confirm('Deseja remover este serviço da comanda?');
     if (!confirmado) return;
 
@@ -2906,7 +2828,7 @@ function removerExtraDoModal(agendamentoId, servicoId) {
             const agendamento = data.data.find(a => a.id === agendamentoId);
             if (!agendamento) {
                 showToast('Agendamento não encontrado', 'error');
-                return;
+                throw new Error('Agendamento não encontrado');
             }
 
             let extrasList = [];
@@ -2919,14 +2841,18 @@ function removerExtraDoModal(agendamentoId, servicoId) {
                 }
             }
 
-            // 🔥 FILTRAR POR servico_id (pode ser 'custom' para personalizados)
-            const novosExtras = extrasList.filter(e => {
-                if (servicoId === null || servicoId === 'null') {
-                    // Se veio null, remover por índice ou nome (fallback)
-                    return false;
-                }
-                return e.servico_id !== servicoId;
-            });
+            if (indice < 0 || indice >= extrasList.length) {
+                showToast('Serviço não encontrado', 'error');
+                throw new Error('Índice inválido');
+            }
+
+            // ✅ Remove pelo índice exato
+            extrasList.splice(indice, 1);
+
+            // ✅ Recalcula valor
+            const valorExtras = extrasList.reduce(
+                (soma, e) => soma + (parseFloat(e.valor) || 0), 0
+            );
 
             return fetch(`/api/agendamentos/${agendamentoId}/extras`, {
                 method: 'PUT',
@@ -2934,7 +2860,10 @@ function removerExtraDoModal(agendamentoId, servicoId) {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + token
                 },
-                body: JSON.stringify({ servicos_extras: novosExtras })
+                body: JSON.stringify({
+                    servicos_extras: extrasList,
+                    valor_extras: valorExtras
+                })
             });
         })
         .then(res => res.json())
@@ -2951,11 +2880,12 @@ function removerExtraDoModal(agendamentoId, servicoId) {
             }
         })
         .catch(err => {
-            console.error('❌ Erro:', err);
-            showToast('Erro ao remover serviço', 'error');
+            if (err.message !== 'Agendamento não encontrado' && err.message !== 'Índice inválido') {
+                console.error('❌ Erro:', err);
+                showToast('Erro ao remover serviço', 'error');
+            }
         });
 }
-
 function salvarExtrasModal(agendamentoId) {
     fecharModalExtras();
     showToast('✅ Extras salvos com sucesso!', 'success');
@@ -2968,10 +2898,6 @@ function salvarExtrasModal(agendamentoId) {
         }
     }
 }
-
-// ============================================
-// FUNÇÃO: ABRIR MODAL DE PAGAMENTO
-// ============================================
 
 function abrirModalPagamento(agendamentoId) {
     const token = localStorage.getItem('token');
@@ -2996,122 +2922,205 @@ function abrirModalPagamento(agendamentoId) {
                 return;
             }
 
+            const valorPrincipal = parseFloat(agendamento.valor) || 0;
+            let valorExtras = 0;
+            let extrasList = [];
+
+            if (agendamento.servicos_extras) {
+                try {
+                    extrasList = typeof agendamento.servicos_extras === 'string'
+                        ? JSON.parse(agendamento.servicos_extras)
+                        : agendamento.servicos_extras;
+                    for (let e of extrasList) {
+                        valorExtras += parseFloat(e.valor) || 0;
+                    }
+                } catch (err) {
+                    extrasList = [];
+                }
+            }
+
+            const valorBruto = valorPrincipal + valorExtras;
+            const isMobile = window.innerWidth < 768;
+
             const modalHtml = `
-                <div id="modalPagamento" style="
+                <div id="modalPagamento" class="modal" style="
+                    display: flex;
                     position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
+                    top: 0; left: 0;
+                    width: 100%; height: 100%;
                     background: rgba(0,0,0,0.7);
                     z-index: 99999;
-                    display: flex;
                     align-items: center;
                     justify-content: center;
-                    padding: 16px;
+                    padding: ${isMobile ? '8px' : '16px'};
+                    overflow-y: auto;
                 ">
                     <div style="
                         background: var(--bg-card);
-                        border-radius: 16px;
-                        padding: 24px;
+                        border-radius: ${isMobile ? '12px' : '16px'};
+                        padding: ${isMobile ? '14px' : '24px'};
                         max-width: 420px;
                         width: 100%;
-                        max-height: 90vh;
+                        max-height: ${isMobile ? '96vh' : '90vh'};
                         overflow-y: auto;
+                        box-sizing: border-box;
                     ">
-                        <h3 style="margin: 0 0 16px 0;">💰 Forma de Pagamento</h3>
-                        
-                        <div style="margin-bottom: 16px; padding: 12px; background: var(--bg-hover); border-radius: 8px;">
-                            <p style="margin: 4px 0;"><strong>Cliente:</strong> ${agendamento.cliente_nome || 'N/A'}</p>
-                            <p style="margin: 4px 0;"><strong>Serviço:</strong> ${agendamento.servico_nome || agendamento.servico || 'N/A'}</p>
-                            <p style="margin: 4px 0;"><strong>Valor:</strong> R$ ${(parseFloat(agendamento.valor) || 0).toFixed(2)}</p>
+                        <h3 style="margin: 0 0 ${isMobile ? '10px' : '16px'} 0; font-size: ${isMobile ? '15px' : '18px'};">
+                            💰 Pagamento
+                        </h3>
+
+                        <!-- RESUMO COMPACTO -->
+                        <div style="
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'};
+                            background: var(--bg-hover);
+                            border-radius: 8px;
+                            margin-bottom: ${isMobile ? '8px' : '12px'};
+                            font-size: ${isMobile ? '12px' : '13px'};
+                            line-height: 1.4;
+                        ">
+                            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                                <span style="font-weight:600;">${escapeHtml(agendamento.cliente_nome || 'Cliente')}</span>
+                                <span style="color:var(--text-muted);font-size:${isMobile ? '11px' : '12px'};">${escapeHtml(agendamento.servico_nome || agendamento.servico || 'Serviço')}</span>
+                            </div>
+                            ${extrasList.length > 0 ? `
+                                <div style="margin-top:4px;font-size:${isMobile ? '10px' : '11px'};color:var(--text-muted);">
+                                    <i class="fas fa-plus-circle"></i> ${extrasList.length} extra(s) — R$ ${valorExtras.toFixed(2)}
+                                </div>
+                            ` : ''}
                         </div>
-                        
+
+                        <!-- DESCONTO COMPACTO -->
+                        <div style="
+                            margin-bottom: ${isMobile ? '8px' : '12px'};
+                            padding: ${isMobile ? '8px 10px' : '10px 12px'};
+                            background: rgba(245,158,11,0.08);
+                            border: 1px solid rgba(245,158,11,0.2);
+                            border-radius: 8px;
+                        ">
+                            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span style="font-size:${isMobile ? '11px' : '12px'};font-weight:600;color:var(--text-secondary);white-space:nowrap;">
+                                    💸 Desconto:
+                                </span>
+                                <button type="button" id="descTipoPercent" onclick="selecionarTipoDesconto('percent')" style="
+                                    padding: 4px 10px; border-radius: 5px; border: 1.5px solid var(--primary);
+                                    background: rgba(102,126,234,0.1); color: var(--primary); font-weight: 700;
+                                    cursor: pointer; font-size: ${isMobile ? '11px' : '12px'};
+                                    line-height: 1.2;
+                                ">%</button>
+                                <button type="button" id="descTipoValor" onclick="selecionarTipoDesconto('valor')" style="
+                                    padding: 4px 10px; border-radius: 5px; border: 1.5px solid var(--border-color);
+                                    background: transparent; color: var(--text-secondary); font-weight: 700;
+                                    cursor: pointer; font-size: ${isMobile ? '11px' : '12px'};
+                                    line-height: 1.2;
+                                ">R$</button>
+                                <input type="number" id="descValor" min="0" step="0.01" placeholder="0"
+                                    oninput="recalcularTotalPagamento(${valorBruto})"
+                                    style="
+                                        flex: 1;
+                                        min-width: 60px;
+                                        padding: ${isMobile ? '5px 8px' : '6px 10px'};
+                                        border-radius: 5px;
+                                        border: 1px solid var(--border-color);
+                                        background: var(--bg-input);
+                                        color: var(--text-primary);
+                                        font-size: ${isMobile ? '12px' : '13px'};
+                                        box-sizing: border-box;
+                                    ">
+                                <button type="button" onclick="limparDesconto(${valorBruto})" style="
+                                    padding: 4px 8px; border-radius: 5px; border: 1px solid var(--border-color);
+                                    background: transparent; color: var(--text-muted); cursor: pointer;
+                                    font-size: ${isMobile ? '11px' : '12px'};
+                                    line-height: 1.2;
+                                ">✕</button>
+                            </div>
+                            <input type="hidden" id="descTipo" value="percent">
+                            <div id="descPreview" style="font-size:${isMobile ? '10px' : '11px'};color:#f59e0b;display:none;margin-top:4px;"></div>
+                        </div>
+
+                        <!-- TOTAL COMPACTO -->
+                        <div style="
+                            margin-bottom: ${isMobile ? '10px' : '14px'};
+                            padding: ${isMobile ? '8px 12px' : '10px 14px'};
+                            background: linear-gradient(135deg, rgba(102,126,234,0.15), rgba(118,75,162,0.15));
+                            border-radius: 8px;
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                        ">
+                            <span style="font-size: ${isMobile ? '11px' : '12px'}; color: var(--text-muted); font-weight: 600;">
+                                TOTAL
+                            </span>
+                            <div id="totalFinalPagamento" style="font-size: ${isMobile ? '20px' : '24px'}; font-weight: 800; color: var(--primary);">
+                                R$ ${valorBruto.toFixed(2)}
+                            </div>
+                        </div>
+
                         <input type="hidden" id="formaPagamentoSelecionada" value="dinheiro">
-                        
-                        <div style="margin-bottom: 16px;">
-                            <div class="opcao-pagamento" onclick="selecionarFormaPagamento('dinheiro')" style="
-                                padding: 12px 16px;
-                                border-radius: 10px;
-                                border: 2px solid var(--primary);
-                                background: rgba(102,126,234,0.1);
-                                cursor: pointer;
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                margin-bottom: 8px;
-                            ">
-                                <span style="font-size: 20px;">💰 Dinheiro</span>
-                                <span style="margin-left:auto;color:var(--primary);"><i class="fas fa-check-circle"></i></span>
-                            </div>
-                            <div class="opcao-pagamento" onclick="selecionarFormaPagamento('pix')" style="
-                                padding: 12px 16px;
-                                border-radius: 10px;
-                                border: 2px solid var(--border-color);
-                                background: var(--bg-hover);
-                                cursor: pointer;
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                margin-bottom: 8px;
-                            ">
-                                <span style="font-size: 20px;">📱 Pix</span>
-                            </div>
-                            <div class="opcao-pagamento" onclick="selecionarFormaPagamento('debito')" style="
-                                padding: 12px 16px;
-                                border-radius: 10px;
-                                border: 2px solid var(--border-color);
-                                background: var(--bg-hover);
-                                cursor: pointer;
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                margin-bottom: 8px;
-                            ">
-                                <span style="font-size: 20px;">💳 Débito</span>
-                            </div>
-                            <div class="opcao-pagamento" onclick="selecionarFormaPagamento('credito')" style="
-                                padding: 12px 16px;
-                                border-radius: 10px;
-                                border: 2px solid var(--border-color);
-                                background: var(--bg-hover);
-                                cursor: pointer;
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                margin-bottom: 8px;
-                            ">
-                                <span style="font-size: 20px;">💳 Crédito</span>
-                            </div>
-                            <div class="opcao-pagamento" onclick="selecionarFormaPagamento('prazo')" style="
-                                padding: 12px 16px;
-                                border-radius: 10px;
-                                border: 2px solid var(--border-color);
-                                background: var(--bg-hover);
-                                cursor: pointer;
-                                display: flex;
-                                align-items: center;
-                                gap: 12px;
-                                margin-bottom: 8px;
-                            ">
-                                <span style="font-size: 20px;">📝 A Prazo (Fiado)</span>
-                            </div>
+                        <input type="hidden" id="valorBrutoHidden" value="${valorBruto}">
+                        <input type="hidden" id="valorFinalHidden" value="${valorBruto}">
+                        <input type="hidden" id="descontoAplicadoHidden" value="0">
+
+                        <!-- FORMAS DE PAGAMENTO COMPACTAS -->
+                        <div style="display:flex;flex-direction:column;gap:${isMobile ? '5px' : '7px'};margin-bottom:${isMobile ? '10px' : '14px'};">
+                            ${[
+                                { id: 'dinheiro', label: '💰 Dinheiro' },
+                                { id: 'pix', label: '📱 Pix' },
+                                { id: 'debito', label: '💳 Débito' },
+                                { id: 'credito', label: '💳 Crédito' },
+                                { id: 'prazo', label: '📝 A Prazo (Fiado)' }
+                            ].map(p => `
+                                <div class="opcao-pagamento" data-forma="${p.id}" onclick="selecionarFormaPagamento('${p.id}')" style="
+                                    padding: ${isMobile ? '8px 12px' : '10px 14px'};
+                                    border-radius: 8px;
+                                    border: 2px solid ${p.id === 'dinheiro' ? 'var(--primary)' : 'var(--border-color)'};
+                                    background: ${p.id === 'dinheiro' ? 'rgba(102,126,234,0.1)' : 'var(--bg-hover)'};
+                                    cursor: pointer;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 10px;
+                                    font-size: ${isMobile ? '13px' : '14px'};
+                                    font-weight: 500;
+                                    transition: all 0.15s;
+                                ">
+                                    <span>${p.label}</span>
+                                    ${p.id === 'dinheiro' ? '<span style="margin-left:auto;color:var(--primary);"><i class="fas fa-check-circle"></i></span>' : ''}
+                                </div>
+                            `).join('')}
                         </div>
-                        
-                        <div id="prazoContainer" style="display: none; margin-bottom: 16px;">
-                            <label style="display:block;margin-bottom:4px;">Prazo:</label>
-                            <select id="prazoDiasSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border-color);background:var(--bg-input);">
+
+                        <!-- PRAZO (condicional) -->
+                        <div id="prazoContainer" style="display: none; margin-bottom: ${isMobile ? '10px' : '14px'};">
+                            <label style="display:block;margin-bottom:4px;font-size:${isMobile ? '11px' : '12px'};">Prazo:</label>
+                            <select id="prazoDiasSelect" style="width:100%;padding:${isMobile ? '8px 10px' : '10px'};border-radius:6px;border:1px solid var(--border-color);background:var(--bg-input);font-size:${isMobile ? '12px' : '13px'};">
                                 <option value="10">10 dias</option>
                                 <option value="15">15 dias</option>
                                 <option value="30">30 dias</option>
                             </select>
                         </div>
-                        
-                        <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:16px;">
-                            <button onclick="fecharModalPagamento()" style="padding:10px 20px;border-radius:8px;border:1px solid var(--border-color);background:transparent;cursor:pointer;">
+
+                        <!-- BOTÕES -->
+                        <div style="display:flex;gap:${isMobile ? '6px' : '8px'};justify-content:flex-end;border-top:1px solid var(--border-color);padding-top:${isMobile ? '10px' : '14px'};">
+                            <button onclick="fecharModalPagamento()" style="
+                                padding: ${isMobile ? '8px 16px' : '10px 20px'};
+                                border-radius: 8px;
+                                border: 1px solid var(--border-color);
+                                background: transparent;
+                                color: var(--text-secondary);
+                                font-size: ${isMobile ? '12px' : '13px'};
+                                cursor: pointer;
+                            ">
                                 Cancelar
                             </button>
-                            <button onclick="salvarFormaPagamento(${agendamentoId})" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-weight:600;cursor:pointer;">
+                            <button onclick="salvarFormaPagamento(${agendamentoId})" style="
+                                padding: ${isMobile ? '8px 20px' : '10px 24px'};
+                                border-radius: 8px;
+                                border: none;
+                                background: linear-gradient(135deg,#667eea,#764ba2);
+                                color: white;
+                                font-weight: 600;
+                                font-size: ${isMobile ? '12px' : '13px'};
+                                cursor: pointer;
+                            ">
                                 Salvar e Concluir
                             </button>
                         </div>
@@ -3123,21 +3132,18 @@ function abrirModalPagamento(agendamentoId) {
             if (existing) existing.remove();
 
             document.body.insertAdjacentHTML('beforeend', modalHtml);
-
         })
         .catch(err => {
             console.error('❌ Erro:', err);
             showToast('Erro ao carregar dados', 'error');
         });
 }
-
 // ============================================
 // FUNÇÃO: SELECIONAR FORMA DE PAGAMENTO
 // ============================================
 
 function selecionarFormaPagamento(forma) {
     let hiddenInput = document.getElementById('formaPagamentoSelecionada');
-
     if (!hiddenInput) {
         hiddenInput = document.createElement('input');
         hiddenInput.type = 'hidden';
@@ -3145,18 +3151,18 @@ function selecionarFormaPagamento(forma) {
         hiddenInput.value = 'dinheiro';
         document.body.appendChild(hiddenInput);
     }
-
     hiddenInput.value = forma;
 
-    const opcoes = document.querySelectorAll('.opcao-pagamento');
-    opcoes.forEach(el => {
+    // Reset visual
+    document.querySelectorAll('.opcao-pagamento').forEach(el => {
         el.style.borderColor = 'var(--border-color)';
         el.style.background = 'var(--bg-hover)';
         const check = el.querySelector('.fa-check-circle');
-        if (check) check.remove();
+        if (check) check.parentElement.remove();
     });
 
-    const selecionado = document.querySelector(`.opcao-pagamento[onclick*="${forma}"]`);
+    // Destaca selecionado
+    const selecionado = document.querySelector(`.opcao-pagamento[data-forma="${forma}"]`);
     if (selecionado) {
         selecionado.style.borderColor = 'var(--primary)';
         selecionado.style.background = 'rgba(102,126,234,0.1)';
@@ -3170,7 +3176,80 @@ function selecionarFormaPagamento(forma) {
         prazoContainer.style.display = forma === 'prazo' ? 'block' : 'none';
     }
 }
+// ============================================
+// DESCONTO - TIPO E CÁLCULO
+// ============================================
 
+function selecionarTipoDesconto(tipo) {
+    const hidden = document.getElementById('descTipo');
+    const btnPercent = document.getElementById('descTipoPercent');
+    const btnValor = document.getElementById('descTipoValor');
+
+    if (hidden) hidden.value = tipo;
+
+    if (btnPercent && btnValor) {
+        if (tipo === 'percent') {
+            btnPercent.style.borderColor = 'var(--primary)';
+            btnPercent.style.background = 'rgba(102,126,234,0.1)';
+            btnPercent.style.color = 'var(--primary)';
+            btnValor.style.borderColor = 'var(--border-color)';
+            btnValor.style.background = 'transparent';
+            btnValor.style.color = 'var(--text-secondary)';
+        } else {
+            btnValor.style.borderColor = 'var(--primary)';
+            btnValor.style.background = 'rgba(102,126,234,0.1)';
+            btnValor.style.color = 'var(--primary)';
+            btnPercent.style.borderColor = 'var(--border-color)';
+            btnPercent.style.background = 'transparent';
+            btnPercent.style.color = 'var(--text-secondary)';
+        }
+    }
+
+    const bruto = parseFloat(document.getElementById('valorBrutoHidden')?.value) || 0;
+    recalcularTotalPagamento(bruto);
+}
+
+function recalcularTotalPagamento(valorBruto) {
+    const tipo = document.getElementById('descTipo')?.value || 'percent';
+    const descInput = parseFloat(document.getElementById('descValor')?.value) || 0;
+
+    let descontoValor = 0;
+    if (tipo === 'percent') {
+        const pct = Math.min(Math.max(descInput, 0), 100);
+        descontoValor = valorBruto * (pct / 100);
+    } else {
+        descontoValor = Math.min(Math.max(descInput, 0), valorBruto);
+    }
+
+    const totalFinal = Math.max(valorBruto - descontoValor, 0);
+
+    const preview = document.getElementById('descPreview');
+    if (preview) {
+        if (descontoValor > 0) {
+            preview.style.display = 'block';
+            preview.textContent = `− R$ ${descontoValor.toFixed(2)} de desconto`;
+        } else {
+            preview.style.display = 'none';
+        }
+    }
+
+    const totalEl = document.getElementById('totalFinalPagamento');
+    if (totalEl) {
+        totalEl.textContent = `R$ ${totalFinal.toFixed(2)}`;
+    }
+
+    const hiddenFinal = document.getElementById('valorFinalHidden');
+    if (hiddenFinal) hiddenFinal.value = totalFinal;
+
+    const hiddenDesc = document.getElementById('descontoAplicadoHidden');
+    if (hiddenDesc) hiddenDesc.value = descontoValor;
+}
+
+function limparDesconto(valorBruto) {
+    const descInput = document.getElementById('descValor');
+    if (descInput) descInput.value = '';
+    recalcularTotalPagamento(valorBruto);
+}
 // ============================================
 // FUNÇÃO: FECHAR MODAL PAGAMENTO
 // ============================================
@@ -3185,18 +3264,12 @@ function fecharModalPagamento() {
 // ============================================
 
 async function salvarFormaPagamento(agendamentoId) {
-    let hiddenInput = document.getElementById('formaPagamentoSelecionada');
-
-    if (!hiddenInput) {
-        hiddenInput = document.createElement('input');
-        hiddenInput.type = 'hidden';
-        hiddenInput.id = 'formaPagamentoSelecionada';
-        hiddenInput.value = 'dinheiro';
-        document.body.appendChild(hiddenInput);
-    }
-
-    const formaPagamento = hiddenInput.value || 'dinheiro';
+    const hiddenInput = document.getElementById('formaPagamentoSelecionada');
+    const formaPagamento = hiddenInput?.value || 'dinheiro';
     const prazoDias = parseInt(document.getElementById('prazoDiasSelect')?.value || 0);
+    const valorFinal = parseFloat(document.getElementById('valorFinalHidden')?.value) || 0;
+    const descontoAplicado = parseFloat(document.getElementById('descontoAplicadoHidden')?.value) || 0;
+    const valorBruto = parseFloat(document.getElementById('valorBrutoHidden')?.value) || 0;
 
     if (!formaPagamento) {
         showToast('Selecione uma forma de pagamento', 'warning');
@@ -3211,7 +3284,11 @@ async function salvarFormaPagamento(agendamentoId) {
             forma_pagamento: formaPagamento,
             prazo_dias: prazoDias,
             data_vencimento: null,
-            descricao_pagamento: ''
+            descricao_pagamento: descontoAplicado > 0 
+                ? `Desconto de R$ ${descontoAplicado.toFixed(2)} aplicado` 
+                : '',
+            desconto: descontoAplicado,           // 👈 NOVO
+            valor_final: valorFinal               // 👈 NOVO
         };
 
         const res = await fetch(`/api/agendamentos/${agendamentoId}/pagamento`, {
@@ -3227,7 +3304,7 @@ async function salvarFormaPagamento(agendamentoId) {
 
         if (result.success) {
             fecharModalPagamento();
-            showToast('✅ Pagamento registrado e agendamento concluído!', 'success');
+            showToast('✅ Pagamento registrado!', 'success');
 
             if (typeof carregarAgendamentos === 'function') {
                 await carregarAgendamentos();
@@ -3239,7 +3316,7 @@ async function salvarFormaPagamento(agendamentoId) {
                 }
             }
         } else {
-            showToast('❌ Erro: ' + (result.message || 'Erro ao salvar'), 'error');
+            showToast('❌ ' + (result.message || 'Erro ao salvar'), 'error');
         }
     } catch (error) {
         console.error('❌ Erro:', error);
@@ -3248,7 +3325,6 @@ async function salvarFormaPagamento(agendamentoId) {
 
     hideLoading();
 }
-
 // ============================================
 // EXPORTAR FUNÇÕES GLOBAIS
 // ============================================

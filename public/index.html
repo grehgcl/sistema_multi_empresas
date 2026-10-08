@@ -379,7 +379,8 @@
     <script src="/js/pages/clientes.js?v=20260925"></script>
     <script src="/js/pages/agendamentos.js?v=20260804"></script>
     <script src="/js/pages/financeiro.js?v=20260804"></script>
-    <script src="/js/pages/empresas.js?v=20260804"></script>
+    <script src="/js/pages/pagamentos.js"></script>
+<script src="/js/pages/empresas.js?v=20260804"></script>
     <script src="/js/pages/configuracoes.js?v=20260804"></script>
     <script src="/js/pages/servicos.js?v=20260804"></script>
     <script src="/js/pages/planos.js?v=20260804"></script>
@@ -696,12 +697,12 @@
 
             let botoes = [];
 
-            if (isSuperAdmin) {
+                        if (isSuperAdmin) {
                 botoes = [
-                    { id: 'dashboard', nome: 'Dashboard', icone: 'fa-chart-pie', funcao: 'carregarDashboard' },
-                    { id: 'admin-ads', nome: 'Anúncios', icone: 'fa-ad', funcao: 'carregarAdminAds' },
-                    
-                    
+                    { id: 'dashboard',  nome: 'Dashboard',  icone: 'fa-chart-pie',   funcao: 'carregarDashboard' },
+                    { id: 'empresas',   nome: 'Empresas',   icone: 'fa-building',     funcao: 'carregarEmpresas' },
+                    { id: 'pagamentos', nome: 'Pagamentos', icone: 'fa-money-bill-wave', funcao: 'carregarPagamentos' },
+                    { id: 'admin-ads',  nome: 'Anúncios',   icone: 'fa-ad',           funcao: 'carregarAdminAds' }
                 ];
             } else if (isProfissional) {
                 botoes = [
@@ -892,6 +893,8 @@
     </script>
 <!-- Adicionar no final do body, antes do fechamento -->
 <script src="/js/pages/ads.js?v=20260905"></script>
+<!-- 🛡️ Interceptor de bloqueio (deve ser um dos últimos scripts) -->
+<script src="/js/interceptor-bloqueio.js"></script>
 </body>
 
 </html>

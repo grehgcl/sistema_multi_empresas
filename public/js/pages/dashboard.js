@@ -15,6 +15,90 @@ let agendaModoCompleto = false;
 const coresPaleta = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#FF9FF3', '#54A0FF', '#5F27CD', '#341F97', '#00D2D3', '#1DD1A1', '#F368E0', '#FF9F43', '#EE5A24'];
 
 // ============================================
+// SELETOR DE PROFISSIONAL DA AGENDA
+// ============================================
+
+let agendaProfissionalSelecionado = null; // 'dono_<empresa_id>' ou <id numérico>
+let agendaProfissionaisCache = [];        // cache do que está no seletor atual
+
+/**
+ * Verifica se o chip ativo é o "dono"
+ */
+function isDonoSelecionado() {
+    if (agendaProfissionalSelecionado === null) return true;
+    return typeof agendaProfissionalSelecionado === 'string'
+        && agendaProfissionalSelecionado.startsWith('dono_');
+}
+
+/**
+ * Retorna o ID do profissional do filtro atual.
+ * - Dono  → null
+ * - Prof  → número (id)
+ */
+function getProfissionalIdFiltro() {
+    if (isDonoSelecionado()) return null;
+    const n = parseInt(agendaProfissionalSelecionado);
+    return isNaN(n) ? null : n;
+}
+
+/**
+ * Retorna a cor do profissional selecionado.
+ */
+function getCorProfissionalSelecionado() {
+    if (!agendaInteligenteCores) return '#d4af37';
+    return agendaInteligenteCores[agendaProfissionalSelecionado] || '#d4af37';
+}
+
+function selecionarProfissional(id) {
+    // 🔥 Profissional não pode trocar de aba
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    if (usuario.role === 'profissional') return;
+
+    if (id === undefined || id === null) return;
+    agendaProfissionalSelecionado = id;
+    try {
+        localStorage.setItem('agendaProfissionalSelecionado', String(id));
+    } catch (e) {
+        console.warn('Não foi possível salvar seleção:', e);
+    }
+    renderizarAgendaInteligente();
+}
+
+function renderProfSelector() {
+    // 🔥 Se for profissional, NÃO mostra chips
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    if (usuario.role === 'profissional') {
+        return '';
+    }
+
+    if (!agendaInteligenteProfissionais || agendaInteligenteProfissionais.length === 0) {
+        return '';
+    }
+
+    const chips = agendaInteligenteProfissionais.map(p => {
+        const isAtivo = String(p.id) === String(agendaProfissionalSelecionado);
+        const cor = agendaInteligenteCores[p.id] || '#d4af37';
+        const isDono = p.is_dono === true;
+        const estiloAtivo = isAtivo
+            ? `background:${cor};color:#fff;border-color:${cor};`
+            : `background:transparent;color:var(--text-muted);border-color:var(--border-color);`;
+        const icone = isDono ? '👑' : '💈';
+        return `
+            <button
+                type="button"
+                class="agenda-prof-chip ${isAtivo ? 'active' : ''}"
+                style="${estiloAtivo}"
+                onclick="selecionarProfissional('${p.id}')"
+                title="${escapeHtml(p.nome)}">
+                <span class="agenda-prof-chip-icon">${icone}</span>
+                <span class="agenda-prof-chip-nome">${escapeHtml(p.nome)}</span>
+            </button>
+        `;
+    }).join('');
+
+    return `<div class="agenda-prof-selector">${chips}</div>`;
+}
+// ============================================
 // FUNÇÕES DE DATA
 // ============================================
 
@@ -226,52 +310,118 @@ async function concluirAgendamentosVencidos() {
     }
 }
 
-// ============================================
-// CARREGAR AGENDA INTELIGENTE
-// ============================================
-
 async function carregarAgendaInteligente() {
     agendaInteligenteData = [];
     agendaInteligenteCarregando = true;
     const token = localStorage.getItem('token');
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
+    // 🔥 DETECTA SE É PROFISSIONAL
+    const isProfissional = usuario.role === 'profissional';
+
     try {
-        const [hr, pr, ag, sr] = await Promise.all([
-            fetch('/api/horarios', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
-            fetch('/api/servicos/todos', { headers: { 'Authorization': 'Bearer ' + token } })
-        ]);
-        const sd = await sr.json();
-        window.servicosListGlobal = sd.success ? sd.data : [];
-        agendaInteligenteHorarios = (await hr.json()).data || [];
-        const profs = (await pr.json()).data?.filter(p => p.ativo == 1 || p.ativo == true) || [];
-        const dono = {
-            id: 'dono_' + (usuario.empresa_id || 0),
-            nome: usuario.nome || 'Dono',
-            email: usuario.email || '',
-            comissao_percent: 0,
-            ativo: 1,
-            is_dono: true,
-            telefone: usuario.telefone || ''
-        };
-        agendaInteligenteProfissionais = [dono, ...profs];
-        agendaInteligenteCores = {};
-        agendaInteligenteCores[dono.id] = '#d4af37';
-        profs.forEach((p, i) => agendaInteligenteCores[p.id] = coresPaleta[i % coresPaleta.length]);
-        const agd = await ag.json();
-        agendaInteligenteData = agd.success ? agd.data : [];
+        let hr, pr, ag, sr;
+
+        if (isProfissional) {
+            // 🔥 PROFISSIONAL: busca só os dados dele
+            const profId = usuario.id;
+            [hr, pr, ag, sr] = await Promise.all([
+                fetch('/api/horarios', { headers: { 'Authorization': 'Bearer ' + token } }),
+                // Profissional busca a si mesmo
+                fetch(`/api/profissionais/${profId}`, { headers: { 'Authorization': 'Bearer ' + token } })
+                    .catch(() => ({ json: async () => ({ success: false }) })),
+                // Só agendamentos dele
+                fetch('/api/profissionais/profissional/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/servicos/todos', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+
+            const sd = await sr.json();
+            window.servicosListGlobal = sd.success ? sd.data : [];
+            agendaInteligenteHorarios = (await hr.json()).data || [];
+
+            // Profissional virtual único
+            const profData = await pr.json().catch(() => ({}));
+            const profissionalUnico = {
+                id: usuario.id,
+                nome: usuario.nome || 'Profissional',
+                email: usuario.email || '',
+                comissao_percent: profData?.data?.comissao_percent || usuario.comissao_percent || 0,
+                ativo: 1,
+                is_dono: false,
+                is_profissional_logado: true,
+                telefone: usuario.telefone || ''
+            };
+            agendaInteligenteProfissionais = [profissionalUnico];
+            agendaInteligenteCores = {};
+            agendaInteligenteCores[profissionalUnico.id] = '#d4af37';
+
+            const agd = await ag.json();
+            agendaInteligenteData = agd.success ? (agd.data || []) : [];
+
+            // 🔥 TRAVA o filtro no próprio profissional
+            agendaProfissionalSelecionado = usuario.id;
+
+        } else {
+            // 🔥 DONO: comportamento atual
+            [hr, pr, ag, sr] = await Promise.all([
+                fetch('/api/horarios', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/profissionais', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/agendamentos', { headers: { 'Authorization': 'Bearer ' + token } }),
+                fetch('/api/servicos/todos', { headers: { 'Authorization': 'Bearer ' + token } })
+            ]);
+
+            const sd = await sr.json();
+            window.servicosListGlobal = sd.success ? sd.data : [];
+            agendaInteligenteHorarios = (await hr.json()).data || [];
+            const profs = (await pr.json()).data?.filter(p => p.ativo == 1 || p.ativo == true) || [];
+            const dono = {
+                id: 'dono_' + (usuario.empresa_id || 0),
+                nome: usuario.nome || 'Dono',
+                email: usuario.email || '',
+                comissao_percent: 0,
+                ativo: 1,
+                is_dono: true,
+                telefone: usuario.telefone || ''
+            };
+            agendaInteligenteProfissionais = [dono, ...profs];
+            agendaInteligenteCores = {};
+            agendaInteligenteCores[dono.id] = '#d4af37';
+            profs.forEach((p, i) => agendaInteligenteCores[p.id] = coresPaleta[i % coresPaleta.length]);
+            const agd = await ag.json();
+            agendaInteligenteData = agd.success ? agd.data : [];
+
+            // Restaurar seleção salva (ou default = dono)
+            const empresaIdAtual = usuario.empresa_id || 0;
+            const donoIdDefault = 'dono_' + empresaIdAtual;
+            let selecaoSalva = null;
+            try {
+                selecaoSalva = localStorage.getItem('agendaProfissionalSelecionado');
+            } catch (e) { /* ignore */ }
+
+            if (selecaoSalva) {
+                const existe = agendaInteligenteProfissionais.some(p => String(p.id) === String(selecaoSalva));
+                agendaProfissionalSelecionado = existe ? selecaoSalva : donoIdDefault;
+            } else {
+                agendaProfissionalSelecionado = donoIdDefault;
+            }
+
+            if (agendaProfissionalSelecionado && !String(agendaProfissionalSelecionado).startsWith('dono_')) {
+                const n = parseInt(agendaProfissionalSelecionado);
+                if (!isNaN(n)) agendaProfissionalSelecionado = n;
+            }
+        }
+
         agendaInteligenteDate = new Date();
+        agendaProfissionaisCache = agendaInteligenteProfissionais;
         atualizarModoAgendaPorTela();
         renderizarAgendaInteligente();
     } catch (e) {
-        console.error(e);
+        console.error('❌ Erro ao carregar agenda:', e);
         const c = document.getElementById('agendaInteligenteContainer');
         if (c) c.innerHTML = `<div style="text-align:center;padding:20px;"><p>Erro ao carregar agenda</p><button onclick="carregarAgendaInteligente()" class="btn btn-sm btn-primary">Tentar</button></div>`;
     }
     agendaInteligenteCarregando = false;
 }
-
 // ============================================
 // VARIÁVEL DE VISÃO
 // ============================================
@@ -300,6 +450,12 @@ function renderizarAgendaInteligente() {
         return;
     }
 
+    // Garantir que existe uma seleção válida
+    if (agendaProfissionalSelecionado === null) {
+        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+        agendaProfissionalSelecionado = 'dono_' + (usuario.empresa_id || 0);
+    }
+
     // ============================================
     // FUNÇÕES AUXILIARES
     // ============================================
@@ -309,9 +465,12 @@ function renderizarAgendaInteligente() {
         return idx >= 0 ? idx % 15 : 0;
     };
 
-    window._agendaGetAgendamentosDoSlot = function(dataStr, horaStr, profId) {
+    window._agendaGetAgendamentosDoSlot = function(dataStr, horaStr) {
         const hm = horaParaMinutos(horaStr);
         const result = [];
+        const filtroEhDono = isDonoSelecionado();
+        const filtroProfId = getProfissionalIdFiltro();
+
         for (let ag of agendaInteligenteData) {
             if (ag.data !== dataStr || ag.status === 'cancelado' || !ag.hora) continue;
             const agH = horaParaMinutos(ag.hora);
@@ -321,12 +480,12 @@ function renderizarAgendaInteligente() {
                 if (s && s.duracao) dur = parseInt(s.duracao);
             }
             if (hm >= agH && hm < agH + dur) {
-                if (profId === 'dono') {
+                if (filtroEhDono) {
                     if (ag.profissional_id === null || ag.profissional_id === '' || ag.profissional_id === undefined) {
                         result.push(ag);
                     }
                 } else {
-                    if (String(ag.profissional_id) === String(profId)) {
+                    if (String(ag.profissional_id) === String(filtroProfId)) {
                         result.push(ag);
                     }
                 }
@@ -417,6 +576,7 @@ function renderizarAgendaInteligente() {
             return `
                 <div class="agenda-google">
                     ${renderHeaderNav()}
+                    ${renderProfSelector()}
                     <div class="agenda-mobile-fechado" style="padding:2rem 1rem;">
                         <span class="agenda-mobile-fechado-icon">🚫</span>
                         <div class="agenda-mobile-fechado-titulo">${dia.toLocaleDateString('pt-BR', { weekday: 'long' })} — Fechado</div>
@@ -439,7 +599,6 @@ function renderizarAgendaInteligente() {
             }
         }
 
-        const totalProf = agendaInteligenteProfissionais.length;
         let slotsHtml = '';
 
         for (let hora of base) {
@@ -463,34 +622,26 @@ function renderizarAgendaInteligente() {
                 continue;
             }
 
-            let ocupados = 0;
-            const blocosSlot = [];
-            for (let p of agendaInteligenteProfissionais) {
-                const ags = window._agendaGetAgendamentosDoSlot(dataStr, hora, p.is_dono ? 'dono' : p.id);
-                if (ags.length > 0) {
-                    ocupados++;
-                    for (let ag of ags) {
-                        blocosSlot.push(window._agendaRenderBloco(ag, p));
-                    }
-                }
-            }
+            // Pega os agendamentos do slot do profissional SELECIONADO
+            const ags = window._agendaGetAgendamentosDoSlot(dataStr, hora);
+            const blocosSlot = ags.map(ag => {
+                const prof = agendaInteligenteProfissionais.find(p =>
+                    String(p.id) === String(agendaProfissionalSelecionado)
+                );
+                return window._agendaRenderBloco(ag, prof);
+            });
 
-            const livres = totalProf - ocupados;
             let slotClass = '';
             let statusText = '';
             let statusColor = '';
 
-            if (livres === 0) {
+            if (ags.length > 0) {
                 slotClass = 'agenda-slot-lotado';
-                statusText = `🔴 ${ocupados}/${totalProf}`;
+                statusText = '🔴 Ocupado';
                 statusColor = '#ef4444';
-            } else if (ocupados > 0) {
-                slotClass = 'agenda-slot-parcial';
-                statusText = `🟡 ${livres} livre${livres > 1 ? 's' : ''}`;
-                statusColor = '#f59e0b';
             } else {
                 slotClass = 'agenda-slot-livre';
-                statusText = `🟢 ${totalProf} livre${totalProf > 1 ? 's' : ''}`;
+                statusText = '🟢 Livre';
                 statusColor = '#22c55e';
             }
 
@@ -515,6 +666,7 @@ function renderizarAgendaInteligente() {
         return `
             <div class="agenda-google">
                 ${renderHeaderNav()}
+                ${renderProfSelector()}
                 <div class="agenda-dia-wrap">
                     <div class="agenda-dia-titulo">
                         <div class="agenda-dia-titulo-texto">
@@ -564,7 +716,11 @@ function renderizarAgendaInteligente() {
             if ((h * 60 + m) >= totMinAgora) { idxAgora = i; break; }
         }
 
-        let html = `<div class="agenda-google">${renderHeaderNav()}`;
+        const profSelecionado = agendaInteligenteProfissionais.find(p =>
+            String(p.id) === String(agendaProfissionalSelecionado)
+        );
+
+        let html = `<div class="agenda-google">${renderHeaderNav()}${renderProfSelector()}`;
         html += `<div class="agenda-grade-wrap"><table class="agenda-grade">`;
 
         html += `<thead><tr><th class="agenda-th-hora">⏰</th>`;
@@ -618,11 +774,9 @@ function renderizarAgendaInteligente() {
 
                 let blocosHtml = '';
                 if (ab && dentro && !almoco) {
-                    for (let p of agendaInteligenteProfissionais) {
-                        const ags = window._agendaGetAgendamentosDoSlot(ds, hora, p.is_dono ? 'dono' : p.id);
-                        for (let ag of ags) {
-                            blocosHtml += window._agendaRenderBloco(ag, p);
-                        }
+                    const ags = window._agendaGetAgendamentosDoSlot(ds, hora);
+                    for (let ag of ags) {
+                        blocosHtml += window._agendaRenderBloco(ag, profSelecionado);
                     }
                 }
 
@@ -636,18 +790,6 @@ function renderizarAgendaInteligente() {
         }
 
         html += `</tbody></table></div>`;
-
-        html += `
-            <div class="agenda-legenda">
-                ${agendaInteligenteProfissionais.slice(0, 6).map(p => `
-                    <span class="agenda-legenda-item">
-                        <span class="agenda-legenda-cor agenda-cor-${window._agendaGetCorIndex(p)}"></span>
-                        ${escapeHtml(p.nome)}
-                    </span>
-                `).join('')}
-            </div>
-        `;
-
         html += `</div>`;
         return html;
     }
@@ -670,20 +812,30 @@ function renderizarAgendaInteligente() {
         const fimGrid = new Date(ultimoDiaMes);
         fimGrid.setDate(fimGrid.getDate() + (6 - fimGrid.getDay()));
 
+        const filtroEhDono = isDonoSelecionado();
+        const filtroProfId = getProfissionalIdFiltro();
+
         const countPorDia = {};
-        const coresPorDia = {};
+        const corSelecionadaIdx = (() => {
+            const prof = agendaInteligenteProfissionais.find(p =>
+                String(p.id) === String(agendaProfissionalSelecionado)
+            );
+            return prof ? window._agendaGetCorIndex(prof) : 0;
+        })();
+
         for (let ag of agendaInteligenteData) {
             if (ag.status === 'cancelado') continue;
             if (!ag.data) continue;
+            // Filtra pelo profissional selecionado
+            if (filtroEhDono) {
+                if (ag.profissional_id !== null && ag.profissional_id !== '' && ag.profissional_id !== undefined) continue;
+            } else {
+                if (String(ag.profissional_id) !== String(filtroProfId)) continue;
+            }
             countPorDia[ag.data] = (countPorDia[ag.data] || 0) + 1;
-            if (!coresPorDia[ag.data]) coresPorDia[ag.data] = new Set();
-            const prof = agendaInteligenteProfissionais.find(p =>
-                p.is_dono ? (!ag.profissional_id) : String(p.id) === String(ag.profissional_id)
-            );
-            if (prof) coresPorDia[ag.data].add(window._agendaGetCorIndex(prof));
         }
 
-        let html = `<div class="agenda-google">${renderHeaderNav()}`;
+        let html = `<div class="agenda-google">${renderHeaderNav()}${renderProfSelector()}`;
         html += `<div class="agenda-mes-wrap">`;
         html += `<div class="agenda-mes-titulo">${ref.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</div>`;
         html += `<div class="agenda-mes-grade">`;
@@ -701,17 +853,11 @@ function renderizarAgendaInteligente() {
             const ab = horD && (horD.aberto == 1 || horD.aberto == true);
 
             const count = countPorDia[ds] || 0;
-            const cores = coresPorDia[ds] ? Array.from(coresPorDia[ds]).slice(0, 4) : [];
 
             const classes = ['agenda-mes-cell'];
             if (foraDoMes) classes.push('fora-do-mes');
             if (isHoje) classes.push('hoje');
             if (!ab) classes.push('fechado');
-
-            let pontosHtml = '';
-            if (count > 0 && cores.length > 0) {
-                pontosHtml = cores.map(c => `<span class="agenda-mes-ponto agenda-cor-${c}"></span>`).join('');
-            }
 
             const clickAttr = (!foraDoMes && ab)
                 ? `onclick="irParaDiaEspecifico('${ds}')"`
@@ -720,7 +866,7 @@ function renderizarAgendaInteligente() {
             html += `
                 <div class="${classes.join(' ')}" ${clickAttr}>
                     <div class="agenda-mes-cell-numero">${cursor.getDate()}</div>
-                    ${pontosHtml ? `<div class="agenda-mes-cell-pontos">${pontosHtml}</div>` : ''}
+                    ${count > 0 ? `<div class="agenda-mes-cell-pontos"><span class="agenda-mes-ponto agenda-cor-${corSelecionadaIdx}"></span></div>` : ''}
                     ${count > 0 ? `<div class="agenda-mes-cell-count">${count} agend.</div>` : ''}
                 </div>
             `;
@@ -758,7 +904,6 @@ function mudarVisaoAgenda(visao) {
     if (visao === 'dia') agendaModoCompleto = false;
     renderizarAgendaInteligente();
 }
-
 function navegarAgenda(dir) {
     if (agendaModoVisao === 'dia') {
         const d = new Date(agendaInteligenteDate);
@@ -806,9 +951,14 @@ function irAgendaHoje() {
 
 function abrirDetalhesSlot(dataStr, hora) {
     const hmC = horaParaMinutos(hora);
-    const noSlot = [];
-    const ids = new Set();
+    const filtroEhDono = isDonoSelecionado();
+    const filtroProfId = getProfissionalIdFiltro();
+    const profSelecionado = agendaInteligenteProfissionais.find(p =>
+        String(p.id) === String(agendaProfissionalSelecionado)
+    );
+    const nomeProf = profSelecionado ? profSelecionado.nome : 'Dono';
 
+    const noSlot = [];
     for (let ag of agendaInteligenteData) {
         if (ag.data !== dataStr || ag.status === 'cancelado' || !ag.hora) continue;
         const ini = horaParaMinutos(ag.hora);
@@ -818,65 +968,62 @@ function abrirDetalhesSlot(dataStr, hora) {
             if (s && s.duracao) dur = parseInt(s.duracao);
         }
         if (hmC >= ini && hmC < ini + dur) {
-            noSlot.push(ag);
-            if (ag.profissional_id) {
-                ids.add(String(ag.profissional_id));
+            if (filtroEhDono) {
+                if (ag.profissional_id === null || ag.profissional_id === '' || ag.profissional_id === undefined) {
+                    noSlot.push(ag);
+                }
             } else {
-                const dono = agendaInteligenteProfissionais.find(p => p.is_dono);
-                if (dono) ids.add(String(dono.id));
+                if (String(ag.profissional_id) === String(filtroProfId)) {
+                    noSlot.push(ag);
+                }
             }
         }
     }
 
+    // Slot livre → abre modal direto pro profissional selecionado
     if (noSlot.length === 0) {
-        abrirAgendamentoInteligente(dataStr, hora);
+        const profIdParaModal = filtroEhDono ? null : filtroProfId;
+        abrirAgendamentoInteligente(dataStr, hora, profIdParaModal);
         return;
     }
 
-    let htmlO = '', htmlD = '';
-    for (let p of agendaInteligenteProfissionais) {
-        const oc = ids.has(String(p.id));
-        const ag = noSlot.find(a =>
-            (a.profissional_id && String(a.profissional_id) === String(p.id)) ||
-            (!a.profissional_id && p.is_dono)
-        );
-        if (oc) {
-            const dur = ag ? (() => {
-                let d = 30;
-                const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
-                if (s && s.duracao) d = parseInt(s.duracao);
-                return d;
-            })() : 30;
-            htmlO += `<div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(239,68,68,0.08);border-radius:8px;margin-bottom:4px;font-size:13px;"><span>🔴 ${p.nome}</span><span style="color:var(--text-muted);">${ag?.cliente_nome || 'Cliente'} ${ag?.hora} (${dur}min)</span></div>`;
-        } else {
-            htmlD += `<div onclick="agendarNoHorarioDisponivel('${dataStr}','${hora}','${p.id}')" style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);border-radius:8px;margin-bottom:4px;cursor:pointer;font-size:13px;"><span>🟢 ${p.nome}</span><span style="color:#22c55e;font-weight:600;">Agendar →</span></div>`;
-        }
-    }
-
+    // Slot ocupado → mostra modal simples
     const dataLocal = criarDataLocal(dataStr);
+    const lista = noSlot.map(ag => {
+        const dur = (() => {
+            let d = 30;
+            const s = window.servicosListGlobal?.find(x => x.id === ag.servico_id);
+            if (s && s.duracao) d = parseInt(s.duracao);
+            return d;
+        })();
+        return `
+            <div style="display:flex;justify-content:space-between;padding:10px 12px;background:rgba(239,68,68,0.08);border-radius:8px;margin-bottom:6px;font-size:13px;">
+                <span>👤 ${escapeHtml(ag.cliente_nome || 'Cliente')}</span>
+                <span style="color:var(--text-muted);">${ag.hora} (${dur}min)</span>
+            </div>
+        `;
+    }).join('');
+
     const modal = `
         <div id="modalDetalhesSlot" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;" onclick="if(event.target.id==='modalDetalhesSlot') fecharModalDetalhesSlot()">
             <div style="background:var(--bg-card);border-radius:16px;padding:20px;width:100%;max-width:360px;max-height:80vh;overflow:auto;">
                 <div style="display:flex;justify-content:space-between;margin-bottom:14px;">
-                    <h3 style="margin:0;font-size:18px;">📅 ${dataLocal.toLocaleDateString('pt-BR')}</h3>
-                    <h3 style="margin:0;font-size:18px;color:var(--text-muted);">${hora}</h3>
+                    <div>
+                        <h3 style="margin:0;font-size:18px;">📅 ${dataLocal.toLocaleDateString('pt-BR')}</h3>
+                        <small style="color:var(--text-muted);">${hora} • ${escapeHtml(nomeProf)}</small>
+                    </div>
                     <button onclick="fecharModalDetalhesSlot()" style="background:none;border:none;font-size:22px;cursor:pointer;">×</button>
                 </div>
                 <div style="margin-bottom:8px;">
-                    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">OCUPADOS</div>
-                    ${htmlO}
+                    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">OCUPADO</div>
+                    ${lista}
                 </div>
-                <div style="margin-bottom:12px;">
-                    <div style="font-size:11px;font-weight:600;color:var(--text-muted);margin-bottom:4px;">DISPONÍVEIS</div>
-                    ${htmlD || '<p style="font-size:12px;color:var(--text-muted);text-align:center;">Nenhum disponível</p>'}
-                </div>
-                <button onclick="fecharModalDetalhesSlot()" style="width:100%;padding:10px;background:var(--bg-hover);border:1px solid var(--border-color);border-radius:8px;font-weight:600;cursor:pointer;">Fechar</button>
+                <button onclick="fecharModalDetalhesSlot()" style="width:100%;padding:10px;background:var(--bg-hover);border:1px solid var(--border-color);border-radius:8px;font-weight:600;cursor:pointer;margin-top:8px;">Fechar</button>
             </div>
         </div>
     `;
     document.body.insertAdjacentHTML('beforeend', modal);
 }
-
 function fecharModalDetalhesSlot() {
     const m = document.getElementById('modalDetalhesSlot');
     if (m) m.remove();
@@ -887,11 +1034,7 @@ function agendarNoHorarioDisponivel(dataStr, hora, profId) {
     setTimeout(() => abrirAgendamentoInteligente(dataStr, hora, profId), 150);
 }
 
-// ============================================
-// ABRIR AGENDAMENTO INTELIGENTE - CORRIGIDA
-// ============================================
-
-async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null) {
+async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = undefined) {
     let dataStr = typeof data === 'string' ? data : String(data);
     let horaStr = typeof hora === 'string' ? hora : String(hora);
 
@@ -900,7 +1043,6 @@ async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null)
         return;
     }
 
-    // 🔥 FIX: adicionar T00:00:00 para evitar bug de fuso horário (UTC vs local)
     const diaSem = new Date(dataStr + 'T00:00:00').getDay();
     const cfg = agendaInteligenteHorarios.find(h => h.dia_semana === diaSem);
     if (!cfg || !(cfg.aberto == 1 || cfg.aberto == true)) {
@@ -908,8 +1050,22 @@ async function abrirAgendamentoInteligente(data, hora, profissionalIdPre = null)
         return;
     }
 
+    // 🔥 Se for profissional, SEMPRE agenda pra ele mesmo
+    const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    const isProfissional = usuario.role === 'profissional';
+
+    let profIdFinal;
+    if (isProfissional) {
+        profIdFinal = usuario.id;
+    } else {
+        profIdFinal = profissionalIdPre;
+        if (profIdFinal === undefined) {
+            profIdFinal = isDonoSelecionado() ? null : getProfissionalIdFiltro();
+        }
+    }
+
     if (typeof window.abrirModalAgendamentoDono === 'function') {
-        window.abrirModalAgendamentoDono(dataStr, horaStr, profissionalIdPre);
+        window.abrirModalAgendamentoDono(dataStr, horaStr, profIdFinal);
     } else {
         showToast('❌ Modal não carregado', 'error');
     }
@@ -936,11 +1092,14 @@ async function carregarDashboard() {
 
     const token = localStorage.getItem('token');
     const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
-    const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+        const isSuperAdmin = usuario.role === 'super_admin' || usuario.role === 'superadmin';
+    const isProfissional = usuario.role === 'profissional';
 
     try {
         if (isSuperAdmin) {
             await carregarDashboardSuperAdmin();
+        } else if (isProfissional && typeof carregarDashboardProfissional === 'function') {
+            await carregarDashboardProfissional();
         } else {
             await carregarDashboardDono();
         }
@@ -1436,6 +1595,7 @@ window.carregarServicos = carregarServicos;
 window.carregarAgendamentos = carregarAgendamentos;
 window.carregarClientes = carregarClientes;
 window.carregarPlanos = carregarPlanos;
+window.selecionarProfissional = selecionarProfissional;
 
 
 console.log('✅ dashboard.js COMPLETO - Agenda em destaque com navegação inteligente');

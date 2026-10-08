@@ -42,7 +42,7 @@ try {
 }
 
 // ============================================
-// IMPORTS DAS PARTES EXTRATÍDAS
+// IMPORTS DAS PARTES EXTRAITÍDAS
 // ============================================
 
 const { db, getEmpresaDb, initDatabase, inserirHorariosPadrao } = require('./server/config/database');
@@ -56,6 +56,10 @@ const {
     incrementarContadorAgendamentos,
 } = require('./server/middlewares/auth');
 const { PLANOS, PLANOS_NOMES, JWT_SECRET } = require('./server/utils/constants');
+
+// 🆕 Middleware de bloqueio por assinatura
+const verificarBloqueio = require('./server/middlewares/bloqueio-assinatura');
+
 const {
     horaParaMinutos,
     minutosParaHora,
@@ -151,6 +155,14 @@ app.use(express.static(__dirname, {
     }
 }));
 
+// ============================================
+// 🆕 TELA DE BLOQUEIO DE ASSINATURA
+// ============================================
+app.get('/bloqueado', (req, res) => {
+    console.log('🔒 Servindo /bloqueado.html');
+    res.sendFile(__dirname + '/public/bloqueado.html');
+});
+
 app.get('/manifest.json', (req, res) => {
     res.sendFile(__dirname + '/manifest.json');
 });
@@ -226,18 +238,18 @@ try {
     app.use('/api/chatbot', chatbotRoutes);
     console.log('✅ /api/chatbot registrado (PÚBLICO)');
     
-    // 🔥🔥🔥 ADICIONE ESTA LINHA 🔥🔥🔥
     app.use('/chatbot', chatbotRoutes);
     console.log('✅ /chatbot registrado (links personalizados)');
     
 } catch (err) {
     console.error('❌ Erro ao carregar chatbot:', err.message);
 }
+
 // ============================================
-// 5. ROTAS PROTEGIDAS (EXIGEM AUTENTICAÇÃO)
+// 5. ROTAS PROTEGIDAS (EXIGEM AUTENTICAÇÃO + BLOQUEIO)
 // ============================================
 
-// ADMIN
+// ADMIN (NÃO TEM BLOQUEIO — super admin sempre passa)
 try {
     const adminRoutes = require('./server/routes/admin.routes');
     app.use('/api/admin', auth, adminRoutes);
@@ -249,8 +261,8 @@ try {
 // EMPRESAS
 try {
     const empresasRoutes = require('./server/routes/empresas.routes');
-    app.use('/api/empresa', auth, empresasRoutes);
-    console.log('✅ /api/empresa registrado (protegido)');
+    app.use('/api/empresa', auth, verificarBloqueio, empresasRoutes);
+    console.log('✅ /api/empresa registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em empresas:', err.message);
 }
@@ -258,8 +270,8 @@ try {
 // CLIENTES
 try {
     const clientesRoutes = require('./server/routes/clientes.routes');
-    app.use('/api/clientes', auth, clientesRoutes);
-    console.log('✅ /api/clientes registrado (protegido)');
+    app.use('/api/clientes', auth, verificarBloqueio, clientesRoutes);
+    console.log('✅ /api/clientes registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em clientes:', err.message);
 }
@@ -267,8 +279,8 @@ try {
 // SERVIÇOS
 try {
     const servicosRoutes = require('./server/routes/servicos.routes');
-    app.use('/api/servicos', auth, servicosRoutes);
-    console.log('✅ /api/servicos registrado (protegido)');
+    app.use('/api/servicos', auth, verificarBloqueio, servicosRoutes);
+    console.log('✅ /api/servicos registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em servicos:', err.message);
 }
@@ -276,8 +288,8 @@ try {
 // AGENDAMENTOS
 try {
     const agendamentosRoutes = require('./server/routes/agendamentos.routes');
-    app.use('/api/agendamentos', auth, agendamentosRoutes);
-    console.log('✅ /api/agendamentos registrado (protegido)');
+    app.use('/api/agendamentos', auth, verificarBloqueio, agendamentosRoutes);
+    console.log('✅ /api/agendamentos registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em agendamentos:', err.message);
 }
@@ -285,8 +297,8 @@ try {
 // PROFISSIONAIS
 try {
     const profissionaisRoutes = require('./server/routes/profissionais.routes');
-    app.use('/api/profissionais', auth, profissionaisRoutes);
-    console.log('✅ /api/profissionais registrado (protegido)');
+    app.use('/api/profissionais', auth, verificarBloqueio, profissionaisRoutes);
+    console.log('✅ /api/profissionais registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em profissionais:', err.message);
 }
@@ -294,8 +306,8 @@ try {
 // FINANCEIRO
 try {
     const financeiroRoutes = require('./server/routes/financeiro.routes');
-    app.use('/api/financeiro', auth, financeiroRoutes);
-    console.log('✅ /api/financeiro registrado (protegido)');
+    app.use('/api/financeiro', auth, verificarBloqueio, financeiroRoutes);
+    console.log('✅ /api/financeiro registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em financeiro:', err.message);
 }
@@ -303,8 +315,8 @@ try {
 // DESPESAS
 try {
     const despesasRoutes = require('./server/routes/despesas.routes');
-    app.use('/api/despesas', auth, despesasRoutes);
-    console.log('✅ /api/despesas registrado (protegido)');
+    app.use('/api/despesas', auth, verificarBloqueio, despesasRoutes);
+    console.log('✅ /api/despesas registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em despesas:', err.message);
 }
@@ -312,8 +324,8 @@ try {
 // HORÁRIOS
 try {
     const horariosRoutes = require('./server/routes/horarios.routes');
-    app.use('/api/horarios', auth, horariosRoutes);
-    console.log('✅ /api/horarios registrado (protegido)');
+    app.use('/api/horarios', auth, verificarBloqueio, horariosRoutes);
+    console.log('✅ /api/horarios registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em horarios:', err.message);
 }
@@ -321,9 +333,9 @@ try {
 // WHATSAPP
 try {
     const whatsappRoutes = require('./server/routes/whatsapp.routes');
-    app.use('/api/empresa/whatsapp', auth, whatsappRoutes);
-    app.use('/api/whatsapp', auth, whatsappRoutes);
-    console.log('✅ /api/whatsapp registrado (protegido)');
+    app.use('/api/empresa/whatsapp', auth, verificarBloqueio, whatsappRoutes);
+    app.use('/api/whatsapp', auth, verificarBloqueio, whatsappRoutes);
+    console.log('✅ /api/whatsapp registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em whatsapp:', err.message);
 }
@@ -331,8 +343,8 @@ try {
 // FIADOS
 try {
     const fiadosRoutes = require('./server/routes/fiados.routes');
-    app.use('/api/fiados', auth, fiadosRoutes);
-    console.log('✅ /api/fiados registrado (protegido)');
+    app.use('/api/fiados', auth, verificarBloqueio, fiadosRoutes);
+    console.log('✅ /api/fiados registrado (protegido + bloqueio)');
 } catch (err) {
     console.error('❌ Erro em fiados:', err.message);
 }
@@ -384,15 +396,7 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
     let paramsAgendamentos;
 
     if (profissional_id) {
-        sqlAgendamentos = isProduction
-            ? `SELECT a.hora, a.id, s.duracao as servico_duracao
-               FROM agendamentos a
-               LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.empresa_id = ? 
-               AND a.data = ? 
-               AND a.profissional_id = ? 
-               AND a.status != 'cancelado'`
-            : `SELECT a.hora, a.id, s.duracao as servico_duracao
+        sqlAgendamentos = `SELECT a.hora, a.id, s.duracao as servico_duracao
                FROM agendamentos a
                LEFT JOIN servicos s ON a.servico_id = s.id
                WHERE a.empresa_id = ? 
@@ -401,14 +405,7 @@ async function verificarDisponibilidadeHorario(empresa_id, profissional_id, data
                AND a.status != 'cancelado'`;
         paramsAgendamentos = [empresa_id, data, profissional_id];
     } else {
-        sqlAgendamentos = isProduction
-            ? `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
-               FROM agendamentos a
-               LEFT JOIN servicos s ON a.servico_id = s.id
-               WHERE a.empresa_id = ? 
-               AND a.data = ? 
-               AND a.status != 'cancelado'`
-            : `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
+        sqlAgendamentos = `SELECT a.hora, a.id, a.profissional_id, s.duracao as servico_duracao
                FROM agendamentos a
                LEFT JOIN servicos s ON a.servico_id = s.id
                WHERE a.empresa_id = ? 
@@ -563,11 +560,7 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
         console.error('❌ Erro ao verificar Super Admin:', err.message);
     } else if (existing) {
         console.log('🔄 Atualizando senha do Super Admin...');
-        const sqlUpdate = isProduction
-            ? `UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`
-            : `UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`;
-
-        db.run(sqlUpdate, [superAdminSenha], function (err) {
+        db.run(`UPDATE usuarios SET senha = ? WHERE email = 'super@admin.com'`, [superAdminSenha], function (err) {
             if (err) {
                 console.error('❌ Erro ao atualizar Super Admin:', err.message);
             } else {
@@ -576,19 +569,17 @@ db.get(`SELECT id FROM usuarios WHERE email = 'super@admin.com'`, [], (err, exis
         });
     } else {
         console.log('🔍 Criando Super Admin...');
-        const sqlInsert = isProduction
-            ? `INSERT INTO usuarios (nome, email, senha, role) 
-               VALUES (?, ?, ?, 'superadmin')`
-            : `INSERT INTO usuarios (nome, email, senha, role) 
-               VALUES (?, ?, ?, 'superadmin')`;
-
-        db.run(sqlInsert, ['Super Admin', 'super@admin.com', superAdminSenha], function (err) {
-            if (err) {
-                console.error('❌ Erro ao criar Super Admin:', err.message);
-            } else {
-                console.log('✅ Super Admin criado: super@admin.com / super123');
+        db.run(
+            `INSERT INTO usuarios (nome, email, senha, role) VALUES (?, ?, ?, 'superadmin')`,
+            ['Super Admin', 'super@admin.com', superAdminSenha],
+            function (err) {
+                if (err) {
+                    console.error('❌ Erro ao criar Super Admin:', err.message);
+                } else {
+                    console.log('✅ Super Admin criado: super@admin.com / super123');
+                }
             }
-        });
+        );
     }
 });
 
@@ -617,47 +608,46 @@ db.get(`SELECT id FROM empresas WHERE nome = 'Barbearia Teste'`, (err, empresa) 
                 return;
             }
 
-            const sqlFind = isProduction
-                ? `SELECT id FROM empresas WHERE nome = 'Barbearia Teste' ORDER BY id DESC LIMIT 1`
-                : `SELECT id FROM empresas WHERE nome = 'Barbearia Teste' ORDER BY id DESC LIMIT 1`;
-
-            db.get(sqlFind, [], (err, row) => {
-                if (err || !row) {
-                    console.error('❌ Erro ao buscar ID da empresa:', err?.message);
-                    return;
-                }
-
-                const empresaId = row.id;
-                console.log(`✅ Empresa teste criada (ID: ${empresaId})`);
-                inserirHorariosPadrao(empresaId);
-
-                const donoSenha = bcrypt.hashSync('123456', 10);
-
-                db.get(`SELECT id FROM usuarios WHERE email = 'admin@teste.com'`, [], (err, existingDono) => {
-                    if (err) {
-                        console.error('❌ Erro ao verificar dono:', err.message);
+            db.get(
+                `SELECT id FROM empresas WHERE nome = 'Barbearia Teste' ORDER BY id DESC LIMIT 1`,
+                [],
+                (err, row) => {
+                    if (err || !row) {
+                        console.error('❌ Erro ao buscar ID da empresa:', err?.message);
                         return;
                     }
 
-                    if (!existingDono) {
-                        const sqlInsertDono = isProduction
-                            ? `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
-                               VALUES (?, ?, ?, 'dono', ?)`
-                            : `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
-                               VALUES (?, ?, ?, 'dono', ?)`;
+                    const empresaId = row.id;
+                    console.log(`✅ Empresa teste criada (ID: ${empresaId})`);
+                    inserirHorariosPadrao(empresaId);
 
-                        db.run(sqlInsertDono, ['Admin Teste', 'admin@teste.com', donoSenha, empresaId], function (err) {
-                            if (err) {
-                                console.error('❌ Erro ao criar dono:', err.message);
-                            } else {
-                                console.log('✅ Dono criado: admin@teste.com / 123456');
-                            }
-                        });
-                    } else {
-                        console.log('✅ Dono já existe');
-                    }
-                });
-            });
+                    const donoSenha = bcrypt.hashSync('123456', 10);
+
+                    db.get(`SELECT id FROM usuarios WHERE email = 'admin@teste.com'`, [], (err, existingDono) => {
+                        if (err) {
+                            console.error('❌ Erro ao verificar dono:', err.message);
+                            return;
+                        }
+
+                        if (!existingDono) {
+                            db.run(
+                                `INSERT INTO usuarios (nome, email, senha, role, empresa_id) 
+                                 VALUES (?, ?, ?, 'dono', ?)`,
+                                ['Admin Teste', 'admin@teste.com', donoSenha, empresaId],
+                                function (err) {
+                                    if (err) {
+                                        console.error('❌ Erro ao criar dono:', err.message);
+                                    } else {
+                                        console.log('✅ Dono criado: admin@teste.com / 123456');
+                                    }
+                                }
+                            );
+                        } else {
+                            console.log('✅ Dono já existe');
+                        }
+                    });
+                }
+            );
         });
     } else {
         console.log('✅ Empresa teste já existe');
@@ -699,6 +689,28 @@ try {
     console.log('✅ Job de lembretes de pagamento iniciado! (executa a cada hora)');
 } catch (error) {
     console.log('⚠️ Erro ao iniciar job de lembretes de pagamento:', error.message);
+}
+
+// ============================================================
+// 🆕 JOBS DE ASSINATURA (NOVOS)
+// ============================================================
+
+// Job de cobrança mensal (dia 1 às 08:00)
+try {
+    const cobrancaJob = require('./server/jobs/cobranca-mensal');
+    cobrancaJob.start();
+    console.log('✅ Job de cobrança mensal iniciado (dia 1 às 08:00)');
+} catch (error) {
+    console.log('⚠️ Erro ao iniciar job de cobrança:', error.message);
+}
+
+// Job de verificação de vencimentos (diário às 09:00)
+try {
+    const vencimentoJob = require('./server/jobs/verificar-vencimentos');
+    vencimentoJob.start();
+    console.log('✅ Job de verificação de vencimentos iniciado (diário às 09:00)');
+} catch (error) {
+    console.log('⚠️ Erro ao iniciar job de vencimentos:', error.message);
 }
 
 // ============================================================

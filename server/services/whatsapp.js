@@ -247,6 +247,7 @@ async function enviarConfirmacao(dados) {
 
     let valor = parseFloat(servico?.valor) || 0;
     const valorFormatado = valor.toFixed(2).replace('.', ',');
+    const valorExibicao = `a partir de R$ ${valorFormatado}`;
     const nomeEmpresa = empresa?.nome || 'See&Agende';
     const servicoNome = servico?.nome || 'Serviço';
     const dataFormatada = formatarDataBr(data);
@@ -259,7 +260,7 @@ async function enviarConfirmacao(dados) {
     msg += `⏰ Horário: ${hora}\n`;
     msg += `👨‍💼 Profissional: ${profissionalNome}\n`;
     msg += `✂️ Serviço: ${servicoNome}\n`;
-    msg += `💰 Valor: R$ ${valorFormatado}\n\n`;
+    msg += `💰 Valor: ${valorExibicao}\n\n`;
     msg += `📍 ${nomeEmpresa}\n`;
     msg += `📞 ${empresa?.telefone_dono || '(11) 99999-9999'}\n`;
     msg += montarRodapeInstagram(empresa) + `\n\n`;
@@ -293,9 +294,23 @@ async function enviarCancelamento(dados) {
 
 // ============================================
 // ENVIAR CONCLUSÃO
+// Aceita:
+//   - servicos: Array de {nome, valor} (principal primeiro, depois extras)
+//   - OU retrocompatível: servico: {nome, valor} (singular)
+// Parâmetros opcionais:
+//   - subtotal: número (valor antes do desconto)
+//   - desconto: número (valor do desconto)
+//   - valorFinal: número (valor final pago)
 // ============================================
 async function enviarConclusao(dados) {
-    const { cliente, servico, data, hora, profissional, empresa } = dados;
+    const {
+        cliente, data, hora, profissional, empresa,
+        servicos,        // 🔥 novo: array de serviços
+        servico,         // retrocompatível
+        subtotal,
+        desconto = 0,
+        valorFinal
+    } = dados;
 
     console.log('[WHATSAPP] 📝 Enviando conclusão para:', cliente?.nome);
 
@@ -304,37 +319,101 @@ async function enviarConclusao(dados) {
         return { success: false, error: 'Sem telefone' };
     }
 
-    let valor = parseFloat(servico?.valor) || 0;
-    const valorFormatado = valor.toFixed(2).replace('.', ',');
+    // 🔥 Normaliza: se veio `servico` singular, transforma em array
+    let listaServicos = [];
+    if (Array.isArray(servicos) && servicos.length > 0) {
+        listaServicos = servicos.filter(s => s && (s.nome || s.valor));
+    } else if (servico && (servico.nome || servico.valor)) {
+        listaServicos = [servico];
+    }
+
+    // Fallback: se não veio nenhum, usa o nome genérico
+    if (listaServicos.length === 0) {
+        listaServicos = [{ nome: 'Serviço', valor: 0 }];
+    }
+
     const nomeEmpresa = empresa?.nome || 'See&Agende';
-    const servicoNome = servico?.nome || 'Serviço';
     const chatbotLink = montarLinkChatbot(empresa);
 
+    // 🔥 Monta a lista de serviços
+    //    Primeiro = principal (✂️)
+    //    Demais  = extras (   + )
+    let servicosTexto = '';
+    listaServicos.forEach((s, idx) => {
+        const nome = (s.nome && String(s.nome).trim()) || `Extra - R$ ${(parseFloat(s.valor) || 0).toFixed(2).replace('.', ',')}`;
+
+        if (idx === 0) {
+            servicosTexto += `✂️ ${nome}\n`;
+        } else {
+            servicosTexto += `   + ${nome}\n`;
+        }
+    });
+
+    // 🔥 Calcula valores
+    const subtotalCalculado = parseFloat(subtotal) > 0
+        ? parseFloat(subtotal)
+        : listaServicos.reduce((soma, s) => soma + (parseFloat(s.valor) || 0), 0);
+
+    const descontoAplicado = Math.max(parseFloat(desconto) || 0, 0);
+
+    const totalCalculado = parseFloat(valorFinal) > 0
+        ? parseFloat(valorFinal)
+        : Math.max(subtotalCalculado - descontoAplicado, 0);
+
+    // 🔥 Monta o bloco de valores
+    let valoresTexto = '';
+    if (descontoAplicado > 0) {
+        // Com desconto: mostra subtotal, desconto e total
+        valoresTexto += `Subtotal: R$ ${subtotalCalculado.toFixed(2).replace('.', ',')}\n`;
+        valoresTexto += `Desconto: R$ ${descontoAplicado.toFixed(2).replace('.', ',')}\n`;
+        valoresTexto += `💰 Total: *R$ ${totalCalculado.toFixed(2).replace('.', ',')}*`;
+    } else {
+        // Sem desconto: só o total
+        valoresTexto += `💰 Valor: *R$ ${totalCalculado.toFixed(2).replace('.', ',')}*`;
+    }
+
+    // 🔥 Monta mensagem final
     let msg = `✅ *Atendimento Concluído!* 🎉\n\n`;
-    msg += `Olá *${cliente?.nome}*!\n`;
+    msg += `Olá *${cliente.nome}*!\n`;
     msg += `Obrigado por escolher a *${nomeEmpresa}*!\n\n`;
-    msg += `📋 *RESUMO DO SERVIÇO:*\n`;
-    msg += `✂️ Serviço: *${servicoNome}*\n`;
-    msg += `💰 Valor: *R$ ${valorFormatado}*\n`;
-    msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n\n`;
+
+    msg += `📋 *SERVIÇOS REALIZADOS:*\n`;
+    msg += servicosTexto;
+    msg += `\n`;
 
     if (profissional?.nome) {
-        msg += `👤 Profissional: *${profissional.nome}*\n\n`;
+        msg += `👤 Profissional: *${profissional.nome}*\n`;
+    }
+    msg += `📅 Data: *${formatarDataBr(data)}* às *${hora}*\n`;
+    msg += `${valoresTexto}\n\n`;
+
+    // Localização + contato
+    msg += `📌 *${nomeEmpresa}*\n`;
+    if (empresa?.endereco) {
+        msg += `📍 ${empresa.endereco}\n`;
+    }
+    if (empresa?.telefone_dono) {
+        msg += `📞 ${formatarTelefone(empresa.telefone_dono)}\n`;
     }
 
-    if (empresa?.telefone_dono) {
-        msg += `📞 *Contato:* ${formatarTelefone(empresa.telefone_dono)}\n`;
-    }
     msg += montarRodapeInstagram(empresa) + `\n\n`;
-    msg += `⭐ *Gostou do atendimento?* ⭐\n\n`;
-    msg += `🔗 *Agende seu próximo horário:*\n${chatbotLink}\n\n`;
+
+    msg += `⭐ *Gostou do atendimento?*\n`;
+    msg += `Conta pra gente nas redes sociais! 💛\n\n`;
+
+    msg += `🔗 *Agende seu próximo horário:*\n`;
+    msg += `${chatbotLink}\n\n`;
+
+    msg += `Até a próxima! ✨\n\n`;
+
     msg += `---\n_Mensagem automática do See&Agende_`;
 
+    console.log('[WHATSAPP] 📤 Enviando...');
     return await send(empresa?.id, cliente.telefone, msg);
 }
-
 // ============================================
-// ENVIAR LEMBRETE (24H ANTES) - AGORA COM INSTAGRAM
+// ENVIAR LEMBRETE
+// Calcula "hoje" / "amanhã" / "em X dias" dinamicamente
 // ============================================
 async function enviarLembrete(dados) {
     const { cliente, servico, data, hora, profissional, empresa } = dados;
@@ -351,28 +430,71 @@ async function enviarLembrete(dados) {
     const chatbotLink = montarLinkChatbot(empresa);
     const nomeEmpresa = empresa?.nome || 'See&Agende';
     const servicoNome = servico?.nome || 'Serviço';
-    const dataFormatada = formatarDataBr(data);
     const profissionalNome = profissional?.nome || 'Não definido';
 
+    // ============================================
+    // 🔥 CALCULA "HOJE" / "AMANHÃ" / "EM X DIAS"
+    // ============================================
+    let quando = 'hoje'; // fallback seguro
+
+    if (data) {
+        try {
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+
+            const dataAg = new Date(data + 'T00:00:00');
+            dataAg.setHours(0, 0, 0, 0);
+
+            const diffDias = Math.round((dataAg - hoje) / (1000 * 60 * 60 * 24));
+
+            if (diffDias === 0) {
+                quando = 'hoje';
+            } else if (diffDias === 1) {
+                quando = 'amanhã';
+            } else if (diffDias === -1) {
+                quando = 'ontem';
+            } else if (diffDias > 1 && diffDias <= 7) {
+                quando = `em ${diffDias} dias`;
+            } else if (diffDias < -1) {
+                quando = `há ${Math.abs(diffDias)} dias`;
+            } else {
+                quando = `no dia ${formatarDataBr(data)}`;
+            }
+        } catch (e) {
+            console.error('[WHATSAPP] ⚠️ Erro ao calcular data:', e.message);
+        }
+    }
+
+    // ============================================
+    // 🔥 MONTA MENSAGEM
+    // ============================================
     let msg = `🔔 *LEMBRETE DE AGENDAMENTO*\n\n`;
-    msg += `Olá *${cliente.nome}*! Passando pra lembrar do seu horário amanhã:\n\n`;
+    msg += `Olá *${cliente.nome}*! Passando pra lembrar do seu horário *${quando}*:\n\n`;
+
     msg += `📋 *Detalhes:*\n`;
-    msg += `📅 Data: ${dataFormatada}\n`;
-    msg += `⏰ Horário: ${hora}\n`;
-    msg += `✂️ Serviço: ${servicoNome}\n`;
-    msg += `👨‍💼 Profissional: ${profissionalNome}\n\n`;
-    msg += `📌 *${nomeEmpresa}*\n`;
+    msg += `📅 Data: *${formatarDataBr(data)}*\n`;
+    msg += `⏰ Horário: *${hora}*\n`;
+    msg += `✂️ Serviço: *${servicoNome}*\n`;
+    if (profissional?.nome) {
+        msg += `👨‍💼 Profissional: *${profissionalNome}*\n`;
+    }
+
+    msg += `\n📌 *${nomeEmpresa}*\n`;
+    if (empresa?.endereco) {
+        msg += `📍 ${empresa.endereco}\n`;
+    }
     if (empresa?.telefone_dono) {
         msg += `📞 ${formatarTelefone(empresa.telefone_dono)}\n`;
     }
+
     msg += montarRodapeInstagram(empresa) + `\n\n`;
+
     msg += `❓ Se não puder comparecer, avise com antecedência.\n`;
     msg += `🔗 Remarcar: ${chatbotLink}`;
 
     console.log('[WHATSAPP] 📤 Enviando lembrete...');
     return await send(empresa?.id, cliente.telefone, msg);
 }
-
 // ============================================
 // EXPORTAR
 // ============================================

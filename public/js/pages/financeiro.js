@@ -1757,10 +1757,6 @@ async function excluirDespesa(id) {
     }
 }
 
-// ============================================
-// CARREGAR RECEITAS
-// ============================================
-
 async function carregarReceitas() {
     const token = localStorage.getItem('token');
     const mesInput = document.getElementById('filtroMesReceitas');
@@ -1788,6 +1784,7 @@ async function carregarReceitas() {
             const porPagamento = result.data?.por_pagamento || {};
 
             console.log('📊 Receitas por pagamento:', porPagamento);
+            console.log('📊 Lista de receitas:', lista);
 
             if (lista.length === 0) {
                 container.innerHTML = `
@@ -1798,6 +1795,12 @@ async function carregarReceitas() {
                     </div>
                 `;
                 return;
+            }
+
+            // 💡 Calcula total de descontos do mês
+            let totalDescontos = 0;
+            for (let item of lista) {
+                totalDescontos += toNumber(item.desconto_valor);
             }
 
             let html = `
@@ -1815,9 +1818,20 @@ async function carregarReceitas() {
                         </div>
                     `).join('')}
                 </div>
-                <div style="padding: ${isMobile ? '10px' : '12px'}; background: var(--bg-hover); border-radius: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <span style="font-weight: 600; font-size: ${isMobile ? '14px' : '16px'};">Total Geral: <span style="color: #22c55e;">R$ ${total.toFixed(2)}</span></span>
-                    <span style="font-size: ${isMobile ? '12px' : '14px'}; color: var(--text-muted);">${lista.length} ${lista.length === 1 ? 'serviço' : 'serviços'}</span>
+                <div style="padding: ${isMobile ? '10px' : '12px'}; background: var(--bg-hover); border-radius: 10px; margin-bottom: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-weight: 600; font-size: ${isMobile ? '14px' : '16px'};">
+                            Total Geral: <span style="color: #22c55e;">R$ ${total.toFixed(2)}</span>
+                        </span>
+                        <span style="font-size: ${isMobile ? '12px' : '14px'}; color: var(--text-muted);">
+                            ${lista.length} ${lista.length === 1 ? 'serviço' : 'serviços'}
+                        </span>
+                    </div>
+                    ${totalDescontos > 0 ? `
+                        <div style="margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-color); font-size: ${isMobile ? '12px' : '13px'}; color: #f59e0b;">
+                            💸 Descontos aplicados no mês: <strong>R$ ${totalDescontos.toFixed(2)}</strong>
+                        </div>
+                    ` : ''}
                 </div>
             `;
 
@@ -1827,6 +1841,12 @@ async function carregarReceitas() {
                     const forma = item.forma_pagamento || '';
                     const label = pagamentoLabels[forma] || '❓ Não informado';
                     const cor = pagamentoCores[forma] || 'var(--text-muted)';
+
+                    const valorFinal = toNumber(item.valor_total) || toNumber(item.valor) || 0;
+                    const valorBruto = toNumber(item.valor_bruto) || valorFinal;
+                    const desconto = toNumber(item.desconto_valor);
+                    const temDesconto = desconto > 0;
+
                     html += `
                         <div style="background: var(--bg-card); border-radius: 12px; padding: 14px 16px; border: 1px solid ${cor}33;">
                             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -1834,7 +1854,19 @@ async function carregarReceitas() {
                                     <div style="font-weight:600;color:var(--text-primary);">${escapeHtml(item.cliente_nome || 'Cliente')}</div>
                                     <div style="font-size:12px;color:var(--text-muted);">✂️ ${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</div>
                                 </div>
-                                <span style="font-size:16px;font-weight:700;color:#22c55e;white-space:nowrap;margin-left:8px;">R$ ${(toNumber(item.valor_total) || toNumber(item.valor) || 0).toFixed(2)}</span>
+                                <div style="text-align: right; margin-left: 8px;">
+                                    ${temDesconto ? `
+                                        <div style="font-size: 11px; color: var(--text-muted); text-decoration: line-through;">
+                                            R$ ${valorBruto.toFixed(2)}
+                                        </div>
+                                        <div style="font-size: 11px; color: #f59e0b;">
+                                            💸 −R$ ${desconto.toFixed(2)}
+                                        </div>
+                                    ` : ''}
+                                    <div style="font-size:16px;font-weight:700;color:#22c55e;white-space:nowrap;">
+                                        R$ ${valorFinal.toFixed(2)}
+                                    </div>
+                                </div>
                             </div>
                             <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);border-top:1px solid var(--border-color);padding-top:8px;">
                                 <span>📅 ${formatarDataBr(item.data)}</span>
@@ -1862,13 +1894,33 @@ async function carregarReceitas() {
                                     const forma = item.forma_pagamento || '';
                                     const label = pagamentoLabels[forma] || '❓ Não informado';
                                     const cor = pagamentoCores[forma] || 'var(--text-muted)';
+
+                                    const valorFinal = toNumber(item.valor_total) || toNumber(item.valor) || 0;
+                                    const valorBruto = toNumber(item.valor_bruto) || valorFinal;
+                                    const desconto = toNumber(item.desconto_valor);
+                                    const temDesconto = desconto > 0;
+
                                     return `
                                         <tr style="border-bottom:1px solid var(--border-color);">
                                             <td style="padding:10px 12px;">${formatarDataBr(item.data)}</td>
                                             <td style="padding:10px 12px;font-weight:500;">${escapeHtml(item.cliente_nome || 'Cliente')}</td>
                                             <td style="padding:10px 12px;">${escapeHtml(item.servico_nome || item.servico || 'Serviço')}</td>
-                                            <td style="padding:10px 12px;text-align:right;font-weight:700;color:#22c55e;">R$ ${(toNumber(item.valor_total) || toNumber(item.valor) || 0).toFixed(2)}</td>
-                                            <td style="padding:10px 12px;text-align:center;"><span style="color:${cor};font-weight:600;">${label}</span></td>
+                                            <td style="padding:10px 12px;text-align:right;">
+                                                ${temDesconto ? `
+                                                    <div style="font-size: 11px; color: var(--text-muted); text-decoration: line-through;">
+                                                        R$ ${valorBruto.toFixed(2)}
+                                                    </div>
+                                                    <div style="font-size: 11px; color: #f59e0b;">
+                                                        💸 −R$ ${desconto.toFixed(2)}
+                                                    </div>
+                                                ` : ''}
+                                                <div style="font-weight:700;color:#22c55e;">
+                                                    R$ ${valorFinal.toFixed(2)}
+                                                </div>
+                                            </td>
+                                            <td style="padding:10px 12px;text-align:center;">
+                                                <span style="color:${cor};font-weight:600;">${label}</span>
+                                            </td>
                                         </tr>
                                     `;
                                 }).join('')}
@@ -1897,7 +1949,6 @@ async function carregarReceitas() {
         }
     }
 }
-
 // ============================================
 // CARREGAR COMISSÕES TAB
 // ============================================

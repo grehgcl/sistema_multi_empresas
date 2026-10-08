@@ -558,7 +558,7 @@ router.post('/horarios-disponiveis', async (req, res) => {
         return res.json({ success: false, message: 'Banco da empresa não encontrado' });
     }
 
-    let sqlAgendamentos = `
+        let sqlAgendamentos = `
         SELECT a.hora, s.duracao
         FROM agendamentos a
         LEFT JOIN servicos s ON a.servico_id = s.id
@@ -566,9 +566,23 @@ router.post('/horarios-disponiveis', async (req, res) => {
     `;
     let paramsAgendamentos = [data];
 
-    if (profissionalId && profissionalId !== 'null' && profissionalId !== 'undefined' && !String(profissionalId).includes('dono')) {
+    // 🔥 FILTRO POR PROFISSIONAL (sempre)
+    // - profissionalId válido (número) → filtra por ele
+    // - null/''/undefined/'dono_X'      → filtra pelos agendamentos DO DONO (profissional_id vazio)
+    const profIdNumerico = profissionalId
+        && profissionalId !== 'null'
+        && profissionalId !== 'undefined'
+        && !String(profissionalId).includes('dono')
+        ? parseInt(profissionalId)
+        : null;
+
+    if (profIdNumerico && !isNaN(profIdNumerico)) {
+        // Profissional específico
         sqlAgendamentos += ` AND a.profissional_id = ?`;
-        paramsAgendamentos.push(profissionalId);
+        paramsAgendamentos.push(profIdNumerico);
+    } else {
+        // Dono → agendamentos SEM profissional atribuído
+        sqlAgendamentos += ` AND (a.profissional_id IS NULL OR a.profissional_id = '' OR a.profissional_id = 0)`;
     }
 
     console.log(`📝 SQL: ${sqlAgendamentos}`);

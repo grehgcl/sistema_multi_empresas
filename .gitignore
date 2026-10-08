@@ -2,12 +2,12 @@
 # SEE&AGENDE - GITIGNORE
 # ================================
 
-# Dependências
+# Dependï¿½ncias
 node_modules/
 .pnp
 .pnp.js
 
-# Variáveis de ambiente (NUNCA COMMITAR)
+# Variï¿½veis de ambiente (NUNCA COMMITAR)
 .env
 .env.local
 .env.*.local
@@ -34,14 +34,14 @@ backups/
 *.orig
 *.bak-encoding
 
-# Logs e análises
+# Logs e anï¿½lises
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 analysis/
 
-# Scripts temporários
+# Scripts temporï¿½rios
 corrigir-acentos.js
 corrigir-acentos-v2.js
 corrigir-acentos-v3.js
@@ -70,6 +70,23 @@ logs/
 database/**/*.db
 database/**
 
-# Bancos em subpastas também
+# Bancos em subpastas tambï¿½m
 database/**/*.db
 database/**
+
+# TemporÃ¡rios locais
+_token.txt
+*.nak
+dash_backup.nak
+*.bak
+*.bak3
+*.backup*
+*.antes-do-patch
+*.corrompido
+*.old
+*.orig
+_temp*.js
+_teste*.js
+_check*.js
+_sus.js
+_un.js

@@ -246,10 +246,43 @@ async function carregarDashboardSuperAdmin() {
                                         <span class="sa-card-status ${statusClass}">${statusText}</span>
                                     </div>
                                     <div class="sa-card-info">
-                                        <span class="sa-card-plano ${planoClass}">${planoText}</span>
-                                        <span class="sa-card-whatsapp ${whatsappClass}">${whatsappText}</span>
-                                        <span class="sa-card-dias ${diasColor}">${diasTexto}</span>
-                                    </div>
+    <span class="sa-card-plano ${planoClass}">${planoText}</span>
+    <span class="sa-card-whatsapp ${whatsappClass}">${whatsappText}</span>
+    <span class="sa-card-dias ${diasColor}">${diasTexto}</span>
+${(() => {
+    // 🆕 Badge de pagamento
+    const statusPag = (e.pagamento_mes_atual || '').toLowerCase();
+    const statusAssin = (e.assinatura_status || '').toLowerCase();
+
+    // 1) Trial
+    if (statusAssin === 'trial') {
+        return `<span class="sa-card-pagamento trial" title="Em período de teste">🔄 Trial</span>`;
+    }
+    // 2) Vencida
+    if (statusAssin === 'vencida') {
+        return `<span class="sa-card-pagamento atrasado" title="Assinatura vencida">💳 VENCIDA</span>`;
+    }
+    // 3) Pagamento do mês atual — pago
+    if (statusPag === 'pago') {
+        return `<span class="sa-card-pagamento pago" title="Mês atual pago">💳 PAGO</span>`;
+    }
+    // 4) Pagamento do mês atual — atrasado
+    if (statusPag === 'atrasado') {
+        const meses = e.meses_devendo || 1;
+        return `<span class="sa-card-pagamento atrasado" title="${meses} mês(es) em atraso">💳 ATRASADO</span>`;
+    }
+    // 5) Pagamento do mês atual — pendente
+    if (statusPag === 'pendente') {
+        return `<span class="sa-card-pagamento pendente" title="Aguardando pagamento">💳 PENDENTE</span>`;
+    }
+    // 6) Assinatura ativa sem cobrança gerada (legado)
+    if (statusAssin === 'ativa') {
+        return `<span class="sa-card-pagamento ativo" title="Ativo (sem cobrança gerada ainda)">✅ ATIVO</span>`;
+    }
+    // 7) Fallback final
+    return `<span class="sa-card-pagamento pendente" title="Sem registro de pagamento">💳 PENDENTE</span>`;
+})()}
+</div>
                                     <div class="sa-card-stats">
                                         <div class="sa-stat">
                                             <span class="sa-stat-icon">👑</span>
@@ -910,10 +943,10 @@ async function editarEmpresa(id) {
                                 font-size:16px;
                             ">
                                 <option value="trial" ${empresa.plano === 'trial' ? 'selected' : ''}>🔄 Trial (Grátis)</option>
-                                <option value="starter" ${empresa.plano === 'starter' ? 'selected' : ''}>🚀 Starter (R$ 29,90/mês)</option>
-                                <option value="pro" ${empresa.plano === 'pro' ? 'selected' : ''}>💎 Pro (R$ 59,90/mês)</option>
-                                <option value="business" ${empresa.plano === 'business' ? 'selected' : ''}>🏢 Business (R$ 119,90/mês)</option>
-                                <option value="enterprise" ${empresa.plano === 'enterprise' ? 'selected' : ''}>🌐 Enterprise (R$ 249,90/mês)</option>
+                                <option value="starter" ...>🚀 Starter (R$ 29,90/mês)</option>
+<option value="pro" ...>💎 Pro (R$ 59,90/mês)</option>
+<option value="business" ...>🏢 Business (R$ 119,90/mês)</option>
+<option value="enterprise" ...>🌐 Enterprise (R$ 249,90/mês)</option>
                             </select>
                         </div>
 

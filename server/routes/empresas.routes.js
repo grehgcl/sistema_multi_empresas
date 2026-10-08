@@ -362,5 +362,94 @@ router.put('/bloqueio-geral', auth, verificarDono, (req, res) => {
         res.json({ success: true, message: `Bloqueio geral atualizado para ${diasBloqueioFinal} dias!` });
     });
 });
+// ============================================
+// GET /api/empresa/assinatura
+// Retorna dados da assinatura atual (mesmo se suspensa)
+// Usada pela tela de bloqueio
+// ============================================
 
+router.get('/assinatura', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario?.empresa_id || req.empresaId;
+        if (!empresaId) {
+            return res.status(400).json({ success: false, message: 'Sem empresa vinculada' });
+        }
+
+        const { db } = require('../config/database');
+        const assinaturas = require('../services/assinaturas');
+
+        const assinatura = await assinaturas.buscarAssinatura(empresaId);
+        const acesso = await assinaturas.verificarAcesso(empresaId);
+
+        // Busca pagamentos em aberto
+        let pagamentosAbertos = await new Promise((resolve) => {
+            db.all(`
+                SELECT id, mes_referencia, valor, status, data_vencimento
+                FROM pagamentos_mensalidade
+                WHERE empresa_id = ?
+                  AND status IN ('pendente', 'atrasado')
+                ORDER BY data_vencimento ASC
+            `, [empresaId], (err, rows) => resolve(rows || []));
+        });
+
+        // 🆕 Se tá bloqueado mas NÃO tem cobrança em aberto → cria uma
+        if (acesso.bloqueado && pagamentosAbertos.length === 0 && assinatura) {
+            console.log(`🔧 Empresa ${empresaId} bloqueada sem cobrança. Criando uma...`);
+
+            const mesAtual = assinaturas.mesReferencia();
+            const vencimento = new Date().toISOString().split('T')[0];
+
+            await new Promise((resolve) => {
+                db.run(`
+                    INSERT INTO pagamentos_mensalidade
+                        (empresa_id, assinatura_id, mes_referencia, valor, status, data_vencimento)
+                    VALUES (?, ?, ?, ?, 'atrasado', ?)
+                `, [
+                    empresaId,
+                    assinatura.id,
+                    mesAtual,
+                    assinatura.valor_mensal || 0,
+                    vencimento
+                ], () => resolve());
+            });
+
+            // Recarrega
+            pagamentosAbertos = await new Promise((resolve) => {
+                db.all(`
+                    SELECT id, mes_referencia, valor, status, data_vencimento
+                    FROM pagamentos_mensalidade
+                    WHERE empresa_id = ?
+                      AND status IN ('pendente', 'atrasado')
+                    ORDER BY data_vencimento ASC
+                `, [empresaId], (err, rows) => resolve(rows || []));
+            });
+
+            console.log(`✅ Cobrança criada automaticamente`);
+        }
+
+        const valorEmAberto = pagamentosAbertos.reduce((sum, p) => sum + (parseFloat(p.valor) || 0), 0);
+
+        res.json({
+            success: true,
+            data: {
+                bloqueado: acesso.bloqueado,
+                motivo: acesso.motivo,
+                assinatura: assinatura ? {
+                    status: assinatura.status,
+                    plano: assinatura.plano_nome,
+                    valor_mensal: assinatura.valor_mensal,
+                    data_vencimento: assinatura.data_vencimento,
+                    meses_devendo: assinatura.meses_devendo,
+                    ultimo_pagamento: assinatura.ultimo_pagamento_em
+                } : null,
+                pagamentos_abertos: pagamentosAbertos,
+                valor_em_aberto: valorEmAberto
+            }
+        });
+
+    } catch (err) {
+        console.error('❌ Erro /empresa/assinatura:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
 module.exports = router;

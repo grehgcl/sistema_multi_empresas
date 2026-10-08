@@ -115,38 +115,64 @@ function verificarDisponibilidadeHorario(empresaId, profissionalId, data, hora, 
             return reject(new Error('Banco da empresa não encontrado'));
         }
 
-        const [horaStr, minutoStr] = hora.split(':').map(Number);
         const duracaoMin = parseInt(duracao) || 30;
-        const horaFim = new Date(2000, 0, 1, horaStr, (minutoStr || 0) + duracaoMin);
-        const horaFimStr = horaFim.toTimeString().slice(0, 5);
 
-        // ✅ SQLite puro — sem ::time, sem ::interval
-        const sql = `
-            SELECT id FROM agendamentos 
-            WHERE profissional_id = ? 
-            AND data = ? 
-            AND status != 'cancelado'
-            AND (
-                hora < ? 
-                AND datetime(
-                    substr(hora, 1, 5) || ':' || printf('%02d', CAST(duracao AS INTEGER) % 60),
-                    '+' || CAST(duracao AS INTEGER) || ' minutes'
-                ) > ?
-            )
+        // Calcula janela do novo agendamento (em minutos desde 00:00)
+        const [hNovo, mNovo] = hora.split(':').map(Number);
+        const inicioNovo = hNovo * 60 + mNovo;
+        const fimNovo = inicioNovo + duracaoMin;
+
+        // 🔥 Filtra por profissional (ou pelo dono se profissionalId for null)
+        let sql = `
+            SELECT hora, duracao 
+            FROM agendamentos 
+            WHERE empresa_id = ?
+              AND data = ? 
+              AND status != 'cancelado'
         `;
+        let params = [empresaId, data];
 
-        empresaDb.get(sql, [profissionalId, data, hora, horaFimStr], (err, row) => {
+        if (profissionalId && profissionalId !== '' && profissionalId !== 'null' && profissionalId !== 'undefined' && !String(profissionalId).includes('dono')) {
+            const profIdNum = parseInt(profissionalId);
+            if (!isNaN(profIdNum)) {
+                sql += ` AND profissional_id = ?`;
+                params.push(profIdNum);
+            } else {
+                sql += ` AND (profissional_id IS NULL OR profissional_id = '' OR profissional_id = 0)`;
+            }
+        } else {
+            // Dono
+            sql += ` AND (profissional_id IS NULL OR profissional_id = '' OR profissional_id = 0)`;
+        }
+
+        empresaDb.all(sql, params, (err, rows) => {
             if (err) {
                 console.error('❌ Erro ao verificar disponibilidade:', err.message);
-                // fail-safe: se der erro na query, deixa passar (não bloqueia)
-                resolve(true);
-            } else {
-                resolve(!row);
+                // fail-safe: se der erro na query, deixa passar
+                return resolve(true);
             }
+
+            // Verifica overlap em JS
+            for (const ag of rows || []) {
+                if (!ag.hora) continue;
+
+                const horaExistStr = ag.hora.length > 5 ? ag.hora.substring(0, 5) : ag.hora;
+                const [hExist, mExist] = horaExistStr.split(':').map(Number);
+                const durExist = parseInt(ag.duracao) || 30;
+
+                const inicioExist = hExist * 60 + mExist;
+                const fimExist = inicioExist + durExist;
+
+                // Overlap: inicioExist < fimNovo AND fimExist > inicioNovo
+                if (inicioExist < fimNovo && fimExist > inicioNovo) {
+                    return resolve(false); // conflito
+                }
+            }
+
+            resolve(true); // livre
         });
     });
 }
-
 // ============================================
 // 🚫 NOVAS FUNÇÕES - BLOQUEIOS DE AGENDA
 // ============================================

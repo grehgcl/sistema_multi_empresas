@@ -119,20 +119,43 @@ router.get('/stats', auth, verificarSuperAdmin, async (req, res) => {
 });
 
 // ============================================
-// GET /api/admin/empresas - CORRIGIDO
+// GET /api/admin/empresas - COM ASSINATURAS + PAGAMENTOS
 // ============================================
 
 router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
     console.log('🏢 Buscando empresas para SuperAdmin');
 
-    // Primeiro, buscar todas as empresas
-    const sqlEmpresas = isProduction
-        ? `SELECT id, nome, plano, trial_expira, assinatura_valida_ate, 
-           whatsapp_proprio_habilitado, whatsapp_connected, telefone_dono
-           FROM empresas ORDER BY id DESC`
-        : `SELECT id, nome, plano, trial_expira, assinatura_valida_ate, 
-           whatsapp_proprio_habilitado, whatsapp_connected, telefone_dono
-           FROM empresas ORDER BY id DESC`;
+    // 🔥 Query com JOIN em assinaturas + subqueries de pagamento
+    const sqlEmpresas = `
+        SELECT 
+            e.id, e.nome, e.plano, e.trial_expira, e.assinatura_valida_ate,
+            e.whatsapp_proprio_habilitado, e.whatsapp_connected, e.telefone_dono,
+            e.created_at,
+            a.status            AS assinatura_status,
+            a.data_vencimento   AS assinatura_data_vencimento,
+            a.ultimo_pagamento_em,
+            a.meses_pagos,
+            a.meses_devendo,
+            a.valor_mensal,
+            (
+                SELECT status 
+                FROM pagamentos_mensalidade 
+                WHERE empresa_id = e.id 
+                  AND mes_referencia = strftime('%Y-%m', 'now')
+                LIMIT 1
+            ) AS pagamento_mes_atual,
+            (
+                SELECT data_pagamento 
+                FROM pagamentos_mensalidade 
+                WHERE empresa_id = e.id 
+                  AND status = 'pago'
+                ORDER BY data_pagamento DESC 
+                LIMIT 1
+            ) AS ultimo_pagamento_real
+        FROM empresas e
+        LEFT JOIN assinaturas a ON a.empresa_id = e.id
+        ORDER BY e.id DESC
+    `;
 
     db.all(sqlEmpresas, [], (err, empresas) => {
         if (err) {
@@ -141,6 +164,10 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
                 success: false, 
                 message: err.message 
             });
+        }
+
+        if (empresas.length === 0) {
+            return res.json({ success: true, data: [] });
         }
 
         // 🔥 Para cada empresa, buscar dados no banco da empresa
@@ -153,11 +180,11 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
             if (!empresaDb) {
                 // Se não tiver banco próprio, usar contagem do banco principal
                 db.get(
-                    `SELECT COUNT(*) as total_clientes FROM clientes WHERE empresa_id = ?`,
+                    `SELECT COUNT(*) as total FROM clientes WHERE empresa_id = ?`,
                     [empresa.id],
                     (err, clientesRow) => {
                         db.get(
-                            `SELECT COUNT(*) as total_agendamentos FROM agendamentos WHERE empresa_id = ?`,
+                            `SELECT COUNT(*) as total FROM agendamentos WHERE empresa_id = ?`,
                             [empresa.id],
                             (err, agendamentosRow) => {
                                 resultados[index] = {
@@ -167,10 +194,7 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
                                 };
                                 empresasProcessadas++;
                                 if (empresasProcessadas === empresas.length) {
-                                    res.json({ 
-                                        success: true, 
-                                        data: resultados 
-                                    });
+                                    res.json({ success: true, data: resultados });
                                 }
                             }
                         );
@@ -194,24 +218,13 @@ router.get('/empresas', auth, verificarSuperAdmin, (req, res) => {
                     
                     empresasProcessadas++;
                     if (empresasProcessadas === empresas.length) {
-                        res.json({ 
-                            success: true, 
-                            data: resultados 
-                        });
+                        res.json({ success: true, data: resultados });
                     }
                 });
             });
         });
-
-        if (empresas.length === 0) {
-            res.json({ 
-                success: true, 
-                data: [] 
-            });
-        }
     });
 });
-
 // ============================================
 // GET /api/admin/empresas/:id
 // ============================================
@@ -1649,6 +1662,179 @@ router.get('/ads-stats/summary', auth, verificarSuperAdmin, (req, res) => {
             period: 'Últimos 30 dias'
         });
     });
+});
+// ============================================
+// 💰 PAGAMENTOS — GESTÃO DE MENSALIDADES
+// ============================================
+
+/**
+ * GET /api/admin/pagamentos
+ * Lista todos os pagamentos mensalidade com filtros
+ */
+router.get('/pagamentos', auth, verificarSuperAdmin, async (req, res) => {
+    try {
+        const { db } = require('../config/database');
+        const { status, mes, empresa_id } = req.query;
+
+        let sql = `
+            SELECT 
+                p.*,
+                e.nome AS empresa_nome,
+                a.plano_nome,
+                a.status AS assinatura_status
+            FROM pagamentos_mensalidade p
+            INNER JOIN empresas e ON e.id = p.empresa_id
+            LEFT JOIN assinaturas a ON a.empresa_id = p.empresa_id
+            WHERE 1=1
+        `;
+        const params = [];
+
+        if (status) {
+            sql += ` AND p.status = ?`;
+            params.push(status);
+        }
+        if (mes) {
+            sql += ` AND p.mes_referencia = ?`;
+            params.push(mes);
+        }
+        if (empresa_id) {
+            sql += ` AND p.empresa_id = ?`;
+            params.push(empresa_id);
+        }
+
+        sql += ` ORDER BY p.data_vencimento DESC, p.id DESC LIMIT 200`;
+
+        db.all(sql, params, (err, rows) => {
+            if (err) {
+                console.error('❌ Erro /admin/pagamentos:', err);
+                return res.status(500).json({ success: false, message: err.message });
+            }
+
+            // Estatísticas
+            const stats = {
+                total: rows.length,
+                pago: rows.filter(r => r.status === 'pago').length,
+                pendente: rows.filter(r => r.status === 'pendente').length,
+                atrasado: rows.filter(r => r.status === 'atrasado').length,
+                valor_aberto: rows
+                    .filter(r => r.status !== 'pago')
+                    .reduce((sum, r) => sum + (parseFloat(r.valor) || 0), 0)
+            };
+
+            res.json({ success: true, data: rows, stats });
+        });
+
+    } catch (err) {
+        console.error('❌ Erro /admin/pagamentos:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+/**
+ * POST /api/admin/pagamentos/:id/marcar-pago
+ * Marca um pagamento como pago manualmente e libera a empresa
+ */
+router.post('/pagamentos/:id/marcar-pago', auth, verificarSuperAdmin, async (req, res) => {
+    const pagamentoId = req.params.id;
+    const { metodo = 'manual', observacao = '' } = req.body || {};
+
+    console.log(`💰 Marcando pagamento ${pagamentoId} como PAGO (método: ${metodo})`);
+
+    try {
+        const assinaturas = require('../services/assinaturas');
+
+        // 1. Verifica se pagamento existe
+        const pagamento = await new Promise((resolve, reject) => {
+            const { db } = require('../config/database');
+            db.get(
+                `SELECT * FROM pagamentos_mensalidade WHERE id = ?`,
+                [pagamentoId],
+                (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                }
+            );
+        });
+
+        if (!pagamento) {
+            return res.status(404).json({
+                success: false,
+                message: 'Pagamento não encontrado'
+            });
+        }
+
+        if (pagamento.status === 'pago') {
+            return res.status(400).json({
+                success: false,
+                message: 'Este pagamento já foi marcado como pago'
+            });
+        }
+
+        // 2. Registra pagamento (atualiza assinatura + libera empresa)
+        const resultado = await assinaturas.registrarPagamento(pagamentoId, {
+            metodo: metodo,
+            transacaoId: null
+        });
+
+        // 3. Adiciona observação se veio
+        if (observacao) {
+            await new Promise((resolve) => {
+                const { db } = require('../config/database');
+                db.run(
+                    `UPDATE pagamentos_mensalidade SET observacao = ? WHERE id = ?`,
+                    [observacao, pagamentoId],
+                    () => resolve()
+                );
+            });
+        }
+
+        console.log(`✅ Pagamento ${pagamentoId} confirmado manualmente. Empresa ${pagamento.empresa_id} liberada.`);
+
+        res.json({
+            success: true,
+            message: 'Pagamento confirmado! Empresa liberada.',
+            data: {
+                pagamento_id: pagamentoId,
+                empresa_id: pagamento.empresa_id,
+                novo_vencimento: resultado?.novoVencimento
+            }
+        });
+
+    } catch (err) {
+        console.error('❌ Erro ao marcar como pago:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+
+/**
+ * GET /api/admin/pagamentos/stats
+ * Estatísticas gerais de pagamentos
+ */
+router.get('/pagamentos/stats', auth, verificarSuperAdmin, async (req, res) => {
+    try {
+        const { db } = require('../config/database');
+        const mesAtual = new Date().toISOString().slice(0, 7);
+
+        db.get(`
+            SELECT 
+                COUNT(*) AS total,
+                SUM(CASE WHEN status = 'pago' THEN 1 ELSE 0 END) AS pagos,
+                SUM(CASE WHEN status = 'pendente' THEN 1 ELSE 0 END) AS pendentes,
+                SUM(CASE WHEN status = 'atrasado' THEN 1 ELSE 0 END) AS atrasados,
+                SUM(CASE WHEN status != 'pago' THEN valor ELSE 0 END) AS valor_aberto
+            FROM pagamentos_mensalidade
+            WHERE mes_referencia = ?
+        `, [mesAtual], (err, row) => {
+            if (err) {
+                return res.status(500).json({ success: false, message: err.message });
+            }
+            res.json({ success: true, data: row || {} });
+        });
+
+    } catch (err) {
+        console.error('❌ Erro /admin/pagamentos/stats:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 module.exports = router;

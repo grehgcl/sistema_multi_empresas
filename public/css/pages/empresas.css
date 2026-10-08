@@ -1363,3 +1363,88 @@
         font-size: 20px;
     }
 }
+/* ============================================ */
+/* BADGE DE PAGAMENTO — 💳 */
+/* ============================================ */
+
+.sa-card-pagamento {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+/* ✅ ATIVO (legado — pagante sem cobrança gerada) */
+.sa-card-pagamento.ativo {
+    background: rgba(59, 130, 246, 0.15);
+    color: #3b82f6;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+}
+.sa-card-pagamento.ativo:hover {
+    background: rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+/* ✅ PAGO */
+.sa-card-pagamento.pago {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+.sa-card-pagamento.pago:hover {
+    background: rgba(34, 197, 94, 0.25);
+    box-shadow: 0 0 12px rgba(34, 197, 94, 0.3);
+}
+
+/* ⚠️ PENDENTE */
+.sa-card-pagamento.pendente {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.sa-card-pagamento.pendente:hover {
+    background: rgba(245, 158, 11, 0.25);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+}
+
+/* 🔴 ATRASADO */
+.sa-card-pagamento.atrasado {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    animation: pulse-atrasado 2s ease-in-out infinite;
+}
+.sa-card-pagamento.atrasado:hover {
+    background: rgba(239, 68, 68, 0.25);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+}
+
+@keyframes pulse-atrasado {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.65; }
+}
+
+/* 🔄 TRIAL */
+.sa-card-pagamento.trial {
+    background: rgba(102, 126, 234, 0.15);
+    color: #667eea;
+    border: 1px solid rgba(102, 126, 234, 0.3);
+}
+.sa-card-pagamento.trial:hover {
+    background: rgba(102, 126, 234, 0.25);
+    box-shadow: 0 0 12px rgba(102, 126, 234, 0.3);
+}
+
+/* 📱 Mobile */
+@media (max-width: 480px) {
+    .sa-card-pagamento {
+        font-size: 10px;
+        padding: 3px 8px;
+    }
+}

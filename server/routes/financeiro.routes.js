@@ -349,6 +349,9 @@ router.get('/receitas', auth, (req, res) => {
                 date(a.data) as data_formatada,
                 COALESCE(a.valor_total, a.valor, 0) as valor_total,
                 a.valor,
+                a.valor_bruto,                -- 👈 NOVO
+                a.desconto_valor,             -- 👈 NOVO
+                a.valor_extras,
                 a.forma_pagamento,
                 a.servico,
                 a.cliente_id,

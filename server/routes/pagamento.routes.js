@@ -488,6 +488,89 @@ router.post('/mercadopago/webhook', async (req, res) => {
 
                     if (payment.status === 'approved') {
                         const externalRef = payment.external_reference || '';
+
+                        // ============================================
+                        // 🆕 DETECTA MENSALIDADE
+                        // Formato: "mensalidade_{empresaId}_{mesRef}"
+                        // ============================================
+                        if (externalRef.startsWith('mensalidade_')) {
+                            console.log('💰 MENSALIDADE DETECTADA:', externalRef);
+                            const partes = externalRef.split('_'); // ["mensalidade", "14", "2026-11"]
+                            const empresaMens = partes[1];
+                            const mesRef = partes[2];
+
+                            console.log(`📊 Empresa: ${empresaMens}, Mês: ${mesRef}`);
+
+                            try {
+                                const assinaturas = require('../services/assinaturas');
+
+                                // 1. Busca o pagamento em aberto
+                                const pagamento = await new Promise((resolve, reject) => {
+                                    db.get(`
+                                        SELECT * FROM pagamentos_mensalidade 
+                                        WHERE empresa_id = ? 
+                                          AND mes_referencia = ?
+                                          AND status IN ('pendente', 'atrasado')
+                                        LIMIT 1
+                                    `, [empresaMens, mesRef], (err, row) => {
+                                        if (err) reject(err);
+                                        else resolve(row);
+                                    });
+                                });
+
+                                if (!pagamento) {
+                                    console.log(`⚠️ Cobrança não encontrada (empresa ${empresaMens}, mês ${mesRef})`);
+                                    return res.status(200).json({ success: true, motivo: 'cobranca-nao-encontrada' });
+                                }
+
+                                console.log(`📋 Pagamento ${pagamento.id} encontrado, liberando acesso...`);
+
+                                // 2. Registra pagamento (atualiza assinatura + libera empresa)
+                                await assinaturas.registrarPagamento(pagamento.id, {
+                                    metodo: payment.payment_method_id || 'mercadopago',
+                                    transacaoId: paymentId
+                                });
+
+                                console.log(`✅ MENSALIDADE PAGA! Empresa ${empresaMens} liberada.`);
+
+                                // 3. Atualiza transação se existir
+                                db.run(`
+                                    UPDATE transacoes_pagamento 
+                                    SET status = 'approved', updated_at = CURRENT_TIMESTAMP
+                                    WHERE pagamento_id = ?
+                                `, [paymentId], (err) => {
+                                    if (err) console.error('⚠️ Erro ao atualizar transação:', err.message);
+                                });
+
+                                // 4. Envia WhatsApp de confirmação
+                                try {
+                                    const whatsappService = require('../services/whatsapp');
+                                    const empresa = await new Promise((resolve) => {
+                                        db.get(`SELECT * FROM empresas WHERE id = ?`, [empresaMens], (err, row) => {
+                                            resolve(row);
+                                        });
+                                    });
+
+                                    if (empresa && empresa.telefone_dono) {
+                                        const msg = `✅ *Pagamento confirmado!*\n\nOlá! Recebemos seu pagamento de *R$ ${pagamento.valor}* referente a *${mesRef}*.\n\n🎉 Sua conta foi reativada! Acesse agora: https://seeagende.tech\n\nObrigado!`;
+                                        await whatsappService.send(empresaMens, empresa.telefone_dono, msg);
+                                        console.log(`📱 WhatsApp enviado pra empresa ${empresaMens}`);
+                                    }
+                                } catch (wppErr) {
+                                    console.error('⚠️ Erro ao enviar WhatsApp:', wppErr.message);
+                                }
+
+                                return res.status(200).json({ success: true, tipo: 'mensalidade' });
+
+                            } catch (err) {
+                                console.error('❌ Erro ao processar mensalidade:', err);
+                                return res.status(200).json({ success: false, error: err.message });
+                            }
+                        }
+
+                        // ============================================
+                        // 🔄 FLUXO NORMAL (PLANO NOVO)
+                        // ============================================
                         const [empresaId, planoId] = externalRef.split('_');
 
                         console.log(`📊 Empresa ID: ${empresaId}, Plano ID: ${planoId}`);
@@ -501,7 +584,7 @@ router.post('/mercadopago/webhook', async (req, res) => {
                                 pro: 5,
                                 business: 15,
                                 enterprise: 999,
-                                teste: 1  // 🔥 ADICIONAR PLANO DE TESTE
+                                teste: 1
                             };
                             const limite = planosLimites[planoId] || 1;
 
@@ -545,6 +628,40 @@ router.post('/mercadopago/webhook', async (req, res) => {
                                     console.log(`✅ Transação ${paymentId} atualizada para approved`);
                                 }
                             });
+
+                            // 🔥 SINCRONIZAR ASSINATURA (nova tabela)
+                            try {
+                                const assinaturas = require('../services/assinaturas');
+                                const assinaturaExistente = await assinaturas.buscarAssinatura(empresaId);
+
+                                if (assinaturaExistente) {
+                                    // Atualiza assinatura pra refletir o novo plano
+                                    await new Promise((resolve) => {
+                                        db.run(`
+                                            UPDATE assinaturas
+                                            SET plano_id = ?,
+                                                plano_nome = ?,
+                                                valor_mensal = ?,
+                                                status = 'ativa',
+                                                data_vencimento = date('now', '+30 days'),
+                                                updated_at = CURRENT_TIMESTAMP
+                                            WHERE empresa_id = ?
+                                        `, [
+                                            planoId,
+                                            planoId.charAt(0).toUpperCase() + planoId.slice(1),
+                                            Number(payment.transaction_amount) || 0,
+                                            empresaId
+                                        ], () => resolve());
+                                    });
+                                    console.log(`✅ Assinatura da empresa ${empresaId} sincronizada`);
+                                } else {
+                                    // Cria assinatura nova
+                                    await assinaturas.criarAssinatura(empresaId, planoId);
+                                    console.log(`✅ Assinatura criada pra empresa ${empresaId}`);
+                                }
+                            } catch (assErr) {
+                                console.error('⚠️ Erro ao sincronizar assinatura:', assErr.message);
+                            }
 
                             // 🔥 HABILITAR WHATSAPP PARA PLANOS BUSINESS/ENTERPRISE
                             if (['business', 'enterprise'].includes(planoId)) {
@@ -640,6 +757,123 @@ router.post('/create-pix', auth, async (req, res) => {
         qr_code_base64: qrCodeBase64,
         message: 'PIX gerado com sucesso!'
     });
+});
+
+// ============================================
+// 🆕 POST /api/pagamento/mensalidade
+// Gera link de pagamento do MP pra uma mensalidade em aberto
+// ============================================
+router.post('/mensalidade', auth, async (req, res) => {
+    try {
+        const empresaId = req.usuario?.empresa_id;
+        if (!empresaId) {
+            return res.status(400).json({ success: false, message: 'Sem empresa vinculada' });
+        }
+
+        console.log(`💰 Gerando link de pagamento de mensalidade pra empresa ${empresaId}`);
+
+        // 1. Busca pagamento em aberto
+        const pagamento = await new Promise((resolve, reject) => {
+            db.get(`
+                SELECT p.*, a.plano_nome, a.valor_mensal
+                FROM pagamentos_mensalidade p
+                INNER JOIN assinaturas a ON a.empresa_id = p.empresa_id
+                WHERE p.empresa_id = ?
+                  AND p.status IN ('pendente', 'atrasado')
+                ORDER BY p.data_vencimento ASC
+                LIMIT 1
+            `, [empresaId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!pagamento) {
+            return res.status(404).json({
+                success: false,
+                message: 'Nenhuma cobrança em aberto encontrada'
+            });
+        }
+
+        console.log(`📋 Pagamento ${pagamento.id} — mês ${pagamento.mes_referencia} — R$ ${pagamento.valor}`);
+
+        // 2. Token MP
+        const mpAccessToken = process.env.MERCADOPAGO_ACCESS_TOKEN ||
+                              process.env.MERCADO_PAGO_ACCESS_TOKEN ||
+                              'APP_USR-6634641127610532-061511-c9b4a2384c16fb78e17f283ae74ddf30-41050420';
+
+        const baseUrl = process.env.BASE_URL || 'https://outline-claim-ritzy.ngrok-free.dev';
+
+        // 3. Payload MP
+        const payerData = {
+            email: req.usuario.email || 'cliente@email.com',
+            name: req.usuario.nome || 'Cliente'
+        };
+
+        const preference = {
+            items: [{
+                title: `Mensalidade ${pagamento.plano_nome || 'SEE&AGENDE'} — ${pagamento.mes_referencia}`,
+                description: `Mensalidade referente a ${pagamento.mes_referencia}`,
+                quantity: 1,
+                currency_id: 'BRL',
+                unit_price: Number(pagamento.valor)
+            }],
+            payer: payerData,
+            back_urls: {
+                success: `${baseUrl}/bloqueado?pagamento=sucesso`,
+                failure: `${baseUrl}/bloqueado?pagamento=falha`,
+                pending: `${baseUrl}/bloqueado?pagamento=pendente`
+            },
+            auto_return: 'approved',
+            external_reference: `mensalidade_${empresaId}_${pagamento.mes_referencia}`,
+            notification_url: `${baseUrl}/api/pagamento/mercadopago/webhook`
+        };
+
+        console.log('📤 Enviando pro Mercado Pago...');
+
+        const response = await fetch('https://api.mercadopago.com/checkout/preferences', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${mpAccessToken}`,
+                'Content-Type': 'application/json',
+                'X-Idempotency-Key': `mensalidade_${empresaId}_${pagamento.mes_referencia}_${Date.now()}`
+            },
+            body: JSON.stringify(preference)
+        });
+
+        const mpResponse = await response.json();
+
+        if (!response.ok) {
+            console.error('❌ Erro MP:', mpResponse);
+            return res.status(response.status).json({
+                success: false,
+                message: mpResponse.message || 'Erro ao gerar link de pagamento'
+            });
+        }
+
+        const linkPagamento = mpResponse.init_point || mpResponse.sandbox_init_point;
+
+        if (!linkPagamento) {
+            return res.status(500).json({
+                success: false,
+                message: 'MP não retornou link de pagamento'
+            });
+        }
+
+        console.log(`✅ Link gerado: ${linkPagamento.substring(0, 60)}...`);
+
+        res.json({
+            success: true,
+            link: linkPagamento,
+            pagamento_id: pagamento.id,
+            mes_referencia: pagamento.mes_referencia,
+            valor: pagamento.valor
+        });
+
+    } catch (err) {
+        console.error('❌ Erro /mensalidade:', err);
+        res.status(500).json({ success: false, message: err.message });
+    }
 });
 
 router.post('/create-payment', auth, verificarDono, async (req, res) => {

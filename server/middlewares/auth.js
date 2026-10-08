@@ -111,6 +111,68 @@ function verificarDono(req, res, next) {
 }
 
 // ============================================
+// VERIFICAR PROFISSIONAL (ou dono/super admin)
+// ============================================
+
+/**
+ * Permite acesso pra profissional, dono ou super admin.
+ * Bloqueia se for outro role (ex: usuário comum).
+ *
+ * Uso: router.get('/rota', auth, verificarProfissional, (req, res) => { ... })
+ */
+function verificarProfissional(req, res, next) {
+    const usuario = req.usuario;
+
+    if (!usuario) {
+        return res.status(401).json({
+            success: false,
+            message: 'Usuário não autenticado'
+        });
+    }
+
+    const role = usuario.role;
+    const permitidos = ['profissional', 'dono', 'Dono', 'super_admin', 'superadmin', 'SuperAdmin'];
+
+    if (permitidos.includes(role)) {
+        return next();
+    }
+
+    console.log(`❌ Acesso negado a verificarProfissional - Role: ${role}`);
+    return res.status(403).json({
+        success: false,
+        message: 'Acesso negado.'
+    });
+}
+
+// ============================================
+// VERIFICAR SE É EXATAMENTE PROFISSIONAL
+// ============================================
+
+/**
+ * Só permite acesso se for profissional.
+ * Usado em rotas tipo `/profissionais/profissional/*`.
+ */
+function somenteProfissional(req, res, next) {
+    const usuario = req.usuario;
+
+    if (!usuario) {
+        return res.status(401).json({
+            success: false,
+            message: 'Usuário não autenticado'
+        });
+    }
+
+    if (usuario.role === 'profissional') {
+        return next();
+    }
+
+    return res.status(403).json({
+        success: false,
+        message: 'Acesso restrito a profissionais.'
+    });
+}
+
+// ============================================
 // 4. VERIFICAR LIMITE DE PROFISSIONAIS
 // ============================================
 
@@ -397,8 +459,10 @@ module.exports = {
     auth,
     verificarSuperAdmin,
     verificarDono,
+    verificarProfissional,           // 🔥 NOVO
+    somenteProfissional,             // 🔥 NOVO
     verificarLimiteProfissionais,
     verificarAcessoAgendamentos,
-    verificarLimiteAgendamentos,      // 🔥 NOVO
-    incrementarContadorAgendamentos   // 🔥 NOVO
+    verificarLimiteAgendamentos,
+    incrementarContadorAgendamentos
 };
